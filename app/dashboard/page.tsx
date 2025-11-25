@@ -1,44 +1,133 @@
+"use client"
+
+import { useState, useEffect, useMemo } from "react"
 import Link from "next/link"
 import { Sidebar } from "@/components/dashboard/sidebar"
 import { InterviewCard } from "@/components/dashboard/interview-card"
 import { Button } from "@/components/ui/button"
-import { Plus, Search } from "lucide-react"
+import { Plus, Search, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { getUserInterviews, deleteInterview } from "@/lib/actions/interview"
+import { getOrCreateUser } from "@/lib/actions/user"
+import type { Interview } from "@/lib/db/schemas/interview"
 
-const interviews = [
-  {
-    id: "1",
-    role: "Senior Frontend Engineer",
-    company: "Stripe",
-    date: "Dec 5, 2024",
-    daysUntil: 9,
-    topics: ["React", "TypeScript", "System Design", "Performance"],
-    progress: 45,
-    status: "active" as const,
-  },
-  {
-    id: "2",
-    role: "Full Stack Developer",
-    company: "Vercel",
-    date: "Dec 12, 2024",
-    daysUntil: 16,
-    topics: ["Next.js", "Node.js", "PostgreSQL"],
-    progress: 20,
-    status: "upcoming" as const,
-  },
-  {
-    id: "3",
-    role: "Backend Engineer",
-    company: "Linear",
-    date: "Nov 20, 2024",
-    daysUntil: -6,
-    topics: ["Go", "GraphQL", "Distributed Systems"],
-    progress: 100,
-    status: "completed" as const,
-  },
-]
+type FilterStatus = "all" | "active" | "completed"
+
+function getInterviewStatus(interview: Interview): "upcoming" | "active" | "completed" {
+  const hasOpeningBrief = !!interview.modules.openingBrief
+  const hasTopics = interview.modules.revisionTopics.length > 0
+  const hasMcqs = interview.modules.mcqs.length > 0
+  const hasRapidFire = interview.modules.rapidFire.length > 0
+  
+  const moduleCount = [hasOpeningBrief, hasTopics, hasMcqs, hasRapidFire].filter(Boolean).length
+  
+  if (moduleCount === 4) return "completed"
+  if (moduleCount > 0) return "active"
+  return "upcoming"
+}
+
+function getInterviewProgress(interview: Interview): number {
+  const hasOpeningBrief = !!interview.modules.openingBrief
+  const hasTopics = interview.modules.revisionTopics.length > 0
+  const hasMcqs = interview.modules.mcqs.length > 0
+  const hasRapidFire = interview.modules.rapidFire.length > 0
+  
+  const moduleCount = [hasOpeningBrief, hasTopics, hasMcqs, hasRapidFire].filter(Boolean).length
+  return Math.round((moduleCount / 4) * 100)
+}
+
+function extractTopics(interview: Interview): string[] {
+  const topics: string[] = []
+  
+  // Extract from revision topics
+  interview.modules.revisionTopics.slice(0, 4).forEach(topic => {
+    topics.push(topic.title)
+  })
+  
+  // If no revision topics, try to extract key skills from opening brief
+  if (topics.length === 0 && interview.modules.openingBrief?.keySkills) {
+    topics.push(...interview.modules.openingBrief.keySkills.slice(0, 4))
+  }
+  
+  return topics
+}
 
 export default function DashboardPage() {
+  const [interviews, setInterviews] = useState<Interview[]>([])
+  const [userName, setUserName] = useState("there")
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all")
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [interviewsResult, userResult] = await Promise.all([
+          getUserInterviews(),
+          getOrCreateUser()
+        ])
+        
+        if (interviewsResult.success) {
+          setInterviews(interviewsResult.data)
+        }
+        
+        if (userResult.success) {
+          // Use a generic greeting since we don't have the user's name
+          setUserName("back")
+        }
+      } catch (error) {
+        console.error("Failed to load dashboard data:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    loadData()
+  }, [])
+
+  const filteredInterviews = useMemo(() => {
+    return interviews.filter(interview => {
+      // Search filter
+      const searchLower = searchQuery.toLowerCase()
+      const matchesSearch = searchQuery === "" ||
+        interview.jobDetails.title.toLowerCase().includes(searchLower) ||
+        interview.jobDetails.company.toLowerCase().includes(searchLower)
+      
+      // Status filter
+      const status = getInterviewStatus(interview)
+      const matchesStatus = filterStatus === "all" ||
+        (filterStatus === "active" && (status === "active" || status === "upcoming")) ||
+        (filterStatus === "completed" && status === "completed")
+      
+      return matchesSearch && matchesStatus
+    })
+  }, [interviews, searchQuery, filterStatus])
+
+  const upcomingCount = useMemo(() => {
+    return interviews.filter(i => {
+      const status = getInterviewStatus(i)
+      return status === "active" || status === "upcoming"
+    }).length
+  }, [interviews])
+
+  const handleDelete = async (interviewId: string) => {
+    const result = await deleteInterview(interviewId)
+    if (result.success) {
+      setInterviews(prev => prev.filter(i => i._id !== interviewId))
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen bg-background">
+        <Sidebar />
+        <main className="flex-1 p-8 flex items-center justify-center">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar />
@@ -47,8 +136,12 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-mono text-foreground mb-1">Welcome back, Alex</h1>
-            <p className="text-muted-foreground">You have 2 upcoming interviews to prepare for.</p>
+            <h1 className="text-2xl font-mono text-foreground mb-1">Welcome {userName}</h1>
+            <p className="text-muted-foreground">
+              {upcomingCount > 0 
+                ? `You have ${upcomingCount} interview${upcomingCount > 1 ? 's' : ''} to prepare for.`
+                : "Create your first interview prep to get started."}
+            </p>
           </div>
           <Link href="/dashboard/new">
             <Button>
@@ -62,16 +155,33 @@ export default function DashboardPage() {
         <div className="flex items-center gap-4 mb-6">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search interviews..." className="pl-10 font-mono" />
+            <Input 
+              placeholder="Search interviews..." 
+              className="pl-10 font-mono"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
+            <Button 
+              variant={filterStatus === "all" ? "outline" : "ghost"} 
+              size="sm"
+              onClick={() => setFilterStatus("all")}
+            >
               All
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button 
+              variant={filterStatus === "active" ? "outline" : "ghost"} 
+              size="sm"
+              onClick={() => setFilterStatus("active")}
+            >
               Active
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button 
+              variant={filterStatus === "completed" ? "outline" : "ghost"} 
+              size="sm"
+              onClick={() => setFilterStatus("completed")}
+            >
               Completed
             </Button>
           </div>
@@ -79,8 +189,23 @@ export default function DashboardPage() {
 
         {/* Interview Cards Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {interviews.map((interview) => (
-            <InterviewCard key={interview.id} {...interview} />
+          {filteredInterviews.map((interview) => (
+            <InterviewCard 
+              key={interview._id} 
+              id={interview._id}
+              role={interview.jobDetails.title}
+              company={interview.jobDetails.company}
+              date={new Date(interview.createdAt).toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric', 
+                year: 'numeric' 
+              })}
+              daysUntil={0}
+              topics={extractTopics(interview)}
+              progress={getInterviewProgress(interview)}
+              status={getInterviewStatus(interview)}
+              onDelete={() => handleDelete(interview._id)}
+            />
           ))}
 
           {/* Empty State / Add New Card */}
@@ -94,33 +219,12 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Recent Activity */}
-        <div className="mt-12">
-          <h2 className="text-lg font-mono text-foreground mb-4">Recent Activity</h2>
-          <div className="border border-border divide-y divide-border">
-            <div className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-foreground">Completed "React Hooks Deep Dive"</p>
-                <p className="text-xs text-muted-foreground">Senior Frontend Engineer at Stripe</p>
-              </div>
-              <span className="text-xs text-muted-foreground">2h ago</span>
-            </div>
-            <div className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-foreground">Started "System Design: Chat Application"</p>
-                <p className="text-xs text-muted-foreground">Senior Frontend Engineer at Stripe</p>
-              </div>
-              <span className="text-xs text-muted-foreground">Yesterday</span>
-            </div>
-            <div className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-foreground">Created new interview prep</p>
-                <p className="text-xs text-muted-foreground">Full Stack Developer at Vercel</p>
-              </div>
-              <span className="text-xs text-muted-foreground">3 days ago</span>
-            </div>
+        {/* Empty state when no interviews match filter */}
+        {filteredInterviews.length === 0 && interviews.length > 0 && (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">No interviews match your search.</p>
           </div>
-        </div>
+        )}
       </main>
     </div>
   )
