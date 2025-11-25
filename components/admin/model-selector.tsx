@@ -54,11 +54,28 @@ export function ModelSelector({ initialConfig }: ModelSelectorProps) {
     );
   };
 
+  const getModelMaxTokens = (modelId: string): number | null => {
+    if (!models) return null;
+    const allModels = [...models.paid, ...models.free];
+    const model = allModels.find(m => m.id === modelId);
+    return model?.top_provider?.max_completion_tokens || null;
+  };
+
   const handleSelectModel = (modelId: string, type: 'primary' | 'fallback') => {
+    const maxTokens = getModelMaxTokens(modelId);
+    
     if (type === 'primary') {
-      setConfig((prev) => ({ ...prev, defaultModel: modelId }));
+      setConfig((prev) => ({
+        ...prev,
+        defaultModel: modelId,
+        ...(maxTokens && { maxTokens }),
+      }));
     } else {
-      setConfig((prev) => ({ ...prev, fallbackModel: modelId }));
+      setConfig((prev) => ({
+        ...prev,
+        fallbackModel: modelId,
+        ...(maxTokens && { fallbackMaxTokens: maxTokens }),
+      }));
     }
     setSaved(false);
   };
@@ -164,10 +181,16 @@ export function ModelSelector({ initialConfig }: ModelSelectorProps) {
           <div>
             <Label className="text-xs text-muted-foreground">Primary Model</Label>
             <p className="font-mono text-sm text-foreground truncate">{config.defaultModel}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Temp: {config.temperature} | Max: {config.maxTokens}
+            </p>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">Fallback Model</Label>
             <p className="font-mono text-sm text-foreground truncate">{config.fallbackModel}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Temp: {config.fallbackTemperature} | Max: {config.fallbackMaxTokens}
+            </p>
           </div>
         </div>
 
@@ -255,34 +278,71 @@ export function ModelSelector({ initialConfig }: ModelSelectorProps) {
           ))}
         </Tabs>
 
-        {/* Additional Settings */}
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-          <div>
-            <Label className="text-sm text-muted-foreground mb-2 block">Temperature</Label>
-            <Input
-              type="number"
-              value={config.temperature}
-              onChange={(e) => {
-                setConfig((prev) => ({ ...prev, temperature: parseFloat(e.target.value) || 0 }));
-                setSaved(false);
-              }}
-              step="0.1"
-              min="0"
-              max="2"
-              className="font-mono"
-            />
+        {/* Primary Model Settings */}
+        <div className="pt-4 border-t border-border">
+          <Label className="text-sm font-medium text-foreground mb-3 block">Primary Model Settings</Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm text-muted-foreground mb-2 block">Temperature</Label>
+              <Input
+                type="number"
+                value={config.temperature}
+                onChange={(e) => {
+                  setConfig((prev) => ({ ...prev, temperature: parseFloat(e.target.value) || 0 }));
+                  setSaved(false);
+                }}
+                step="0.1"
+                min="0"
+                max="2"
+                className="font-mono"
+              />
+            </div>
+            <div>
+              <Label className="text-sm text-muted-foreground mb-2 block">Max Tokens</Label>
+              <Input
+                type="number"
+                value={config.maxTokens}
+                onChange={(e) => {
+                  setConfig((prev) => ({ ...prev, maxTokens: parseInt(e.target.value) || 0 }));
+                  setSaved(false);
+                }}
+                className="font-mono"
+              />
+            </div>
           </div>
-          <div>
-            <Label className="text-sm text-muted-foreground mb-2 block">Max Tokens</Label>
-            <Input
-              type="number"
-              value={config.maxTokens}
-              onChange={(e) => {
-                setConfig((prev) => ({ ...prev, maxTokens: parseInt(e.target.value) || 0 }));
-                setSaved(false);
-              }}
-              className="font-mono"
-            />
+        </div>
+
+        {/* Fallback Model Settings */}
+        <div className="pt-4 border-t border-border">
+          <Label className="text-sm font-medium text-foreground mb-3 block">Fallback Model Settings</Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm text-muted-foreground mb-2 block">Temperature</Label>
+              <Input
+                type="number"
+                value={config.fallbackTemperature}
+                onChange={(e) => {
+                  setConfig((prev) => ({ ...prev, fallbackTemperature: parseFloat(e.target.value) || 0 }));
+                  setSaved(false);
+                }}
+                step="0.1"
+                min="0"
+                max="2"
+                className="font-mono"
+              />
+            </div>
+            <div>
+              <Label className="text-sm text-muted-foreground mb-2 block">Max Tokens</Label>
+              <Input
+                type="number"
+                value={config.fallbackMaxTokens}
+                onChange={(e) => {
+                  setConfig((prev) => ({ ...prev, fallbackMaxTokens: parseInt(e.target.value) || 0 }));
+                  setSaved(false);
+                }}
+                className="font-mono"
+              />
+            </div>
           </div>
         </div>
 

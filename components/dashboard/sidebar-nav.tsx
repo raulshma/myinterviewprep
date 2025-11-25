@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Plus, Settings, CreditCard } from "lucide-react";
+import { LayoutDashboard, Plus, Settings, CreditCard, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -12,13 +12,21 @@ const navItems = [
   { href: "/pricing", label: "Upgrade", icon: CreditCard },
 ];
 
-export function SidebarNav() {
+interface SidebarNavProps {
+  isAdmin?: boolean;
+}
+
+export function SidebarNav({ isAdmin = false }: SidebarNavProps) {
   const pathname = usePathname();
+
+  const items = isAdmin 
+    ? [...navItems, { href: "/admin", label: "Admin", icon: Shield }]
+    : navItems;
 
   return (
     <nav className="flex-1 p-4">
       <ul className="space-y-1">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const isActive = pathname === item.href;
           return (
             <li key={item.href}>

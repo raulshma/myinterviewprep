@@ -174,6 +174,8 @@ export interface ModelConfig {
   fallbackModel: string;
   temperature: number;
   maxTokens: number;
+  fallbackTemperature: number;
+  fallbackMaxTokens: number;
 }
 
 const DEFAULT_MODEL_CONFIG: ModelConfig = {
@@ -181,6 +183,8 @@ const DEFAULT_MODEL_CONFIG: ModelConfig = {
   fallbackModel: 'openai/gpt-3.5-turbo',
   temperature: 0.7,
   maxTokens: 2048,
+  fallbackTemperature: 0.7,
+  fallbackMaxTokens: 2048,
 };
 
 /**
@@ -208,14 +212,16 @@ async function setSetting<T>(key: string, value: T): Promise<void> {
  * Get the current model configuration
  */
 export async function getModelConfig(): Promise<ModelConfig> {
-  const [defaultModel, fallbackModel, temperature, maxTokens] = await Promise.all([
+  const [defaultModel, fallbackModel, temperature, maxTokens, fallbackTemperature, fallbackMaxTokens] = await Promise.all([
     getSetting(SETTINGS_KEYS.DEFAULT_MODEL, DEFAULT_MODEL_CONFIG.defaultModel),
     getSetting(SETTINGS_KEYS.FALLBACK_MODEL, DEFAULT_MODEL_CONFIG.fallbackModel),
     getSetting(SETTINGS_KEYS.TEMPERATURE, DEFAULT_MODEL_CONFIG.temperature),
     getSetting(SETTINGS_KEYS.MAX_TOKENS, DEFAULT_MODEL_CONFIG.maxTokens),
+    getSetting(SETTINGS_KEYS.FALLBACK_TEMPERATURE, DEFAULT_MODEL_CONFIG.fallbackTemperature),
+    getSetting(SETTINGS_KEYS.FALLBACK_MAX_TOKENS, DEFAULT_MODEL_CONFIG.fallbackMaxTokens),
   ]);
 
-  return { defaultModel, fallbackModel, temperature, maxTokens };
+  return { defaultModel, fallbackModel, temperature, maxTokens, fallbackTemperature, fallbackMaxTokens };
 }
 
 /**
@@ -251,6 +257,12 @@ export async function updateModelConfig(config: Partial<ModelConfig>): Promise<{
   }
   if (config.maxTokens !== undefined) {
     updates.push(setSetting(SETTINGS_KEYS.MAX_TOKENS, config.maxTokens));
+  }
+  if (config.fallbackTemperature !== undefined) {
+    updates.push(setSetting(SETTINGS_KEYS.FALLBACK_TEMPERATURE, config.fallbackTemperature));
+  }
+  if (config.fallbackMaxTokens !== undefined) {
+    updates.push(setSetting(SETTINGS_KEYS.FALLBACK_MAX_TOKENS, config.fallbackMaxTokens));
   }
   
   await Promise.all(updates);

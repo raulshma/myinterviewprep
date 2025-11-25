@@ -19,6 +19,8 @@ export const SETTINGS_KEYS = {
   FALLBACK_MODEL: 'fallback_model',
   TEMPERATURE: 'temperature',
   MAX_TOKENS: 'max_tokens',
+  FALLBACK_TEMPERATURE: 'fallback_temperature',
+  FALLBACK_MAX_TOKENS: 'fallback_max_tokens',
 } as const;
 
 export type SettingsKey = typeof SETTINGS_KEYS[keyof typeof SETTINGS_KEYS];

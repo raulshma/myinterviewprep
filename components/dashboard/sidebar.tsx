@@ -1,11 +1,15 @@
 import { Logo } from "@/components/ui/logo"
 import { getIterationStatus } from "@/lib/actions/user"
+import { isAdmin } from "@/lib/auth/get-user"
 import { SidebarNav } from "./sidebar-nav"
 import { SidebarUsage } from "./sidebar-usage"
 import { SidebarSignOut } from "./sidebar-signout"
 
 export async function Sidebar() {
-  const iterationResult = await getIterationStatus()
+  const [iterationResult, userIsAdmin] = await Promise.all([
+    getIterationStatus(),
+    isAdmin(),
+  ])
   
   const iterationData = iterationResult.success 
     ? iterationResult.data 
@@ -17,7 +21,7 @@ export async function Sidebar() {
         <Logo />
       </div>
 
-      <SidebarNav />
+      <SidebarNav isAdmin={userIsAdmin} />
 
       <div className="p-4 border-t border-border space-y-4">
         <SidebarUsage 

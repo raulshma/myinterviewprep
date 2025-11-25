@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +14,7 @@ import { getAdminStats, getAILogs, getSearchToolStatus, getAIUsageByAction, getM
 import { SearchToolToggle } from "@/components/admin/search-tool-toggle"
 import { AILogViewer } from "@/components/admin/ai-log-viewer"
 import { ModelSelector } from "@/components/admin/model-selector"
+import { isAdmin } from "@/lib/auth/get-user"
 
 // Mock users data - in production this would come from the database
 const users = [
@@ -33,6 +35,12 @@ function formatNumber(num: number): string {
 }
 
 export default async function AdminPage() {
+  // Server-side admin check as fallback
+  const userIsAdmin = await isAdmin();
+  if (!userIsAdmin) {
+    redirect("/dashboard");
+  }
+
   // Fetch real data from the database
   const [stats, aiLogs, searchStatus, usageByAction, modelConfig] = await Promise.all([
     getAdminStats(),
@@ -56,7 +64,7 @@ export default async function AdminPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <main className="flex-1 overflow-auto">
       {/* Header */}
       <header className="border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
@@ -68,7 +76,7 @@ export default async function AdminPage() {
         </div>
       </header>
 
-      <main className="p-6">
+      <div className="p-6">
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-8">
           {statsCards.map((stat) => (
@@ -381,7 +389,7 @@ export default async function AdminPage() {
             </div>
           </TabsContent>
         </Tabs>
-      </main>
-    </div>
+      </div>
+    </main>
   )
 }
