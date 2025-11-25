@@ -1,0 +1,37 @@
+import { z } from 'zod';
+
+export const UserPlanSchema = z.enum(['FREE', 'PRO', 'MAX']);
+
+export const UserIterationsSchema = z.object({
+  count: z.number().int().min(0).default(0),
+  limit: z.number().int().min(0).default(5),
+  resetDate: z.date(),
+});
+
+export const UserPreferencesSchema = z.object({
+  theme: z.enum(['light', 'dark']).default('dark'),
+  defaultAnalogy: z.enum(['professional', 'construction', 'simple']).default('professional'),
+});
+
+export const UserSchema = z.object({
+  _id: z.string(),
+  clerkId: z.string(),
+  stripeCustomerId: z.string().optional(),
+  plan: UserPlanSchema.default('FREE'),
+  iterations: UserIterationsSchema,
+  preferences: UserPreferencesSchema,
+  createdAt: z.date(),
+  updatedAt: z.date(),
+});
+
+export const CreateUserSchema = UserSchema.omit({ 
+  _id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
+
+export type UserPlan = z.infer<typeof UserPlanSchema>;
+export type UserIterations = z.infer<typeof UserIterationsSchema>;
+export type UserPreferences = z.infer<typeof UserPreferencesSchema>;
+export type User = z.infer<typeof UserSchema>;
+export type CreateUser = z.infer<typeof CreateUserSchema>;
