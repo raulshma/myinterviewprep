@@ -15,12 +15,22 @@ import {
   X,
   Loader2,
   AlertCircle,
+  Wand2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import Link from "next/link";
-import { createInterview } from "@/lib/actions/interview";
+import { createInterview, createInterviewFromPrompt } from "@/lib/actions/interview";
 
 export default function NewInterviewPage() {
   const router = useRouter();
+  
+  // Prompt-based creation state
+  const [prompt, setPrompt] = useState("");
+  const [isPromptSubmitting, setIsPromptSubmitting] = useState(false);
+  
+  // Detailed form state
+  const [showDetailedForm, setShowDetailedForm] = useState(false);
   const [jobTitle, setJobTitle] = useState("");
   const [company, setCompany] = useState("");
   const [jobDescription, setJobDescription] = useState("");
@@ -110,7 +120,42 @@ export default function NewInterviewPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle prompt-based submission
+  const handlePromptSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGeneralError(null);
+
+    if (prompt.trim().length < 10) {
+      setGeneralError("Please provide a more detailed prompt (at least 10 characters)");
+      return;
+    }
+
+    setIsPromptSubmitting(true);
+
+    try {
+      const result = await createInterviewFromPrompt({
+        prompt: prompt.trim(),
+      });
+
+      if (result.success) {
+        router.push(`/interview/${result.data._id}`);
+      } else {
+        if (result.error.code === "RATE_LIMIT") {
+          setGeneralError(result.error.message);
+        } else {
+          setGeneralError(result.error.message);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to create interview:", error);
+      setGeneralError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsPromptSubmitting(false);
+    }
+  };
+
+  // Handle detailed form submission
+  const handleDetailedSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGeneralError(null);
 
@@ -132,7 +177,6 @@ export default function NewInterviewPage() {
       if (result.success) {
         router.push(`/interview/${result.data._id}`);
       } else {
-        // Handle specific error types
         if (result.error.code === "VALIDATION_ERROR" && result.error.details) {
           setErrors(result.error.details);
         } else if (result.error.code === "RATE_LIMIT") {
@@ -152,7 +196,8 @@ export default function NewInterviewPage() {
     }
   };
 
-  const canSubmit =
+  const canSubmitPrompt = prompt.trim().length >= 10;
+  const canSubmitDetailed =
     jobTitle.trim().length >= 2 &&
     company.trim().length >= 1 &&
     jobDescription.trim().length >= 50;
@@ -170,24 +215,15 @@ export default function NewInterviewPage() {
           <div>
             <h1 className="font-mono text-foreground">New Interview Prep</h1>
             <p className="text-sm text-muted-foreground">
-              Enter job details to generate your personalized prep
+              Describe what you're preparing for
             </p>
           </div>
         </div>
       </header>
 
       {/* Content */}
-      <form onSubmit={handleSubmit} className="flex-1 p-8 max-w-2xl">
+      <div className="flex-1 p-8 max-w-2xl">
         <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-mono text-foreground mb-2">
-              Tell us about the role
-            </h2>
-            <p className="text-muted-foreground">
-              We'll use this information to tailor your preparation materials.
-            </p>
-          </div>
-
           {generalError && (
             <div className="flex items-center gap-2 p-4 bg-destructive/10 border border-destructive/20 text-destructive text-sm">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
@@ -195,242 +231,319 @@ export default function NewInterviewPage() {
             </div>
           )}
 
-          <div className="space-y-4">
+          {/* Quick Prompt Section */}
+          <form onSubmit={handlePromptSubmit} className="space-y-4">
             <div>
-              <Label
-                htmlFor="jobTitle"
-                className="text-sm text-muted-foreground mb-2 block"
-              >
-                Job Title <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="jobTitle"
-                value={jobTitle}
-                onChange={(e) => {
-                  setJobTitle(e.target.value);
-                  if (errors.jobTitle)
-                    setErrors((prev) => ({ ...prev, jobTitle: "" }));
-                }}
-                placeholder="e.g., Senior Frontend Engineer"
-                className={`font-mono ${
-                  errors.jobTitle ? "border-destructive" : ""
-                }`}
-                disabled={isSubmitting}
+              <div className="flex items-center gap-2 mb-2">
+                <Wand2 className="w-4 h-4 text-muted-foreground" />
+                <Label htmlFor="prompt" className="text-sm text-muted-foreground">
+                  Quick Start
+                </Label>
+              </div>
+              <Textarea
+                id="prompt"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="e.g., I'm preparing for a Senior Frontend Engineer interview at Stripe. I have 5 years of React experience..."
+                className="font-mono min-h-[120px]"
+                disabled={isPromptSubmitting || isSubmitting}
               />
-              {errors.jobTitle && (
-                <p className="text-xs text-destructive mt-1">
-                  {errors.jobTitle}
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Just describe the role and any relevant context. We'll handle the rest.
+              </p>
             </div>
 
-            <div>
-              <Label
-                htmlFor="company"
-                className="text-sm text-muted-foreground mb-2 block"
-              >
-                Company <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="company"
-                value={company}
-                onChange={(e) => {
-                  setCompany(e.target.value);
-                  if (errors.company)
-                    setErrors((prev) => ({ ...prev, company: "" }));
-                }}
-                placeholder="e.g., Stripe"
-                className={`font-mono ${
-                  errors.company ? "border-destructive" : ""
-                }`}
-                disabled={isSubmitting}
-              />
-              {errors.company && (
-                <p className="text-xs text-destructive mt-1">
-                  {errors.company}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <Label
-                htmlFor="resume"
-                className="text-sm text-muted-foreground mb-2 block"
-              >
-                Resume (optional)
-              </Label>
-              {!showManualResume ? (
-                <div
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`border-2 border-dashed p-8 text-center transition-colors ${
-                    isDragging
-                      ? "border-foreground bg-muted/50"
-                      : resumeFile
-                      ? "border-foreground/50 bg-muted/30"
-                      : errors.resumeFile
-                      ? "border-destructive"
-                      : "border-border hover:border-muted-foreground"
-                  }`}
-                >
-                  {resumeFile ? (
-                    <div className="flex items-center justify-center gap-3">
-                      <FileText className="w-8 h-8 text-muted-foreground" />
-                      <div className="text-left">
-                        <p className="text-sm text-foreground font-mono">
-                          {resumeFile.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {(resumeFile.size / 1024).toFixed(1)} KB
-                        </p>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setResumeFile(null)}
-                        className="ml-2"
-                        disabled={isSubmitting}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Drag and drop your resume here, or
-                      </p>
-                      <label>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          onChange={handleFileSelect}
-                          className="hidden"
-                          disabled={isSubmitting}
-                        />
-                        <span className="text-sm text-foreground hover:underline cursor-pointer">
-                          browse files
-                        </span>
-                      </label>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        PDF or DOCX up to 5MB
-                      </p>
-                    </>
-                  )}
-                </div>
+            <Button 
+              type="submit" 
+              disabled={!canSubmitPrompt || isPromptSubmitting || isSubmitting}
+              className="w-full"
+            >
+              {isPromptSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
               ) : (
-                <div>
-                  <Textarea
-                    value={resumeText}
-                    onChange={(e) => setResumeText(e.target.value)}
-                    placeholder="Paste your resume text here..."
-                    className="font-mono min-h-[150px]"
-                    disabled={isSubmitting}
-                  />
-                  <Button
-                    type="button"
-                    variant="link"
-                    size="sm"
-                    className="mt-1 p-0 h-auto"
-                    onClick={() => {
-                      setShowManualResume(false);
-                      setResumeText("");
-                    }}
-                  >
-                    Upload file instead
-                  </Button>
-                </div>
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Create Interview Prep
+                </>
               )}
-              {errors.resumeFile && (
-                <div className="mt-2">
-                  <p className="text-xs text-destructive">
-                    {errors.resumeFile}
+            </Button>
+          </form>
+
+          {/* Divider */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">or</span>
+            </div>
+          </div>
+
+          {/* Detailed Form Toggle */}
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full justify-between"
+            onClick={() => setShowDetailedForm(!showDetailedForm)}
+            disabled={isPromptSubmitting || isSubmitting}
+          >
+            <span className="text-sm text-muted-foreground">
+              Fill in details manually
+            </span>
+            {showDetailedForm ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </Button>
+
+          {/* Detailed Form */}
+          {showDetailedForm && (
+            <form onSubmit={handleDetailedSubmit} className="space-y-4 pt-2">
+              <div>
+                <Label
+                  htmlFor="jobTitle"
+                  className="text-sm text-muted-foreground mb-2 block"
+                >
+                  Job Title <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="jobTitle"
+                  value={jobTitle}
+                  onChange={(e) => {
+                    setJobTitle(e.target.value);
+                    if (errors.jobTitle)
+                      setErrors((prev) => ({ ...prev, jobTitle: "" }));
+                  }}
+                  placeholder="e.g., Senior Frontend Engineer"
+                  className={`font-mono ${
+                    errors.jobTitle ? "border-destructive" : ""
+                  }`}
+                  disabled={isSubmitting || isPromptSubmitting}
+                />
+                {errors.jobTitle && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.jobTitle}
                   </p>
-                  {!showManualResume && (
+                )}
+              </div>
+
+              <div>
+                <Label
+                  htmlFor="company"
+                  className="text-sm text-muted-foreground mb-2 block"
+                >
+                  Company <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="company"
+                  value={company}
+                  onChange={(e) => {
+                    setCompany(e.target.value);
+                    if (errors.company)
+                      setErrors((prev) => ({ ...prev, company: "" }));
+                  }}
+                  placeholder="e.g., Stripe"
+                  className={`font-mono ${
+                    errors.company ? "border-destructive" : ""
+                  }`}
+                  disabled={isSubmitting || isPromptSubmitting}
+                />
+                {errors.company && (
+                  <p className="text-xs text-destructive mt-1">
+                    {errors.company}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label
+                  htmlFor="resume"
+                  className="text-sm text-muted-foreground mb-2 block"
+                >
+                  Resume (optional)
+                </Label>
+                {!showManualResume ? (
+                  <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`border-2 border-dashed p-8 text-center transition-colors ${
+                      isDragging
+                        ? "border-foreground bg-muted/50"
+                        : resumeFile
+                        ? "border-foreground/50 bg-muted/30"
+                        : errors.resumeFile
+                        ? "border-destructive"
+                        : "border-border hover:border-muted-foreground"
+                    }`}
+                  >
+                    {resumeFile ? (
+                      <div className="flex items-center justify-center gap-3">
+                        <FileText className="w-8 h-8 text-muted-foreground" />
+                        <div className="text-left">
+                          <p className="text-sm text-foreground font-mono">
+                            {resumeFile.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {(resumeFile.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setResumeFile(null)}
+                          className="ml-2"
+                          disabled={isSubmitting || isPromptSubmitting}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Drag and drop your resume here, or
+                        </p>
+                        <label>
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                            disabled={isSubmitting || isPromptSubmitting}
+                          />
+                          <span className="text-sm text-foreground hover:underline cursor-pointer">
+                            browse files
+                          </span>
+                        </label>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          PDF or DOCX up to 5MB
+                        </p>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <Textarea
+                      value={resumeText}
+                      onChange={(e) => setResumeText(e.target.value)}
+                      placeholder="Paste your resume text here..."
+                      className="font-mono min-h-[150px]"
+                      disabled={isSubmitting || isPromptSubmitting}
+                    />
                     <Button
                       type="button"
                       variant="link"
                       size="sm"
-                      className="p-0 h-auto text-xs"
+                      className="mt-1 p-0 h-auto"
                       onClick={() => {
-                        setShowManualResume(true);
-                        setResumeFile(null);
-                        setErrors((prev) => ({ ...prev, resumeFile: "" }));
+                        setShowManualResume(false);
+                        setResumeText("");
                       }}
                     >
-                      Enter resume text manually instead
+                      Upload file instead
                     </Button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <Label
-                htmlFor="jobDescription"
-                className="text-sm text-muted-foreground mb-2 block"
-              >
-                Job Description <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                id="jobDescription"
-                value={jobDescription}
-                onChange={(e) => {
-                  setJobDescription(e.target.value);
-                  if (errors.jobDescription)
-                    setErrors((prev) => ({ ...prev, jobDescription: "" }));
-                }}
-                placeholder="Paste the full job description here for personalized prep materials. The more details, the better we can tailor your preparation..."
-                className={`font-mono min-h-[200px] ${
-                  errors.jobDescription ? "border-destructive" : ""
-                }`}
-                disabled={isSubmitting}
-              />
-              <div className="flex justify-between mt-1">
-                {errors.jobDescription ? (
-                  <p className="text-xs text-destructive">
-                    {errors.jobDescription}
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    {jobDescription.length < 50
-                      ? `${50 - jobDescription.length} more characters needed`
-                      : "✓ Minimum length met"}
-                  </p>
+                  </div>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  {jobDescription.length}/10000
-                </p>
+                {errors.resumeFile && (
+                  <div className="mt-2">
+                    <p className="text-xs text-destructive">
+                      {errors.resumeFile}
+                    </p>
+                    {!showManualResume && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="p-0 h-auto text-xs"
+                        onClick={() => {
+                          setShowManualResume(true);
+                          setResumeFile(null);
+                          setErrors((prev) => ({ ...prev, resumeFile: "" }));
+                        }}
+                      >
+                        Enter resume text manually instead
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          </div>
+
+              <div>
+                <Label
+                  htmlFor="jobDescription"
+                  className="text-sm text-muted-foreground mb-2 block"
+                >
+                  Job Description <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id="jobDescription"
+                  value={jobDescription}
+                  onChange={(e) => {
+                    setJobDescription(e.target.value);
+                    if (errors.jobDescription)
+                      setErrors((prev) => ({ ...prev, jobDescription: "" }));
+                  }}
+                  placeholder="Paste the full job description here for personalized prep materials. The more details, the better we can tailor your preparation..."
+                  className={`font-mono min-h-[200px] ${
+                    errors.jobDescription ? "border-destructive" : ""
+                  }`}
+                  disabled={isSubmitting || isPromptSubmitting}
+                />
+                <div className="flex justify-between mt-1">
+                  {errors.jobDescription ? (
+                    <p className="text-xs text-destructive">
+                      {errors.jobDescription}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {jobDescription.length < 50
+                        ? `${50 - jobDescription.length} more characters needed`
+                        : "✓ Minimum length met"}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {jobDescription.length}/10000
+                  </p>
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                disabled={!canSubmitDetailed || isSubmitting || isPromptSubmitting}
+                className="w-full"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Create Interview Prep
+                  </>
+                )}
+              </Button>
+            </form>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-border flex items-center justify-between">
+        <div className="mt-8 pt-6 border-t border-border">
           <Link href="/dashboard">
-            <Button type="button" variant="ghost" disabled={isSubmitting}>
+            <Button type="button" variant="ghost" disabled={isSubmitting || isPromptSubmitting}>
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Cancel
+              Back to Dashboard
             </Button>
           </Link>
-          <Button type="submit" disabled={!canSubmit || isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 mr-2" />
-                Create Interview Prep
-              </>
-            )}
-          </Button>
         </div>
-      </form>
+      </div>
     </main>
   );
 }

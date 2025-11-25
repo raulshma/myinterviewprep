@@ -6,6 +6,7 @@
 // Interview actions
 export {
   createInterview,
+  createInterviewFromPrompt,
   generateModule,
   addMoreContent,
   deleteInterview,
@@ -13,6 +14,7 @@ export {
   getUserInterviews,
   type ActionResult,
   type CreateInterviewActionInput,
+  type CreateInterviewFromPromptInput,
 } from './interview';
 
 // User actions

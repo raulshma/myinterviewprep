@@ -41,6 +41,100 @@ export interface CreateInterviewActionInput {
 
 
 /**
+ * Input for creating an interview from a natural language prompt
+ */
+export interface CreateInterviewFromPromptInput {
+  prompt: string;
+}
+
+/**
+ * Create a new interview from a natural language prompt
+ * Requirements: 2.3 - Simplified interview creation
+ */
+export async function createInterviewFromPrompt(
+  input: CreateInterviewFromPromptInput
+): Promise<ActionResult<Interview>> {
+  try {
+    // Get authenticated user
+    const clerkId = await getAuthUserId();
+    
+    // Get user from database to check limits
+    const user = await userRepository.findByClerkId(clerkId);
+    if (!user) {
+      return {
+        success: false,
+        error: createAPIError('AUTH_ERROR', 'User not found. Please complete onboarding.'),
+      };
+    }
+
+    // Check interview limits (unless BYOK)
+    const isByok = await hasByokApiKey();
+    if (!isByok) {
+      const interviews = user.interviews ?? { count: 0, limit: 3, resetDate: new Date() };
+      if (interviews.count >= interviews.limit) {
+        return {
+          success: false,
+          error: createAPIError(
+            'RATE_LIMIT',
+            `You have reached your ${user.plan} plan limit of ${interviews.limit} interviews. Please upgrade or wait until ${interviews.resetDate.toLocaleDateString()}.`,
+            { plan: user.plan, limit: String(interviews.limit) },
+            Math.floor((interviews.resetDate.getTime() - Date.now()) / 1000)
+          ),
+        };
+      }
+    }
+
+    // Validate prompt
+    if (!input.prompt || input.prompt.trim().length < 10) {
+      return {
+        success: false,
+        error: createAPIError('VALIDATION_ERROR', 'Please provide a more detailed prompt (at least 10 characters)'),
+      };
+    }
+
+    // Get BYOK API key if available
+    const apiKey = await getByokApiKey();
+
+    // Parse the prompt using AI
+    const result = await aiEngine.parseInterviewPrompt(input.prompt.trim(), {}, apiKey ?? undefined);
+    const parsedDetails = await result.object;
+
+    // Create interview record
+    const interview = await interviewRepository.create({
+      userId: user._id,
+      isPublic: false,
+      jobDetails: {
+        title: parsedDetails.jobTitle,
+        company: parsedDetails.company,
+        description: parsedDetails.jobDescription,
+      },
+      resumeContext: parsedDetails.resumeContext ?? '',
+      modules: {
+        revisionTopics: [],
+        mcqs: [],
+        rapidFire: [],
+      },
+    });
+
+    // Increment interview count (unless BYOK)
+    if (!isByok) {
+      await userRepository.incrementInterview(clerkId);
+    }
+
+    return { success: true, data: interview };
+  } catch (error) {
+    console.error('createInterviewFromPrompt error:', error);
+    return {
+      success: false,
+      error: createAPIError(
+        'AI_ERROR',
+        'Failed to parse your prompt. Please try again or use the detailed form.'
+      ),
+    };
+  }
+}
+
+/**
  * Create a new interview with validation and resume parsing
  * Requirements: 2.3, 10.2
  */

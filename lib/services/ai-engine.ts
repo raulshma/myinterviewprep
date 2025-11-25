@@ -109,6 +109,14 @@ const TopicsArraySchema = z.object({
   topics: z.array(RevisionTopicSchema),
 });
 
+// Schema for parsed interview details from prompt
+const ParsedInterviewDetailsSchema = z.object({
+  jobTitle: z.string().describe('The job title extracted from the prompt'),
+  company: z.string().describe('The company name extracted from the prompt, or "Unknown" if not specified'),
+  jobDescription: z.string().describe('A comprehensive job description generated based on the prompt context'),
+  resumeContext: z.string().optional().describe('Any resume or experience context mentioned in the prompt'),
+});
+
 // Schema for streaming MCQs array
 const MCQsArraySchema = z.object({
   mcqs: z.array(MCQSchema),
@@ -317,6 +325,47 @@ These should be quick-fire questions that test fundamental knowledge relevant to
 }
 
 /**
+ * Parse a user prompt to extract interview details
+ * Requirements: 2.3 - Simplified interview creation from natural language prompt
+ */
+export async function parseInterviewPrompt(
+  prompt: string,
+  config: Partial<AIEngineConfig> = {},
+  apiKey?: string
+) {
+  const configuredModel = await getConfiguredModel();
+  const finalConfig = { ...DEFAULT_CONFIG, model: configuredModel, ...config };
+  const openrouter = getOpenRouterClient(apiKey);
+
+  const systemPrompt = `You are an expert at understanding interview preparation requests. Your job is to extract structured information from a user's natural language prompt about their interview preparation needs.
+
+Guidelines:
+- Extract the job title they're preparing for
+- Extract the company name if mentioned, otherwise use "Unknown"
+- Generate a comprehensive job description based on the context provided
+- If they mention their experience or background, capture it as resume context
+- Be thorough in generating the job description - include typical responsibilities, requirements, and skills for the role
+- If the prompt is vague, make reasonable assumptions based on common industry standards`;
+
+  const userPrompt = `Parse the following interview preparation request and extract the relevant details:
+
+"${prompt}"
+
+Extract:
+1. Job Title - the position they're preparing for
+2. Company - the company name (use "Unknown" if not specified)
+3. Job Description - generate a comprehensive job description based on the role and any context provided. Include typical responsibilities, required skills, and qualifications for this type of role.
+4. Resume Context - any background, experience, or skills they mentioned about themselves (optional)`;
+
+  return streamObject({
+    model: openrouter(finalConfig.model),
+    schema: ParsedInterviewDetailsSchema,
+    system: systemPrompt,
+    prompt: userPrompt,
+  });
+}
+
+/**
  * Regenerate topic with different analogy style
  * Requirements: 6.2, 6.3, 6.4
  */
@@ -370,6 +419,7 @@ export interface AIEngine {
   generateMCQs: typeof generateMCQs;
   generateRapidFire: typeof generateRapidFire;
   regenerateTopicAnalogy: typeof regenerateTopicAnalogy;
+  parseInterviewPrompt: typeof parseInterviewPrompt;
 }
 
 export const aiEngine: AIEngine = {
@@ -378,4 +428,5 @@ export const aiEngine: AIEngine = {
   generateMCQs,
   generateRapidFire,
   regenerateTopicAnalogy,
+  parseInterviewPrompt,
 };
