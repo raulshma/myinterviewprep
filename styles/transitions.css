@@ -1,0 +1,122 @@
+/* View Transitions CSS */
+
+/* Default cross-fade for all navigations */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+  animation-timing-function: ease-out;
+}
+
+/* Interview card to header morph */
+::view-transition-old(interview-card),
+::view-transition-new(interview-card) {
+  animation-duration: 300ms;
+}
+
+/* Side panel slide-in */
+::view-transition-new(topic-panel) {
+  animation: slide-in-right 250ms ease-out;
+}
+
+::view-transition-old(topic-panel) {
+  animation: slide-out-right 250ms ease-in;
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-right {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* Streaming content fade-in */
+::view-transition-new(streaming-content) {
+  animation: fade-scale-in 150ms ease-out;
+}
+
+@keyframes fade-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Streaming list item animations */
+::view-transition-new(streaming-item) {
+  animation: item-fade-in 200ms ease-out;
+}
+
+@keyframes item-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Tool status pill animations */
+::view-transition-new(tool-status) {
+  animation: pill-enter 150ms ease-out;
+}
+
+::view-transition-old(tool-status) {
+  animation: pill-exit 150ms ease-in;
+}
+
+@keyframes pill-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pill-exit {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* Card loading skeleton pulse */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.skeleton-pulse {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
