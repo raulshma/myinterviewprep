@@ -4,13 +4,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Settings, Users, Activity, Terminal, MoreHorizontal, Search, FileText, Filter } from "lucide-react"
+import { Settings, Users, Activity, Terminal, MoreHorizontal, Search, FileText, Filter, Cpu, Zap, Clock, Database } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { getAdminStats, getAILogs, getSearchToolStatus, getAIUsageByAction } from "@/lib/actions/admin"
+import { SearchToolToggle } from "@/components/admin/search-tool-toggle"
+import { AILogViewer } from "@/components/admin/ai-log-viewer"
 
+// Mock users data - in production this would come from the database
 const users = [
   { id: "1", name: "Alex Chen", email: "alex@example.com", plan: "Pro", preps: 12, lastActive: "2h ago" },
   { id: "2", name: "Sarah Kim", email: "sarah@example.com", plan: "Free", preps: 3, lastActive: "1d ago" },
@@ -18,57 +21,38 @@ const users = [
   { id: "4", name: "Emma Wilson", email: "emma@example.com", plan: "Pro", preps: 8, lastActive: "3h ago" },
 ]
 
-const stats = [
-  { label: "Total Users", value: "1,234" },
-  { label: "Active This Week", value: "456" },
-  { label: "Preps Generated", value: "5,678" },
-  { label: "Avg. Session Time", value: "24m" },
-]
+function formatNumber(num: number): string {
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M';
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K';
+  }
+  return num.toString();
+}
 
-const auditLogs = [
-  {
-    id: "1",
-    timestamp: "2024-11-26 14:32:05",
-    user: "admin@prepwise.io",
-    action: "model_config_update",
-    details: "Changed primary model to gpt-4-turbo",
-    level: "info",
-  },
-  {
-    id: "2",
-    timestamp: "2024-11-26 13:15:22",
-    user: "admin@prepwise.io",
-    action: "user_suspended",
-    details: "Suspended user spam@example.com",
-    level: "warning",
-  },
-  {
-    id: "3",
-    timestamp: "2024-11-26 11:45:00",
-    user: "system",
-    action: "search_tool_enabled",
-    details: "Web search tool enabled globally",
-    level: "info",
-  },
-  {
-    id: "4",
-    timestamp: "2024-11-26 10:20:33",
-    user: "admin@prepwise.io",
-    action: "prompt_update",
-    details: "Updated main system prompt",
-    level: "info",
-  },
-  {
-    id: "5",
-    timestamp: "2024-11-25 18:05:12",
-    user: "system",
-    action: "rate_limit_exceeded",
-    details: "User mike@example.com exceeded API rate limit",
-    level: "error",
-  },
-]
+export default async function AdminPage() {
+  // Fetch real data from the database
+  const [stats, aiLogs, searchStatus, usageByAction] = await Promise.all([
+    getAdminStats(),
+    getAILogs({ limit: 50 }),
+    getSearchToolStatus(),
+    getAIUsageByAction(),
+  ]);
 
-export default function AdminPage() {
+  const statsCards = [
+    { label: "Total Users", value: formatNumber(stats.totalUsers), icon: Users },
+    { label: "Active This Week", value: formatNumber(stats.activeThisWeek), icon: Activity },
+    { label: "Total Interviews", value: formatNumber(stats.totalInterviews), icon: FileText },
+    { label: "AI Requests", value: formatNumber(stats.totalAIRequests), icon: Cpu },
+  ];
+
+  const aiStatsCards = [
+    { label: "Input Tokens", value: formatNumber(stats.totalInputTokens), icon: Database, color: "text-green-500" },
+    { label: "Output Tokens", value: formatNumber(stats.totalOutputTokens), icon: Zap, color: "text-blue-500" },
+    { label: "Avg Latency", value: `${stats.avgLatencyMs}ms`, icon: Clock, color: "text-yellow-500" },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -76,7 +60,7 @@ export default function AdminPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-mono text-foreground">Admin Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Manage users, models, and system settings</p>
+            <p className="text-sm text-muted-foreground">Manage users, AI monitoring, and system settings</p>
           </div>
           <Badge>Admin</Badge>
         </div>
@@ -85,18 +69,25 @@ export default function AdminPage() {
       <main className="p-6">
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4 mb-8">
-          {stats.map((stat) => (
+          {statsCards.map((stat) => (
             <Card key={stat.label} className="bg-card border-border">
               <CardContent className="p-6">
-                <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  <stat.icon className="w-4 h-4 text-muted-foreground" />
+                </div>
                 <p className="text-2xl font-mono text-foreground">{stat.value}</p>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        <Tabs defaultValue="users" className="space-y-6">
+        <Tabs defaultValue="ai-monitoring" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="ai-monitoring">
+              <Cpu className="w-4 h-4 mr-2" />
+              AI Monitoring
+            </TabsTrigger>
             <TabsTrigger value="users">
               <Users className="w-4 h-4 mr-2" />
               Users
@@ -109,15 +100,118 @@ export default function AdminPage() {
               <Terminal className="w-4 h-4 mr-2" />
               System Prompts
             </TabsTrigger>
-            <TabsTrigger value="audit">
-              <FileText className="w-4 h-4 mr-2" />
-              Audit Logs
-            </TabsTrigger>
             <TabsTrigger value="analytics">
               <Activity className="w-4 h-4 mr-2" />
               Analytics
             </TabsTrigger>
           </TabsList>
+
+          {/* AI Monitoring Tab - Requirements: 9.1, 9.3, 9.4 */}
+          <TabsContent value="ai-monitoring">
+            <div className="space-y-6">
+              {/* AI Stats Cards */}
+              <div className="grid grid-cols-3 gap-4">
+                {aiStatsCards.map((stat) => (
+                  <Card key={stat.label} className="bg-card border-border">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm text-muted-foreground">{stat.label}</p>
+                        <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                      </div>
+                      <p className={`text-2xl font-mono ${stat.color}`}>{stat.value}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Usage by Action Type */}
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <CardTitle className="font-mono">Usage by Action Type</CardTitle>
+                  <CardDescription>AI generation requests breakdown</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {usageByAction.length > 0 ? (
+                      usageByAction.map((item) => {
+                        const maxCount = Math.max(...usageByAction.map(u => u.count));
+                        const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
+                        return (
+                          <div key={item.action} className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <Badge variant="outline" className="font-mono text-xs min-w-[140px]">
+                                {item.action.replace(/_/g, ' ')}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                avg {item.avgLatency}ms
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-32 h-2 bg-muted rounded">
+                                <div 
+                                  className="h-full bg-foreground rounded" 
+                                  style={{ width: `${percentage}%` }} 
+                                />
+                              </div>
+                              <span className="text-xs text-muted-foreground w-12 text-right">
+                                {item.count}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">
+                        No AI requests recorded yet
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* AI Logs Table - Requirements: 9.4 */}
+              <Card className="bg-card border-border">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="font-mono">AI Request Logs</CardTitle>
+                      <CardDescription>Full trace of all AI generation requests</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select defaultValue="all">
+                        <SelectTrigger className="w-40">
+                          <Filter className="w-4 h-4 mr-2" />
+                          <SelectValue placeholder="Action" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Actions</SelectItem>
+                          <SelectItem value="GENERATE_BRIEF">Generate Brief</SelectItem>
+                          <SelectItem value="GENERATE_TOPICS">Generate Topics</SelectItem>
+                          <SelectItem value="GENERATE_MCQ">Generate MCQ</SelectItem>
+                          <SelectItem value="GENERATE_RAPID_FIRE">Generate Rapid Fire</SelectItem>
+                          <SelectItem value="REGENERATE_ANALOGY">Regenerate Analogy</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {aiLogs.length > 0 ? (
+                    <AILogViewer logs={aiLogs} />
+                  ) : (
+                    <div className="text-center py-8">
+                      <Cpu className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-sm text-muted-foreground">No AI logs recorded yet</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        AI request logs will appear here once users start generating content
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
 
           <TabsContent value="users">
             <Card className="bg-card border-border">
@@ -207,31 +301,32 @@ export default function AdminPage() {
                   </div>
                 </div>
 
+                {/* Tool Configuration with Search Toggle - Requirements: 9.3 */}
                 <div className="border-t border-border pt-6">
                   <h3 className="font-mono text-foreground mb-4">Tool Configuration</h3>
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 border border-border">
+                    <div className="flex items-center justify-between p-4 border border-border rounded-lg">
                       <div>
                         <p className="text-sm text-foreground">Web Search Tool</p>
                         <p className="text-xs text-muted-foreground">
-                          Enable AI to search the web for up-to-date information
+                          Enable AI to search the web for up-to-date information via SearXNG
                         </p>
                       </div>
-                      <Switch defaultChecked />
+                      <SearchToolToggle initialEnabled={searchStatus.enabled} />
                     </div>
-                    <div className="flex items-center justify-between p-4 border border-border">
+                    <div className="flex items-center justify-between p-4 border border-border rounded-lg opacity-50">
                       <div>
                         <p className="text-sm text-foreground">Code Execution</p>
                         <p className="text-xs text-muted-foreground">Allow AI to run code snippets in sandbox</p>
                       </div>
-                      <Switch />
+                      <Badge variant="outline">Coming Soon</Badge>
                     </div>
-                    <div className="flex items-center justify-between p-4 border border-border">
+                    <div className="flex items-center justify-between p-4 border border-border rounded-lg opacity-50">
                       <div>
                         <p className="text-sm text-foreground">Citation Generation</p>
                         <p className="text-xs text-muted-foreground">Automatically cite sources in responses</p>
                       </div>
-                      <Switch defaultChecked />
+                      <Badge variant="outline">Coming Soon</Badge>
                     </div>
                   </div>
                 </div>
@@ -240,6 +335,7 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
 
           <TabsContent value="prompts">
             <Card className="bg-card border-border">
@@ -267,81 +363,6 @@ export default function AdminPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="audit">
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="font-mono">Audit Logs</CardTitle>
-                    <CardDescription>Track all administrative actions and system events</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Select defaultValue="all">
-                      <SelectTrigger className="w-32">
-                        <Filter className="w-4 h-4 mr-2" />
-                        <SelectValue placeholder="Level" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Levels</SelectItem>
-                        <SelectItem value="info">Info</SelectItem>
-                        <SelectItem value="warning">Warning</SelectItem>
-                        <SelectItem value="error">Error</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select defaultValue="7d">
-                      <SelectTrigger className="w-32">
-                        <SelectValue placeholder="Time" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1d">Last 24h</SelectItem>
-                        <SelectItem value="7d">Last 7 days</SelectItem>
-                        <SelectItem value="30d">Last 30 days</SelectItem>
-                        <SelectItem value="all">All time</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Timestamp</TableHead>
-                      <TableHead>User</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Details</TableHead>
-                      <TableHead>Level</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {auditLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-mono text-xs text-muted-foreground">{log.timestamp}</TableCell>
-                        <TableCell className="font-mono text-sm">{log.user}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="font-mono text-xs">
-                            {log.action}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{log.details}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              log.level === "error" ? "destructive" : log.level === "warning" ? "secondary" : "outline"
-                            }
-                            className="capitalize"
-                          >
-                            {log.level}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="analytics">
             <div className="grid grid-cols-2 gap-6">
               <Card className="bg-card border-border">
@@ -349,7 +370,7 @@ export default function AdminPage() {
                   <CardTitle className="font-mono">Usage Trends</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-64 flex items-center justify-center border border-dashed border-border">
+                  <div className="h-64 flex items-center justify-center border border-dashed border-border rounded-lg">
                     <p className="text-sm text-muted-foreground">Chart placeholder</p>
                   </div>
                 </CardContent>
@@ -364,8 +385,8 @@ export default function AdminPage() {
                       <div key={topic} className="flex items-center justify-between">
                         <span className="text-sm text-foreground">{topic}</span>
                         <div className="flex items-center gap-2">
-                          <div className="w-24 h-2 bg-muted">
-                            <div className="h-full bg-foreground" style={{ width: `${100 - i * 15}%` }} />
+                          <div className="w-24 h-2 bg-muted rounded">
+                            <div className="h-full bg-foreground rounded" style={{ width: `${100 - i * 15}%` }} />
                           </div>
                           <span className="text-xs text-muted-foreground w-8">{100 - i * 15}%</span>
                         </div>
