@@ -28,13 +28,13 @@ function getDefaultResetDate(): Date {
 function getPlanIterationLimit(plan: UserPlan): number {
   switch (plan) {
     case 'FREE':
-      return 5;
+      return 20;
     case 'PRO':
-      return 50;
+      return 150;
     case 'MAX':
-      return 500;
+      return 250;
     default:
-      return 5;
+      return 20;
   }
 }
 

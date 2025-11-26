@@ -85,7 +85,7 @@ async function handleUserCreated(event: WebhookEvent) {
   }
 
   // Create user with default FREE plan settings
-  // Requirements 1.2: default FREE plan, iteration count 0, limit 5
+  // Requirements 1.2: default FREE plan, iteration count 0, limit 20
   const user = await userRepository.create({
     clerkId,
     plan: 'FREE',

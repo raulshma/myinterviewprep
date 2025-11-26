@@ -21,14 +21,14 @@ export const PLAN_CONFIGS: Record<string, PlanConfig> = {
   PRO: {
     name: 'Pro',
     priceId: process.env.STRIPE_PRICE_PRO || '',
-    iterationLimit: 50,
+    iterationLimit: 150,
     interviewLimit: 25,
     plan: 'PRO',
   },
   MAX: {
     name: 'Max',
     priceId: process.env.STRIPE_PRICE_MAX || '',
-    iterationLimit: 500,
+    iterationLimit: 250,
     interviewLimit: 100,
     plan: 'MAX',
   },
@@ -46,13 +46,13 @@ export function getPlanFromPriceId(priceId: string): PlanConfig | null {
 export function getPlanLimit(plan: UserPlan): number {
   switch (plan) {
     case 'FREE':
-      return 5;
+      return 20;
     case 'PRO':
-      return 50;
+      return 150;
     case 'MAX':
-      return 500;
+      return 250;
     default:
-      return 5;
+      return 20;
   }
 }
 

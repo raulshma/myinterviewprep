@@ -32,13 +32,13 @@ export async function getOrCreateUser(): Promise<ActionResult<User>> {
     
     if (!user) {
       // Create new user with default FREE plan settings
-      // Requirements: 1.2 - Default FREE plan with iteration count 0 and limit 5
+      // Requirements: 1.2 - Default FREE plan with iteration count 0 and limit 20
       user = await userRepository.create({
         clerkId,
         plan: 'FREE',
         iterations: {
           count: 0,
-          limit: 5,
+          limit: 20,
           resetDate: getDefaultResetDate(),
         },
         preferences: {
@@ -271,7 +271,7 @@ export async function getUserProfile(): Promise<ActionResult<{
         lastName: authUser.lastName,
         imageUrl: authUser.imageUrl,
         plan: dbUser?.plan ?? 'FREE',
-        iterations: dbUser?.iterations ?? { count: 0, limit: 5, resetDate: getDefaultResetDate() },
+        iterations: dbUser?.iterations ?? { count: 0, limit: 20, resetDate: getDefaultResetDate() },
         interviews: dbUser?.interviews ?? { count: 0, limit: 3, resetDate: getDefaultResetDate() },
         hasStripeSubscription: !!dbUser?.stripeCustomerId,
         hasByokKey: !!authUser.byokApiKey,

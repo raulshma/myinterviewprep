@@ -45,11 +45,11 @@ export const PRICING_TIERS: PricingTier[] = [
     shortDescription: 'Try it out',
     limits: {
       interviews: 3,
-      iterations: 5,
+      iterations: 20,
     },
     features: [
       { name: '3 interviews/month', included: true },
-      { name: '5 iterations/month', included: true },
+      { name: '20 iterations/month', included: true },
       { name: 'Basic AI generation', included: true },
       { name: 'Community preps access', included: true },
       { name: 'Standard analogies', included: true },
@@ -59,7 +59,7 @@ export const PRICING_TIERS: PricingTier[] = [
     ],
     previewFeatures: [
       '3 interviews/month',
-      '5 iterations/month',
+      '20 iterations/month',
       'Basic AI generation',
       'Community access',
     ],
@@ -76,11 +76,11 @@ export const PRICING_TIERS: PricingTier[] = [
     badge: 'Most Popular',
     limits: {
       interviews: 25,
-      iterations: 50,
+      iterations: 150,
     },
     features: [
       { name: '25 interviews/month', included: true },
-      { name: '50 iterations/month', included: true },
+      { name: '150 iterations/month', included: true },
       { name: 'Advanced AI generation', included: true },
       { name: 'Community preps access', included: true },
       { name: 'All analogy levels', included: true },
@@ -90,7 +90,7 @@ export const PRICING_TIERS: PricingTier[] = [
     ],
     previewFeatures: [
       '25 interviews/month',
-      '50 iterations/month',
+      '150 iterations/month',
       'Advanced analogies',
       'Export to PDF',
       'Priority support',
@@ -108,11 +108,11 @@ export const PRICING_TIERS: PricingTier[] = [
     shortDescription: 'For power users',
     limits: {
       interviews: 100,
-      iterations: 500,
+      iterations: 250,
     },
     features: [
       { name: '100 interviews/month', included: true },
-      { name: '500 iterations/month', included: true },
+      { name: '250 iterations/month', included: true },
       { name: 'Everything in Pro', included: true },
       { name: 'BYOK option', included: true, tooltip: 'Bring Your Own Key - use your own OpenRouter API key' },
       { name: 'API access', included: true },
@@ -122,7 +122,7 @@ export const PRICING_TIERS: PricingTier[] = [
     ],
     previewFeatures: [
       '100 interviews/month',
-      '500 iterations/month',
+      '250 iterations/month',
       'BYOK option',
       'API access',
       'Custom integrations',
@@ -134,7 +134,7 @@ export const PRICING_TIERS: PricingTier[] = [
 
 export const COMPARISON_FEATURES: ComparisonFeature[] = [
   { name: 'Monthly Interviews', free: '3', pro: '25', max: '100' },
-  { name: 'Monthly Iterations', free: '5', pro: '50', max: '500' },
+  { name: 'Monthly Iterations', free: '20', pro: '150', max: '250' },
   { name: 'AI Model', free: 'Standard', pro: 'Advanced', max: 'Advanced' },
   { name: 'Web Search', free: false, pro: true, max: true },
   { name: 'PDF Export', free: false, pro: true, max: true },

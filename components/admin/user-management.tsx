@@ -266,9 +266,9 @@ export function UserActions({ user }: UserActionsProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="FREE">FREE - 3 interviews, 5 iterations/month</SelectItem>
-                  <SelectItem value="PRO">PRO - 25 interviews, 50 iterations/month</SelectItem>
-                  <SelectItem value="MAX">MAX - 100 interviews, 500 iterations/month</SelectItem>
+                  <SelectItem value="FREE">FREE - 3 interviews, 20 iterations/month</SelectItem>
+                  <SelectItem value="PRO">PRO - 25 interviews, 150 iterations/month</SelectItem>
+                  <SelectItem value="MAX">MAX - 100 interviews, 250 iterations/month</SelectItem>
                 </SelectContent>
               </Select>
             </div>
