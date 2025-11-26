@@ -1,5 +1,5 @@
-import { PDFParse } from 'pdf-parse';
-import mammoth from 'mammoth';
+import { default as pdfParse } from 'pdf-parse';
+import * as mammoth from 'mammoth';
 import { createAPIError, type APIError } from '@/lib/schemas/error';
 
 /**
@@ -32,12 +32,9 @@ export class ResumeParser {
    */
   async parsePDF(buffer: Buffer): Promise<ParseResult> {
     try {
-      // Convert Buffer to Uint8Array for pdf-parse
-      const uint8Array = new Uint8Array(buffer);
-      const parser = new PDFParse({ data: uint8Array });
-      const textResult = await parser.getText();
+      const data = await pdfParse(buffer);
       
-      const text = textResult.text?.trim() || '';
+      const text = data.text?.trim() || '';
       
       if (!text) {
         return {
@@ -50,18 +47,12 @@ export class ResumeParser {
         };
       }
 
-      // Get document info for page count
-      const info = await parser.getInfo();
-      
-      // Clean up resources
-      await parser.destroy();
-
       return {
         success: true,
         data: {
           text,
           metadata: {
-            pageCount: info.total || 1,
+            pageCount: data.numpages || 1,
             format: 'pdf',
           },
         },
