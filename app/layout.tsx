@@ -1,16 +1,19 @@
-import type React from "react"
-import type { Metadata, Viewport } from "next"
+import type React from "react";
+import type { Metadata, Viewport } from "next";
 
-import { ClerkProvider } from "@clerk/nextjs"
-import { Analytics } from "@vercel/analytics/next"
-import "./globals.css"
+import { ClerkProvider } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/next";
+import "./globals.css";
 
-import { Geist_Mono } from 'next/font/google'
-import { SidebarProvider } from "@/components/dashboard/sidebar-context"
-import { ThemeProvider } from "@/components/theme-provider"
+import { Geist_Mono } from "next/font/google";
+import { SidebarProvider } from "@/components/dashboard/sidebar-context";
+import { ThemeProvider } from "@/components/theme-provider";
 
 // Initialize fonts
-const _geistMono = Geist_Mono({ subsets: ['latin'], weight: ["100","200","300","400","500","600","700","800","900"] })
+const _geistMono = Geist_Mono({
+  subsets: ["latin"],
+  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+});
 
 // <CHANGE> Updated metadata for IT Interview Prep Platform
 export const metadata: Metadata = {
@@ -35,16 +38,16 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-icon.png",
   },
-}
+};
 
 export const viewport: Viewport = {
   themeColor: "#0a0a0a",
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <ClerkProvider>
@@ -56,13 +59,11 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <SidebarProvider>
-              {children}
-            </SidebarProvider>
+            <SidebarProvider>{children}</SidebarProvider>
           </ThemeProvider>
           <Analytics />
         </body>
       </html>
     </ClerkProvider>
-  )
+  );
 }
