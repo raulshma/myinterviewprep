@@ -138,7 +138,7 @@ export async function createInterviewFromPrompt(
 
     // Log the parse prompt request
     const usage = result.usage;
-    const modelId = extractModelId(result, 'tiered');
+    const modelId = extractModelId(result, "tiered");
 
     // We'll log with a placeholder interview ID since we haven't created it yet
     // This will be updated after interview creation
@@ -414,7 +414,7 @@ export async function generateModule(interviewId: string, module: ModuleType) {
 
           // Log the request with full metadata
           const usage = await result.usage;
-          const modelId = extractModelId(result, 'tiered');
+          const modelId = extractModelId(result, "tiered");
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -461,7 +461,7 @@ export async function generateModule(interviewId: string, module: ModuleType) {
           responseText = JSON.stringify(finalObject.topics);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result, 'tiered');
+          const modelId = extractModelId(result, "tiered");
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -508,7 +508,7 @@ export async function generateModule(interviewId: string, module: ModuleType) {
           responseText = JSON.stringify(finalObject.mcqs);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result, 'tiered');
+          const modelId = extractModelId(result, "tiered");
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -555,7 +555,7 @@ export async function generateModule(interviewId: string, module: ModuleType) {
           responseText = JSON.stringify(finalObject.questions);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result, 'tiered');
+          const modelId = extractModelId(result, "tiered");
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -703,7 +703,7 @@ export async function addMoreContent(input: {
           responseText = JSON.stringify(uniqueItems);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result, 'tiered');
+          const modelId = extractModelId(result, "tiered");
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -756,7 +756,7 @@ export async function addMoreContent(input: {
           responseText = JSON.stringify(uniqueItems);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result, 'tiered');
+          const modelId = extractModelId(result, "tiered");
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -809,7 +809,7 @@ export async function addMoreContent(input: {
           responseText = JSON.stringify(uniqueItems);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result, 'tiered');
+          const modelId = extractModelId(result, "tiered");
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -996,4 +996,342 @@ export async function getAIConcurrencyLimit(): Promise<number> {
   } catch {
     return DEFAULT_CONCURRENCY;
   }
+}
+
+/**
+ * Generate a specific module with custom instructions
+ * Requirements: 3.1 - Enhanced regeneration with user guidance
+ */
+export async function generateModuleWithInstructions(
+  interviewId: string,
+  module: ModuleType,
+  instructions: string
+) {
+  const stream = createStreamableValue<string>("");
+
+  (async () => {
+    try {
+      const clerkId = await getAuthUserId();
+      const user = await userRepository.findByClerkId(clerkId);
+
+      if (!user) {
+        stream.error(createAPIError("AUTH_ERROR", "User not found"));
+        return;
+      }
+
+      const interview = await interviewRepository.findById(interviewId);
+      if (!interview) {
+        stream.error(createAPIError("NOT_FOUND", "Interview not found"));
+        return;
+      }
+
+      if (interview.userId !== user._id) {
+        stream.error(createAPIError("AUTH_ERROR", "Not authorized"));
+        return;
+      }
+
+      const isByok = await hasByokApiKey();
+      if (!isByok) {
+        if (user.iterations.count >= user.iterations.limit) {
+          stream.error(createAPIError("RATE_LIMIT", "Iteration limit reached"));
+          return;
+        }
+        await userRepository.incrementIteration(clerkId);
+      }
+
+      const apiKey = await getByokApiKey();
+
+      const ctx: GenerationContext = {
+        resumeText: interview.resumeContext,
+        jobDescription: interview.jobDetails.description,
+        jobTitle: interview.jobDetails.title,
+        company: interview.jobDetails.company,
+        customInstructions: instructions,
+      };
+
+      const loggerCtx = createLoggerContext({
+        streaming: true,
+        byokUsed: !!apiKey,
+      });
+      let responseText = "";
+
+      switch (module) {
+        case "openingBrief": {
+          const result = await aiEngine.generateOpeningBrief(
+            ctx,
+            {},
+            apiKey ?? undefined
+          );
+          let firstTokenMarked = false;
+          for await (const partialObject of result.partialObjectStream) {
+            if (partialObject.content) {
+              if (!firstTokenMarked) {
+                loggerCtx.markFirstToken();
+                firstTokenMarked = true;
+              }
+              stream.update(partialObject.content);
+              responseText = partialObject.content;
+            }
+          }
+          const finalObject = await result.object;
+          await interviewRepository.updateModule(
+            interviewId,
+            "openingBrief",
+            finalObject
+          );
+          break;
+        }
+        case "revisionTopics": {
+          const result = await aiEngine.generateTopics(
+            ctx,
+            5,
+            {},
+            apiKey ?? undefined
+          );
+          let firstTokenMarked = false;
+          for await (const partialObject of result.partialObjectStream) {
+            if (partialObject.topics) {
+              if (!firstTokenMarked) {
+                loggerCtx.markFirstToken();
+                firstTokenMarked = true;
+              }
+              stream.update(JSON.stringify(partialObject.topics));
+            }
+          }
+          const finalObject = await result.object;
+          await interviewRepository.updateModule(
+            interviewId,
+            "revisionTopics",
+            finalObject.topics
+          );
+          responseText = JSON.stringify(finalObject.topics);
+          break;
+        }
+        case "mcqs": {
+          const result = await aiEngine.generateMCQs(
+            ctx,
+            5,
+            {},
+            apiKey ?? undefined
+          );
+          let firstTokenMarked = false;
+          for await (const partialObject of result.partialObjectStream) {
+            if (partialObject.mcqs) {
+              if (!firstTokenMarked) {
+                loggerCtx.markFirstToken();
+                firstTokenMarked = true;
+              }
+              stream.update(JSON.stringify(partialObject.mcqs));
+            }
+          }
+          const finalObject = await result.object;
+          await interviewRepository.updateModule(
+            interviewId,
+            "mcqs",
+            finalObject.mcqs
+          );
+          responseText = JSON.stringify(finalObject.mcqs);
+          break;
+        }
+        case "rapidFire": {
+          const result = await aiEngine.generateRapidFire(
+            ctx,
+            10,
+            {},
+            apiKey ?? undefined
+          );
+          let firstTokenMarked = false;
+          for await (const partialObject of result.partialObjectStream) {
+            if (partialObject.questions) {
+              if (!firstTokenMarked) {
+                loggerCtx.markFirstToken();
+                firstTokenMarked = true;
+              }
+              stream.update(JSON.stringify(partialObject.questions));
+            }
+          }
+          const finalObject = await result.object;
+          await interviewRepository.updateModule(
+            interviewId,
+            "rapidFire",
+            finalObject.questions
+          );
+          responseText = JSON.stringify(finalObject.questions);
+          break;
+        }
+      }
+
+      stream.done();
+    } catch (error) {
+      console.error("generateModuleWithInstructions error:", error);
+      stream.error(createAPIError("AI_ERROR", "Failed to generate content"));
+    }
+  })();
+
+  return { stream: stream.value };
+}
+
+/**
+ * Add more content with custom instructions
+ * Requirements: 5.1 - Enhanced add more with user guidance
+ */
+export async function addMoreContentWithInstructions(input: {
+  interviewId: string;
+  module: "mcqs" | "rapidFire" | "revisionTopics";
+  instructions: string;
+  count?: number;
+}) {
+  const stream = createStreamableValue<string>("");
+
+  (async () => {
+    try {
+      const { interviewId, module, instructions, count = 5 } = input;
+
+      const clerkId = await getAuthUserId();
+      const user = await userRepository.findByClerkId(clerkId);
+
+      if (!user) {
+        stream.error(createAPIError("AUTH_ERROR", "User not found"));
+        return;
+      }
+
+      const interview = await interviewRepository.findById(interviewId);
+      if (!interview) {
+        stream.error(createAPIError("NOT_FOUND", "Interview not found"));
+        return;
+      }
+
+      if (interview.userId !== user._id) {
+        stream.error(createAPIError("AUTH_ERROR", "Not authorized"));
+        return;
+      }
+
+      const isByok = await hasByokApiKey();
+      if (!isByok) {
+        if (user.iterations.count >= user.iterations.limit) {
+          stream.error(createAPIError("RATE_LIMIT", "Iteration limit reached"));
+          return;
+        }
+        await userRepository.incrementIteration(clerkId);
+      }
+
+      const apiKey = await getByokApiKey();
+      const existingContent = getExistingContentIds(interview, module);
+
+      const ctx: GenerationContext = {
+        resumeText: interview.resumeContext,
+        jobDescription: interview.jobDetails.description,
+        jobTitle: interview.jobDetails.title,
+        company: interview.jobDetails.company,
+        existingContent,
+        customInstructions: instructions,
+      };
+
+      const loggerCtx = createLoggerContext({
+        streaming: true,
+        byokUsed: !!apiKey,
+      });
+
+      switch (module) {
+        case "mcqs": {
+          const result = await aiEngine.generateMCQs(
+            ctx,
+            count,
+            {},
+            apiKey ?? undefined
+          );
+          let firstTokenMarked = false;
+          for await (const partialObject of result.partialObjectStream) {
+            if (partialObject.mcqs) {
+              if (!firstTokenMarked) {
+                loggerCtx.markFirstToken();
+                firstTokenMarked = true;
+              }
+              stream.update(JSON.stringify(partialObject.mcqs));
+            }
+          }
+          const finalObject = await result.object;
+          const existingIds = new Set(interview.modules.mcqs.map((m) => m.id));
+          const uniqueItems = finalObject.mcqs.filter(
+            (m) => !existingIds.has(m.id)
+          );
+          await interviewRepository.appendToModule(
+            interviewId,
+            "mcqs",
+            uniqueItems
+          );
+          break;
+        }
+        case "revisionTopics": {
+          const result = await aiEngine.generateTopics(
+            ctx,
+            count,
+            {},
+            apiKey ?? undefined
+          );
+          let firstTokenMarked = false;
+          for await (const partialObject of result.partialObjectStream) {
+            if (partialObject.topics) {
+              if (!firstTokenMarked) {
+                loggerCtx.markFirstToken();
+                firstTokenMarked = true;
+              }
+              stream.update(JSON.stringify(partialObject.topics));
+            }
+          }
+          const finalObject = await result.object;
+          const existingIds = new Set(
+            interview.modules.revisionTopics.map((t) => t.id)
+          );
+          const uniqueItems = finalObject.topics.filter(
+            (t) => !existingIds.has(t.id)
+          );
+          await interviewRepository.appendToModule(
+            interviewId,
+            "revisionTopics",
+            uniqueItems
+          );
+          break;
+        }
+        case "rapidFire": {
+          const result = await aiEngine.generateRapidFire(
+            ctx,
+            count,
+            {},
+            apiKey ?? undefined
+          );
+          let firstTokenMarked = false;
+          for await (const partialObject of result.partialObjectStream) {
+            if (partialObject.questions) {
+              if (!firstTokenMarked) {
+                loggerCtx.markFirstToken();
+                firstTokenMarked = true;
+              }
+              stream.update(JSON.stringify(partialObject.questions));
+            }
+          }
+          const finalObject = await result.object;
+          const existingIds = new Set(
+            interview.modules.rapidFire.map((q) => q.id)
+          );
+          const uniqueItems = finalObject.questions.filter(
+            (q) => !existingIds.has(q.id)
+          );
+          await interviewRepository.appendToModule(
+            interviewId,
+            "rapidFire",
+            uniqueItems
+          );
+          break;
+        }
+      }
+
+      stream.done();
+    } catch (error) {
+      console.error("addMoreContentWithInstructions error:", error);
+      stream.error(createAPIError("AI_ERROR", "Failed to add content"));
+    }
+  })();
+
+  return { stream: stream.value };
 }

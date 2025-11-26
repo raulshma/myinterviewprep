@@ -29,7 +29,9 @@ import {
 import {
   getInterview,
   generateModule,
+  generateModuleWithInstructions,
   addMoreContent,
+  addMoreContentWithInstructions,
   getAIConcurrencyLimit,
 } from "@/lib/actions/interview";
 import { runWithConcurrencyLimit } from "@/lib/utils/concurrency-limiter";
@@ -270,6 +272,127 @@ export default function InterviewWorkspacePage() {
     }
   };
 
+  const handleGenerateModuleWithInstructions = async (
+    module: keyof ModuleStatus,
+    instructions: string
+  ) => {
+    setModuleStatus((prev) => ({ ...prev, [module]: "loading" }));
+    setToolStatus("generating");
+
+    try {
+      const { stream } = await generateModuleWithInstructions(
+        interviewId,
+        module,
+        instructions
+      );
+      setModuleStatus((prev) => ({ ...prev, [module]: "streaming" }));
+
+      for await (const chunk of readStreamableValue(stream)) {
+        if (chunk !== undefined) {
+          switch (module) {
+            case "openingBrief":
+              try {
+                const parsed = JSON.parse(chunk);
+                if (parsed.content) setStreamingBrief(parsed.content);
+              } catch {
+                setStreamingBrief(chunk);
+              }
+              break;
+            case "revisionTopics":
+              try {
+                const topics = JSON.parse(chunk) as RevisionTopic[];
+                setStreamingTopics(topics);
+              } catch {
+                /* ignore */
+              }
+              break;
+            case "mcqs":
+              try {
+                const mcqs = JSON.parse(chunk) as MCQ[];
+                setStreamingMcqs(mcqs);
+              } catch {
+                /* ignore */
+              }
+              break;
+            case "rapidFire":
+              try {
+                const questions = JSON.parse(chunk) as RapidFire[];
+                setStreamingRapidFire(questions);
+              } catch {
+                /* ignore */
+              }
+              break;
+          }
+        }
+      }
+
+      setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
+      setToolStatus("complete");
+
+      const result = await getInterview(interviewId);
+      if (result.success) setInterview(result.data);
+    } catch (err) {
+      console.error(`Failed to generate ${module} with instructions:`, err);
+      setModuleStatus((prev) => ({ ...prev, [module]: "error" }));
+      setToolStatus("idle");
+    }
+  };
+
+  const handleAddMoreWithInstructions = async (
+    module: "mcqs" | "rapidFire" | "revisionTopics",
+    instructions: string
+  ) => {
+    setModuleStatus((prev) => ({ ...prev, [module]: "loading" }));
+
+    try {
+      const { stream } = await addMoreContentWithInstructions({
+        interviewId,
+        module,
+        instructions,
+        count: 5,
+      });
+      setModuleStatus((prev) => ({ ...prev, [module]: "streaming" }));
+
+      for await (const chunk of readStreamableValue(stream)) {
+        if (chunk !== undefined) {
+          try {
+            const items = JSON.parse(chunk);
+            switch (module) {
+              case "revisionTopics":
+                setStreamingTopics((prev) => [
+                  ...(interview?.modules.revisionTopics || []),
+                  ...items,
+                ]);
+                break;
+              case "mcqs":
+                setStreamingMcqs((prev) => [
+                  ...(interview?.modules.mcqs || []),
+                  ...items,
+                ]);
+                break;
+              case "rapidFire":
+                setStreamingRapidFire((prev) => [
+                  ...(interview?.modules.rapidFire || []),
+                  ...items,
+                ]);
+                break;
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+
+      setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
+
+      const result = await getInterview(interviewId);
+      if (result.success) setInterview(result.data);
+    } catch (err) {
+      console.error(`Failed to add more ${module} with instructions:`, err);
+      setModuleStatus((prev) => ({ ...prev, [module]: "error" }));
+    }
+  };
+
   const getProgress = useCallback(() => {
     if (!interview) return 0;
     const modules = [
@@ -357,6 +480,15 @@ export default function InterviewWorkspacePage() {
                 ? () => handleGenerateModule("openingBrief")
                 : undefined
             }
+            onAddMoreWithInstructions={
+              moduleStatus.openingBrief === "complete"
+                ? (instructions) =>
+                    handleGenerateModuleWithInstructions(
+                      "openingBrief",
+                      instructions
+                    )
+                : undefined
+            }
             addMoreLabel="Regenerate"
             streamingMessage={
               moduleStatus.openingBrief === "loading"
@@ -422,6 +554,15 @@ export default function InterviewWorkspacePage() {
             onAddMore={
               moduleStatus.revisionTopics === "complete"
                 ? () => handleAddMore("revisionTopics")
+                : undefined
+            }
+            onAddMoreWithInstructions={
+              moduleStatus.revisionTopics === "complete"
+                ? (instructions) =>
+                    handleAddMoreWithInstructions(
+                      "revisionTopics",
+                      instructions
+                    )
                 : undefined
             }
             streamedCount={
@@ -493,6 +634,12 @@ export default function InterviewWorkspacePage() {
                 ? () => handleAddMore("mcqs")
                 : undefined
             }
+            onAddMoreWithInstructions={
+              moduleStatus.mcqs === "complete"
+                ? (instructions) =>
+                    handleAddMoreWithInstructions("mcqs", instructions)
+                : undefined
+            }
             streamedCount={
               moduleStatus.mcqs === "streaming"
                 ? streamingMcqs.length
@@ -560,6 +707,12 @@ export default function InterviewWorkspacePage() {
             onAddMore={
               moduleStatus.rapidFire === "complete"
                 ? () => handleAddMore("rapidFire")
+                : undefined
+            }
+            onAddMoreWithInstructions={
+              moduleStatus.rapidFire === "complete"
+                ? (instructions) =>
+                    handleAddMoreWithInstructions("rapidFire", instructions)
                 : undefined
             }
             streamedCount={

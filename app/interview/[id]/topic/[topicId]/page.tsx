@@ -1,11 +1,17 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ArrowLeft,
   BookOpen,
@@ -13,46 +19,53 @@ import {
   Lightbulb,
   Loader2,
   AlertCircle,
-  RefreshCw,
-} from "lucide-react"
-import Link from "next/link"
-import dynamic from "next/dynamic"
-import { getTopic, regenerateAnalogy, type AnalogyStyle } from "@/lib/actions/topic"
+} from "lucide-react";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+import {
+  getTopic,
+  regenerateAnalogy,
+  regenerateAnalogyWithInstructions,
+  type AnalogyStyle,
+} from "@/lib/actions/topic";
+
+import { RegenerateMenu } from "@/components/streaming/regenerate-menu";
 
 // Dynamic import for Shiki (code highlighting) - prevents SSR issues
 const MarkdownRenderer = dynamic(
   () => import("@/components/streaming/markdown-renderer"),
   { ssr: false }
-)
-import { getInterview } from "@/lib/actions/interview"
-import type { RevisionTopic, Interview } from "@/lib/db/schemas/interview"
-import { readStreamableValue } from "@ai-sdk/rsc"
+);
+import { getInterview } from "@/lib/actions/interview";
+import type { RevisionTopic, Interview } from "@/lib/db/schemas/interview";
+import { readStreamableValue } from "@ai-sdk/rsc";
 
 const styleLabels: Record<AnalogyStyle, string> = {
   professional: "Professional",
   construction: "House Construction",
   simple: "ELI5 (Simple)",
-}
+};
 
 const styleDescriptions: Record<AnalogyStyle, string> = {
   professional: "Technical explanation suitable for interviews",
   construction: "Explained using house building analogies",
   simple: "Explained like you're 5 years old",
-}
+};
 
 export default function TopicDetailPage() {
-  const params = useParams()
-  const interviewId = params.id as string
-  const topicId = params.topicId as string
-  
-  const [topic, setTopic] = useState<RevisionTopic | null>(null)
-  const [interview, setInterview] = useState<Interview | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  
-  const [selectedStyle, setSelectedStyle] = useState<AnalogyStyle>("professional")
-  const [isRegenerating, setIsRegenerating] = useState(false)
-  const [streamingContent, setStreamingContent] = useState<string>("")
+  const params = useParams();
+  const interviewId = params.id as string;
+  const topicId = params.topicId as string;
+
+  const [topic, setTopic] = useState<RevisionTopic | null>(null);
+  const [interview, setInterview] = useState<Interview | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [selectedStyle, setSelectedStyle] =
+    useState<AnalogyStyle>("professional");
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [streamingContent, setStreamingContent] = useState<string>("");
 
   // Load topic and interview data
   useEffect(() => {
@@ -61,68 +74,104 @@ export default function TopicDetailPage() {
         const [topicResult, interviewResult] = await Promise.all([
           getTopic(interviewId, topicId),
           getInterview(interviewId),
-        ])
-        
+        ]);
+
         if (topicResult.success) {
-          setTopic(topicResult.data)
-          setSelectedStyle(topicResult.data.style)
+          setTopic(topicResult.data);
+          setSelectedStyle(topicResult.data.style);
         } else {
-          setError(topicResult.error.message)
+          setError(topicResult.error.message);
         }
-        
+
         if (interviewResult.success) {
-          setInterview(interviewResult.data)
+          setInterview(interviewResult.data);
         }
       } catch (err) {
-        console.error("Failed to load topic:", err)
-        setError("Failed to load topic")
+        console.error("Failed to load topic:", err);
+        setError("Failed to load topic");
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
-    
-    loadData()
-  }, [interviewId, topicId])
+
+    loadData();
+  }, [interviewId, topicId]);
 
   const handleStyleChange = async (newStyle: AnalogyStyle) => {
-    if (newStyle === selectedStyle || isRegenerating) return
-    
-    setSelectedStyle(newStyle)
-    setIsRegenerating(true)
-    setStreamingContent("")
-    
+    if (newStyle === selectedStyle || isRegenerating) return;
+
+    setSelectedStyle(newStyle);
+    setIsRegenerating(true);
+    setStreamingContent("");
+
     try {
-      const { stream } = await regenerateAnalogy(interviewId, topicId, newStyle)
-      
+      const { stream } = await regenerateAnalogy(
+        interviewId,
+        topicId,
+        newStyle
+      );
+
       for await (const chunk of readStreamableValue(stream)) {
         if (chunk !== undefined) {
-          setStreamingContent(chunk)
+          setStreamingContent(chunk);
         }
       }
-      
+
       // Refresh topic data after regeneration
-      const result = await getTopic(interviewId, topicId)
+      const result = await getTopic(interviewId, topicId);
       if (result.success) {
-        setTopic(result.data)
-        setStreamingContent("")
+        setTopic(result.data);
+        setStreamingContent("");
       }
     } catch (err) {
-      console.error("Failed to regenerate analogy:", err)
+      console.error("Failed to regenerate analogy:", err);
       // Revert to previous style on error
       if (topic) {
-        setSelectedStyle(topic.style)
+        setSelectedStyle(topic.style);
       }
     } finally {
-      setIsRegenerating(false)
+      setIsRegenerating(false);
     }
-  }
+  };
+
+  const handleRegenerateWithInstructions = async (instructions: string) => {
+    if (isRegenerating) return;
+
+    setIsRegenerating(true);
+    setStreamingContent("");
+
+    try {
+      const { stream } = await regenerateAnalogyWithInstructions(
+        interviewId,
+        topicId,
+        selectedStyle,
+        instructions
+      );
+
+      for await (const chunk of readStreamableValue(stream)) {
+        if (chunk !== undefined) {
+          setStreamingContent(chunk);
+        }
+      }
+
+      const result = await getTopic(interviewId, topicId);
+      if (result.success) {
+        setTopic(result.data);
+        setStreamingContent("");
+      }
+    } catch (err) {
+      console.error("Failed to regenerate with instructions:", err);
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
-    )
+    );
   }
 
   if (error || !topic) {
@@ -131,18 +180,20 @@ export default function TopicDetailPage() {
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
           <h1 className="text-xl font-mono text-foreground mb-2">Error</h1>
-          <p className="text-muted-foreground mb-4">{error || "Topic not found"}</p>
+          <p className="text-muted-foreground mb-4">
+            {error || "Topic not found"}
+          </p>
           <Link href={`/interview/${interviewId}`}>
             <Button>Back to Interview</Button>
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
   // Show streaming content when regenerating, otherwise show saved content
-  const isStreaming = isRegenerating && streamingContent.length > 0
-  const displayContent = isStreaming ? streamingContent : topic.content
+  const isStreaming = isRegenerating && streamingContent.length > 0;
+  const displayContent = isStreaming ? streamingContent : topic.content;
 
   return (
     <div className="min-h-screen bg-background">
@@ -160,14 +211,15 @@ export default function TopicDetailPage() {
                 <h1 className="font-mono text-foreground">{topic.title}</h1>
                 {interview && (
                   <p className="text-sm text-muted-foreground">
-                    {interview.jobDetails.title} at {interview.jobDetails.company}
+                    {interview.jobDetails.title} at{" "}
+                    {interview.jobDetails.company}
                   </p>
                 )}
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Select 
-                value={selectedStyle} 
+              <Select
+                value={selectedStyle}
                 onValueChange={(v) => handleStyleChange(v as AnalogyStyle)}
                 disabled={isRegenerating}
               >
@@ -200,19 +252,21 @@ export default function TopicDetailPage() {
         <div className="space-y-6">
           {/* Topic Info */}
           <div className="flex items-center gap-4">
-            <Badge 
-              variant="secondary" 
+            <Badge
+              variant="secondary"
               className={`capitalize ${
-                topic.confidence === "low" 
-                  ? "bg-red-500/10 text-red-500" 
+                topic.confidence === "low"
+                  ? "bg-red-500/10 text-red-500"
                   : topic.confidence === "medium"
-                    ? "bg-yellow-500/10 text-yellow-500"
-                    : "bg-green-500/10 text-green-500"
+                  ? "bg-yellow-500/10 text-yellow-500"
+                  : "bg-green-500/10 text-green-500"
               }`}
             >
               {topic.confidence} confidence
             </Badge>
-            <span className="text-sm text-muted-foreground">{topic.reason}</span>
+            <span className="text-sm text-muted-foreground">
+              {topic.reason}
+            </span>
           </div>
 
           {/* Main Content Card */}
@@ -225,17 +279,22 @@ export default function TopicDetailPage() {
                   <div className="flex items-center gap-2 ml-2">
                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
                     <span className="text-sm text-muted-foreground">
-                      {streamingContent ? "Streaming response..." : "Generating..."}
+                      {streamingContent
+                        ? "Streaming response..."
+                        : "Generating..."}
                     </span>
                   </div>
                 )}
               </div>
-              
+
               <div className="prose prose-invert max-w-none">
                 {isRegenerating && !streamingContent ? (
                   <div className="flex items-center gap-2 text-muted-foreground py-4">
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Preparing {styleLabels[selectedStyle].toLowerCase()} explanation...</span>
+                    <span className="text-sm">
+                      Preparing {styleLabels[selectedStyle].toLowerCase()}{" "}
+                      explanation...
+                    </span>
                   </div>
                 ) : (
                   <MarkdownRenderer
@@ -259,7 +318,7 @@ export default function TopicDetailPage() {
                 <p className="text-sm text-muted-foreground">
                   {styleDescriptions[selectedStyle]}
                 </p>
-                
+
                 {/* Style Selector Buttons */}
                 <div className="flex gap-2 mt-4">
                   {(Object.keys(styleLabels) as AnalogyStyle[]).map((style) => (
@@ -284,16 +343,19 @@ export default function TopicDetailPage() {
 
           {/* Quick Actions */}
           <div className="flex gap-4">
-            <Button
-              variant="outline"
-              onClick={() => handleStyleChange(selectedStyle)}
-              disabled={isRegenerating}
+            <div className="flex-1">
+              <RegenerateMenu
+                onRegenerate={() => handleStyleChange(selectedStyle)}
+                onRegenerateWithInstructions={handleRegenerateWithInstructions}
+                disabled={isRegenerating}
+                label="Regenerate Explanation"
+                contextHint="topic explanation"
+              />
+            </div>
+            <Link
+              href={`/interview/${interviewId}/topic/${topicId}/chat`}
               className="flex-1"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isRegenerating ? "animate-spin" : ""}`} />
-              Regenerate Explanation
-            </Button>
-            <Link href={`/interview/${interviewId}/topic/${topicId}/chat`} className="flex-1">
               <Button variant="outline" className="w-full">
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Ask Follow-up Questions
@@ -303,5 +365,5 @@ export default function TopicDetailPage() {
         </div>
       </main>
     </div>
-  )
+  );
 }

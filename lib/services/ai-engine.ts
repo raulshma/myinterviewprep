@@ -4,28 +4,28 @@
  * Requirements: 4.1, 4.2, 4.5
  */
 
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { streamObject, generateObject, tool } from 'ai';
-import { z } from 'zod';
-import { 
-  MCQSchema, 
-  RevisionTopicSchema, 
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { streamObject, generateObject, tool } from "ai";
+import { z } from "zod";
+import {
+  MCQSchema,
+  RevisionTopicSchema,
   RapidFireSchema,
   OpeningBriefSchema,
   type MCQ,
   type RevisionTopic,
   type RapidFire,
   type OpeningBrief,
-} from '@/lib/db/schemas/interview';
-import { searchService, isSearchEnabled } from './search-service';
-import { getSettingsCollection } from '@/lib/db/collections';
-import { 
-  SETTINGS_KEYS, 
-  TASK_TIER_MAPPING, 
-  type ModelTier, 
+} from "@/lib/db/schemas/interview";
+import { searchService, isSearchEnabled } from "./search-service";
+import { getSettingsCollection } from "@/lib/db/collections";
+import {
+  SETTINGS_KEYS,
+  TASK_TIER_MAPPING,
+  type ModelTier,
   type AITask,
   type TierModelConfig,
-} from '@/lib/db/schemas/settings';
+} from "@/lib/db/schemas/settings";
 
 // AI Engine Configuration
 export interface AIEngineConfig {
@@ -43,13 +43,16 @@ export interface GenerationContext {
   jobTitle: string;
   company: string;
   existingContent?: string[];
+  customInstructions?: string;
 }
 
 // Error for unconfigured tiers
 export class TierNotConfiguredError extends Error {
   constructor(public tier: ModelTier, public task: string) {
-    super(`Model tier "${tier}" is not configured. Please configure it in admin settings before using ${task}.`);
-    this.name = 'TierNotConfiguredError';
+    super(
+      `Model tier "${tier}" is not configured. Please configure it in admin settings before using ${task}.`
+    );
+    this.name = "TierNotConfiguredError";
   }
 }
 
@@ -100,7 +103,7 @@ async function getConfigForTask(task: AITask): Promise<{
   maxTokens: number;
   tier: ModelTier;
 }> {
-  const tier = TASK_TIER_MAPPING[task] || 'high';
+  const tier = TASK_TIER_MAPPING[task] || "high";
   const config = await getTierConfigFromDB(tier);
 
   if (!config.primaryModel) {
@@ -124,15 +127,15 @@ export async function checkTiersConfigured(): Promise<{
   missingTiers: ModelTier[];
 }> {
   const [high, medium, low] = await Promise.all([
-    getTierConfigFromDB('high'),
-    getTierConfigFromDB('medium'),
-    getTierConfigFromDB('low'),
+    getTierConfigFromDB("high"),
+    getTierConfigFromDB("medium"),
+    getTierConfigFromDB("low"),
   ]);
 
   const missingTiers: ModelTier[] = [];
-  if (!high.primaryModel) missingTiers.push('high');
-  if (!medium.primaryModel) missingTiers.push('medium');
-  if (!low.primaryModel) missingTiers.push('low');
+  if (!high.primaryModel) missingTiers.push("high");
+  if (!medium.primaryModel) missingTiers.push("medium");
+  if (!low.primaryModel) missingTiers.push("low");
 
   return {
     configured: missingTiers.length === 0,
@@ -146,7 +149,7 @@ export async function checkTiersConfigured(): Promise<{
 function getOpenRouterClient(apiKey?: string) {
   const key = apiKey || process.env.OPENROUTER_API_KEY;
   if (!key) {
-    throw new Error('OpenRouter API key is required');
+    throw new Error("OpenRouter API key is required");
   }
   return createOpenRouter({ apiKey: key });
 }
@@ -155,7 +158,7 @@ function getOpenRouterClient(apiKey?: string) {
  * Search Web Tool Definition Schema
  */
 const searchWebToolSchema = z.object({
-  query: z.string().describe('The search query to find relevant information'),
+  query: z.string().describe("The search query to find relevant information"),
 });
 
 /**
@@ -164,7 +167,8 @@ const searchWebToolSchema = z.object({
 function createSearchWebTool() {
   return {
     searchWeb: tool({
-      description: 'Search the web for current information about technologies, frameworks, or interview topics.',
+      description:
+        "Search the web for current information about technologies, frameworks, or interview topics.",
       inputSchema: searchWebToolSchema,
       execute: async (params: { query: string }) => {
         const response = await searchService.query(params.query, 5);
@@ -191,10 +195,21 @@ const TopicsArraySchema = z.object({
 
 // Schema for parsed interview details from prompt
 const ParsedInterviewDetailsSchema = z.object({
-  jobTitle: z.string().describe('The job title extracted from the prompt'),
-  company: z.string().describe('The company name extracted from the prompt, or "Unknown" if not specified'),
-  jobDescription: z.string().describe('A comprehensive job description generated based on the prompt context'),
-  resumeContext: z.string().optional().describe('Any resume or experience context mentioned in the prompt'),
+  jobTitle: z.string().describe("The job title extracted from the prompt"),
+  company: z
+    .string()
+    .describe(
+      'The company name extracted from the prompt, or "Unknown" if not specified'
+    ),
+  jobDescription: z
+    .string()
+    .describe(
+      "A comprehensive job description generated based on the prompt context"
+    ),
+  resumeContext: z
+    .string()
+    .optional()
+    .describe("Any resume or experience context mentioned in the prompt"),
 });
 
 // Schema for streaming MCQs array
@@ -222,14 +237,28 @@ Guidelines:
 - Use web search when you need current information about technologies or frameworks`;
 }
 
-
 /**
  * BYOK (Bring Your Own Key) tier configuration for users
  */
 export interface BYOKTierConfig {
-  high?: { model: string; fallback?: string; temperature?: number; maxTokens?: number };
-  medium?: { model: string; fallback?: string; temperature?: number; maxTokens?: number };
-  low?: { model: string; fallback?: string; temperature?: number; maxTokens?: number };
+  high?: {
+    model: string;
+    fallback?: string;
+    temperature?: number;
+    maxTokens?: number;
+  };
+  medium?: {
+    model: string;
+    fallback?: string;
+    temperature?: number;
+    maxTokens?: number;
+  };
+  low?: {
+    model: string;
+    fallback?: string;
+    temperature?: number;
+    maxTokens?: number;
+  };
 }
 
 /**
@@ -244,8 +273,8 @@ async function getEffectiveConfig(
   temperature: number;
   maxTokens: number;
 }> {
-  const tier = TASK_TIER_MAPPING[task] || 'high';
-  
+  const tier = TASK_TIER_MAPPING[task] || "high";
+
   // Check if BYOK user has configured this tier
   if (byokConfig?.[tier]?.model) {
     const byok = byokConfig[tier]!;
@@ -271,7 +300,10 @@ export async function generateOpeningBrief(
   apiKey?: string,
   byokTierConfig?: BYOKTierConfig
 ) {
-  const tierConfig = await getEffectiveConfig('generate_opening_brief', byokTierConfig);
+  const tierConfig = await getEffectiveConfig(
+    "generate_opening_brief",
+    byokTierConfig
+  );
   const openrouter = getOpenRouterClient(apiKey);
 
   const prompt = `Generate an opening brief for an interview preparation plan.
@@ -291,7 +323,11 @@ Generate a comprehensive opening brief that includes:
 3. Estimated preparation time needed
 4. An experience match percentage (0-100)
 
-Format your response as a structured brief with clear sections.`;
+Format your response as a structured brief with clear sections.${
+    ctx.customInstructions
+      ? `\n\nAdditional Instructions from user:\n${ctx.customInstructions}`
+      : ""
+  }`;
 
   return streamObject({
     model: openrouter(config.model || tierConfig.model),
@@ -313,12 +349,17 @@ export async function generateTopics(
   apiKey?: string,
   byokTierConfig?: BYOKTierConfig
 ) {
-  const tierConfig = await getEffectiveConfig('generate_topics', byokTierConfig);
+  const tierConfig = await getEffectiveConfig(
+    "generate_topics",
+    byokTierConfig
+  );
   const openrouter = getOpenRouterClient(apiKey);
 
-  const existingTopicsNote = ctx.existingContent?.length 
-    ? `\n\nExisting topics to avoid duplicating:\n${ctx.existingContent.join('\n')}`
-    : '';
+  const existingTopicsNote = ctx.existingContent?.length
+    ? `\n\nExisting topics to avoid duplicating:\n${ctx.existingContent.join(
+        "\n"
+      )}`
+    : "";
 
   const prompt = `Generate ${count} revision topics for interview preparation.
 
@@ -342,7 +383,11 @@ For each topic, provide:
 4. The reason why this topic is important for this interview
 5. A confidence level (low, medium, high) indicating how likely this topic will come up
 
-Focus on topics that bridge the gap between the candidate's experience and job requirements.`;
+Focus on topics that bridge the gap between the candidate's experience and job requirements.${
+    ctx.customInstructions
+      ? `\n\nAdditional Instructions from user:\n${ctx.customInstructions}`
+      : ""
+  }`;
 
   return streamObject({
     model: openrouter(config.model || tierConfig.model),
@@ -364,12 +409,14 @@ export async function generateMCQs(
   apiKey?: string,
   byokTierConfig?: BYOKTierConfig
 ) {
-  const tierConfig = await getEffectiveConfig('generate_mcqs', byokTierConfig);
+  const tierConfig = await getEffectiveConfig("generate_mcqs", byokTierConfig);
   const openrouter = getOpenRouterClient(apiKey);
 
-  const existingQuestionsNote = ctx.existingContent?.length 
-    ? `\n\nExisting question IDs to avoid duplicating (generate completely different questions):\n${ctx.existingContent.join('\n')}`
-    : '';
+  const existingQuestionsNote = ctx.existingContent?.length
+    ? `\n\nExisting question IDs to avoid duplicating (generate completely different questions):\n${ctx.existingContent.join(
+        "\n"
+      )}`
+    : "";
 
   const prompt = `Generate ${count} multiple choice questions for interview preparation.
 
@@ -391,7 +438,11 @@ For each MCQ, provide:
 5. A detailed explanation of why the answer is correct
 6. Source as "ai" (or "search" if you used web search to verify)
 
-Focus on practical knowledge that would be tested in a technical interview for this role.`;
+Focus on practical knowledge that would be tested in a technical interview for this role.${
+    ctx.customInstructions
+      ? `\n\nAdditional Instructions from user:\n${ctx.customInstructions}`
+      : ""
+  }`;
 
   return streamObject({
     model: openrouter(config.model || tierConfig.model),
@@ -413,12 +464,17 @@ export async function generateRapidFire(
   apiKey?: string,
   byokTierConfig?: BYOKTierConfig
 ) {
-  const tierConfig = await getEffectiveConfig('generate_rapid_fire', byokTierConfig);
+  const tierConfig = await getEffectiveConfig(
+    "generate_rapid_fire",
+    byokTierConfig
+  );
   const openrouter = getOpenRouterClient(apiKey);
 
-  const existingQuestionsNote = ctx.existingContent?.length 
-    ? `\n\nExisting questions to avoid duplicating:\n${ctx.existingContent.join('\n')}`
-    : '';
+  const existingQuestionsNote = ctx.existingContent?.length
+    ? `\n\nExisting questions to avoid duplicating:\n${ctx.existingContent.join(
+        "\n"
+      )}`
+    : "";
 
   const prompt = `Generate ${count} rapid-fire interview questions with short answers.
 
@@ -437,7 +493,11 @@ For each question, provide:
 2. A concise question that can be answered quickly
 3. A brief, direct answer (1-2 sentences max)
 
-These should be quick-fire questions that test fundamental knowledge relevant to the role.`;
+These should be quick-fire questions that test fundamental knowledge relevant to the role.${
+    ctx.customInstructions
+      ? `\n\nAdditional Instructions from user:\n${ctx.customInstructions}`
+      : ""
+  }`;
 
   return streamObject({
     model: openrouter(config.model || tierConfig.model),
@@ -458,7 +518,10 @@ export async function parseInterviewPrompt(
   apiKey?: string,
   byokTierConfig?: BYOKTierConfig
 ) {
-  const tierConfig = await getEffectiveConfig('parse_interview_prompt', byokTierConfig);
+  const tierConfig = await getEffectiveConfig(
+    "parse_interview_prompt",
+    byokTierConfig
+  );
   const openrouter = getOpenRouterClient(apiKey);
 
   const systemPrompt = `You are an expert at understanding interview preparation requests. Your job is to extract structured information from a user's natural language prompt about their interview preparation needs.
@@ -496,19 +559,25 @@ Extract:
  */
 export async function regenerateTopicAnalogy(
   topic: RevisionTopic,
-  style: 'professional' | 'construction' | 'simple',
+  style: "professional" | "construction" | "simple",
   _ctx: GenerationContext,
   config: Partial<AIEngineConfig> = {},
   apiKey?: string,
   byokTierConfig?: BYOKTierConfig
 ) {
-  const tierConfig = await getEffectiveConfig('regenerate_topic_analogy', byokTierConfig);
+  const tierConfig = await getEffectiveConfig(
+    "regenerate_topic_analogy",
+    byokTierConfig
+  );
   const openrouter = getOpenRouterClient(apiKey);
 
   const styleDescriptions = {
-    professional: 'Use professional, technical language appropriate for a senior developer or architect. Include industry terminology and best practices.',
-    construction: 'Explain using house construction analogies - compare software concepts to building a house. Make technical concepts relatable through building metaphors.',
-    simple: 'Explain as if to a 5-year-old - use simple words, everyday examples, and avoid jargon. Use fun analogies kids would understand.',
+    professional:
+      "Use professional, technical language appropriate for a senior developer or architect. Include industry terminology and best practices.",
+    construction:
+      "Explain using house construction analogies - compare software concepts to building a house. Make technical concepts relatable through building metaphors.",
+    simple:
+      "Explain as if to a 5-year-old - use simple words, everyday examples, and avoid jargon. Use fun analogies kids would understand.",
   };
 
   const prompt = `Regenerate the explanation for this interview topic using a different style.
@@ -525,7 +594,11 @@ Structure your content with markdown formatting:
 - **Code Example** (if applicable): Practical code snippet demonstrating the concept with comments
 
 Keep the same topic ID, title, and reason. Only change the content to match the new style.
-The explanation should be comprehensive but match the requested style throughout.`;
+The explanation should be comprehensive but match the requested style throughout.${
+    _ctx.customInstructions
+      ? `\n\nAdditional Instructions from user:\n${_ctx.customInstructions}`
+      : ""
+  }`;
 
   return streamObject({
     model: openrouter(config.model || tierConfig.model),

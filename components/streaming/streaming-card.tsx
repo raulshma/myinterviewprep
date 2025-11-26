@@ -16,6 +16,7 @@ import {
   CardAction,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { RegenerateMenu } from "@/components/streaming/regenerate-menu";
 import { cn } from "@/lib/utils";
 
 export type StreamingCardStatus =
@@ -31,6 +32,7 @@ interface StreamingCardProps {
   status: StreamingCardStatus;
   children: React.ReactNode;
   onAddMore?: () => void;
+  onAddMoreWithInstructions?: (instructions: string) => void;
   addMoreLabel?: string;
   errorMessage?: string;
   className?: string;
@@ -68,6 +70,7 @@ export function StreamingCard({
   status,
   children,
   onAddMore,
+  onAddMoreWithInstructions,
   addMoreLabel = "Add More",
   errorMessage,
   className,
@@ -161,9 +164,18 @@ export function StreamingCard({
           </div>
           {isComplete && onAddMore && (
             <CardAction>
-              <Button variant="outline" size="sm" onClick={onAddMore}>
-                {addMoreLabel}
-              </Button>
+              {onAddMoreWithInstructions ? (
+                <RegenerateMenu
+                  onRegenerate={onAddMore}
+                  onRegenerateWithInstructions={onAddMoreWithInstructions}
+                  label={addMoreLabel}
+                  contextHint={title.toLowerCase()}
+                />
+              ) : (
+                <Button variant="outline" size="sm" onClick={onAddMore}>
+                  {addMoreLabel}
+                </Button>
+              )}
             </CardAction>
           )}
         </CardHeader>
