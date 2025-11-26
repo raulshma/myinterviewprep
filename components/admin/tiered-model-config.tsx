@@ -1,48 +1,72 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useTransition } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Spinner } from '@/components/ui/spinner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Search, Check, DollarSign, Layers, Zap, Gauge, Feather, AlertTriangle, Trash2 } from 'lucide-react';
-import { 
-  getTieredModelConfig, 
+import { useState, useEffect, useTransition } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Search,
+  Check,
+  DollarSign,
+  Layers,
+  Zap,
+  Gauge,
+  Feather,
+  AlertTriangle,
+  Trash2,
+} from "lucide-react";
+import {
+  getTieredModelConfig,
   updateTierConfig,
   clearTieredModelConfig,
   getTaskTierMappings,
   type TaskTierInfo,
-} from '@/lib/actions/admin';
-import type { OpenRouterModel, GroupedModels } from '@/app/api/models/route';
-import type { ModelTier, TierModelConfig, FullTieredModelConfig } from '@/lib/db/schemas/settings';
+} from "@/lib/actions/admin";
+import type { OpenRouterModel, GroupedModels } from "@/app/api/models/route";
+import type {
+  ModelTier,
+  TierModelConfig,
+  FullTieredModelConfig,
+} from "@/lib/db/schemas/settings";
 
 interface TieredModelConfigProps {
   initialConfig: FullTieredModelConfig;
 }
 
-const TIER_INFO: Record<ModelTier, { label: string; icon: typeof Zap; description: string; color: string }> = {
+const TIER_INFO: Record<
+  ModelTier,
+  { label: string; icon: typeof Zap; description: string; color: string }
+> = {
   high: {
-    label: 'High Capability',
+    label: "High Capability",
     icon: Zap,
-    description: 'Complex reasoning, detailed content generation (topics, briefs, analogies)',
-    color: 'text-amber-500',
+    description:
+      "Complex reasoning, detailed content generation (topics, briefs, MCQs, analogies)",
+    color: "text-amber-500",
   },
   medium: {
-    label: 'Medium Capability', 
+    label: "Medium Capability",
     icon: Gauge,
-    description: 'Structured output, moderate complexity (MCQs, rapid-fire)',
-    color: 'text-blue-500',
+    description: "Structured output, moderate complexity (rapid-fire)",
+    color: "text-blue-500",
   },
   low: {
-    label: 'Low Capability',
+    label: "Low Capability",
     icon: Feather,
-    description: 'Simple parsing, extraction tasks (prompt parsing)',
-    color: 'text-green-500',
+    description: "Simple parsing, extraction tasks (prompt parsing)",
+    color: "text-green-500",
   },
 };
 
@@ -52,32 +76,37 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   const [taskMappings, setTaskMappings] = useState<TaskTierInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTier, setActiveTier] = useState<ModelTier>('high');
-  const [selectingFor, setSelectingFor] = useState<'primary' | 'fallback'>('primary');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTier, setActiveTier] = useState<ModelTier>("high");
+  const [selectingFor, setSelectingFor] = useState<"primary" | "fallback">(
+    "primary"
+  );
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
 
-
   // Check which tiers are missing configuration
-  const missingTiers = (['high', 'medium', 'low'] as ModelTier[]).filter(
-    tier => !config[tier].primaryModel
+  const missingTiers = (["high", "medium", "low"] as ModelTier[]).filter(
+    (tier) => !config[tier].primaryModel
   );
 
   useEffect(() => {
     fetchModels();
-    getTaskTierMappings().then(setTaskMappings);
+    getTaskTierMappings().then((result) => {
+      if (Array.isArray(result)) {
+        setTaskMappings(result);
+      }
+    });
   }, []);
 
   const fetchModels = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/models');
-      if (!response.ok) throw new Error('Failed to fetch models');
+      const response = await fetch("/api/models");
+      if (!response.ok) throw new Error("Failed to fetch models");
       const data = await response.json();
       setModels(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load models');
+      setError(err instanceof Error ? err.message : "Failed to load models");
     } finally {
       setLoading(false);
     }
@@ -95,26 +124,37 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
 
   const findModel = (modelId: string): OpenRouterModel | undefined => {
     if (!models) return undefined;
-    return models.paid.find(m => m.id === modelId) || models.free.find(m => m.id === modelId);
+    return (
+      models.paid.find((m) => m.id === modelId) ||
+      models.free.find((m) => m.id === modelId)
+    );
   };
 
-  const handleSelectModel = (modelId: string, tier: ModelTier, type: 'primary' | 'fallback') => {
+  const handleSelectModel = (
+    modelId: string,
+    tier: ModelTier,
+    type: "primary" | "fallback"
+  ) => {
     const model = findModel(modelId);
     const maxTokens = model?.top_provider?.max_completion_tokens;
-    
+
     setConfig((prev) => ({
       ...prev,
       [tier]: {
         ...prev[tier],
-        [type === 'primary' ? 'primaryModel' : 'fallbackModel']: modelId,
+        [type === "primary" ? "primaryModel" : "fallbackModel"]: modelId,
         // Auto-populate maxTokens from model data when selecting primary model
-        ...(type === 'primary' && maxTokens ? { maxTokens } : {}),
+        ...(type === "primary" && maxTokens ? { maxTokens } : {}),
       },
     }));
     setSaved(false);
   };
 
-  const handleUpdateSettings = (tier: ModelTier, field: 'temperature' | 'maxTokens', value: number) => {
+  const handleUpdateSettings = (
+    tier: ModelTier,
+    field: "temperature" | "maxTokens",
+    value: number
+  ) => {
     setConfig((prev) => ({
       ...prev,
       [tier]: {
@@ -134,15 +174,34 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   };
 
   const handleClearAll = () => {
-    if (!confirm('Are you sure you want to clear all tier configurations? AI features will be disabled until reconfigured.')) {
+    if (
+      !confirm(
+        "Are you sure you want to clear all tier configurations? AI features will be disabled until reconfigured."
+      )
+    ) {
       return;
     }
     startTransition(async () => {
       await clearTieredModelConfig();
       setConfig({
-        high: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096 },
-        medium: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096 },
-        low: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096 },
+        high: {
+          primaryModel: null,
+          fallbackModel: null,
+          temperature: 0.7,
+          maxTokens: 4096,
+        },
+        medium: {
+          primaryModel: null,
+          fallbackModel: null,
+          temperature: 0.7,
+          maxTokens: 4096,
+        },
+        low: {
+          primaryModel: null,
+          fallbackModel: null,
+          temperature: 0.7,
+          maxTokens: 4096,
+        },
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -151,7 +210,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
 
   const formatPrice = (price: string) => {
     const num = parseFloat(price);
-    if (num === 0) return 'Free';
+    if (num === 0) return "Free";
     return `$${(num * 1000000).toFixed(2)}/M`;
   };
 
@@ -167,19 +226,25 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
     <div
       onClick={onSelect}
       className={`p-3 border rounded-lg cursor-pointer transition-all hover:border-foreground/50 ${
-        isSelected ? 'border-foreground bg-muted/50' : 'border-border'
+        isSelected ? "border-foreground bg-muted/50" : "border-border"
       }`}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-mono text-sm text-foreground truncate">{model.name}</p>
-            {isSelected && <Check className="w-4 h-4 text-green-500 flex-shrink-0" />}
+            <p className="font-mono text-sm text-foreground truncate">
+              {model.name}
+            </p>
+            {isSelected && (
+              <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+            )}
           </div>
-          <p className="text-xs text-muted-foreground font-mono truncate">{model.id}</p>
+          <p className="text-xs text-muted-foreground font-mono truncate">
+            {model.id}
+          </p>
         </div>
       </div>
-      
+
       <div className="flex flex-wrap gap-1.5 mt-2">
         <Badge variant="outline" className="text-xs">
           <Layers className="w-3 h-3 mr-1" />
@@ -208,8 +273,11 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
     const tierConfig = config[tier];
     const isConfigured = !!tierConfig.primaryModel;
     return (
-      <Badge variant={isConfigured ? 'default' : 'destructive'} className="text-xs">
-        {isConfigured ? 'Configured' : 'Not Set'}
+      <Badge
+        variant={isConfigured ? "default" : "destructive"}
+        className="text-xs"
+      >
+        {isConfigured ? "Configured" : "Not Set"}
       </Badge>
     );
   };
@@ -243,8 +311,9 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
       <CardHeader>
         <CardTitle className="font-mono">Tiered Model Configuration</CardTitle>
         <CardDescription>
-          Configure different models for different task complexities. Each tier requires a primary model.
-          AI features are disabled for tiers without configuration.
+          Configure different models for different task complexities. Each tier
+          requires a primary model. AI features are disabled for tiers without
+          configuration.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -253,7 +322,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
-              The following tiers are not configured: {missingTiers.join(', ')}. 
+              The following tiers are not configured: {missingTiers.join(", ")}.
               AI features using these tiers will fail until configured.
             </AlertDescription>
           </Alert>
@@ -261,15 +330,17 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
 
         {/* Tier Selection Cards */}
         <div className="grid grid-cols-3 gap-3">
-          {(['high', 'medium', 'low'] as ModelTier[]).map((tier) => {
+          {(["high", "medium", "low"] as ModelTier[]).map((tier) => {
             const info = TIER_INFO[tier];
             const Icon = info.icon;
             const tierConfig = config[tier];
             return (
-              <div 
-                key={tier} 
+              <div
+                key={tier}
                 className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                  activeTier === tier ? 'border-foreground bg-muted/50' : 'border-border hover:border-foreground/50'
+                  activeTier === tier
+                    ? "border-foreground bg-muted/50"
+                    : "border-border hover:border-foreground/50"
                 }`}
                 onClick={() => setActiveTier(tier)}
               >
@@ -281,7 +352,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
                   <TierStatus tier={tier} />
                 </div>
                 <p className="font-mono text-xs text-muted-foreground truncate">
-                  {tierConfig.primaryModel || 'Not configured'}
+                  {tierConfig.primaryModel || "Not configured"}
                 </p>
                 {tierConfig.fallbackModel && (
                   <p className="font-mono text-xs text-muted-foreground/60 truncate">
@@ -295,11 +366,18 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
 
         {/* Task Mappings */}
         <div className="p-4 bg-muted/30 rounded-lg">
-          <Label className="text-sm font-medium mb-3 block">Task → Tier Mappings</Label>
+          <Label className="text-sm font-medium mb-3 block">
+            Task → Tier Mappings
+          </Label>
           <div className="grid grid-cols-2 gap-2">
             {taskMappings.map((mapping) => (
-              <div key={mapping.task} className="flex items-center justify-between text-sm p-2 rounded bg-background/50">
-                <span className="text-muted-foreground truncate">{mapping.description}</span>
+              <div
+                key={mapping.task}
+                className="flex items-center justify-between text-sm p-2 rounded bg-background/50"
+              >
+                <span className="text-muted-foreground truncate">
+                  {mapping.description}
+                </span>
                 <TierBadge tier={mapping.tier} />
               </div>
             ))}
@@ -311,19 +389,25 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <TierBadge tier={activeTier} />
-              <span className="text-sm text-muted-foreground">{TIER_INFO[activeTier].description}</span>
+              <span className="text-sm text-muted-foreground">
+                {TIER_INFO[activeTier].description}
+              </span>
             </div>
           </div>
 
           {/* Model Selection Type */}
-          <Tabs value={selectingFor} onValueChange={(v) => setSelectingFor(v as 'primary' | 'fallback')}>
+          <Tabs
+            value={selectingFor}
+            onValueChange={(v) => setSelectingFor(v as "primary" | "fallback")}
+          >
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="primary">
-                Primary Model {!config[activeTier].primaryModel && <AlertTriangle className="w-3 h-3 ml-1 text-destructive" />}
+                Primary Model{" "}
+                {!config[activeTier].primaryModel && (
+                  <AlertTriangle className="w-3 h-3 ml-1 text-destructive" />
+                )}
               </TabsTrigger>
-              <TabsTrigger value="fallback">
-                Fallback Model
-              </TabsTrigger>
+              <TabsTrigger value="fallback">Fallback Model</TabsTrigger>
             </TabsList>
 
             <TabsContent value="primary" className="space-y-3">
@@ -380,11 +464,13 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
                       key={model.id}
                       model={model}
                       isSelected={
-                        selectingFor === 'primary' 
+                        selectingFor === "primary"
                           ? config[activeTier].primaryModel === model.id
                           : config[activeTier].fallbackModel === model.id
                       }
-                      onSelect={() => handleSelectModel(model.id, activeTier, selectingFor)}
+                      onSelect={() =>
+                        handleSelectModel(model.id, activeTier, selectingFor)
+                      }
                     />
                   ))}
                 </div>
@@ -399,11 +485,13 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
                       key={model.id}
                       model={model}
                       isSelected={
-                        selectingFor === 'primary' 
+                        selectingFor === "primary"
                           ? config[activeTier].primaryModel === model.id
                           : config[activeTier].fallbackModel === model.id
                       }
-                      onSelect={() => handleSelectModel(model.id, activeTier, selectingFor)}
+                      onSelect={() =>
+                        handleSelectModel(model.id, activeTier, selectingFor)
+                      }
                     />
                   ))}
                 </div>
@@ -414,11 +502,19 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           {/* Temperature and Max Tokens */}
           <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
             <div>
-              <Label className="text-sm text-muted-foreground mb-2 block">Temperature</Label>
+              <Label className="text-sm text-muted-foreground mb-2 block">
+                Temperature
+              </Label>
               <Input
                 type="number"
                 value={config[activeTier].temperature}
-                onChange={(e) => handleUpdateSettings(activeTier, 'temperature', parseFloat(e.target.value) || 0)}
+                onChange={(e) =>
+                  handleUpdateSettings(
+                    activeTier,
+                    "temperature",
+                    parseFloat(e.target.value) || 0
+                  )
+                }
                 step="0.1"
                 min="0"
                 max="2"
@@ -426,18 +522,30 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
               />
             </div>
             <div>
-              <Label className="text-sm text-muted-foreground mb-2 block">Max Tokens</Label>
+              <Label className="text-sm text-muted-foreground mb-2 block">
+                Max Tokens
+              </Label>
               <Input
                 type="number"
                 value={config[activeTier].maxTokens}
-                onChange={(e) => handleUpdateSettings(activeTier, 'maxTokens', parseInt(e.target.value) || 0)}
+                onChange={(e) =>
+                  handleUpdateSettings(
+                    activeTier,
+                    "maxTokens",
+                    parseInt(e.target.value) || 0
+                  )
+                }
                 className="font-mono"
               />
             </div>
           </div>
 
           {/* Save Tier Button */}
-          <Button onClick={() => handleSaveTier(activeTier)} disabled={isPending} className="w-full">
+          <Button
+            onClick={() => handleSaveTier(activeTier)}
+            disabled={isPending}
+            className="w-full"
+          >
             {isPending ? (
               <>
                 <Spinner className="w-4 h-4 mr-2" />
@@ -456,7 +564,11 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
 
         {/* Clear All Button */}
         <div className="flex justify-end pt-4 border-t border-border">
-          <Button variant="destructive" onClick={handleClearAll} disabled={isPending}>
+          <Button
+            variant="destructive"
+            onClick={handleClearAll}
+            disabled={isPending}
+          >
             <Trash2 className="w-4 h-4 mr-2" />
             Clear All Configurations
           </Button>
