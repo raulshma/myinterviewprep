@@ -5,7 +5,7 @@
  */
 
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { streamObject, tool } from 'ai';
+import { streamObject, generateObject, tool } from 'ai';
 import { z } from 'zod';
 import { 
   MCQSchema, 
@@ -357,7 +357,9 @@ Extract:
 3. Job Description - generate a comprehensive job description based on the role and any context provided. Include typical responsibilities, required skills, and qualifications for this type of role.
 4. Resume Context - any background, experience, or skills they mentioned about themselves (optional)`;
 
-  return streamObject({
+  // Use generateObject instead of streamObject since we don't need streaming here
+  // and need to await the final object directly
+  return generateObject({
     model: openrouter(finalConfig.model),
     schema: ParsedInterviewDetailsSchema,
     system: systemPrompt,

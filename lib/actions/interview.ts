@@ -95,9 +95,8 @@ export async function createInterviewFromPrompt(
     // Get BYOK API key if available
     const apiKey = await getByokApiKey();
 
-    // Parse the prompt using AI
-    const result = await aiEngine.parseInterviewPrompt(input.prompt.trim(), {}, apiKey ?? undefined);
-    const parsedDetails = await result.object;
+    // Parse the prompt using AI - generateObject returns a promise that resolves to the object directly
+    const { object: parsedDetails } = await aiEngine.parseInterviewPrompt(input.prompt.trim(), {}, apiKey ?? undefined);
 
     // Create interview record
     const interview = await interviewRepository.create({

@@ -1,12 +1,29 @@
-'use client';
+"use client";
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { type LucideIcon, AlertCircle, Loader2 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent, CardAction } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  type LucideIcon,
+  AlertCircle,
+  Loader2,
+  Sparkles,
+  Brain,
+} from "lucide-react";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardAction,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export type StreamingCardStatus = 'idle' | 'loading' | 'streaming' | 'complete' | 'error';
+export type StreamingCardStatus =
+  | "idle"
+  | "loading"
+  | "streaming"
+  | "complete"
+  | "error";
 
 interface StreamingCardProps {
   title: string;
@@ -17,6 +34,10 @@ interface StreamingCardProps {
   addMoreLabel?: string;
   errorMessage?: string;
   className?: string;
+  /** Number of items currently streamed (for progress display) */
+  streamedCount?: number;
+  /** Status message to show during streaming */
+  streamingMessage?: string;
 }
 
 const statusVariants = {
@@ -29,15 +50,15 @@ const statusVariants = {
 
 const contentVariants = {
   hidden: { opacity: 0, y: 8 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
-    transition: { duration: 0.2, ease: 'easeOut' as const }
+    transition: { duration: 0.2, ease: "easeOut" as const },
   },
-  exit: { 
-    opacity: 0, 
+  exit: {
+    opacity: 0,
     y: -8,
-    transition: { duration: 0.15, ease: 'easeIn' as const }
+    transition: { duration: 0.15, ease: "easeIn" as const },
   },
 };
 
@@ -47,37 +68,46 @@ export function StreamingCard({
   status,
   children,
   onAddMore,
-  addMoreLabel = 'Add More',
+  addMoreLabel = "Add More",
   errorMessage,
   className,
+  streamedCount,
+  streamingMessage,
 }: StreamingCardProps) {
-  const isLoading = status === 'loading';
-  const isStreaming = status === 'streaming';
-  const isComplete = status === 'complete';
-  const isError = status === 'error';
-
+  const isLoading = status === "loading";
+  const isStreaming = status === "streaming";
+  const isComplete = status === "complete";
+  const isError = status === "error";
 
   return (
     <motion.div
       initial="idle"
       animate={status}
       variants={statusVariants}
-      className={cn('h-full', className)}
+      className={cn("h-full", className)}
     >
-      <Card className={cn(
-        'h-full transition-colors duration-200',
-        isError && 'border-destructive/50',
-        (isLoading || isStreaming) && 'border-primary/30'
-      )}>
+      <Card
+        className={cn(
+          "h-full transition-colors duration-200",
+          isError && "border-destructive/50",
+          (isLoading || isStreaming) && "border-primary/30"
+        )}
+      >
         <CardHeader>
           <div className="flex items-center gap-2">
             <motion.div
-              animate={isLoading || isStreaming ? { rotate: 360 } : { rotate: 0 }}
-              transition={isLoading || isStreaming ? { 
-                duration: 1, 
-                repeat: Infinity, 
-                ease: 'linear' 
-              } : {}}
+              animate={
+                isLoading || isStreaming ? { rotate: 360 } : { rotate: 0 }
+              }
+              transition={
+                isLoading || isStreaming
+                  ? {
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }
+                  : {}
+              }
             >
               {isLoading || isStreaming ? (
                 <Loader2 className="h-5 w-5 text-primary" />
@@ -88,14 +118,50 @@ export function StreamingCard({
               )}
             </motion.div>
             <CardTitle>{title}</CardTitle>
+            {/* Streaming status badge */}
+            {(isLoading || isStreaming) && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center gap-1.5 ml-auto"
+              >
+                <motion.div
+                  animate={{
+                    opacity: [0.5, 1, 0.5],
+                    scale: [0.95, 1.05, 0.95],
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-full"
+                >
+                  {isLoading ? (
+                    <>
+                      <Brain className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-xs font-medium text-primary">
+                        {streamingMessage || "Thinking..."}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-xs font-medium text-primary">
+                        {streamingMessage ||
+                          (streamedCount !== undefined
+                            ? `Generating... ${streamedCount} items`
+                            : "Generating...")}
+                      </span>
+                    </>
+                  )}
+                </motion.div>
+              </motion.div>
+            )}
           </div>
           {isComplete && onAddMore && (
             <CardAction>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onAddMore}
-              >
+              <Button variant="outline" size="sm" onClick={onAddMore}>
                 {addMoreLabel}
               </Button>
             </CardAction>
@@ -126,17 +192,21 @@ export function StreamingCard({
                 exit="exit"
                 className="text-destructive text-sm"
               >
-                {errorMessage || 'An error occurred while generating content.'}
+                {errorMessage || "An error occurred while generating content."}
               </motion.div>
             )}
-            {(status === 'idle' || isStreaming || isComplete) && (
+            {(status === "idle" || isStreaming || isComplete) && (
               <motion.div
                 key="content"
                 variants={contentVariants}
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                style={{ viewTransitionName: 'streaming-content' } as React.CSSProperties}
+                style={
+                  {
+                    viewTransitionName: "streaming-content",
+                  } as React.CSSProperties
+                }
               >
                 {children}
               </motion.div>
