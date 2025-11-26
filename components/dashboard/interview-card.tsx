@@ -15,12 +15,10 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+  ResponsiveDropdown,
+  ResponsiveDropdownItem,
+  ResponsiveDropdownSeparator,
+} from "@/components/ui/responsive-dropdown";
 import { ViewTransitionLink } from "@/components/transitions/view-transition-link";
 import type { DashboardInterviewData } from "@/lib/actions/dashboard";
 
@@ -74,7 +72,7 @@ export function InterviewCardNew({
         viewTransitionName={`interview-card-${interview._id}`}
       >
         <div
-          className="group bg-card border border-border hover:border-primary/30 transition-all duration-300 p-4 flex items-center gap-4"
+          className="group bg-card border border-border hover:border-primary/30 transition-all duration-300 p-4 flex items-center gap-4 overflow-hidden"
           style={
             {
               viewTransitionName: `interview-card-${interview._id}`,
@@ -87,9 +85,9 @@ export function InterviewCardNew({
           </div>
 
           {/* Content */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             <div className="flex items-center gap-2 mb-0.5">
-              <h3 className="font-mono text-foreground truncate">
+              <h3 className="font-mono text-foreground truncate flex-1 min-w-0">
                 {interview.jobDetails.title}
               </h3>
               <Badge
@@ -127,41 +125,35 @@ export function InterviewCardNew({
           </div>
 
           {/* Actions */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <ResponsiveDropdown
+            title="Actions"
+            trigger={
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 shrink-0"
+                className="h-8 w-8 min-h-[44px] min-w-[44px] shrink-0"
                 onClick={(e) => e.preventDefault()}
               >
                 <MoreHorizontal className="w-4 h-4" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
-                <Copy className="w-4 h-4 mr-2" />
-                Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
-                <Share2 className="w-4 h-4 mr-2" />
-                Share
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                disabled={isDeleting}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onDelete();
-                }}
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            }
+          >
+            <ResponsiveDropdownItem icon={<Copy className="w-4 h-4" />}>
+              Duplicate
+            </ResponsiveDropdownItem>
+            <ResponsiveDropdownItem icon={<Share2 className="w-4 h-4" />}>
+              Share
+            </ResponsiveDropdownItem>
+            <ResponsiveDropdownSeparator />
+            <ResponsiveDropdownItem
+              variant="destructive"
+              disabled={isDeleting}
+              icon={<Trash2 className="w-4 h-4" />}
+              onClick={onDelete}
+            >
+              Delete
+            </ResponsiveDropdownItem>
+          </ResponsiveDropdown>
 
           <ArrowUpRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
         </div>
@@ -196,41 +188,35 @@ export function InterviewCardNew({
                 <StatusIcon className="w-3 h-3 mr-1" />
                 {status.label}
               </Badge>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
+              <ResponsiveDropdown
+                title="Actions"
+                trigger={
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 -mr-2"
+                    className="h-7 w-7 min-h-[44px] min-w-[44px] -mr-2"
                     onClick={(e) => e.preventDefault()}
                   >
                     <MoreHorizontal className="w-4 h-4" />
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
-                    <Copy className="w-4 h-4 mr-2" />
-                    Duplicate
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Share
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
-                    disabled={isDeleting}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onDelete();
-                    }}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                }
+              >
+                <ResponsiveDropdownItem icon={<Copy className="w-4 h-4" />}>
+                  Duplicate
+                </ResponsiveDropdownItem>
+                <ResponsiveDropdownItem icon={<Share2 className="w-4 h-4" />}>
+                  Share
+                </ResponsiveDropdownItem>
+                <ResponsiveDropdownSeparator />
+                <ResponsiveDropdownItem
+                  variant="destructive"
+                  disabled={isDeleting}
+                  icon={<Trash2 className="w-4 h-4" />}
+                  onClick={onDelete}
+                >
+                  Delete
+                </ResponsiveDropdownItem>
+              </ResponsiveDropdown>
             </div>
           </div>
 

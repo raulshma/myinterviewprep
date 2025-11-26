@@ -36,10 +36,10 @@ export function ConcurrencyConfig({ initialLimit }: ConcurrencyConfigProps) {
   };
 
   return (
-    <Card className="bg-card border-border">
-      <CardHeader>
+    <Card className="bg-card border-border overflow-hidden">
+      <CardHeader className="p-4 sm:p-6">
         <div className="flex items-center gap-2">
-          <Layers className="w-5 h-5 text-muted-foreground" />
+          <Layers className="w-5 h-5 text-muted-foreground shrink-0" />
           <CardTitle className="font-mono">AI Concurrency Limit</CardTitle>
         </div>
         <CardDescription>
@@ -48,9 +48,9 @@ export function ConcurrencyConfig({ initialLimit }: ConcurrencyConfigProps) {
           generation.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-end gap-4">
-          <div className="flex-1 max-w-[200px]">
+      <CardContent className="space-y-4 p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+          <div className="flex-1 sm:max-w-[200px]">
             <Label className="text-sm text-muted-foreground mb-2 block">
               Max Concurrent Requests
             </Label>
@@ -64,10 +64,10 @@ export function ConcurrencyConfig({ initialLimit }: ConcurrencyConfigProps) {
               }}
               min={1}
               max={10}
-              className="font-mono"
+              className="font-mono w-full min-h-[44px]"
             />
           </div>
-          <Button onClick={handleSave} disabled={isPending}>
+          <Button onClick={handleSave} disabled={isPending} className="w-full sm:w-auto min-h-[44px]">
             {isPending ? (
               <>
                 <Spinner className="w-4 h-4 mr-2" />

@@ -433,7 +433,7 @@ export function InterviewWorkspace({
             moduleStatus={moduleStatus.revisionTopics}
           />
 
-          <main className="flex-1 p-6 lg:p-8 space-y-8 max-w-5xl">
+          <main className="flex-1 p-4 md:p-6 lg:p-8 space-y-6 md:space-y-8 max-w-5xl w-full">
             {/* Generation Status */}
             <AnimatePresence>
               {isGenerating && (
@@ -502,7 +502,7 @@ export function InterviewWorkspace({
                     isStreaming={false}
                     className="text-muted-foreground leading-relaxed"
                   />
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-border">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-4 sm:pt-6 border-t border-border">
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">
                         Experience Match
@@ -639,7 +639,7 @@ export function InterviewWorkspace({
               {mcqs.length > 0 && (
                 <div className="space-y-4">
                   {/* Practice mode toggle */}
-                  <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <div className="flex items-center justify-between pb-3 border-b border-border gap-4">
                     <span className="text-sm text-muted-foreground">
                       Practice Mode
                     </span>
@@ -649,6 +649,7 @@ export function InterviewWorkspace({
                           <Button
                             variant="outline"
                             size="sm"
+                            className="min-h-[44px] min-w-[44px]"
                             onClick={() => {
                               setShowMcqAnswers(!showMcqAnswers);
                               if (showMcqAnswers) {
@@ -728,7 +729,7 @@ export function InterviewWorkspace({
                             return (
                               <div
                                 key={optIndex}
-                                className={`p-3 border text-sm transition-colors cursor-pointer ${
+                                className={`p-3 min-h-[44px] border text-sm transition-colors cursor-pointer ${
                                   isRevealed && isCorrect
                                     ? "border-green-500/50 bg-green-500/10 text-foreground"
                                     : "border-border text-muted-foreground hover:border-muted-foreground/50"
@@ -777,7 +778,7 @@ export function InterviewWorkspace({
               {rapidFire.length > 0 && (
                 <div className="space-y-4">
                   {/* Practice mode toggle */}
-                  <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <div className="flex items-center justify-between pb-3 border-b border-border gap-4">
                     <span className="text-sm text-muted-foreground">
                       Practice Mode
                     </span>
@@ -787,6 +788,7 @@ export function InterviewWorkspace({
                           <Button
                             variant="outline"
                             size="sm"
+                            className="min-h-[44px] min-w-[44px]"
                             onClick={() => {
                               setShowRapidFireAnswers(!showRapidFireAnswers);
                               if (showRapidFireAnswers) {

@@ -91,14 +91,14 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="border-b border-border px-6 h-16 flex items-center">
+      <header className="border-b border-border px-4 md:px-6 h-16 flex items-center">
         <Link href="/">
           <Logo />
         </Link>
       </header>
 
       {/* Content */}
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
+      <main className="flex-1 flex items-center justify-center px-4 md:px-6 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 text-center">
             <h1 className="text-2xl font-mono text-foreground mb-2">
@@ -122,7 +122,7 @@ export default function LoginPage() {
               {/* OAuth Buttons */}
               <Button 
                 variant="outline" 
-                className="w-full justify-start gap-3 h-12 bg-transparent"
+                className="w-full justify-start gap-3 h-12 min-h-[44px] bg-transparent"
                 onClick={() => handleOAuthSignIn("oauth_google")}
                 disabled={loading || !signInLoaded}
               >
@@ -149,7 +149,7 @@ export default function LoginPage() {
 
               <Button 
                 variant="outline" 
-                className="w-full justify-start gap-3 h-12 bg-transparent"
+                className="w-full justify-start gap-3 h-12 min-h-[44px] bg-transparent"
                 onClick={() => handleOAuthSignIn("oauth_github")}
                 disabled={loading || !signInLoaded}
               >
@@ -170,7 +170,7 @@ export default function LoginPage() {
 
               <Button 
                 variant="outline" 
-                className="w-full h-12 bg-transparent" 
+                className="w-full h-12 min-h-[44px] bg-transparent" 
                 onClick={() => setShowEmailForm(true)}
               >
                 Continue with Email
@@ -188,7 +188,7 @@ export default function LoginPage() {
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   placeholder="you@example.com"
-                  className="font-mono"
+                  className="font-mono min-h-[44px] w-full"
                   required
                 />
               </div>
@@ -202,16 +202,17 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
+                  className="min-h-[44px] w-full"
                   required
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full min-h-[44px]" disabled={loading}>
                 {loading ? "Please wait..." : (isSignUp ? "Sign Up" : "Sign In")}
               </Button>
               <Button 
                 type="button" 
                 variant="ghost" 
-                className="w-full" 
+                className="w-full min-h-[44px]" 
                 onClick={() => {
                   setShowEmailForm(false)
                   setError("")

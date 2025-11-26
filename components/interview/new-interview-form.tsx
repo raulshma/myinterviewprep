@@ -204,7 +204,7 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
   const isLoading = isPromptSubmitting || isSubmitting;
 
   return (
-    <div className="max-w-full">
+    <div className="max-w-full px-4 md:px-0">
       {/* Error banner */}
       <AnimatePresence>
         {generalError && (
@@ -264,11 +264,11 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
                   className="font-mono min-h-[140px] bg-secondary/30 border-border focus:border-primary/50 resize-none"
                   disabled={isLoading || isAtLimit}
                 />
-                <div className="flex items-center justify-between mt-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-4">
                   <p className="text-xs text-muted-foreground">
                     {prompt.length < 10 ? `${10 - prompt.length} more characters needed` : '✓ Ready to create'}
                   </p>
-                  <Button type="submit" disabled={!canSubmitPrompt || isLoading}>
+                  <Button type="submit" disabled={!canSubmitPrompt || isLoading} className="w-full sm:w-auto min-h-[44px]">
                     {isPromptSubmitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -298,7 +298,7 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
             <Button
               type="button"
               variant="outline"
-              className="w-full justify-between bg-card hover:bg-secondary/50 border-border h-14"
+              className="w-full justify-between bg-card hover:bg-secondary/50 border-border h-14 min-h-[44px]"
               onClick={() => setShowDetailedForm(!showDetailedForm)}
               disabled={isLoading}
             >
@@ -326,7 +326,7 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
                           value={jobTitle}
                           onChange={(e) => { setJobTitle(e.target.value); if (errors.jobTitle) setErrors((prev) => ({ ...prev, jobTitle: '' })); }}
                           placeholder="Senior Frontend Engineer"
-                          className={`font-mono bg-secondary/30 ${errors.jobTitle ? 'border-destructive' : ''}`}
+                          className={`w-full font-mono bg-secondary/30 min-h-[44px] ${errors.jobTitle ? 'border-destructive' : ''}`}
                           disabled={isLoading || isAtLimit}
                         />
                         {errors.jobTitle && <p className="text-xs text-destructive mt-1">{errors.jobTitle}</p>}
@@ -340,7 +340,7 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
                           value={company}
                           onChange={(e) => { setCompany(e.target.value); if (errors.company) setErrors((prev) => ({ ...prev, company: '' })); }}
                           placeholder="Stripe"
-                          className={`font-mono bg-secondary/30 ${errors.company ? 'border-destructive' : ''}`}
+                          className={`w-full font-mono bg-secondary/30 min-h-[44px] ${errors.company ? 'border-destructive' : ''}`}
                           disabled={isLoading || isAtLimit}
                         />
                         {errors.company && <p className="text-xs text-destructive mt-1">{errors.company}</p>}
@@ -355,7 +355,7 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
                           onDragOver={handleDragOver}
                           onDragLeave={handleDragLeave}
                           onDrop={handleDrop}
-                          className={`border-2 border-dashed p-6 text-center transition-all ${
+                          className={`border-2 border-dashed p-6 text-center transition-all min-h-[100px] flex flex-col items-center justify-center ${
                             isDragging ? 'border-primary bg-primary/5' : resumeFile ? 'border-primary/50 bg-primary/5' : errors.resumeFile ? 'border-destructive' : 'border-border hover:border-muted-foreground bg-secondary/20'
                           }`}
                         >
@@ -386,8 +386,8 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
                         </div>
                       ) : (
                         <div>
-                          <Textarea value={resumeText} onChange={(e) => setResumeText(e.target.value)} placeholder="Paste your resume text here..." className="font-mono min-h-[120px] bg-secondary/30" disabled={isLoading || isAtLimit} />
-                          <Button type="button" variant="link" size="sm" className="mt-1 p-0 h-auto text-xs" onClick={() => { setShowManualResume(false); setResumeText(''); }}>
+                          <Textarea value={resumeText} onChange={(e) => setResumeText(e.target.value)} placeholder="Paste your resume text here..." className="w-full font-mono min-h-[120px] bg-secondary/30" disabled={isLoading || isAtLimit} />
+                          <Button type="button" variant="link" size="sm" className="mt-1 p-0 h-auto text-xs min-h-[44px]" onClick={() => { setShowManualResume(false); setResumeText(''); }}>
                             Upload file instead
                           </Button>
                         </div>
@@ -396,7 +396,7 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
                         <div className="mt-2">
                           <p className="text-xs text-destructive">{errors.resumeFile}</p>
                           {!showManualResume && (
-                            <Button type="button" variant="link" size="sm" className="p-0 h-auto text-xs" onClick={() => { setShowManualResume(true); setResumeFile(null); setErrors((prev) => ({ ...prev, resumeFile: '' })); }}>
+                            <Button type="button" variant="link" size="sm" className="p-0 h-auto text-xs min-h-[44px]" onClick={() => { setShowManualResume(true); setResumeFile(null); setErrors((prev) => ({ ...prev, resumeFile: '' })); }}>
                               Enter resume text manually
                             </Button>
                           )}
@@ -414,7 +414,7 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
                         value={jobDescription}
                         onChange={(e) => { setJobDescription(e.target.value); if (errors.jobDescription) setErrors((prev) => ({ ...prev, jobDescription: '' })); }}
                         placeholder="Paste the full job description here..."
-                        className={`font-mono min-h-[180px] bg-secondary/30 resize-none ${errors.jobDescription ? 'border-destructive' : ''}`}
+                        className={`w-full font-mono min-h-[180px] bg-secondary/30 resize-none ${errors.jobDescription ? 'border-destructive' : ''}`}
                         disabled={isLoading || isAtLimit}
                       />
                       <div className="flex justify-between mt-1">
@@ -427,7 +427,7 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
                       </div>
                     </div>
 
-                    <Button type="submit" disabled={!canSubmitDetailed || isLoading} className="w-full">
+                    <Button type="submit" disabled={!canSubmitDetailed || isLoading} className="w-full min-h-[44px]">
                       {isSubmitting ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />

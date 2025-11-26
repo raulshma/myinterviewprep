@@ -42,7 +42,7 @@ export default async function AdminPage() {
 
   return (
     <AdminPageContent>
-      <div className="space-y-8">
+      <div className="space-y-8 overflow-hidden">
         <AdminStatsGrid stats={data.stats} />
         <AdminTabs
           stats={data.stats}

@@ -21,16 +21,16 @@ export default async function SettingsPage() {
 
   return (
     <SettingsPageContent profile={profile}>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 w-full max-w-full">
         {/* Left column */}
-        <div className="space-y-6">
+        <div className="space-y-6 min-w-0">
           <ProfileSection profile={profile} />
           <ApiKeysSection hasByokKey={profile.hasByokKey} plan={profile.plan} />
           <BYOKTierConfigSection hasByokKey={profile.hasByokKey} />
         </div>
 
         {/* Right column */}
-        <div className="space-y-6">
+        <div className="space-y-6 min-w-0">
           <SubscriptionSection profile={profile} subscription={subscription} />
           <BYOKUsageStatsSection hasByokKey={profile.hasByokKey} />
           <CustomThemeSection />

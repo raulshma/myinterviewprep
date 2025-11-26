@@ -19,6 +19,12 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   ArrowLeft,
   BookOpen,
   MessageSquare,
@@ -33,6 +39,7 @@ import {
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { getTopic, type AnalogyStyle } from "@/lib/actions/topic";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Calculate estimated reading time (average 200 words per minute)
 function getReadingTime(content: string): string {
@@ -159,6 +166,7 @@ export default function TopicDetailPage() {
   const router = useRouter();
   const interviewId = params.id as string;
   const topicId = params.topicId as string;
+  const isMobile = useIsMobile();
 
   const [topic, setTopic] = useState<RevisionTopic | null>(null);
   const [interview, setInterview] = useState<Interview | null>(null);
@@ -401,67 +409,107 @@ export default function TopicDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Keyboard Shortcuts Modal */}
-      {showShortcuts && (
-        <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center"
-          onClick={() => setShowShortcuts(false)}
-        >
-          <Card className="w-80" onClick={(e) => e.stopPropagation()}>
-            <CardContent className="p-6">
-              <h3 className="font-mono text-foreground mb-4 flex items-center gap-2">
+      {/* Keyboard Shortcuts - Bottom Sheet on mobile, centered Card on desktop */}
+      {isMobile ? (
+        <Sheet open={showShortcuts} onOpenChange={setShowShortcuts}>
+          <SheetContent side="bottom" className="rounded-t-xl">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2">
                 <Keyboard className="w-4 h-4" />
                 Keyboard Shortcuts
-              </h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Go back</span>
-                  <kbd className="px-2 py-1 bg-muted text-xs font-mono">Esc</kbd>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Open chat</span>
-                  <kbd className="px-2 py-1 bg-muted text-xs font-mono">C</kbd>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Professional style</span>
-                  <kbd className="px-2 py-1 bg-muted text-xs font-mono">1</kbd>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Construction style</span>
-                  <kbd className="px-2 py-1 bg-muted text-xs font-mono">2</kbd>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Simple style</span>
-                  <kbd className="px-2 py-1 bg-muted text-xs font-mono">3</kbd>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Toggle shortcuts</span>
-                  <kbd className="px-2 py-1 bg-muted text-xs font-mono">?</kbd>
-                </div>
+              </SheetTitle>
+            </SheetHeader>
+            <div className="space-y-3 text-sm px-4 pb-6">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Go back</span>
+                <kbd className="px-2 py-1 bg-muted text-xs font-mono rounded">Esc</kbd>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full mt-4"
-                onClick={() => setShowShortcuts(false)}
-              >
-                Close
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Open chat</span>
+                <kbd className="px-2 py-1 bg-muted text-xs font-mono rounded">C</kbd>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Professional style</span>
+                <kbd className="px-2 py-1 bg-muted text-xs font-mono rounded">1</kbd>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Construction style</span>
+                <kbd className="px-2 py-1 bg-muted text-xs font-mono rounded">2</kbd>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Simple style</span>
+                <kbd className="px-2 py-1 bg-muted text-xs font-mono rounded">3</kbd>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Toggle shortcuts</span>
+                <kbd className="px-2 py-1 bg-muted text-xs font-mono rounded">?</kbd>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        showShortcuts && (
+          <div
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center"
+            onClick={() => setShowShortcuts(false)}
+          >
+            <Card className="w-80" onClick={(e) => e.stopPropagation()}>
+              <CardContent className="p-6">
+                <h3 className="font-mono text-foreground mb-4 flex items-center gap-2">
+                  <Keyboard className="w-4 h-4" />
+                  Keyboard Shortcuts
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Go back</span>
+                    <kbd className="px-2 py-1 bg-muted text-xs font-mono rounded">Esc</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Open chat</span>
+                    <kbd className="px-2 py-1 bg-muted text-xs font-mono rounded">C</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Professional style</span>
+                    <kbd className="px-2 py-1 bg-muted text-xs font-mono rounded">1</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Construction style</span>
+                    <kbd className="px-2 py-1 bg-muted text-xs font-mono rounded">2</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Simple style</span>
+                    <kbd className="px-2 py-1 bg-muted text-xs font-mono rounded">3</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Toggle shortcuts</span>
+                    <kbd className="px-2 py-1 bg-muted text-xs font-mono rounded">?</kbd>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-4 min-h-[44px]"
+                  onClick={() => setShowShortcuts(false)}
+                >
+                  Close
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )
       )}
 
       {/* Header */}
       <header className="border-b border-border bg-background sticky top-0 z-40">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="px-4 md:px-6 py-4">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            {/* Back button, title, and info */}
+            <div className="flex items-center gap-3 md:gap-4">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Link href={`/interview/${interviewId}`}>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]">
                         <ArrowLeft className="w-4 h-4" />
                       </Button>
                     </Link>
@@ -469,29 +517,31 @@ export default function TopicDetailPage() {
                   <TooltipContent>Back (Esc)</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="font-mono text-foreground">{topic.title}</h1>
-                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="font-mono text-foreground text-sm md:text-base truncate">{topic.title}</h1>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
                     <Clock className="w-3 h-3" />
                     {getReadingTime(topic.content)}
                   </span>
                 </div>
                 {interview && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs md:text-sm text-muted-foreground truncate">
                     {interview.jobDetails.title} at{" "}
                     {interview.jobDetails.company}
                   </p>
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            {/* Actions */}
+            <div className="flex items-center gap-2 md:gap-3">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="min-h-[44px] min-w-[44px]"
                       onClick={handleCopyContent}
                       disabled={isRegenerating}
                     >
@@ -509,6 +559,7 @@ export default function TopicDetailPage() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="min-h-[44px] min-w-[44px]"
                       onClick={() => setShowShortcuts(true)}
                     >
                       <Keyboard className="w-4 h-4" />
@@ -517,31 +568,34 @@ export default function TopicDetailPage() {
                   <TooltipContent>Keyboard shortcuts (?)</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <Select
-                value={selectedStyle}
-                onValueChange={(v) => handleStyleChange(v as AnalogyStyle)}
-                disabled={isRegenerating}
-              >
-                <SelectTrigger className="w-44">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(styleLabels) as AnalogyStyle[]).map((style) => (
-                    <SelectItem key={style} value={style}>
-                      <div className="flex flex-col items-start">
-                        <span>{styleLabels[style]}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* Style selector - dropdown on desktop only */}
+              <div className="hidden md:block">
+                <Select
+                  value={selectedStyle}
+                  onValueChange={(v) => handleStyleChange(v as AnalogyStyle)}
+                  disabled={isRegenerating}
+                >
+                  <SelectTrigger className="w-44 min-h-[44px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(styleLabels) as AnalogyStyle[]).map((style) => (
+                      <SelectItem key={style} value={style}>
+                        <div className="flex flex-col items-start">
+                          <span>{styleLabels[style]}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Link href={`/interview/${interviewId}/topic/${topicId}/chat`}>
-                      <Button variant="outline">
-                        <MessageSquare className="w-4 h-4 mr-2" />
-                        Ask AI
+                      <Button variant="outline" className="min-h-[44px] min-w-[44px]">
+                        <MessageSquare className="w-4 h-4 md:mr-2" />
+                        <span className="hidden md:inline">Ask AI</span>
                       </Button>
                     </Link>
                   </TooltipTrigger>
@@ -554,10 +608,30 @@ export default function TopicDetailPage() {
       </header>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto p-6">
-        <div className="space-y-6">
+      <main className="max-w-4xl mx-auto p-4 md:p-6">
+        <div className="space-y-4 md:space-y-6">
+          {/* Mobile Style Selector - vertical button stack */}
+          <div className="md:hidden">
+            <div className="flex flex-col gap-2">
+              {(Object.keys(styleLabels) as AnalogyStyle[]).map((style) => (
+                <Button
+                  key={style}
+                  variant={selectedStyle === style ? "default" : "outline"}
+                  onClick={() => handleStyleChange(style)}
+                  disabled={isRegenerating}
+                  className="w-full min-h-[44px] justify-start"
+                >
+                  {isRegenerating && selectedStyle === style ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : null}
+                  {styleLabels[style]}
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {/* Topic Info */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4 flex-wrap">
             <Badge
               variant="secondary"
               className={`capitalize ${
@@ -570,21 +644,21 @@ export default function TopicDetailPage() {
             >
               {topic.confidence} confidence
             </Badge>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-xs md:text-sm text-muted-foreground">
               {topic.reason}
             </span>
           </div>
 
           {/* Main Content Card */}
           <Card className="bg-card border-border">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-4">
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center gap-2 mb-4 flex-wrap">
                 <BookOpen className="w-5 h-5 text-muted-foreground" />
-                <h2 className="font-mono text-lg text-foreground">Deep Dive</h2>
+                <h2 className="font-mono text-base md:text-lg text-foreground">Deep Dive</h2>
                 {isRegenerating && (
                   <div className="flex items-center gap-2 ml-2">
                     <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-xs md:text-sm text-muted-foreground">
                       {streamingContent
                         ? "Streaming response..."
                         : "Generating..."}
@@ -593,7 +667,7 @@ export default function TopicDetailPage() {
                 )}
               </div>
 
-              <div className="prose prose-invert max-w-none">
+              <div className="prose prose-invert max-w-none text-sm md:text-base">
                 {isRegenerating && !streamingContent ? (
                   <div className="flex items-center gap-2 text-muted-foreground py-4">
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -611,8 +685,8 @@ export default function TopicDetailPage() {
               </div>
 
               {/* Analogy Style Info */}
-              <div className="border-t border-border pt-4 mt-6">
-                <div className="flex items-center gap-2 mb-2">
+              <div className="border-t border-border pt-4 mt-4 md:mt-6">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
                   <Lightbulb className="w-4 h-4 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground uppercase tracking-wider">
                     Explanation Style
@@ -621,12 +695,12 @@ export default function TopicDetailPage() {
                     {styleLabels[selectedStyle]}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs md:text-sm text-muted-foreground">
                   {styleDescriptions[selectedStyle]}
                 </p>
 
-                {/* Style Selector Buttons */}
-                <div className="flex gap-2 mt-4">
+                {/* Style Selector Buttons - hidden on mobile (shown at top instead) */}
+                <div className="hidden md:flex gap-2 mt-4">
                   {(Object.keys(styleLabels) as AnalogyStyle[]).map((style) => (
                     <Button
                       key={style}
@@ -634,7 +708,7 @@ export default function TopicDetailPage() {
                       size="sm"
                       onClick={() => handleStyleChange(style)}
                       disabled={isRegenerating}
-                      className="flex-1"
+                      className="flex-1 min-h-[44px]"
                     >
                       {isRegenerating && selectedStyle === style ? (
                         <Loader2 className="w-3 h-3 mr-2 animate-spin" />
@@ -648,7 +722,7 @@ export default function TopicDetailPage() {
           </Card>
 
           {/* Quick Actions */}
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
             <div className="flex-1">
               <RegenerateMenu
                 onRegenerate={() => handleStyleChange(selectedStyle)}
@@ -662,7 +736,7 @@ export default function TopicDetailPage() {
               href={`/interview/${interviewId}/topic/${topicId}/chat`}
               className="flex-1"
             >
-              <Button variant="outline" className="w-full">
+              <Button variant="outline" className="w-full min-h-[44px]">
                 <MessageSquare className="w-4 h-4 mr-2" />
                 Ask Follow-up Questions
               </Button>

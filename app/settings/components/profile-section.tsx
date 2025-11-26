@@ -26,7 +26,7 @@ export function ProfileSection({ profile }: ProfileSectionProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
-      className="bg-card border border-border p-6 hover:border-primary/30 transition-colors group"
+      className="bg-card border border-border p-4 sm:p-6 hover:border-primary/30 transition-colors group overflow-hidden"
     >
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors">
@@ -40,8 +40,8 @@ export function ProfileSection({ profile }: ProfileSectionProps) {
 
       <div className="space-y-5">
         {/* Profile fields */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="min-w-0">
             <Label htmlFor="name" className="text-xs text-muted-foreground mb-2 block">
               Name
             </Label>
@@ -49,10 +49,10 @@ export function ProfileSection({ profile }: ProfileSectionProps) {
               id="name"
               value={fullName}
               disabled
-              className="font-mono bg-muted/50 border-border"
+              className="font-mono bg-muted/50 border-border w-full"
             />
           </div>
-          <div>
+          <div className="min-w-0">
             <Label htmlFor="email" className="text-xs text-muted-foreground mb-2 block">
               Email
             </Label>
@@ -61,7 +61,7 @@ export function ProfileSection({ profile }: ProfileSectionProps) {
               type="email"
               value={profile.email || ""}
               disabled
-              className="font-mono bg-muted/50 border-border"
+              className="font-mono bg-muted/50 border-border w-full"
             />
           </div>
         </div>
@@ -78,31 +78,33 @@ export function ProfileSection({ profile }: ProfileSectionProps) {
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-secondary/30 border border-border">
-              <div className="flex items-center gap-3">
-                <Mail className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-foreground">Email notifications</p>
-                  <p className="text-xs text-muted-foreground">Updates about your interviews</p>
+            <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 border border-border">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm text-foreground truncate">Email notifications</p>
+                  <p className="text-xs text-muted-foreground truncate">Updates about your interviews</p>
                 </div>
               </div>
               <Switch
                 checked={emailNotifications}
                 onCheckedChange={setEmailNotifications}
+                className="shrink-0"
               />
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-secondary/30 border border-border">
-              <div className="flex items-center gap-3">
-                <Mail className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-foreground">Marketing emails</p>
-                  <p className="text-xs text-muted-foreground">Tips and product updates</p>
+            <div className="flex items-center justify-between gap-3 p-3 bg-secondary/30 border border-border">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm text-foreground truncate">Marketing emails</p>
+                  <p className="text-xs text-muted-foreground truncate">Tips and product updates</p>
                 </div>
               </div>
               <Switch
                 checked={marketingEmails}
                 onCheckedChange={setMarketingEmails}
+                className="shrink-0"
               />
             </div>
           </div>

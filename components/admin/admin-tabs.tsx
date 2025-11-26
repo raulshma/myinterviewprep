@@ -90,8 +90,8 @@ export function AdminTabs({
       transition={{ delay: 0.3 }}
     >
       <Tabs defaultValue="users" className="space-y-6">
-        <div className="bg-card/50 backdrop-blur-sm border border-border p-2 inline-block">
-          <TabsList className="bg-transparent gap-1">
+        <div className="bg-card/50 backdrop-blur-sm border border-border p-2 overflow-x-auto">
+          <TabsList className="bg-transparent gap-1 flex-nowrap">
             <TabsTrigger
               value="users"
               className="data-[state=active]:bg-primary/10 gap-2"
@@ -177,32 +177,33 @@ export function AdminTabs({
 
 function UsersTab({ users }: { users: AdminUser[] }) {
   return (
-    <Card className="bg-card/80 backdrop-blur-sm border-border overflow-hidden">
-      <CardHeader className="border-b border-border bg-gradient-to-r from-secondary/30 to-transparent">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
+    <Card className="bg-card/80 backdrop-blur-sm border-border">
+      <CardHeader className="border-b border-border bg-gradient-to-r from-secondary/30 to-transparent p-4 md:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1 min-w-0">
             <CardTitle className="font-mono flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" />
+              <Users className="w-5 h-5 text-primary shrink-0" />
               User Management
             </CardTitle>
             <CardDescription>
               View and manage all platform users
             </CardDescription>
           </div>
-          <div className="relative">
+          <div className="relative w-full sm:w-64 shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search users..."
-              className="pl-10 w-64 bg-background/50"
+              className="pl-10 w-full min-h-[44px] bg-background/50"
             />
           </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <Table>
+        <div className="overflow-x-auto">
+        <Table className="min-w-[700px]">
           <TableHeader>
             <TableRow className="hover:bg-transparent border-border">
-              <TableHead className="font-mono">User</TableHead>
+              <TableHead className="font-mono sticky left-0 bg-card z-10">User</TableHead>
               <TableHead className="font-mono">Plan</TableHead>
               <TableHead className="font-mono">Status</TableHead>
               <TableHead className="font-mono">Interviews</TableHead>
@@ -222,7 +223,7 @@ function UsersTab({ users }: { users: AdminUser[] }) {
                     user.suspended ? "opacity-60" : ""
                   }`}
                 >
-                  <TableCell>
+                  <TableCell className="sticky left-0 bg-card z-10">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-primary/10 flex items-center justify-center font-mono text-sm">
                         {user.name.charAt(0).toUpperCase()}
@@ -284,6 +285,7 @@ function UsersTab({ users }: { users: AdminUser[] }) {
             )}
           </TableBody>
         </Table>
+        </div>
       </CardContent>
     </Card>
   );
@@ -390,14 +392,14 @@ function PromptsTab() {
           Configure AI system prompts and behavior
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-6 space-y-6">
+      <CardContent className="p-4 md:p-6 space-y-6">
         <div className="space-y-3">
           <Label className="text-sm text-muted-foreground flex items-center gap-2">
             <span className="w-2 h-2 bg-primary rounded-full" />
             Main System Prompt
           </Label>
           <Textarea
-            className="font-mono min-h-[200px] bg-background/50 border-border focus:border-primary/50"
+            className="font-mono min-h-[200px] w-full bg-background/50 border-border focus:border-primary/50"
             defaultValue="You are an expert technical interview coach specializing in software engineering roles. Your goal is to help candidates understand complex concepts through clear explanations and relatable analogies..."
           />
         </div>
@@ -407,12 +409,12 @@ function PromptsTab() {
             Analogy Generation Prompt
           </Label>
           <Textarea
-            className="font-mono min-h-[120px] bg-background/50 border-border focus:border-primary/50"
+            className="font-mono min-h-[120px] w-full bg-background/50 border-border focus:border-primary/50"
             defaultValue="Generate an analogy for the following technical concept. The analogy should be relatable to everyday experiences and appropriate for the specified expertise level..."
           />
         </div>
         <div className="flex justify-end">
-          <Button className="font-mono">Save Prompts</Button>
+          <Button className="font-mono w-full sm:w-auto min-h-[44px]">Save Prompts</Button>
         </div>
       </CardContent>
     </Card>

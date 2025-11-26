@@ -64,7 +64,7 @@ export function SubscriptionSection({ profile, subscription }: SubscriptionSecti
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3 }}
-      className="bg-card border border-border p-6 hover:border-primary/30 transition-colors group"
+      className="bg-card border border-border p-4 sm:p-6 hover:border-primary/30 transition-colors group overflow-hidden"
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">
@@ -82,47 +82,45 @@ export function SubscriptionSection({ profile, subscription }: SubscriptionSecti
       </div>
 
       <div className="space-y-5">
-        {/* Usage meters - horizontally scrollable on mobile */}
-        <div className="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0 sm:overflow-visible">
-          <div className="flex sm:flex-col gap-4 min-w-max sm:min-w-0">
-            <div className="p-4 bg-secondary/30 border border-border min-w-[200px] sm:min-w-0 sm:w-full">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-yellow-500 shrink-0" />
-                  <span className="text-sm text-foreground">Iterations</span>
-                </div>
-                <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
-                  {iterations.count} / {iterations.limit}
-                </span>
+        {/* Usage meters */}
+        <div className="space-y-4">
+          <div className="p-3 sm:p-4 bg-secondary/30 border border-border w-full">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-yellow-500 shrink-0" />
+                <span className="text-sm text-foreground">Iterations</span>
               </div>
-              <div className="h-2 bg-muted overflow-hidden">
-                <motion.div
-                  className={`h-full ${getProgressColor(iterationsPercentage)}`}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${iterationsPercentage}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                />
-              </div>
+              <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                {iterations.count} / {iterations.limit}
+              </span>
             </div>
+            <div className="h-2 bg-muted overflow-hidden">
+              <motion.div
+                className={`h-full ${getProgressColor(iterationsPercentage)}`}
+                initial={{ width: 0 }}
+                animate={{ width: `${iterationsPercentage}%` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+              />
+            </div>
+          </div>
 
-            <div className="p-4 bg-secondary/30 border border-border min-w-[200px] sm:min-w-0 sm:w-full">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-green-500 shrink-0" />
-                  <span className="text-sm text-foreground">Interviews</span>
-                </div>
-                <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
-                  {interviews.count} / {interviews.limit}
-                </span>
+          <div className="p-3 sm:p-4 bg-secondary/30 border border-border w-full">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-green-500 shrink-0" />
+                <span className="text-sm text-foreground">Interviews</span>
               </div>
-              <div className="h-2 bg-muted overflow-hidden">
-                <motion.div
-                  className={`h-full ${getProgressColor(interviewsPercentage)}`}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${interviewsPercentage}%` }}
-                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
-                />
-              </div>
+              <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                {interviews.count} / {interviews.limit}
+              </span>
+            </div>
+            <div className="h-2 bg-muted overflow-hidden">
+              <motion.div
+                className={`h-full ${getProgressColor(interviewsPercentage)}`}
+                initial={{ width: 0 }}
+                animate={{ width: `${interviewsPercentage}%` }}
+                transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
+              />
             </div>
           </div>
         </div>

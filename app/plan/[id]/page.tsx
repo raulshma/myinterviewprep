@@ -113,18 +113,18 @@ export default async function PublicPlanPage({ params }: PublicPlanPageProps) {
               <span>{jobDetails.company}</span>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4 max-w-md">
-              <div className="border border-border p-3 text-center">
-                <p className="text-2xl font-mono text-foreground">{topicsCount}</p>
+            {/* Stats - Requirements: 5.1 - Keep 3-column grid but reduce text size on mobile */}
+            <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-md">
+              <div className="border border-border p-2 sm:p-3 text-center">
+                <p className="text-lg md:text-2xl font-mono text-foreground">{topicsCount}</p>
                 <p className="text-xs text-muted-foreground">Topics</p>
               </div>
-              <div className="border border-border p-3 text-center">
-                <p className="text-2xl font-mono text-foreground">{mcqsCount}</p>
+              <div className="border border-border p-2 sm:p-3 text-center">
+                <p className="text-lg md:text-2xl font-mono text-foreground">{mcqsCount}</p>
                 <p className="text-xs text-muted-foreground">MCQs</p>
               </div>
-              <div className="border border-border p-3 text-center">
-                <p className="text-2xl font-mono text-foreground">{rapidFireCount}</p>
+              <div className="border border-border p-2 sm:p-3 text-center">
+                <p className="text-lg md:text-2xl font-mono text-foreground">{rapidFireCount}</p>
                 <p className="text-xs text-muted-foreground">Rapid Fire</p>
               </div>
             </div>
@@ -176,12 +176,13 @@ export default async function PublicPlanPage({ params }: PublicPlanPageProps) {
                 <BookOpen className="w-5 h-5 text-foreground" />
                 <h2 className="text-xl font-mono text-foreground">Revision Topics</h2>
               </div>
+              {/* Requirements: 5.4 - Responsive padding and readable text sizes */}
               <div className="space-y-3">
                 {modules.revisionTopics.map((topic) => (
                   <Card key={topic.id}>
-                    <CardContent className="p-4">
+                    <CardContent className="p-3 md:p-4">
                       <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-start gap-2 sm:gap-3">
                           <div
                             className={`w-2 h-2 mt-2 flex-shrink-0 ${
                               topic.confidence === 'low'
@@ -192,14 +193,14 @@ export default async function PublicPlanPage({ params }: PublicPlanPageProps) {
                             }`}
                           />
                           <div>
-                            <p className="font-mono text-foreground mb-1">{topic.title}</p>
-                            <p className="text-sm text-muted-foreground mb-2">{topic.reason}</p>
-                            <div className="text-sm text-muted-foreground/80">
+                            <p className="font-mono text-sm sm:text-base text-foreground mb-1">{topic.title}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground mb-2">{topic.reason}</p>
+                            <div className="text-xs sm:text-sm text-muted-foreground/80">
                               <PlanMarkdown content={topic.content} />
                             </div>
                           </div>
                         </div>
-                        <Badge variant="secondary" className="text-xs capitalize flex-shrink-0 ml-4">
+                        <Badge variant="secondary" className="text-xs capitalize flex-shrink-0 ml-2 sm:ml-4">
                           {topic.confidence}
                         </Badge>
                       </div>
@@ -233,11 +234,12 @@ export default async function PublicPlanPage({ params }: PublicPlanPageProps) {
                           </Badge>
                         )}
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                      {/* Requirements: 5.2 - Single column on mobile, 2 columns on sm+ */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm mb-3">
                         {mcq.options.map((option, optIndex) => (
                           <div
                             key={optIndex}
-                            className={`p-2 border ${
+                            className={`p-2 sm:p-3 border ${
                               option === mcq.answer
                                 ? 'border-green-500/50 bg-green-500/10'
                                 : 'border-border'
@@ -302,16 +304,17 @@ export default async function PublicPlanPage({ params }: PublicPlanPageProps) {
               target role and resume. Start preparing smarter today.
             </p>
             
+            {/* Requirements: 5.3 - Stack buttons vertically on mobile with full width */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/onboarding">
-                <Button size="lg" className="gap-2">
+              <Link href="/onboarding" className="w-full sm:w-auto">
+                <Button size="lg" className="w-full sm:w-auto gap-2 min-h-[44px]">
                   <Briefcase className="w-4 h-4" />
                   Create Your Plan
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
-              <Link href="/pricing">
-                <Button variant="outline" size="lg">
+              <Link href="/pricing" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto min-h-[44px]">
                   View Pricing
                 </Button>
               </Link>

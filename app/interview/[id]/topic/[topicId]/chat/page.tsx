@@ -396,11 +396,11 @@ export default function ChatRefinementPage() {
       {/* Right Panel - Chat */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="border-b border-border p-4 flex-shrink-0">
+        <header className="border-b border-border p-3 md:p-4 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               <Link href={`/interview/${interviewId}/topic/${topicId}`} className="lg:hidden">
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="min-h-[44px] min-w-[44px]">
                   <ArrowLeft className="w-4 h-4" />
                 </Button>
               </Link>
@@ -412,7 +412,7 @@ export default function ChatRefinementPage() {
                 <p className="text-xs text-muted-foreground">Refining: {topic.title}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 md:gap-2">
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -421,6 +421,7 @@ export default function ChatRefinementPage() {
                       size="icon"
                       onClick={handleExportChat}
                       disabled={messages.filter((m) => m.id !== "welcome").length === 0}
+                      className="min-h-[44px] min-w-[44px]"
                     >
                       <Download className="w-4 h-4" />
                     </Button>
@@ -434,6 +435,7 @@ export default function ChatRefinementPage() {
                       size="icon"
                       onClick={clearChat}
                       disabled={isStreaming || messages.filter((m) => m.id !== "welcome").length === 0}
+                      className="min-h-[44px] min-w-[44px]"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -441,16 +443,16 @@ export default function ChatRefinementPage() {
                   <TooltipContent>Clear chat history</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <Badge variant="secondary" className="font-mono capitalize">
+              <Badge variant="secondary" className="font-mono capitalize text-xs md:text-sm">
                 {topic.style || "professional"}
               </Badge>
             </div>
           </div>
         </header>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-auto p-6">
-          <div className="max-w-2xl mx-auto space-y-6">
+        {/* Messages - Mobile: full-width with px-4, Desktop: max-w-2xl centered */}
+        <div className="flex-1 overflow-auto p-4 md:p-6 pb-[200px] md:pb-6">
+          <div className="w-full px-0 md:max-w-2xl md:mx-auto space-y-4 md:space-y-6">
             {messages.map((message, index) => {
               const isLastAssistant =
                 message.role === "assistant" && index === messages.length - 1
@@ -462,13 +464,13 @@ export default function ChatRefinementPage() {
                   key={message.id}
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  <div className={`max-w-[85%] group relative`}>
+                  <div className={`w-full md:max-w-[85%] group relative`}>
                     <div
                       className={`${
                         message.role === "user"
                           ? "bg-foreground text-background"
                           : "bg-card border border-border"
-                      } p-4`}
+                      } p-3 md:p-4`}
                     >
                       {showStreamingIndicator ? (
                         <div className="flex items-center gap-2">
@@ -486,10 +488,10 @@ export default function ChatRefinementPage() {
                         <MarkdownRenderer
                           content={message.content}
                           isStreaming={isStreaming && isLastAssistant}
-                          className="text-sm"
+                          className="text-sm md:text-base"
                         />
                       ) : (
-                        <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                        <p className="text-sm md:text-base whitespace-pre-wrap leading-relaxed">
                           {message.content}
                         </p>
                       )}
@@ -529,67 +531,70 @@ export default function ChatRefinementPage() {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="border-t border-border p-4 flex-shrink-0">
-          <div className="max-w-2xl mx-auto">
-            <p className="text-xs text-muted-foreground mb-3">Quick actions:</p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {quickActions.map((action) => (
-                <Button
-                  key={action.label}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleQuickAction(action.prompt)}
-                  disabled={isStreaming}
-                  className="text-xs"
-                >
-                  <action.icon className="w-3 h-3 mr-1" />
-                  {action.label}
-                </Button>
-              ))}
+        {/* Quick Actions and Input - Fixed at bottom on mobile */}
+        <div className="fixed bottom-0 left-0 right-0 md:relative md:bottom-auto md:left-auto md:right-auto bg-background border-t border-border flex-shrink-0 pb-safe">
+          {/* Quick Actions */}
+          <div className="p-3 md:p-4 border-b border-border md:border-b-0">
+            <div className="w-full px-1 md:max-w-2xl md:mx-auto">
+              <p className="text-xs text-muted-foreground mb-2 md:mb-3">Quick actions:</p>
+              <div className="flex flex-wrap gap-2 mb-2 md:mb-4">
+                {quickActions.map((action) => (
+                  <Button
+                    key={action.label}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleQuickAction(action.prompt)}
+                    disabled={isStreaming}
+                    className="text-xs min-h-[44px] md:min-h-0"
+                  >
+                    <action.icon className="w-3 h-3 mr-1" />
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Input */}
-        <div className="border-t border-border p-4 flex-shrink-0">
-          <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
-            <div className="flex gap-3">
-              <div className="flex-1 relative">
-                <Textarea
-                  ref={textareaRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask a follow-up question... (Enter to send, Shift+Enter for new line)"
-                  className="font-mono min-h-[44px] max-h-32 resize-none pr-10"
-                  disabled={isStreaming}
-                  rows={1}
-                />
+          {/* Input */}
+          <div className="p-3 md:p-4">
+            <form onSubmit={handleSubmit} className="w-full px-1 md:max-w-2xl md:mx-auto">
+              <div className="flex gap-2 md:gap-3">
+                <div className="flex-1 relative">
+                  <Textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Ask a follow-up question..."
+                    className="font-mono min-h-[44px] max-h-32 resize-none pr-10 text-sm md:text-base"
+                    disabled={isStreaming}
+                    rows={1}
+                  />
+                </div>
+                {isStreaming ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={stopGeneration}
+                    className="self-end min-h-[44px] min-w-[44px]"
+                  >
+                    <Square className="w-4 h-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={!input.trim()}
+                    className="self-end min-h-[44px] min-w-[44px]"
+                  >
+                    <Send className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
-              {isStreaming ? (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={stopGeneration}
-                  className="self-end"
-                >
-                  <Square className="w-4 h-4" />
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  disabled={!input.trim()}
-                  className="self-end"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground mt-2 text-center">
-              Press Enter to send • Shift+Enter for new line
-            </p>
-          </form>
+              <p className="text-xs text-muted-foreground mt-2 text-center hidden md:block">
+                Press Enter to send • Shift+Enter for new line
+              </p>
+            </form>
+          </div>
         </div>
       </main>
     </div>

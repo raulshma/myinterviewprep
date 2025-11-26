@@ -51,7 +51,7 @@ export default function OnboardingPage() {
 
       {/* Progress */}
       <div className="border-b border-border">
-        <div className="max-w-xl mx-auto px-6 py-4">
+        <div className="max-w-xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
           <div className="flex items-center gap-2">
             {Array.from({ length: totalSteps }).map((_, i) => (
               <div key={i} className={`h-1 flex-1 ${i + 1 <= step ? "bg-foreground" : "bg-muted"}`} />
@@ -64,18 +64,18 @@ export default function OnboardingPage() {
       </div>
 
       {/* Content */}
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
+      <main className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12">
         <div className="w-full max-w-xl">
           {step === 1 && (
             <div>
               <h1 className="text-2xl font-mono text-foreground mb-2">What role are you preparing for?</h1>
               <p className="text-muted-foreground mb-8">This helps us tailor your interview preparation content.</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {roles.map((role) => (
                   <button
                     key={role.id}
                     onClick={() => setSelectedRole(role.id)}
-                    className={`p-4 border text-left transition-colors ${
+                    className={`p-4 border text-left transition-colors min-h-[44px] ${
                       selectedRole === role.id
                         ? "border-foreground bg-card"
                         : "border-border hover:border-muted-foreground"
@@ -100,7 +100,7 @@ export default function OnboardingPage() {
                   <button
                     key={level.id}
                     onClick={() => setSelectedLevel(level.id)}
-                    className={`w-full p-4 border text-left transition-colors flex items-center justify-between ${
+                    className={`w-full p-4 border text-left transition-colors flex items-center justify-between min-h-[44px] ${
                       selectedLevel === level.id
                         ? "border-foreground bg-card"
                         : "border-border hover:border-muted-foreground"
@@ -143,20 +143,20 @@ export default function OnboardingPage() {
       </main>
 
       {/* Footer Navigation */}
-      <footer className="border-t border-border px-6 py-4">
+      <footer className="border-t border-border px-4 sm:px-6 py-4">
         <div className="max-w-xl mx-auto flex items-center justify-between">
-          <Button variant="ghost" onClick={() => setStep(step - 1)} disabled={step === 1}>
+          <Button variant="ghost" onClick={() => setStep(step - 1)} disabled={step === 1} className="min-h-[44px]">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
           {step < totalSteps ? (
-            <Button onClick={() => setStep(step + 1)} disabled={!canProceed()}>
+            <Button onClick={() => setStep(step + 1)} disabled={!canProceed()} className="min-h-[44px]">
               Continue
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
             <Link href="/dashboard">
-              <Button disabled={!canProceed()}>
+              <Button disabled={!canProceed()} className="min-h-[44px]">
                 Start Preparing
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>

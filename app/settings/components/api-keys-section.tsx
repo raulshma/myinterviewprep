@@ -82,7 +82,7 @@ export function ApiKeysSection({ hasByokKey, plan }: ApiKeysSectionProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }}
-      className="bg-card border border-border p-6 hover:border-primary/30 transition-colors group"
+      className="bg-card border border-border p-4 sm:p-6 hover:border-primary/30 transition-colors group overflow-hidden"
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-3">

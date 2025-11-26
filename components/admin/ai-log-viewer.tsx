@@ -119,21 +119,22 @@ export function AILogViewer({ logs, totalCount, currentPage, pageSize, onPageCha
 
   return (
     <div className="space-y-4">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[50px]"></TableHead>
-            <TableHead>Timestamp</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Action</TableHead>
-            <TableHead>Model</TableHead>
-            <TableHead>Tokens</TableHead>
-            <TableHead>Cost</TableHead>
-            <TableHead>Latency</TableHead>
-            <TableHead>Tools</TableHead>
-            <TableHead className="w-[80px]">Details</TableHead>
-          </TableRow>
-        </TableHeader>
+      <div className="overflow-x-auto">
+        <Table className="min-w-[900px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[50px]"></TableHead>
+              <TableHead className="sticky left-0 bg-card z-10">Timestamp</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Action</TableHead>
+              <TableHead>Model</TableHead>
+              <TableHead>Tokens</TableHead>
+              <TableHead>Cost</TableHead>
+              <TableHead>Latency</TableHead>
+              <TableHead>Tools</TableHead>
+              <TableHead className="w-[80px]">Details</TableHead>
+            </TableRow>
+          </TableHeader>
         <TableBody>
           {isLoading ? (
             Array.from({ length: pageSize }).map((_, i) => (
@@ -163,7 +164,8 @@ export function AILogViewer({ logs, totalCount, currentPage, pageSize, onPageCha
             ))
           )}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
 
       {/* Pagination */}
       <div className="flex items-center justify-between">
@@ -224,7 +226,7 @@ function LogTableRows({ log, isExpanded, expandedData, isLoadingExpanded, onTogg
             )}
           </Button>
         </TableCell>
-        <TableCell className="font-mono text-xs text-muted-foreground">
+        <TableCell className="font-mono text-xs text-muted-foreground sticky left-0 bg-card z-10">
           {log.formattedTimestamp}
         </TableCell>
         <TableCell>

@@ -56,7 +56,7 @@ function PricingCard({ tier, index }: { tier: PricingTier; index: number }) {
 
   return (
     <motion.div
-      className={`bg-background p-8 flex flex-col relative ${
+      className={`bg-background p-6 md:p-8 flex flex-col relative w-full border border-border md:border-0 ${
         tier.featured ? 'ring-1 ring-foreground' : ''
       }`}
       initial={{ opacity: 0, y: 20 }}
@@ -132,13 +132,13 @@ function PricingCard({ tier, index }: { tier: PricingTier; index: number }) {
 
 function ComparisonTable() {
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto -mx-4 md:mx-0">
+      <table className="w-full text-sm min-w-[500px]">
         <thead>
           <tr className="border-b border-border">
-            <th className="text-left py-4 px-4 font-mono text-foreground">Feature</th>
+            <th className="text-left py-4 px-4 font-mono text-foreground sticky left-0 bg-background z-10">Feature</th>
             {PRICING_TIERS.map((tier) => (
-              <th key={tier.id} className="text-center py-4 px-4 font-mono text-foreground">
+              <th key={tier.id} className="text-center py-4 px-4 font-mono text-foreground whitespace-nowrap">
                 {tier.name}
               </th>
             ))}
@@ -147,7 +147,7 @@ function ComparisonTable() {
         <tbody>
           {COMPARISON_FEATURES.map((feature, index) => (
             <tr key={feature.name} className={index < COMPARISON_FEATURES.length - 1 ? 'border-b border-border' : ''}>
-              <td className="py-4 px-4 text-muted-foreground">{feature.name}</td>
+              <td className="py-4 px-4 text-muted-foreground sticky left-0 bg-background z-10">{feature.name}</td>
               {(['free', 'pro', 'max'] as const).map((plan) => {
                 const value = feature[plan];
                 return (
@@ -178,7 +178,7 @@ export default function PublicPricingPage() {
       <Header />
       <main>
         {/* Hero */}
-        <section className="py-24 px-6">
+        <section className="py-16 md:py-24 px-4 md:px-6">
           <div className="max-w-4xl mx-auto">
             <motion.div 
               className="text-center"
@@ -188,10 +188,10 @@ export default function PublicPricingPage() {
               <div className="inline-flex items-center gap-2 border border-border bg-secondary/50 px-4 py-2 mb-6 text-sm">
                 <span className="text-muted-foreground">Pricing</span>
               </div>
-              <h1 className="text-4xl md:text-5xl font-mono text-foreground mb-4">
+              <h1 className="text-3xl md:text-5xl font-mono text-foreground mb-4">
                 Simple, transparent pricing
               </h1>
-              <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+              <p className="text-base md:text-lg text-muted-foreground max-w-xl mx-auto">
                 Start free, upgrade when you need more. No hidden fees, no surprises.
               </p>
             </motion.div>
@@ -199,10 +199,10 @@ export default function PublicPricingPage() {
         </section>
 
         {/* Pricing Cards */}
-        <section className="py-16 px-6 bg-secondary/30">
+        <section className="py-16 px-4 md:px-6 bg-secondary/30">
           <div className="max-w-5xl mx-auto">
             <TooltipProvider>
-              <div className="grid md:grid-cols-3 gap-px bg-border">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-px md:bg-border">
                 {PRICING_TIERS.map((tier, index) => (
                   <PricingCard key={tier.id} tier={tier} index={index} />
                 ))}
@@ -212,23 +212,23 @@ export default function PublicPricingPage() {
         </section>
 
         {/* Plan Comparison */}
-        <section className="py-24 px-6">
+        <section className="py-16 md:py-24 px-4 md:px-6">
           <div className="max-w-4xl mx-auto">
             <motion.div
-              className="text-center mb-12"
+              className="text-center mb-8 md:mb-12"
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-3xl font-mono text-foreground mb-4">Plan Comparison</h2>
-              <p className="text-muted-foreground">See exactly what you get with each plan</p>
+              <h2 className="text-2xl md:text-3xl font-mono text-foreground mb-4">Plan Comparison</h2>
+              <p className="text-sm md:text-base text-muted-foreground">See exactly what you get with each plan</p>
             </motion.div>
             <ComparisonTable />
           </div>
         </section>
 
         {/* BYOK Notice */}
-        <section className="py-16 px-6 bg-secondary/30">
+        <section className="py-12 md:py-16 px-4 md:px-6 bg-secondary/30">
           <motion.div 
             className="max-w-3xl mx-auto text-center"
             initial={{ opacity: 0, y: 20 }}
@@ -239,8 +239,8 @@ export default function PublicPricingPage() {
               <Key className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Bring Your Own Key</span>
             </div>
-            <h2 className="text-2xl font-mono text-foreground mb-3">Use your own API keys</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">
+            <h2 className="text-xl md:text-2xl font-mono text-foreground mb-3">Use your own API keys</h2>
+            <p className="text-sm md:text-base text-muted-foreground max-w-xl mx-auto">
               With the Max plan, you can use your own OpenRouter API key. This gives you full control over
               costs and lets you use the latest models.
             </p>
@@ -248,29 +248,29 @@ export default function PublicPricingPage() {
         </section>
 
         {/* FAQs */}
-        <section className="py-24 px-6">
+        <section className="py-16 md:py-24 px-4 md:px-6">
           <div className="max-w-2xl mx-auto">
             <motion.div
-              className="text-center mb-12"
+              className="text-center mb-8 md:mb-12"
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
             >
-              <h2 className="text-3xl font-mono text-foreground mb-4">Frequently Asked Questions</h2>
-              <p className="text-muted-foreground">Everything you need to know</p>
+              <h2 className="text-2xl md:text-3xl font-mono text-foreground mb-4">Frequently Asked Questions</h2>
+              <p className="text-sm md:text-base text-muted-foreground">Everything you need to know</p>
             </motion.div>
             <div className="divide-y divide-border border-y border-border">
               {PRICING_FAQS.map((faq, index) => (
                 <motion.div 
                   key={faq.question} 
-                  className="py-6"
+                  className="py-4 md:py-6"
                   initial={{ opacity: 0, y: 10 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.05 }}
                 >
-                  <h3 className="font-mono text-foreground mb-2">{faq.question}</h3>
-                  <p className="text-sm text-muted-foreground">{faq.answer}</p>
+                  <h3 className="font-mono text-sm md:text-base text-foreground mb-2">{faq.question}</h3>
+                  <p className="text-xs md:text-sm text-muted-foreground">{faq.answer}</p>
                 </motion.div>
               ))}
             </div>
@@ -278,19 +278,19 @@ export default function PublicPricingPage() {
         </section>
 
         {/* CTA */}
-        <section className="py-24 px-6 bg-secondary/30">
+        <section className="py-16 md:py-24 px-4 md:px-6 bg-secondary/30">
           <motion.div 
             className="max-w-2xl mx-auto text-center"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-3xl font-mono text-foreground mb-4">Ready to ace your interview?</h2>
-            <p className="text-muted-foreground mb-8">
+            <h2 className="text-2xl md:text-3xl font-mono text-foreground mb-4">Ready to ace your interview?</h2>
+            <p className="text-sm md:text-base text-muted-foreground mb-8">
               Start preparing today with our free plan. No credit card required.
             </p>
             <Link href="/onboarding">
-              <Button size="lg">Get Started Free</Button>
+              <Button size="lg" className="w-full sm:w-auto min-h-[44px]">Get Started Free</Button>
             </Link>
           </motion.div>
         </section>

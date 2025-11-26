@@ -307,8 +307,8 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   }
 
   return (
-    <Card className="bg-card border-border">
-      <CardHeader>
+    <Card className="bg-card border-border overflow-hidden">
+      <CardHeader className="p-4 sm:p-6">
         <CardTitle className="font-mono">Tiered Model Configuration</CardTitle>
         <CardDescription>
           Configure different models for different task complexities. Each tier
@@ -316,7 +316,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           configuration.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 p-4 sm:p-6 pt-0 sm:pt-0">
         {/* Warning for unconfigured tiers */}
         {missingTiers.length > 0 && (
           <Alert variant="destructive">
@@ -329,7 +329,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
         )}
 
         {/* Tier Selection Cards */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {(["high", "medium", "low"] as ModelTier[]).map((tier) => {
             const info = TIER_INFO[tier];
             const Icon = info.icon;
@@ -369,7 +369,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           <Label className="text-sm font-medium mb-3 block">
             Task → Tier Mappings
           </Label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {taskMappings.map((mapping) => (
               <div
                 key={mapping.task}
@@ -440,7 +440,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
               placeholder="Search models..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 w-full min-h-[44px]"
             />
           </div>
 
@@ -500,7 +500,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           </Tabs>
 
           {/* Temperature and Max Tokens */}
-          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border">
             <div>
               <Label className="text-sm text-muted-foreground mb-2 block">
                 Temperature
@@ -518,7 +518,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
                 step="0.1"
                 min="0"
                 max="2"
-                className="font-mono"
+                className="font-mono w-full min-h-[44px]"
               />
             </div>
             <div>
@@ -535,7 +535,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
                     parseInt(e.target.value) || 0
                   )
                 }
-                className="font-mono"
+                className="font-mono w-full min-h-[44px]"
               />
             </div>
           </div>

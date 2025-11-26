@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  ResponsiveDropdown,
+  ResponsiveDropdownItem,
+} from "@/components/ui/responsive-dropdown";
 import {
   Dialog,
   DialogContent,
@@ -56,32 +54,36 @@ export function RegenerateMenu({
           size="sm"
           onClick={onRegenerate}
           disabled={disabled}
-          className="rounded-r-none border-r-0 flex-1"
+          className="rounded-r-none border-r-0 flex-1 min-h-[44px]"
         >
           {label}
         </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        <ResponsiveDropdown
+          title={label}
+          trigger={
             <Button
               variant="outline"
               size="sm"
               disabled={disabled}
-              className="rounded-l-none px-2"
+              className="rounded-l-none px-2 min-h-[44px]"
             >
               <ChevronDown className="h-4 w-4" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onRegenerate}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              {label}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setDialogOpen(true)}>
-              <MessageSquarePlus className="h-4 w-4 mr-2" />
-              {label} with instructions
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          }
+        >
+          <ResponsiveDropdownItem
+            icon={<RefreshCw className="h-4 w-4" />}
+            onClick={onRegenerate}
+          >
+            {label}
+          </ResponsiveDropdownItem>
+          <ResponsiveDropdownItem
+            icon={<MessageSquarePlus className="h-4 w-4" />}
+            onClick={() => setDialogOpen(true)}
+          >
+            {label} with instructions
+          </ResponsiveDropdownItem>
+        </ResponsiveDropdown>
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

@@ -168,7 +168,7 @@ export function AIMonitoringDashboard({
   return (
     <div className="space-y-6">
       {/* Overview Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Total Cost"
           value={formatCost(initialStats.totalCost)}
@@ -196,25 +196,27 @@ export function AIMonitoringDashboard({
       </div>
 
       <Tabs defaultValue="logs" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="logs">Request Logs</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="errors">Errors</TabsTrigger>
-          <TabsTrigger value="costs">Costs</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList className="flex-nowrap">
+            <TabsTrigger value="logs">Request Logs</TabsTrigger>
+            <TabsTrigger value="performance">Performance</TabsTrigger>
+            <TabsTrigger value="errors">Errors</TabsTrigger>
+            <TabsTrigger value="costs">Costs</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Request Logs Tab */}
         <TabsContent value="logs">
           <Card className="bg-card border-border">
-            <CardHeader>
-              <div className="flex items-center justify-between">
+            <CardHeader className="p-4 md:p-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="font-mono">AI Request Logs</CardTitle>
                   <CardDescription>Full trace of all AI generation requests</CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Select value={filters.action} onValueChange={(v) => handleFilterChange('action', v)}>
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-full sm:w-40 min-h-[44px]">
                       <Filter className="w-4 h-4 mr-2" />
                       <SelectValue placeholder="Action" />
                     </SelectTrigger>
@@ -229,7 +231,7 @@ export function AIMonitoringDashboard({
                     </SelectContent>
                   </Select>
                   <Select value={filters.status} onValueChange={(v) => handleFilterChange('status', v)}>
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-full sm:w-32 min-h-[44px]">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -242,7 +244,7 @@ export function AIMonitoringDashboard({
                   </Select>
                   {models.length > 0 && (
                     <Select value={filters.model} onValueChange={(v) => handleFilterChange('model', v)}>
-                      <SelectTrigger className="w-48">
+                      <SelectTrigger className="w-full sm:w-48 min-h-[44px]">
                         <SelectValue placeholder="Model" />
                       </SelectTrigger>
                       <SelectContent>
@@ -253,7 +255,7 @@ export function AIMonitoringDashboard({
                       </SelectContent>
                     </Select>
                   )}
-                  <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isPending}>
+                  <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isPending} className="min-h-[44px] min-w-[44px]">
                     <RefreshCw className={`w-4 h-4 ${isPending ? 'animate-spin' : ''}`} />
                   </Button>
                 </div>
@@ -278,7 +280,7 @@ export function AIMonitoringDashboard({
 
         {/* Performance Tab */}
         <TabsContent value="performance">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Latency Percentiles */}
             <Card className="bg-card border-border">
               <CardHeader>
@@ -334,7 +336,7 @@ export function AIMonitoringDashboard({
             </Card>
 
             {/* Hourly Usage */}
-            <Card className="bg-card border-border col-span-2">
+            <Card className="bg-card border-border md:col-span-2">
               <CardHeader>
                 <CardTitle className="font-mono text-sm">Hourly Request Distribution</CardTitle>
               </CardHeader>
@@ -361,7 +363,7 @@ export function AIMonitoringDashboard({
             </Card>
 
             {/* Slow Requests */}
-            <Card className="bg-card border-border col-span-2">
+            <Card className="bg-card border-border md:col-span-2">
               <CardHeader>
                 <CardTitle className="font-mono text-sm flex items-center gap-2">
                   <Clock className="w-4 h-4 text-yellow-500" />
@@ -394,7 +396,7 @@ export function AIMonitoringDashboard({
 
         {/* Errors Tab */}
         <TabsContent value="errors">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Error Stats */}
             <Card className="bg-card border-border">
               <CardHeader>
@@ -457,7 +459,7 @@ export function AIMonitoringDashboard({
 
         {/* Costs Tab */}
         <TabsContent value="costs">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Cost by Model */}
             <Card className="bg-card border-border">
               <CardHeader>
@@ -521,7 +523,7 @@ export function AIMonitoringDashboard({
             </Card>
 
             {/* Pricing Cache Status */}
-            <Card className="bg-card border-border col-span-2">
+            <Card className="bg-card border-border md:col-span-2">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="font-mono text-sm">OpenRouter Pricing Cache</CardTitle>
@@ -573,13 +575,13 @@ function StatCard({ label, value, icon: Icon, color }: {
   color: string;
 }) {
   return (
-    <Card className="bg-card border-border">
-      <CardContent className="p-6">
+    <Card className="bg-card border-border overflow-hidden">
+      <CardContent className="p-3 sm:p-4 md:p-6">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="text-xs md:text-sm text-muted-foreground">{label}</p>
           <Icon className={`w-4 h-4 ${color}`} />
         </div>
-        <p className={`text-2xl font-mono ${color}`}>{value}</p>
+        <p className={`text-xl md:text-2xl font-mono ${color}`}>{value}</p>
       </CardContent>
     </Card>
   );

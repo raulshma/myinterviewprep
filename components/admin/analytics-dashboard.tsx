@@ -124,7 +124,7 @@ export function AnalyticsDashboard({
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-2">
@@ -247,7 +247,7 @@ export function AnalyticsDashboard({
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Popular Topics */}
         <Card className="bg-card border-border">
           <CardHeader>
@@ -327,7 +327,7 @@ export function AnalyticsDashboard({
       </div>
 
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Plan Distribution */}
         <Card className="bg-card border-border">
           <CardHeader>

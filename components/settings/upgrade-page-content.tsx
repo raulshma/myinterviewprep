@@ -53,7 +53,7 @@ function UpgradeCard({ tier, index, userPlan }: { tier: PricingTier; index: numb
 
   return (
     <motion.div
-      className={`bg-card p-6 flex flex-col relative border ${tier.featured ? 'border-primary ring-1 ring-primary' : 'border-border'}`}
+      className={`bg-card p-4 sm:p-6 flex flex-col relative border overflow-hidden ${tier.featured ? 'border-primary ring-1 ring-primary' : 'border-border'}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
@@ -179,14 +179,14 @@ export function UpgradePageContent() {
   return (
     <>
       <TooltipProvider>
-        <div className="grid md:grid-cols-3 gap-4 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
           {PRICING_TIERS.map((tier, index) => (
             <UpgradeCard key={tier.id} tier={tier} index={index} userPlan={userPlan} />
           ))}
         </div>
       </TooltipProvider>
 
-      <motion.div className="bg-card border border-border p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+      <motion.div className="bg-card border border-border p-4 sm:p-6 overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
         <h2 className="text-lg font-mono text-foreground mb-4">Plan Comparison</h2>
         <ComparisonTable />
       </motion.div>

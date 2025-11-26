@@ -132,8 +132,8 @@ export function AdminStatsGrid({ stats }: AdminStatsGridProps) {
       >
         {primaryStats.map((stat) => (
           <motion.div key={stat.label} variants={itemVariants}>
-            <Card className="bg-card/80 backdrop-blur-sm border-border hover:border-primary/30 transition-all duration-300 group">
-              <CardContent className="p-6">
+            <Card className="bg-card/80 backdrop-blur-sm border-border hover:border-primary/30 transition-all duration-300 group overflow-hidden">
+              <CardContent className="p-4 sm:p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div
                     className={`w-12 h-12 ${stat.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform`}
@@ -165,8 +165,8 @@ export function AdminStatsGrid({ stats }: AdminStatsGridProps) {
       >
         {aiStats.map((stat) => (
           <motion.div key={stat.label} variants={itemVariants}>
-            <Card className="bg-card/60 backdrop-blur-sm border-border hover:border-primary/20 transition-all duration-300">
-              <CardContent className="p-4">
+            <Card className="bg-card/60 backdrop-blur-sm border-border hover:border-primary/20 transition-all duration-300 overflow-hidden">
+              <CardContent className="p-3 sm:p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <stat.icon className={`w-4 h-4 ${stat.color}`} />
                   <p className="text-xs text-muted-foreground truncate">

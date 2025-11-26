@@ -52,10 +52,10 @@ export function DataManagementSection() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5 }}
-      className="bg-card border border-border p-6 hover:border-primary/30 transition-colors group"
+      className="bg-card border border-border p-4 sm:p-6 hover:border-primary/30 transition-colors group overflow-hidden"
     >
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+        <div className="w-10 h-10 bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors shrink-0">
           <Database className="w-5 h-5 text-foreground" />
         </div>
         <div>
@@ -66,9 +66,9 @@ export function DataManagementSection() {
 
       <div className="space-y-4">
         {/* Privacy info */}
-        <div className="flex items-start gap-3 p-4 bg-secondary/30 border border-border">
-          <Shield className="w-5 h-5 text-muted-foreground mt-0.5" />
-          <div>
+        <div className="flex items-start gap-3 p-3 sm:p-4 bg-secondary/30 border border-border">
+          <Shield className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
+          <div className="min-w-0">
             <p className="text-sm text-foreground mb-1">Your data is secure</p>
             <p className="text-xs text-muted-foreground">
               We encrypt sensitive data and never share your information with third parties.
@@ -77,17 +77,17 @@ export function DataManagementSection() {
         </div>
 
         {/* Export */}
-        <div className="flex items-center justify-between p-4 bg-secondary/30 border border-border">
-          <div>
+        <div className="flex items-center justify-between gap-3 p-3 sm:p-4 bg-secondary/30 border border-border">
+          <div className="min-w-0">
             <p className="text-sm text-foreground">Export all data</p>
-            <p className="text-xs text-muted-foreground">Download your preps and settings</p>
+            <p className="text-xs text-muted-foreground truncate">Download your preps and settings</p>
           </div>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={handleExport}
             disabled={isExporting}
-            className="bg-transparent"
+            className="bg-transparent shrink-0"
           >
             {isExporting ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -99,10 +99,10 @@ export function DataManagementSection() {
         </div>
 
         {/* Delete account */}
-        <div className="flex items-center justify-between p-4 bg-destructive/5 border border-destructive/20">
-          <div>
+        <div className="flex items-center justify-between gap-3 p-3 sm:p-4 bg-destructive/5 border border-destructive/20">
+          <div className="min-w-0">
             <p className="text-sm text-foreground">Delete account</p>
-            <p className="text-xs text-muted-foreground">Permanently remove all data</p>
+            <p className="text-xs text-muted-foreground truncate">Permanently remove all data</p>
           </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>

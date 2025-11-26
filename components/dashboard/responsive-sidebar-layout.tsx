@@ -28,7 +28,7 @@ export function ResponsiveSidebarLayout({
       </div>
 
       {/* Mobile layout */}
-      <div className="flex-1 flex flex-col md:contents">
+      <div className="flex-1 flex flex-col md:contents min-w-0 w-full max-w-full overflow-hidden">
         {/* Mobile header with hamburger menu */}
         {isMobile && (
           <MobileHeader
