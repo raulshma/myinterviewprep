@@ -6,6 +6,7 @@ import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
 import { Geist_Mono, Geist_Mono as V0_Font_Geist_Mono } from 'next/font/google'
+import { SidebarProvider } from "@/components/dashboard/sidebar-context"
 
 // Initialize fonts
 const _geistMono = V0_Font_Geist_Mono({ subsets: ['latin'], weight: ["100","200","300","400","500","600","700","800","900"] })
@@ -49,7 +50,9 @@ export default function RootLayout({
       {/* Added dark class for dark mode default */}
       <html lang="en" className="dark">
         <body className={`font-sans antialiased`}>
-          {children}
+          <SidebarProvider>
+            {children}
+          </SidebarProvider>
           <Analytics />
         </body>
       </html>
