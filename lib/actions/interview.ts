@@ -13,7 +13,6 @@ import {
   hasByokApiKey,
 } from "@/lib/auth/get-user";
 import { interviewRepository } from "@/lib/db/repositories/interview-repository";
-import { aiLogRepository } from "@/lib/db/repositories/ai-log-repository";
 import { userRepository } from "@/lib/db/repositories/user-repository";
 import { resumeParser } from "@/lib/services/resume-parser";
 import { aiEngine, type GenerationContext } from "@/lib/services/ai-engine";
@@ -857,7 +856,7 @@ function getExistingContentIds(
 }
 
 /**
- * Delete an interview with cascade delete of AI logs
+ * Delete an interview (AI logs are preserved for admin monitoring)
  * Requirements: 10.3
  */
 export async function deleteInterview(
@@ -895,9 +894,7 @@ export async function deleteInterview(
       };
     }
 
-    // Delete associated AI logs first (cascade delete)
-    await aiLogRepository.deleteByInterviewId(interviewId);
-
+    // Note: AI logs are intentionally NOT deleted to preserve admin monitoring data
     // Delete the interview
     await interviewRepository.delete(interviewId);
 
