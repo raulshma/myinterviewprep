@@ -6,7 +6,6 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 import { Geist_Mono } from "next/font/google";
-import { SidebarProvider } from "@/components/dashboard/sidebar-context";
 import { ThemeProvider } from "@/components/theme-provider";
 
 // Initialize fonts
@@ -24,19 +23,19 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/icon-light-32x32.png",
+        url: "/favicon-32x32.png",
         media: "(prefers-color-scheme: light)",
       },
       {
-        url: "/icon-dark-32x32.png",
+        url: "/favicon-32x32.png",
         media: "(prefers-color-scheme: dark)",
       },
       {
-        url: "/icon.svg",
-        type: "image/svg+xml",
+        url: "/favicon.ico",
+        type: "image/x-icon",
       },
     ],
-    apple: "/apple-icon.png",
+    apple: "/apple-touch-icon.png",
   },
 };
 
@@ -59,7 +58,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <SidebarProvider>{children}</SidebarProvider>
+            {children}
           </ThemeProvider>
           <Analytics />
         </body>
