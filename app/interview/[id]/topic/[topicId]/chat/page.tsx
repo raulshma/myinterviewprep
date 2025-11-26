@@ -310,11 +310,8 @@ export default function ChatRefinementPage() {
   }
 
   if (isLoading) {
-    return (
-      <div className="h-screen bg-background flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-      </div>
-    )
+    // Use Next.js loading.tsx skeleton instead
+    return null
   }
 
   if (error || !topic) {
