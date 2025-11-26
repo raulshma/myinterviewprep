@@ -93,12 +93,22 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
     );
   };
 
+  const findModel = (modelId: string): OpenRouterModel | undefined => {
+    if (!models) return undefined;
+    return models.paid.find(m => m.id === modelId) || models.free.find(m => m.id === modelId);
+  };
+
   const handleSelectModel = (modelId: string, tier: ModelTier, type: 'primary' | 'fallback') => {
+    const model = findModel(modelId);
+    const maxTokens = model?.top_provider?.max_completion_tokens;
+    
     setConfig((prev) => ({
       ...prev,
       [tier]: {
         ...prev[tier],
         [type === 'primary' ? 'primaryModel' : 'fallbackModel']: modelId,
+        // Auto-populate maxTokens from model data when selecting primary model
+        ...(type === 'primary' && maxTokens ? { maxTokens } : {}),
       },
     }));
     setSaved(false);
