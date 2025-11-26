@@ -22,6 +22,7 @@ import type {
 } from '@/lib/actions/admin';
 import {
   getAILogs,
+  getAILogsCount,
   getErrorStats,
   getLatencyPercentiles,
   getHourlyUsage,
@@ -33,9 +34,12 @@ import {
   forceRefreshPricingCache,
 } from '@/lib/actions/admin';
 
+const PAGE_SIZE = 10;
+
 interface AIMonitoringDashboardProps {
   initialLogs: AILogWithDetails[];
   initialStats: AdminStats;
+  initialLogsCount: number;
   usageByAction: Array<{ action: string; count: number; avgLatency: number }>;
 }
 
@@ -53,9 +57,12 @@ function formatNumber(num: number): string {
 export function AIMonitoringDashboard({ 
   initialLogs, 
   initialStats,
+  initialLogsCount,
   usageByAction,
 }: AIMonitoringDashboardProps) {
   const [logs, setLogs] = useState(initialLogs);
+  const [logsCount, setLogsCount] = useState(initialLogsCount);
+  const [currentPage, setCurrentPage] = useState(1);
   const [isPending, startTransition] = useTransition();
   const [filters, setFilters] = useState({
     action: 'all',
@@ -108,29 +115,48 @@ export function AIMonitoringDashboard({
     }
   };
 
+  const fetchLogs = async (page: number, currentFilters: typeof filters) => {
+    const filterParams = {
+      action: currentFilters.action !== 'all' ? currentFilters.action as any : undefined,
+      status: currentFilters.status !== 'all' ? currentFilters.status as any : undefined,
+      model: currentFilters.model !== 'all' ? currentFilters.model : undefined,
+      limit: PAGE_SIZE,
+      skip: (page - 1) * PAGE_SIZE,
+    };
+    
+    const [newLogs, count] = await Promise.all([
+      getAILogs(filterParams),
+      getAILogsCount(filterParams),
+    ]);
+    
+    return { logs: newLogs, count };
+  };
+
   const handleRefresh = () => {
     startTransition(async () => {
-      const newLogs = await getAILogs({
-        action: filters.action !== 'all' ? filters.action as any : undefined,
-        status: filters.status !== 'all' ? filters.status as any : undefined,
-        model: filters.model !== 'all' ? filters.model : undefined,
-        limit: 50,
-      });
+      const { logs: newLogs, count } = await fetchLogs(currentPage, filters);
       setLogs(newLogs);
+      setLogsCount(count);
+    });
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    startTransition(async () => {
+      const { logs: newLogs, count } = await fetchLogs(page, filters);
+      setLogs(newLogs);
+      setLogsCount(count);
     });
   };
 
   const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    const newFilters = { ...filters, [key]: value };
+    setFilters(newFilters);
+    setCurrentPage(1); // Reset to first page on filter change
     startTransition(async () => {
-      const newFilters = { ...filters, [key]: value };
-      const newLogs = await getAILogs({
-        action: newFilters.action !== 'all' ? newFilters.action as any : undefined,
-        status: newFilters.status !== 'all' ? newFilters.status as any : undefined,
-        model: newFilters.model !== 'all' ? newFilters.model : undefined,
-        limit: 50,
-      });
+      const { logs: newLogs, count } = await fetchLogs(1, newFilters);
       setLogs(newLogs);
+      setLogsCount(count);
     });
   };
 
@@ -229,8 +255,15 @@ export function AIMonitoringDashboard({
               </div>
             </CardHeader>
             <CardContent>
-              {logs.length > 0 ? (
-                <AILogViewer logs={logs} />
+              {logsCount > 0 ? (
+                <AILogViewer 
+                  logs={logs} 
+                  totalCount={logsCount}
+                  currentPage={currentPage}
+                  pageSize={PAGE_SIZE}
+                  onPageChange={handlePageChange}
+                  isLoading={isPending}
+                />
               ) : (
                 <EmptyState icon={Cpu} message="No AI logs recorded yet" />
               )}

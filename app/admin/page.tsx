@@ -37,6 +37,7 @@ import {
 import {
   getAdminStats,
   getAILogs,
+  getAILogsCount,
   getSearchToolStatus,
   getAIUsageByAction,
   getAdminUsers,
@@ -78,6 +79,7 @@ export default async function AdminPage() {
   const [
     stats,
     aiLogs,
+    aiLogsCount,
     searchStatus,
     usageByAction,
     users,
@@ -91,7 +93,8 @@ export default async function AdminPage() {
     tieredModelConfig,
   ] = await Promise.all([
     getAdminStats(),
-    getAILogs({ limit: 50 }),
+    getAILogs({ limit: 10 }),
+    getAILogsCount({}),
     getSearchToolStatus(),
     getAIUsageByAction(),
     getAdminUsers(),
@@ -201,15 +204,15 @@ export default async function AdminPage() {
           ))}
         </div>
 
-        <Tabs defaultValue="ai-monitoring" className="space-y-6">
+        <Tabs defaultValue="users" className="space-y-6">
           <TabsList>
-            <TabsTrigger value="ai-monitoring">
-              <Cpu className="w-4 h-4 mr-2" />
-              AI Monitoring
-            </TabsTrigger>
             <TabsTrigger value="users">
               <Users className="w-4 h-4 mr-2" />
               Users
+            </TabsTrigger>
+            <TabsTrigger value="ai-monitoring">
+              <Cpu className="w-4 h-4 mr-2" />
+              AI Monitoring
             </TabsTrigger>
             <TabsTrigger value="models">
               <Settings className="w-4 h-4 mr-2" />
@@ -225,15 +228,7 @@ export default async function AdminPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* AI Monitoring Tab - Requirements: 9.1, 9.3, 9.4 */}
-          <TabsContent value="ai-monitoring">
-            <AIMonitoringDashboard
-              initialLogs={aiLogs}
-              initialStats={stats}
-              usageByAction={usageByAction}
-            />
-          </TabsContent>
-
+          {/* Users Tab */}
           <TabsContent value="users">
             <Card className="bg-card border-border">
               <CardHeader>
@@ -323,6 +318,16 @@ export default async function AdminPage() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* AI Monitoring Tab - Requirements: 9.1, 9.3, 9.4 */}
+          <TabsContent value="ai-monitoring">
+            <AIMonitoringDashboard
+              initialLogs={aiLogs}
+              initialStats={stats}
+              initialLogsCount={aiLogsCount}
+              usageByAction={usageByAction}
+            />
           </TabsContent>
 
           <TabsContent value="models">
