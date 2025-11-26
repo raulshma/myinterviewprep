@@ -13,6 +13,7 @@ import {
   getAuthUserId,
   getByokApiKey,
   hasByokApiKey,
+  getByokTierConfig,
 } from "@/lib/auth/get-user";
 import { interviewRepository } from "@/lib/db/repositories/interview-repository";
 import { userRepository } from "@/lib/db/repositories/user-repository";
@@ -111,8 +112,9 @@ export async function createInterviewFromPrompt(
       };
     }
 
-    // Get BYOK API key if available
+    // Get BYOK API key and tier config if available
     const apiKey = await getByokApiKey();
+    const byokTierConfig = await getByokTierConfig();
 
     // Create logger context for prompt parsing
     const loggerCtx = createLoggerContext({
@@ -124,7 +126,8 @@ export async function createInterviewFromPrompt(
     const result = await aiEngine.parseInterviewPrompt(
       input.prompt.trim(),
       {},
-      apiKey ?? undefined
+      apiKey ?? undefined,
+      byokTierConfig ?? undefined
     );
     const parsedDetails = result.object;
 

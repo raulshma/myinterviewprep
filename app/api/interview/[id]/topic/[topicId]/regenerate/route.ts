@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { generateId } from "ai";
-import { getAuthUserId, getByokApiKey, hasByokApiKey } from "@/lib/auth/get-user";
+import { getAuthUserId, getByokApiKey, hasByokApiKey, getByokTierConfig } from "@/lib/auth/get-user";
 import { interviewRepository } from "@/lib/db/repositories/interview-repository";
 import { userRepository } from "@/lib/db/repositories/user-repository";
 import { aiEngine, type GenerationContext } from "@/lib/services/ai-engine";
@@ -94,8 +94,9 @@ export async function POST(
       await userRepository.incrementIteration(clerkId);
     }
 
-    // Get BYOK API key if available
+    // Get BYOK API key and tier config if available
     const apiKey = await getByokApiKey();
+    const byokTierConfig = await getByokTierConfig();
 
     // Build generation context
     const ctx: GenerationContext = {
@@ -169,7 +170,8 @@ export async function POST(
             style,
             ctx,
             {},
-            apiKey ?? undefined
+            apiKey ?? undefined,
+            byokTierConfig ?? undefined
           );
 
           let firstTokenMarked = false;

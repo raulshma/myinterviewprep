@@ -70,6 +70,26 @@ export async function getByokApiKey(): Promise<string | null> {
 }
 
 /**
+ * BYOK tier configuration type (matches BYOKUserConfig from schemas)
+ */
+export interface BYOKTierConfigData {
+  high?: { model: string; fallback?: string; temperature?: number; maxTokens?: number };
+  medium?: { model: string; fallback?: string; temperature?: number; maxTokens?: number };
+  low?: { model: string; fallback?: string; temperature?: number; maxTokens?: number };
+}
+
+/**
+ * Get the current user's BYOK tier configuration if configured
+ */
+export async function getByokTierConfig(): Promise<BYOKTierConfigData | null> {
+  const user = await currentUser();
+  if (!user) return null;
+  
+  const tierConfig = user.privateMetadata?.byokTierConfig as BYOKTierConfigData | undefined;
+  return tierConfig ?? null;
+}
+
+/**
  * Check if the current user has admin role
  * Uses publicMetadata.role from Clerk user
  *
