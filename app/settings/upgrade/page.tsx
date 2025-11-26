@@ -6,7 +6,7 @@ import { useAuth } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, HelpCircle, Loader2, Sparkles } from 'lucide-react';
+import { Check, X, HelpCircle, Loader2, Sparkles, CreditCard } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { createCheckout } from '@/lib/actions/stripe';
 import { toast } from 'sonner';
@@ -167,39 +167,54 @@ function ComparisonTable() {
 
 export default function UpgradePage() {
   return (
-    <main className="flex-1 overflow-auto p-6">
-      <div className="max-w-5xl mx-auto">
-        {/* Header */}
-        <motion.div 
-          className="mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <h1 className="text-2xl font-mono text-foreground mb-2">Upgrade Your Plan</h1>
-          <p className="text-muted-foreground">
-            Get more interviews, iterations, and features to supercharge your prep.
-          </p>
-        </motion.div>
+    <main className="flex-1 overflow-auto relative">
+      {/* Background effects */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-secondary/20" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30 [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
+        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/3 left-1/3 w-64 h-64 bg-primary/3 rounded-full blur-3xl" />
+      </div>
 
-        {/* Pricing Cards */}
-        <TooltipProvider>
-          <div className="grid md:grid-cols-3 gap-4 mb-12">
-            {PRICING_TIERS.map((tier, index) => (
-              <UpgradeCard key={tier.id} tier={tier} index={index} />
-            ))}
-          </div>
-        </TooltipProvider>
+      <div className="relative z-10 p-4 md:p-6 lg:p-8">
+        <div className="max-w-full">
+          {/* Header */}
+          <motion.div 
+            className="mb-8"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <div className="inline-flex items-center gap-2 border border-primary/20 bg-primary/5 px-3 py-1.5 mb-3 text-xs text-foreground">
+              <CreditCard className="w-3 h-3 text-primary" />
+              <span>Upgrade</span>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-mono text-foreground mb-1">Upgrade Your Plan</h1>
+            <p className="text-muted-foreground text-sm">
+              Get more interviews, iterations, and features to supercharge your prep.
+            </p>
+          </motion.div>
 
-        {/* Comparison Table */}
-        <motion.div
-          className="bg-card border border-border p-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <h2 className="text-lg font-mono text-foreground mb-4">Plan Comparison</h2>
-          <ComparisonTable />
-        </motion.div>
+          {/* Pricing Cards */}
+          <TooltipProvider>
+            <div className="grid md:grid-cols-3 gap-4 mb-12">
+              {PRICING_TIERS.map((tier, index) => (
+                <UpgradeCard key={tier.id} tier={tier} index={index} />
+              ))}
+            </div>
+          </TooltipProvider>
+
+          {/* Comparison Table */}
+          <motion.div
+            className="bg-card border border-border p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            <h2 className="text-lg font-mono text-foreground mb-4">Plan Comparison</h2>
+            <ComparisonTable />
+          </motion.div>
+        </div>
       </div>
     </main>
   );

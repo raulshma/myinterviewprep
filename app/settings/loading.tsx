@@ -9,8 +9,8 @@ export default function SettingsLoading() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30 [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
       </div>
 
-      <div className="relative z-10 p-6 md:p-8 lg:p-12">
-        <div className="max-w-5xl mx-auto space-y-8">
+      <div className="relative z-10 p-4 md:p-6 lg:p-8">
+        <div className="max-w-full mx-auto space-y-8">
           {/* Header skeleton */}
           <div>
             <Skeleton className="h-9 w-40 mb-6" />

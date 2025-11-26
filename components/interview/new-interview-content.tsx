@@ -238,27 +238,22 @@ export function NewInterviewContent({ usageData }: NewInterviewContentProps) {
     <div className="relative flex-1 flex flex-col">
       {/* Header */}
       <motion.header
-        className="relative z-10 border-b border-border bg-background/80 backdrop-blur-sm px-6 md:px-8 py-4"
+        className="relative z-10 border-b border-border px-4 md:px-6 py-8"
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.4 }}
       >
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+        <div className="max-w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Link href="/dashboard">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hover:bg-secondary"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            </Link>
             <div>
-              <h1 className="font-mono text-foreground text-lg">
-                New Interview Prep
+              <div className="inline-flex items-center gap-2 border border-primary/20 bg-primary/5 px-3 py-1.5 mb-3 text-xs text-foreground">
+                <Sparkles className="w-3 h-3 text-primary" />
+                <span>New Interview</span>
+              </div>
+              <h1 className="text-2xl md:text-3xl font-mono text-foreground mb-1">
+                Create Interview Prep
               </h1>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Create your personalized preparation plan
               </p>
             </div>
@@ -281,8 +276,8 @@ export function NewInterviewContent({ usageData }: NewInterviewContentProps) {
       </motion.header>
 
       {/* Content */}
-      <div className="relative z-10 flex-1 px-4 md:px-6 py-4 md:py-6 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
+      <div className="relative z-10 flex-1 px-4 md:px-6 py-4 md:py-6 overflow-y-auto pt-0 md:pt-0">
+        <div className="max-w-full">
           {/* Error banner */}
           <AnimatePresence>
             {generalError && (

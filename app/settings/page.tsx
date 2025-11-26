@@ -32,21 +32,27 @@ export default async function SettingsPage() {
         <div className="absolute bottom-1/3 left-1/3 w-64 h-64 bg-primary/3 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative z-10 p-6 md:p-8 lg:p-12">
-        <div className="max-w-5xl mx-auto space-y-8">
+      <div className="relative z-10 p-4 md:p-6 lg:p-8">
+        <div className="max-w-full mx-auto">
           <SettingsHeader profile={profile} />
 
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Left column */}
             <div className="space-y-6">
               <ProfileSection profile={profile} />
-              <ApiKeysSection hasByokKey={profile.hasByokKey} plan={profile.plan} />
+              <ApiKeysSection
+                hasByokKey={profile.hasByokKey}
+                plan={profile.plan}
+              />
               <BYOKTierConfigSection hasByokKey={profile.hasByokKey} />
             </div>
 
             {/* Right column */}
             <div className="space-y-6">
-              <SubscriptionSection profile={profile} subscription={subscription} />
+              <SubscriptionSection
+                profile={profile}
+                subscription={subscription}
+              />
               <BYOKUsageStatsSection hasByokKey={profile.hasByokKey} />
               <DataManagementSection />
             </div>
