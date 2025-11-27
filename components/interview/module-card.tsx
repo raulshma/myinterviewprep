@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   type LucideIcon,
@@ -9,6 +10,7 @@ import {
   Brain,
   RefreshCw,
   Plus,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +29,7 @@ interface ModuleCardProps {
   onRegenerateWithInstructions?: (instructions: string) => void;
   regenerateLabel?: string;
   id?: string;
+  defaultCollapsed?: boolean;
 }
 
 export function ModuleCard({
@@ -41,12 +44,18 @@ export function ModuleCard({
   onRegenerateWithInstructions,
   regenerateLabel = "Add More",
   id,
+  defaultCollapsed = false,
 }: ModuleCardProps) {
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+  
   const isLoading = status === "loading";
   const isStreaming = status === "streaming";
   const isComplete = status === "complete";
   const isError = status === "error";
   const isIdle = status === "idle";
+  
+  // Auto-expand when streaming or loading
+  const shouldShowContent = !isCollapsed || isLoading || isStreaming;
 
   return (
     <motion.div
@@ -65,13 +74,18 @@ export function ModuleCard({
       >
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between p-6 md:p-8 pb-4 md:pb-6 gap-4 sm:gap-0">
-          <div className="flex items-start gap-4 md:gap-5">
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="flex items-start gap-4 md:gap-5 text-left flex-1 group"
+            disabled={isLoading || isStreaming}
+          >
             <div
               className={`w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center transition-colors shadow-inner ${isLoading || isStreaming
                 ? "bg-primary/10"
                 : isError
                   ? "bg-destructive/10"
-                  : "bg-secondary"
+                  : "bg-secondary group-hover:bg-secondary/80"
                 }`}
             >
               {isLoading || isStreaming ? (
@@ -89,16 +103,23 @@ export function ModuleCard({
             </div>
             <div className="min-w-0 flex-1 pt-1">
               <div className="flex items-center gap-3 flex-wrap mb-1">
-                <h3 className="text-lg md:text-xl font-bold text-foreground tracking-tight">{title}</h3>
+                <h3 className="text-lg md:text-xl font-bold text-foreground tracking-tight group-hover:text-primary transition-colors">{title}</h3>
                 {count !== undefined && count > 0 && (
                   <Badge variant="secondary" className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-secondary/50 border-border/50">
                     {count}
                   </Badge>
                 )}
+                <motion.div
+                  animate={{ rotate: isCollapsed ? -90 : 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-muted-foreground"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </motion.div>
               </div>
               <p className="text-sm text-muted-foreground font-medium">{description}</p>
             </div>
-          </div>
+          </button>
 
           <div className="flex items-center gap-3 self-end sm:self-auto">
             {/* Status indicator */}
@@ -144,74 +165,86 @@ export function ModuleCard({
         </div>
 
         {/* Content */}
-        <div className="px-6 md:px-8 pb-6 md:pb-8">
-          <AnimatePresence mode="wait">
-            {isLoading && (
-              <motion.div
-                key="skeleton"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="space-y-4"
-              >
-                <div className="h-4 bg-muted/50 w-3/4 rounded-full animate-pulse" />
-                <div className="h-4 bg-muted/50 w-full rounded-full animate-pulse" />
-                <div className="h-4 bg-muted/50 w-2/3 rounded-full animate-pulse" />
-              </motion.div>
-            )}
+        <AnimatePresence initial={false}>
+          {shouldShowContent && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="overflow-hidden"
+            >
+              <div className="px-6 md:px-8 pb-6 md:pb-8">
+                <AnimatePresence mode="wait">
+                  {isLoading && (
+                    <motion.div
+                      key="skeleton"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="space-y-4"
+                    >
+                      <div className="h-4 bg-muted/50 w-3/4 rounded-full animate-pulse" />
+                      <div className="h-4 bg-muted/50 w-full rounded-full animate-pulse" />
+                      <div className="h-4 bg-muted/50 w-2/3 rounded-full animate-pulse" />
+                    </motion.div>
+                  )}
 
-            {isError && (
-              <motion.div
-                key="error"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center justify-between py-6 px-4 rounded-2xl bg-destructive/5 border border-destructive/10"
-              >
-                <span className="text-destructive text-sm font-medium">
-                  Failed to generate content. Please try again.
-                </span>
-                {onRetry && (
-                  <Button variant="outline" size="sm" onClick={onRetry} className="rounded-full border-destructive/20 hover:bg-destructive/10 text-destructive hover:text-destructive">
-                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-                    Retry
-                  </Button>
-                )}
-              </motion.div>
-            )}
+                  {isError && (
+                    <motion.div
+                      key="error"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center justify-between py-6 px-4 rounded-2xl bg-destructive/5 border border-destructive/10"
+                    >
+                      <span className="text-destructive text-sm font-medium">
+                        Failed to generate content. Please try again.
+                      </span>
+                      {onRetry && (
+                        <Button variant="outline" size="sm" onClick={onRetry} className="rounded-full border-destructive/20 hover:bg-destructive/10 text-destructive hover:text-destructive">
+                          <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                          Retry
+                        </Button>
+                      )}
+                    </motion.div>
+                  )}
 
-            {isIdle && !children && (
-              <motion.div
-                key="idle"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center justify-between py-6 px-4 rounded-2xl bg-secondary/20 border border-border/50"
-              >
-                <span className="text-muted-foreground text-sm font-medium">
-                  Content not generated yet.
-                </span>
-                {onRetry && (
-                  <Button variant="outline" size="sm" onClick={onRetry} className="rounded-full shadow-sm">
-                    <Sparkles className="w-3.5 h-3.5 mr-1.5" />
-                    Generate
-                  </Button>
-                )}
-              </motion.div>
-            )}
+                  {isIdle && !children && (
+                    <motion.div
+                      key="idle"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center justify-between py-6 px-4 rounded-2xl bg-secondary/20 border border-border/50"
+                    >
+                      <span className="text-muted-foreground text-sm font-medium">
+                        Content not generated yet.
+                      </span>
+                      {onRetry && (
+                        <Button variant="outline" size="sm" onClick={onRetry} className="rounded-full shadow-sm">
+                          <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                          Generate
+                        </Button>
+                      )}
+                    </motion.div>
+                  )}
 
-            {(isStreaming || isComplete || (isIdle && children)) && (
-              <motion.div
-                key="content"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                {children}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                  {(isStreaming || isComplete || (isIdle && children)) && (
+                    <motion.div
+                      key="content"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      {children}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );
