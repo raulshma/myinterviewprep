@@ -355,6 +355,7 @@ export function LearningWorkspace({ learningPath: initialPath }: LearningWorkspa
                       activity={currentActivity}
                       onComplete={handleActivityComplete}
                       ActivityIcon={ActivityIcon}
+                      language={learningPath.programmingLanguage}
                     />
                   ) : showReflection && currentActivity ? (
                     <ReflectionForm
@@ -416,10 +417,12 @@ function ActivityCard({
   activity,
   onComplete,
   ActivityIcon,
+  language = 'typescript',
 }: {
   activity: Activity;
   onComplete: (answer: string, isCorrect?: boolean) => void;
   ActivityIcon: typeof BookOpen;
+  language?: string;
 }) {
   return (
     <motion.div
@@ -454,7 +457,7 @@ function ActivityCard({
       </div>
 
       <div className="p-6">
-        <ActivityContentView content={activity.content} onComplete={onComplete} />
+        <ActivityContentView content={activity.content} onComplete={onComplete} language={language} />
       </div>
     </motion.div>
   );
@@ -464,17 +467,19 @@ function ActivityCard({
 function ActivityContentView({
   content,
   onComplete,
+  language = 'typescript',
 }: {
   content: ActivityContent;
   onComplete: (answer: string, isCorrect?: boolean) => void;
+  language?: string;
 }) {
   switch (content.type) {
     case 'mcq':
       return <MCQActivityView content={content} onComplete={onComplete} />;
     case 'coding-challenge':
-      return <CodingChallengeView content={content} onComplete={onComplete} />;
+      return <CodingChallengeView content={content} onComplete={onComplete} language={language} />;
     case 'debugging-task':
-      return <DebuggingTaskView content={content} onComplete={onComplete} />;
+      return <DebuggingTaskView content={content} onComplete={onComplete} language={language} />;
     case 'concept-explanation':
       return <ConceptExplanationView content={content} onComplete={onComplete} />;
     default:

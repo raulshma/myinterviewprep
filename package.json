@@ -17,6 +17,7 @@
     "@llm-ui/code": "^0.13.3",
     "@llm-ui/markdown": "^0.13.3",
     "@llm-ui/react": "^0.13.3",
+    "@monaco-editor/react": "4.8.0-rc.3",
     "@openrouter/ai-sdk-provider": "^1.2.5",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",

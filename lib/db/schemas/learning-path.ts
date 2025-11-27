@@ -130,6 +130,7 @@ export const LearningPathSchema = z.object({
   _id: z.string().min(1),
   userId: z.string().min(1),
   goal: z.string().min(1),
+  programmingLanguage: z.string().default('typescript'),
   skillClusters: z.array(SkillClusterSchema).min(1),
   currentTopicId: z.string().nullable(),
   currentActivity: ActivitySchema.nullable().default(null),

@@ -1,21 +1,57 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Code, ChevronRight, Copy, Check, Play } from 'lucide-react';
+import { Code, ChevronRight, Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { CodeEditor } from '@/components/ui/code-editor';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { CodingChallenge } from '@/lib/db/schemas/learning-path';
+
+const SUPPORTED_LANGUAGES = [
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'python', label: 'Python' },
+  { value: 'java', label: 'Java' },
+  { value: 'csharp', label: 'C#' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'c', label: 'C' },
+  { value: 'go', label: 'Go' },
+  { value: 'rust', label: 'Rust' },
+  { value: 'ruby', label: 'Ruby' },
+  { value: 'php', label: 'PHP' },
+  { value: 'swift', label: 'Swift' },
+  { value: 'kotlin', label: 'Kotlin' },
+  { value: 'scala', label: 'Scala' },
+  { value: 'sql', label: 'SQL' },
+  { value: 'html', label: 'HTML' },
+  { value: 'css', label: 'CSS' },
+  { value: 'json', label: 'JSON' },
+  { value: 'yaml', label: 'YAML' },
+  { value: 'markdown', label: 'Markdown' },
+  { value: 'shell', label: 'Shell/Bash' },
+];
 
 interface CodingChallengeViewProps {
   content: CodingChallenge;
+  language?: string;
   onComplete: (answer: string, isCorrect?: boolean) => void;
 }
 
-export function CodingChallengeView({ content, onComplete }: CodingChallengeViewProps) {
+export function CodingChallengeView({ 
+  content, 
+  language: initialLanguage = 'typescript',
+  onComplete 
+}: CodingChallengeViewProps) {
   const [code, setCode] = useState(content.starterCode || '');
   const [copied, setCopied] = useState(false);
+  const [language, setLanguage] = useState(initialLanguage);
 
   const handleCopy = async (text: string) => {
     await navigator.clipboard.writeText(text);
@@ -24,8 +60,6 @@ export function CodingChallengeView({ content, onComplete }: CodingChallengeView
   };
 
   const handleSubmit = () => {
-    // For now, we just pass the code to the reflection form
-    // In a real implementation, this could run tests
     onComplete(code);
   };
 
@@ -93,13 +127,27 @@ export function CodingChallengeView({ content, onComplete }: CodingChallengeView
             <Code className="w-4 h-4" />
             Your Solution
           </h4>
+          <Select value={language} onValueChange={setLanguage}>
+            <SelectTrigger className="w-[140px] h-8 text-xs font-mono">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <SelectItem key={lang.value} value={lang.value} className="text-xs font-mono">
+                  {lang.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <Textarea
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Write your solution here..."
-          className="font-mono min-h-[200px] bg-secondary/30 resize-y"
-        />
+        <div className="border border-border">
+          <CodeEditor
+            value={code}
+            onChange={setCode}
+            language={language}
+            height="300px"
+          />
+        </div>
       </div>
 
       {/* Actions */}

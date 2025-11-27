@@ -4,18 +4,56 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bug, ChevronRight, Lightbulb, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { CodeEditor } from '@/components/ui/code-editor';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { DebuggingTask } from '@/lib/db/schemas/learning-path';
+
+const SUPPORTED_LANGUAGES = [
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'python', label: 'Python' },
+  { value: 'java', label: 'Java' },
+  { value: 'csharp', label: 'C#' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'c', label: 'C' },
+  { value: 'go', label: 'Go' },
+  { value: 'rust', label: 'Rust' },
+  { value: 'ruby', label: 'Ruby' },
+  { value: 'php', label: 'PHP' },
+  { value: 'swift', label: 'Swift' },
+  { value: 'kotlin', label: 'Kotlin' },
+  { value: 'scala', label: 'Scala' },
+  { value: 'sql', label: 'SQL' },
+  { value: 'html', label: 'HTML' },
+  { value: 'css', label: 'CSS' },
+  { value: 'json', label: 'JSON' },
+  { value: 'yaml', label: 'YAML' },
+  { value: 'markdown', label: 'Markdown' },
+  { value: 'shell', label: 'Shell/Bash' },
+];
 
 interface DebuggingTaskViewProps {
   content: DebuggingTask;
+  language?: string;
   onComplete: (answer: string, isCorrect?: boolean) => void;
 }
 
-export function DebuggingTaskView({ content, onComplete }: DebuggingTaskViewProps) {
+export function DebuggingTaskView({ 
+  content, 
+  language: initialLanguage = 'typescript',
+  onComplete 
+}: DebuggingTaskViewProps) {
   const [fixedCode, setFixedCode] = useState('');
   const [showHints, setShowHints] = useState(false);
   const [revealedHints, setRevealedHints] = useState<number[]>([]);
+  const [language, setLanguage] = useState(initialLanguage);
 
   const handleRevealHint = (index: number) => {
     if (!revealedHints.includes(index)) {
@@ -40,16 +78,24 @@ export function DebuggingTaskView({ content, onComplete }: DebuggingTaskViewProp
 
       {/* Buggy Code */}
       <div className="space-y-2">
-        <h4 className="text-sm font-mono text-muted-foreground">Buggy Code</h4>
-        <div className="relative">
-          <pre className="text-sm font-mono text-foreground bg-secondary/50 p-4 overflow-x-auto border border-destructive/30">
-            {content.buggyCode}
-          </pre>
-          <div className="absolute top-2 right-2">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-mono text-muted-foreground">Buggy Code</h4>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs font-mono">
+              {language}
+            </Badge>
             <span className="text-xs px-2 py-1 bg-destructive/20 text-destructive font-mono">
               Contains Bug(s)
             </span>
           </div>
+        </div>
+        <div className="border border-destructive/30">
+          <CodeEditor
+            value={content.buggyCode}
+            language={language}
+            height="200px"
+            readOnly
+          />
         </div>
       </div>
 
@@ -100,13 +146,29 @@ export function DebuggingTaskView({ content, onComplete }: DebuggingTaskViewProp
 
       {/* Fixed Code Input */}
       <div className="space-y-2">
-        <h4 className="text-sm font-mono text-muted-foreground">Your Fixed Code</h4>
-        <Textarea
-          value={fixedCode}
-          onChange={(e) => setFixedCode(e.target.value)}
-          placeholder="Paste or write your fixed code here..."
-          className="font-mono min-h-[200px] bg-secondary/30 resize-y"
-        />
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-mono text-muted-foreground">Your Fixed Code</h4>
+          <Select value={language} onValueChange={setLanguage}>
+            <SelectTrigger className="w-[140px] h-8 text-xs font-mono">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <SelectItem key={lang.value} value={lang.value} className="text-xs font-mono">
+                  {lang.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="border border-border">
+          <CodeEditor
+            value={fixedCode}
+            onChange={setFixedCode}
+            language={language}
+            height="250px"
+          />
+        </div>
       </div>
 
       {/* Actions */}

@@ -254,6 +254,7 @@ export async function initializePath(
   const learningPath = await learningPathRepository.create({
     userId,
     goal: goal.trim(),
+    programmingLanguage: 'typescript',
     skillClusters: parsed.skillClusters,
     baselineDifficulty: parsed.suggestedDifficulty,
     currentDifficulty: parsed.suggestedDifficulty,

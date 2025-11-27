@@ -63,6 +63,7 @@ export const learningPathRepository: LearningPathRepository = {
       _id: id,
       userId: data.userId,
       goal: data.goal,
+      programmingLanguage: data.programmingLanguage || 'typescript',
       skillClusters: data.skillClusters,
       currentTopicId: null,
       currentActivity: null,
