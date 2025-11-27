@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -293,10 +294,61 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
 
   if (loading) {
     return (
-      <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl">
-        <CardContent className="flex items-center justify-center py-24">
-          <Spinner className="w-8 h-8 text-primary" />
-          <span className="ml-3 text-muted-foreground font-medium">Loading models...</span>
+      <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+        <CardHeader className="p-6 md:p-8 border-b border-border/50">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64 rounded-lg" />
+            <Skeleton className="h-4 w-96 rounded-lg" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-8 p-6 md:p-8">
+          {/* Tier Cards Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="p-5 rounded-3xl border-2 border-transparent bg-secondary/50 h-48 flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <Skeleton className="h-10 w-10 rounded-2xl" />
+                  <Skeleton className="h-6 w-20 rounded-full" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-32 rounded-lg" />
+                  <Skeleton className="h-4 w-full rounded-lg" />
+                </div>
+                <div className="space-y-2 pt-2">
+                  <Skeleton className="h-4 w-full rounded-lg" />
+                  <Skeleton className="h-4 w-3/4 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Task Mappings Skeleton */}
+          <div className="p-6 bg-secondary/30 rounded-3xl space-y-4">
+            <Skeleton className="h-5 w-32 rounded-lg" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-xl" />
+              ))}
+            </div>
+          </div>
+
+          {/* Active Tier Config Skeleton */}
+          <div className="space-y-6 p-6 md:p-8 border border-border/50 rounded-3xl bg-background/50">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-10 w-10 rounded-2xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-48 rounded-lg" />
+                <Skeleton className="h-4 w-64 rounded-lg" />
+              </div>
+            </div>
+            <div className="flex justify-center">
+              <Skeleton className="h-10 w-64 rounded-full" />
+            </div>
+            <div className="space-y-4">
+              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-64 w-full rounded-xl" />
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
