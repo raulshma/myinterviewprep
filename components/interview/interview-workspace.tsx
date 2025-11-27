@@ -39,6 +39,7 @@ import type {
   ModuleType,
 } from "@/lib/db/schemas/interview";
 import Link from "next/link";
+import { FeedbackSection } from "@/components/interview/feedback-section";
 
 const MarkdownRenderer = dynamic(
   () => import("@/components/streaming/markdown-renderer"),
@@ -93,7 +94,7 @@ async function processSSEStream<T>(
             } else if (event.type === "error") {
               onError(event.error || "Unknown error");
             }
-          } catch { }
+          } catch {}
         }
       }
     }
@@ -151,17 +152,29 @@ export function InterviewWorkspace({
   const [interview, setInterview] = useState<Interview>(initialInterview);
 
   const excludedModules = initialInterview.excludedModules ?? [];
-  
-  const getInitialStatus = (module: ModuleKey, hasContent: boolean): StreamingCardStatus => {
+
+  const getInitialStatus = (
+    module: ModuleKey,
+    hasContent: boolean
+  ): StreamingCardStatus => {
     if (excludedModules.includes(module)) return "complete"; // Treat excluded as complete (won't render)
     return hasContent ? "complete" : "idle";
   };
 
   const [moduleStatus, setModuleStatus] = useState<ModuleStatus>({
-    openingBrief: getInitialStatus("openingBrief", !!initialInterview.modules.openingBrief),
-    revisionTopics: getInitialStatus("revisionTopics", initialInterview.modules.revisionTopics.length > 0),
+    openingBrief: getInitialStatus(
+      "openingBrief",
+      !!initialInterview.modules.openingBrief
+    ),
+    revisionTopics: getInitialStatus(
+      "revisionTopics",
+      initialInterview.modules.revisionTopics.length > 0
+    ),
     mcqs: getInitialStatus("mcqs", initialInterview.modules.mcqs.length > 0),
-    rapidFire: getInitialStatus("rapidFire", initialInterview.modules.rapidFire.length > 0),
+    rapidFire: getInitialStatus(
+      "rapidFire",
+      initialInterview.modules.rapidFire.length > 0
+    ),
   });
 
   const [streamingBrief, setStreamingBrief] = useState<string>("");
@@ -341,16 +354,20 @@ export function InterviewWorkspace({
     const excluded = interview.excludedModules ?? [];
     const hasNoContent =
       (excluded.includes("openingBrief") || !interview.modules.openingBrief) &&
-      (excluded.includes("revisionTopics") || interview.modules.revisionTopics.length === 0) &&
+      (excluded.includes("revisionTopics") ||
+        interview.modules.revisionTopics.length === 0) &&
       (excluded.includes("mcqs") || interview.modules.mcqs.length === 0) &&
-      (excluded.includes("rapidFire") || interview.modules.rapidFire.length === 0);
+      (excluded.includes("rapidFire") ||
+        interview.modules.rapidFire.length === 0);
 
     // Check if there's at least one non-excluded module without content
     const needsGeneration =
       (!excluded.includes("openingBrief") && !interview.modules.openingBrief) ||
-      (!excluded.includes("revisionTopics") && interview.modules.revisionTopics.length === 0) ||
+      (!excluded.includes("revisionTopics") &&
+        interview.modules.revisionTopics.length === 0) ||
       (!excluded.includes("mcqs") && interview.modules.mcqs.length === 0) ||
-      (!excluded.includes("rapidFire") && interview.modules.rapidFire.length === 0);
+      (!excluded.includes("rapidFire") &&
+        interview.modules.rapidFire.length === 0);
 
     if (needsGeneration) {
       generationStartedRef.current = true;
@@ -361,11 +378,20 @@ export function InterviewWorkspace({
   const generateAllModules = async () => {
     const concurrencyLimit = await getAIConcurrencyLimit();
     const excludedModules = interview.excludedModules ?? [];
-    
-    const allModules: ModuleKey[] = ["openingBrief", "revisionTopics", "mcqs", "rapidFire"];
-    const modulesToGenerate = allModules.filter(m => !excludedModules.includes(m));
-    
-    const moduleTasks = modulesToGenerate.map(module => () => handleGenerateModule(module));
+
+    const allModules: ModuleKey[] = [
+      "openingBrief",
+      "revisionTopics",
+      "mcqs",
+      "rapidFire",
+    ];
+    const modulesToGenerate = allModules.filter(
+      (m) => !excludedModules.includes(m)
+    );
+
+    const moduleTasks = modulesToGenerate.map(
+      (module) => () => handleGenerateModule(module)
+    );
     await runWithConcurrencyLimit(moduleTasks, concurrencyLimit);
   };
 
@@ -490,8 +516,6 @@ export function InterviewWorkspace({
     return Math.round((modules.filter(Boolean).length / 4) * 100);
   }, [interview]);
 
-
-
   const openingBrief = interview.modules.openingBrief;
   const revisionTopics =
     moduleStatus.revisionTopics === "streaming"
@@ -576,7 +600,7 @@ export function InterviewWorkspace({
               status={moduleStatus.openingBrief}
               onRetry={
                 moduleStatus.openingBrief === "error" ||
-                  (moduleStatus.openingBrief === "idle" && !openingBrief)
+                (moduleStatus.openingBrief === "idle" && !openingBrief)
                   ? () => handleGenerateModule("openingBrief")
                   : undefined
               }
@@ -588,7 +612,7 @@ export function InterviewWorkspace({
               onRegenerateWithInstructions={
                 moduleStatus.openingBrief === "complete"
                   ? (instructions) =>
-                    handleGenerateModule("openingBrief", instructions)
+                      handleGenerateModule("openingBrief", instructions)
                   : undefined
               }
               regenerateLabel="Regenerate"
@@ -654,8 +678,8 @@ export function InterviewWorkspace({
               count={revisionTopics.length}
               onRetry={
                 moduleStatus.revisionTopics === "error" ||
-                  (moduleStatus.revisionTopics === "idle" &&
-                    revisionTopics.length === 0)
+                (moduleStatus.revisionTopics === "idle" &&
+                  revisionTopics.length === 0)
                   ? () => handleGenerateModule("revisionTopics")
                   : undefined
               }
@@ -667,7 +691,7 @@ export function InterviewWorkspace({
               onRegenerateWithInstructions={
                 moduleStatus.revisionTopics === "complete"
                   ? (instructions) =>
-                    handleAddMore("revisionTopics", instructions)
+                      handleAddMore("revisionTopics", instructions)
                   : undefined
               }
             >
@@ -691,12 +715,13 @@ export function InterviewWorkspace({
                         <div className="flex items-center justify-between p-4 rounded-2xl border border-border/50 bg-background/50 hover:border-primary/30 hover:bg-background hover:shadow-md transition-all">
                           <div className="flex items-center gap-4">
                             <div
-                              className={`w-2.5 h-2.5 rounded-full ${topic.confidence === "low"
-                                ? "bg-red-500"
-                                : topic.confidence === "medium"
+                              className={`w-2.5 h-2.5 rounded-full ${
+                                topic.confidence === "low"
+                                  ? "bg-red-500"
+                                  : topic.confidence === "medium"
                                   ? "bg-yellow-500"
                                   : "bg-green-500"
-                                }`}
+                              }`}
                             />
                             <div>
                               <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
@@ -731,7 +756,7 @@ export function InterviewWorkspace({
               count={mcqs.length}
               onRetry={
                 moduleStatus.mcqs === "error" ||
-                  (moduleStatus.mcqs === "idle" && mcqs.length === 0)
+                (moduleStatus.mcqs === "idle" && mcqs.length === 0)
                   ? () => handleGenerateModule("mcqs")
                   : undefined
               }
@@ -840,10 +865,11 @@ export function InterviewWorkspace({
                             return (
                               <div
                                 key={optIndex}
-                                className={`p-3 rounded-xl border text-sm transition-all cursor-pointer flex items-center ${isRevealed && isCorrect
-                                  ? "border-green-500/30 bg-green-500/10 text-foreground font-medium"
-                                  : "border-border/50 text-muted-foreground hover:border-primary/30 hover:bg-secondary/30"
-                                  }`}
+                                className={`p-3 rounded-xl border text-sm transition-all cursor-pointer flex items-center ${
+                                  isRevealed && isCorrect
+                                    ? "border-green-500/30 bg-green-500/10 text-foreground font-medium"
+                                    : "border-border/50 text-muted-foreground hover:border-primary/30 hover:bg-secondary/30"
+                                }`}
                                 onClick={() =>
                                   !showMcqAnswers && toggleMcqAnswer(mcqId)
                                 }
@@ -873,7 +899,7 @@ export function InterviewWorkspace({
               count={rapidFire.length}
               onRetry={
                 moduleStatus.rapidFire === "error" ||
-                  (moduleStatus.rapidFire === "idle" && rapidFire.length === 0)
+                (moduleStatus.rapidFire === "idle" && rapidFire.length === 0)
                   ? () => handleGenerateModule("rapidFire")
                   : undefined
               }
@@ -961,10 +987,11 @@ export function InterviewWorkspace({
                                 {rf.question}
                               </p>
                               <div
-                                className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${isRevealed
-                                  ? "bg-primary/10 text-primary"
-                                  : "bg-secondary text-muted-foreground group-hover:bg-primary/5"
-                                  }`}
+                                className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${
+                                  isRevealed
+                                    ? "bg-primary/10 text-primary"
+                                    : "bg-secondary text-muted-foreground group-hover:bg-primary/5"
+                                }`}
                               >
                                 {isRevealed ? (
                                   <EyeOff className="w-3.5 h-3.5" />
@@ -1000,6 +1027,9 @@ export function InterviewWorkspace({
                 </div>
               )}
             </ModuleCard>
+
+            {/* Interview Feedback Section */}
+            <FeedbackSection interviewId={interviewId} />
           </main>
 
           {/* Floating Auto-scroll Control */}
@@ -1014,10 +1044,11 @@ export function InterviewWorkspace({
                 <Button
                   onClick={() => setAutoScrollEnabled(!autoScrollEnabled)}
                   size="lg"
-                  className={`rounded-full shadow-lg transition-all duration-300 ${autoScrollEnabled
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
-                    }`}
+                  className={`rounded-full shadow-lg transition-all duration-300 ${
+                    autoScrollEnabled
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  }`}
                 >
                   {autoScrollEnabled ? (
                     <>

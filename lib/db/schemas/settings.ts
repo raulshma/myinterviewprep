@@ -75,6 +75,12 @@ export const TASK_TIER_MAPPING: Record<string, ModelTier> = {
 
   // Low capability - simple parsing and extraction
   parse_interview_prompt: "low",
+
+  // Feedback feature tasks
+  analyze_feedback_entry: "high",      // Complex skill gap analysis
+  aggregate_feedback_analysis: "high", // Comprehensive weakness analysis
+  generate_improvement_plan: "high",   // Strategic planning
+  stream_improvement_activity: "medium", // Activity generation (varies by type)
 } as const;
 
 export type AITask = keyof typeof TASK_TIER_MAPPING;
@@ -89,4 +95,9 @@ export const TASK_DESCRIPTIONS: Record<string, string> = {
   generate_mcqs: "Generate multiple choice questions",
   generate_rapid_fire: "Generate rapid-fire Q&A pairs",
   parse_interview_prompt: "Parse natural language to structured data",
+  // Feedback feature tasks
+  analyze_feedback_entry: "Analyze interview feedback to identify skill gaps",
+  aggregate_feedback_analysis: "Aggregate feedback entries into weakness analysis",
+  generate_improvement_plan: "Generate targeted improvement plan for skill gaps",
+  stream_improvement_activity: "Stream improvement activity content in real-time",
 };

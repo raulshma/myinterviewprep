@@ -26,6 +26,7 @@ export function Header() {
   const [isPending, startTransition] = useTransition();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -171,8 +172,13 @@ export function Header() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full h-10 w-10 border border-border/50"
+                      className="relative rounded-full h-10 w-10 border border-border/50"
                     >
+                      {isDashboardLoading && (
+                        <div className="absolute inset-0 rounded-full">
+                          <div className="absolute inset-0 rounded-full animate-spin border-2 border-transparent border-t-primary border-r-primary" />
+                        </div>
+                      )}
                       <Avatar className="h-8 w-8">
                         <AvatarImage
                           src={user?.imageUrl}
@@ -200,6 +206,7 @@ export function Header() {
 
                     <DropdownMenuItem
                       onClick={() => {
+                        setIsDashboardLoading(true);
                         if (
                           typeof document !== "undefined" &&
                           "startViewTransition" in document

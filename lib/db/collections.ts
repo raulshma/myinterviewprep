@@ -9,6 +9,10 @@ export const COLLECTIONS = {
   SETTINGS: 'settings',
   TOPIC_CHATS: 'topic_chats',
   LEARNING_PATHS: 'learning_paths',
+  FEEDBACK_ENTRIES: 'feedback_entries',
+  WEAKNESS_ANALYSES: 'weakness_analyses',
+  IMPROVEMENT_PLANS: 'improvement_plans',
+  PROGRESS_HISTORY: 'progress_history',
 } as const;
 
 // Type definitions for documents (will be replaced with Zod inferred types later)
@@ -223,4 +227,111 @@ export interface LearningPathDocument extends Document {
 export async function getLearningPathsCollection(): Promise<Collection<LearningPathDocument>> {
   const db = await getDb();
   return db.collection<LearningPathDocument>(COLLECTIONS.LEARNING_PATHS);
+}
+
+// Feedback feature documents
+export interface FeedbackEntryDocument extends Document {
+  _id: string;
+  interviewId: string;
+  userId: string;
+  question: string;
+  attemptedAnswer?: string;
+  difficultyRating: number;
+  topicHints: string[];
+  skillClusters: Array<
+    | 'dsa'
+    | 'oop'
+    | 'system-design'
+    | 'debugging'
+    | 'databases'
+    | 'api-design'
+    | 'testing'
+    | 'devops'
+    | 'frontend'
+    | 'backend'
+    | 'security'
+    | 'performance'
+  >;
+  analysisConfidence?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface WeaknessAnalysisDocument extends Document {
+  _id: string;
+  userId: string;
+  skillGaps: Array<{
+    skillCluster: string;
+    gapScore: number;
+    frequency: number;
+    confidence: number;
+    relatedFeedbackIds: string[];
+  }>;
+  lastAnalyzedAt: Date;
+  totalFeedbackCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ImprovementPlanDocument extends Document {
+  _id: string;
+  userId: string;
+  skillGaps: Array<{
+    skillCluster: string;
+    gapScore: number;
+    frequency: number;
+    confidence: number;
+    relatedFeedbackIds: string[];
+  }>;
+  activities: Array<{
+    id: string;
+    skillGapId: string;
+    skillCluster: string;
+    activityType: string;
+    difficulty: number;
+    content: unknown;
+    status: 'pending' | 'in_progress' | 'completed';
+    completedAt?: Date;
+  }>;
+  progress: {
+    totalActivities: number;
+    completedActivities: number;
+    skillProgress: Record<string, number>;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export async function getFeedbackEntriesCollection(): Promise<Collection<FeedbackEntryDocument>> {
+  const db = await getDb();
+  return db.collection<FeedbackEntryDocument>(COLLECTIONS.FEEDBACK_ENTRIES);
+}
+
+export async function getWeaknessAnalysesCollection(): Promise<Collection<WeaknessAnalysisDocument>> {
+  const db = await getDb();
+  return db.collection<WeaknessAnalysisDocument>(COLLECTIONS.WEAKNESS_ANALYSES);
+}
+
+export async function getImprovementPlansCollection(): Promise<Collection<ImprovementPlanDocument>> {
+  const db = await getDb();
+  return db.collection<ImprovementPlanDocument>(COLLECTIONS.IMPROVEMENT_PLANS);
+}
+
+export interface ProgressHistoryDocument extends Document {
+  _id: string;
+  userId: string;
+  entries: Array<{
+    skillCluster: string;
+    gapScoreBefore: number;
+    gapScoreAfter: number;
+    activitiesCompleted: number;
+    timestamp: Date;
+  }>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export async function getProgressHistoryCollection(): Promise<Collection<ProgressHistoryDocument>> {
+  const db = await getDb();
+  return db.collection<ProgressHistoryDocument>(COLLECTIONS.PROGRESS_HISTORY);
 }

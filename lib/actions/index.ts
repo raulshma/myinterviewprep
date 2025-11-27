@@ -87,3 +87,17 @@ export {
   deactivateLearningPath,
   getUserLearningPaths,
 } from "./learning-path";
+
+// Feedback actions
+export {
+  createFeedback,
+  getInterviewFeedback,
+  deleteFeedback,
+  getWeaknessAnalysis,
+  recordActivityCompletion,
+  checkAIOperationAllowed,
+  getFeedbackById,
+  getUserFeedback,
+  type CreateFeedbackInput,
+  type RecordActivityCompletionInput,
+} from "./feedback";
