@@ -20,13 +20,13 @@ export function AdminPageContent({ children }: AdminPageContentProps) {
       description: 'Monitor platform health, manage users, and configure AI systems',
       actions: (
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/20">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-xs text-green-600 dark:text-green-400 font-mono">Systems Online</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-sm">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Systems Online</span>
           </div>
-          <Badge variant="outline" className="px-3 py-1.5 font-mono text-xs">
-            <Sparkles className="w-3 h-3 mr-1" />
-            Admin
+          <Badge variant="secondary" className="px-3 py-1.5 rounded-full bg-secondary/50 backdrop-blur-sm border border-border/50">
+            <Sparkles className="w-3 h-3 mr-1.5 text-primary" />
+            Admin Mode
           </Badge>
         </div>
       ),

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Calendar,
   MoreHorizontal,
@@ -13,37 +13,37 @@ import {
   CheckCircle2,
   Clock,
   Sparkles,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   ResponsiveDropdown,
   ResponsiveDropdownItem,
   ResponsiveDropdownSeparator,
-} from "@/components/ui/responsive-dropdown";
-import { ViewTransitionLink } from "@/components/transitions/view-transition-link";
-import type { DashboardInterviewData } from "@/lib/actions/dashboard";
+} from '@/components/ui/responsive-dropdown';
+import { ViewTransitionLink } from '@/components/transitions/view-transition-link';
+import type { DashboardInterviewData } from '@/lib/actions/dashboard';
 
 interface InterviewCardNewProps {
   interview: DashboardInterviewData;
-  viewMode: "grid" | "list";
+  viewMode: 'grid' | 'list';
   onDelete: () => void;
   isDeleting?: boolean;
 }
 
 const statusConfig = {
   upcoming: {
-    label: "New",
+    label: 'New',
     icon: Sparkles,
-    className: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+    className: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
   },
   active: {
-    label: "In Progress",
+    label: 'In Progress',
     icon: Clock,
-    className: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+    className: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
   },
   completed: {
-    label: "Completed",
+    label: 'Completed',
     icon: CheckCircle2,
-    className: "bg-green-500/10 text-green-500 border-green-500/20",
+    className: 'bg-green-500/10 text-green-500 border-green-500/20',
   },
 };
 
@@ -57,22 +57,22 @@ export function InterviewCardNew({
   const StatusIcon = status.icon;
 
   const formattedDate = new Date(interview.createdAt).toLocaleDateString(
-    "en-US",
+    'en-US',
     {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
     }
   );
 
-  if (viewMode === "list") {
+  if (viewMode === 'list') {
     return (
       <ViewTransitionLink
         href={`/interview/${interview._id}`}
         viewTransitionName={`interview-card-${interview._id}`}
       >
         <div
-          className="group bg-card border border-border hover:border-primary/30 transition-all duration-300 p-4 flex items-center gap-4 overflow-hidden"
+          className="group relative overflow-hidden rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-300 p-4 flex items-center gap-4"
           style={
             {
               viewTransitionName: `interview-card-${interview._id}`,
@@ -80,19 +80,19 @@ export function InterviewCardNew({
           }
         >
           {/* Icon */}
-          <div className="w-10 h-10 bg-secondary flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
-            <Briefcase className="w-4 h-4 text-foreground" />
+          <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+            <Briefcase className="w-5 h-5 text-foreground" />
           </div>
 
           {/* Content */}
-          <div className="flex-1 min-w-0 overflow-hidden">
-            <div className="flex items-center gap-2 mb-0.5">
-              <h3 className="font-mono text-foreground truncate flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold text-foreground truncate">
                 {interview.jobDetails.title}
               </h3>
               <Badge
                 variant="outline"
-                className={`text-xs shrink-0 ${status.className}`}
+                className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 ${status.className}`}
               >
                 <StatusIcon className="w-3 h-3 mr-1" />
                 {status.label}
@@ -104,58 +104,56 @@ export function InterviewCardNew({
           </div>
 
           {/* Progress */}
-          <div className="hidden sm:flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-4 mr-4">
             <div className="text-right">
-              <p className="text-xs text-muted-foreground">Progress</p>
-              <p className="text-sm font-mono text-foreground">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Progress</p>
+              <p className="text-sm font-mono font-medium text-foreground">
                 {interview.progress}%
               </p>
             </div>
-            <div className="w-24 h-1.5 bg-muted">
+            <div className="w-24 h-1.5 bg-secondary rounded-full overflow-hidden">
               <div
-                className="h-full bg-foreground transition-all"
+                className="h-full bg-foreground rounded-full transition-all"
                 style={{ width: `${interview.progress}%` }}
               />
             </div>
           </div>
 
-          {/* Date */}
-          <div className="hidden md:block text-right">
-            <p className="text-xs text-muted-foreground">{formattedDate}</p>
-          </div>
-
           {/* Actions */}
-          <ResponsiveDropdown
-            title="Actions"
-            trigger={
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 min-h-[44px] min-w-[44px] shrink-0"
-                onClick={(e) => e.preventDefault()}
-              >
-                <MoreHorizontal className="w-4 h-4" />
-              </Button>
-            }
-          >
-            <ResponsiveDropdownItem icon={<Copy className="w-4 h-4" />}>
-              Duplicate
-            </ResponsiveDropdownItem>
-            <ResponsiveDropdownItem icon={<Share2 className="w-4 h-4" />}>
-              Share
-            </ResponsiveDropdownItem>
-            <ResponsiveDropdownSeparator />
-            <ResponsiveDropdownItem
-              variant="destructive"
-              disabled={isDeleting}
-              icon={<Trash2 className="w-4 h-4" />}
-              onClick={onDelete}
+          <div className="flex items-center gap-2">
+            <div className="hidden md:block text-right mr-2">
+              <p className="text-xs text-muted-foreground">{formattedDate}</p>
+            </div>
+            <ResponsiveDropdown
+              title="Actions"
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              }
             >
-              Delete
-            </ResponsiveDropdownItem>
-          </ResponsiveDropdown>
-
-          <ArrowUpRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+              <ResponsiveDropdownItem icon={<Copy className="w-4 h-4" />}>
+                Duplicate
+              </ResponsiveDropdownItem>
+              <ResponsiveDropdownItem icon={<Share2 className="w-4 h-4" />}>
+                Share
+              </ResponsiveDropdownItem>
+              <ResponsiveDropdownSeparator />
+              <ResponsiveDropdownItem
+                variant="destructive"
+                disabled={isDeleting}
+                icon={<Trash2 className="w-4 h-4" />}
+                onClick={onDelete}
+              >
+                Delete
+              </ResponsiveDropdownItem>
+            </ResponsiveDropdown>
+          </div>
         </div>
       </ViewTransitionLink>
     );
@@ -167,7 +165,7 @@ export function InterviewCardNew({
       viewTransitionName={`interview-card-${interview._id}`}
     >
       <div
-        className="group bg-card border border-border hover:border-primary/30 transition-all duration-300 h-full flex flex-col"
+        className="group relative overflow-hidden rounded-3xl bg-card border border-border hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-500 h-full flex flex-col"
         style={
           {
             viewTransitionName: `interview-card-${interview._id}`,
@@ -175,15 +173,15 @@ export function InterviewCardNew({
         }
       >
         {/* Header */}
-        <div className="p-5 pb-4 border-b border-border">
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-10 h-10 bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-              <Briefcase className="w-4 h-4 text-foreground" />
+        <div className="p-6 pb-4">
+          <div className="flex items-start justify-between mb-4">
+            <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors duration-500">
+              <Briefcase className="w-6 h-6 text-foreground group-hover:text-primary transition-colors" />
             </div>
             <div className="flex items-center gap-2">
               <Badge
                 variant="outline"
-                className={`text-xs ${status.className}`}
+                className={`text-[10px] px-2.5 py-1 rounded-full ${status.className}`}
               >
                 <StatusIcon className="w-3 h-3 mr-1" />
                 {status.label}
@@ -194,7 +192,7 @@ export function InterviewCardNew({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 min-h-[44px] min-w-[44px] -mr-2"
+                    className="h-8 w-8 rounded-full -mr-2"
                     onClick={(e) => e.preventDefault()}
                   >
                     <MoreHorizontal className="w-4 h-4" />
@@ -220,7 +218,7 @@ export function InterviewCardNew({
             </div>
           </div>
 
-          <h3 className="font-mono text-foreground mb-1 truncate group-hover:text-primary transition-colors">
+          <h3 className="text-xl font-bold text-foreground mb-1 truncate group-hover:text-primary transition-colors">
             {interview.jobDetails.title}
           </h3>
           <p className="text-sm text-muted-foreground truncate">
@@ -229,56 +227,55 @@ export function InterviewCardNew({
         </div>
 
         {/* Content */}
-        <div className="p-5 pt-4 flex-1 flex flex-col">
+        <div className="p-6 pt-2 flex-1 flex flex-col">
           {/* Topics */}
-          <div className="flex flex-wrap gap-1.5 mb-4 flex-1">
+          <div className="flex flex-wrap gap-1.5 mb-6 flex-1 content-start">
             {interview.topics.slice(0, 3).map((topic) => (
               <Badge
                 key={topic}
                 variant="secondary"
-                className="font-mono text-xs truncate max-w-[140px]"
+                className="rounded-md px-2 py-1 text-xs font-normal bg-secondary/50"
               >
                 {topic}
               </Badge>
             ))}
             {interview.topics.length > 3 && (
-              <Badge variant="secondary" className="font-mono text-xs shrink-0">
+              <Badge variant="secondary" className="rounded-md px-2 py-1 text-xs font-normal bg-secondary/50">
                 +{interview.topics.length - 3}
               </Badge>
             )}
             {interview.topics.length === 0 && (
-              <Badge
-                variant="outline"
-                className="font-mono text-xs text-muted-foreground border-dashed"
-              >
-                No topics yet
-              </Badge>
+              <span className="text-xs text-muted-foreground italic">
+                No topics added
+              </span>
             )}
           </div>
 
           {/* Progress bar */}
           <div className="mt-auto">
             <div className="flex items-center justify-between text-xs mb-2">
-              <span className="text-muted-foreground">Progress</span>
-              <span className="font-mono text-foreground">
+              <span className="text-muted-foreground font-medium">Progress</span>
+              <span className="font-mono font-bold text-foreground">
                 {interview.progress}%
               </span>
             </div>
-            <div className="h-1.5 bg-muted overflow-hidden">
+            <div className="h-2 bg-secondary rounded-full overflow-hidden">
               <div
-                className="h-full bg-foreground transition-all duration-500"
+                className="h-full bg-foreground rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${interview.progress}%` }}
               />
             </div>
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-border/50">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Calendar className="w-3 h-3" />
+              <Calendar className="w-3.5 h-3.5" />
               {formattedDate}
             </span>
-            <ArrowUpRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="w-8 h-8 rounded-full bg-secondary/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
+              <ArrowUpRight className="w-4 h-4 text-foreground" />
+            </div>
           </div>
         </div>
       </div>

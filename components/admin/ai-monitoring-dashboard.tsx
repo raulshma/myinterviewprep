@@ -6,15 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  AlertTriangle, Clock, Cpu, Database, DollarSign, 
-  Filter, RefreshCw, Zap, AlertCircle
+import {
+  AlertTriangle, Clock, Cpu, Database, DollarSign,
+  Filter, RefreshCw, Zap, AlertCircle, TrendingUp
 } from 'lucide-react';
 import { AILogViewer } from './ai-log-viewer';
-import type { 
-  AILogWithDetails, 
-  AdminStats, 
-  ErrorStatsData, 
+import type {
+  AILogWithDetails,
+  AdminStats,
+  ErrorStatsData,
   LatencyPercentiles,
   HourlyUsageData,
   CostBreakdown,
@@ -55,8 +55,8 @@ function formatNumber(num: number): string {
   return num.toString();
 }
 
-export function AIMonitoringDashboard({ 
-  initialLogs, 
+export function AIMonitoringDashboard({
+  initialLogs,
   initialStats,
   initialLogsCount,
   usageByAction,
@@ -129,12 +129,12 @@ export function AIMonitoringDashboard({
       limit: PAGE_SIZE,
       skip: (page - 1) * PAGE_SIZE,
     };
-    
+
     const [newLogs, count] = await Promise.all([
       getAILogs(filterParams),
       getAILogsCount(filterParams),
     ]);
-    
+
     return { logs: newLogs, count };
   };
 
@@ -167,7 +167,7 @@ export function AIMonitoringDashboard({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Overview Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -175,50 +175,56 @@ export function AIMonitoringDashboard({
           value={formatCost(initialStats.totalCost)}
           icon={DollarSign}
           color="text-green-500"
+          bgColor="bg-green-500/10"
         />
         <StatCard
           label="Error Rate"
           value={`${initialStats.errorRate}%`}
           icon={AlertTriangle}
-          color={initialStats.errorRate > 5 ? 'text-red-500' : 'text-yellow-500'}
+          color={initialStats.errorRate > 5 ? 'text-red-500' : 'text-amber-500'}
+          bgColor={initialStats.errorRate > 5 ? 'bg-red-500/10' : 'bg-amber-500/10'}
         />
         <StatCard
           label="Avg Latency"
           value={formatLatency(initialStats.avgLatencyMs)}
           icon={Clock}
           color="text-blue-500"
+          bgColor="bg-blue-500/10"
         />
         <StatCard
           label="Time to First Token"
           value={formatLatency(initialStats.avgTimeToFirstToken)}
           icon={Zap}
           color="text-purple-500"
+          bgColor="bg-purple-500/10"
         />
       </div>
 
-      <Tabs defaultValue="logs" className="space-y-4">
-        <div className="overflow-x-auto">
-          <TabsList className="flex-nowrap">
-            <TabsTrigger value="logs">Request Logs</TabsTrigger>
-            <TabsTrigger value="performance">Performance</TabsTrigger>
-            <TabsTrigger value="errors">Errors</TabsTrigger>
-            <TabsTrigger value="costs">Costs</TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="logs" className="space-y-6">
+        <div className="flex justify-center">
+          <div className="bg-secondary/50 backdrop-blur-xl p-1.5 rounded-full inline-flex">
+            <TabsList className="bg-transparent gap-1 h-auto p-0">
+              <TabsTrigger value="logs" className="rounded-full px-4 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">Request Logs</TabsTrigger>
+              <TabsTrigger value="performance" className="rounded-full px-4 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">Performance</TabsTrigger>
+              <TabsTrigger value="errors" className="rounded-full px-4 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">Errors</TabsTrigger>
+              <TabsTrigger value="costs" className="rounded-full px-4 py-2 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all">Costs</TabsTrigger>
+            </TabsList>
+          </div>
         </div>
 
         {/* Request Logs Tab */}
-        <TabsContent value="logs">
-          <Card className="bg-card border-border">
-            <CardHeader className="p-4 md:p-6">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <TabsContent value="logs" className="mt-0 focus-visible:outline-none">
+          <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+            <CardHeader className="border-b border-border/50 p-6 md:p-8">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div>
-                  <CardTitle className="font-mono">AI Request Logs</CardTitle>
+                  <CardTitle className="text-xl font-bold">AI Request Logs</CardTitle>
                   <CardDescription>Full trace of all AI generation requests</CardDescription>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-3">
                   <Select value={filters.action} onValueChange={(v) => handleFilterChange('action', v)}>
-                    <SelectTrigger className="w-full sm:w-40 min-h-[44px]">
-                      <Filter className="w-4 h-4 mr-2" />
+                    <SelectTrigger className="w-full sm:w-40 h-10 rounded-xl bg-secondary/50 border-transparent focus:bg-background">
+                      <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
                       <SelectValue placeholder="Action" />
                     </SelectTrigger>
                     <SelectContent>
@@ -232,7 +238,7 @@ export function AIMonitoringDashboard({
                     </SelectContent>
                   </Select>
                   <Select value={filters.status} onValueChange={(v) => handleFilterChange('status', v)}>
-                    <SelectTrigger className="w-full sm:w-32 min-h-[44px]">
+                    <SelectTrigger className="w-full sm:w-32 h-10 rounded-xl bg-secondary/50 border-transparent focus:bg-background">
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -245,7 +251,7 @@ export function AIMonitoringDashboard({
                   </Select>
                   {models.length > 0 && (
                     <Select value={filters.model} onValueChange={(v) => handleFilterChange('model', v)}>
-                      <SelectTrigger className="w-full sm:w-48 min-h-[44px]">
+                      <SelectTrigger className="w-full sm:w-48 h-10 rounded-xl bg-secondary/50 border-transparent focus:bg-background">
                         <SelectValue placeholder="Model" />
                       </SelectTrigger>
                       <SelectContent>
@@ -256,16 +262,16 @@ export function AIMonitoringDashboard({
                       </SelectContent>
                     </Select>
                   )}
-                  <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isPending} className="min-h-[44px] min-w-[44px]">
+                  <Button variant="outline" size="icon" onClick={handleRefresh} disabled={isPending} className="h-10 w-10 rounded-xl border-transparent bg-secondary/50 hover:bg-secondary">
                     <RefreshCw className={`w-4 h-4 ${isPending ? 'animate-spin' : ''}`} />
                   </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {logsCount > 0 ? (
-                <AILogViewer 
-                  logs={logs} 
+                <AILogViewer
+                  logs={logs}
                   totalCount={logsCount}
                   currentPage={currentPage}
                   pageSize={PAGE_SIZE}
@@ -280,20 +286,23 @@ export function AIMonitoringDashboard({
         </TabsContent>
 
         {/* Performance Tab */}
-        <TabsContent value="performance">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="performance" className="mt-0 focus-visible:outline-none">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Latency Percentiles */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="font-mono text-sm">Latency Percentiles</CardTitle>
+            <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+              <CardHeader className="p-6 pb-2">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-500" />
+                  Latency Percentiles
+                </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6 pt-4">
                 {latencyPercentiles ? (
-                  <div className="space-y-3">
-                    <PercentileBar label="P50" value={latencyPercentiles.p50} max={latencyPercentiles.p99} />
-                    <PercentileBar label="P90" value={latencyPercentiles.p90} max={latencyPercentiles.p99} />
-                    <PercentileBar label="P95" value={latencyPercentiles.p95} max={latencyPercentiles.p99} />
-                    <PercentileBar label="P99" value={latencyPercentiles.p99} max={latencyPercentiles.p99} />
+                  <div className="space-y-4">
+                    <PercentileBar label="P50" value={latencyPercentiles.p50} max={latencyPercentiles.p99} color="bg-blue-500" />
+                    <PercentileBar label="P90" value={latencyPercentiles.p90} max={latencyPercentiles.p99} color="bg-blue-600" />
+                    <PercentileBar label="P95" value={latencyPercentiles.p95} max={latencyPercentiles.p99} color="bg-indigo-500" />
+                    <PercentileBar label="P99" value={latencyPercentiles.p99} max={latencyPercentiles.p99} color="bg-purple-500" />
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">Loading...</p>
@@ -302,29 +311,32 @@ export function AIMonitoringDashboard({
             </Card>
 
             {/* Usage by Action */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="font-mono text-sm">Usage by Action</CardTitle>
+            <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+              <CardHeader className="p-6 pb-2">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-amber-500" />
+                  Usage by Action
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+              <CardContent className="p-6 pt-4">
+                <div className="space-y-4">
                   {usageByAction.length > 0 ? (
                     usageByAction.map((item) => {
                       const maxCount = Math.max(...usageByAction.map(u => u.count));
                       const percentage = maxCount > 0 ? (item.count / maxCount) * 100 : 0;
                       return (
-                        <div key={item.action} className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="font-mono text-xs min-w-[120px]">
+                        <div key={item.action} className="space-y-1.5">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium text-foreground">
                               {item.action.replace(/_/g, ' ')}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">{formatLatency(item.avgLatency)}</span>
+                            </span>
+                            <span className="text-muted-foreground">{item.count} reqs</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-24 h-2 bg-muted rounded">
-                              <div className="h-full bg-foreground rounded" style={{ width: `${percentage}%` }} />
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 h-2 bg-secondary rounded-full overflow-hidden">
+                              <div className="h-full bg-amber-500 rounded-full" style={{ width: `${percentage}%` }} />
                             </div>
-                            <span className="text-xs text-muted-foreground w-10 text-right">{item.count}</span>
+                            <span className="text-xs font-mono text-muted-foreground w-12 text-right">{formatLatency(item.avgLatency)}</span>
                           </div>
                         </div>
                       );
@@ -337,24 +349,30 @@ export function AIMonitoringDashboard({
             </Card>
 
             {/* Hourly Usage */}
-            <Card className="bg-card border-border md:col-span-2">
-              <CardHeader>
-                <CardTitle className="font-mono text-sm">Hourly Request Distribution</CardTitle>
+            <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden md:col-span-2">
+              <CardHeader className="p-6 pb-2">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-green-500" />
+                  Hourly Request Distribution
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-end gap-1 h-32">
+              <CardContent className="p-6 pt-4">
+                <div className="flex items-end gap-1 h-40 pt-4">
                   {hourlyUsage.map((h) => {
                     const maxRequests = Math.max(...hourlyUsage.map(x => x.requests), 1);
                     const height = (h.requests / maxRequests) * 100;
                     return (
-                      <div key={h.hour} className="flex-1 flex flex-col items-center gap-1">
-                        <div 
-                          className="w-full bg-foreground/20 rounded-t hover:bg-foreground/40 transition-colors"
-                          style={{ height: `${Math.max(height, 2)}%` }}
-                          title={`${h.hour}:00 - ${h.requests} requests, ${formatLatency(h.avgLatency)} avg`}
-                        />
+                      <div key={h.hour} className="flex-1 flex flex-col items-center gap-1 group">
+                        <div
+                          className="w-full bg-green-500/20 rounded-t-sm hover:bg-green-500/40 transition-colors relative"
+                          style={{ height: `${Math.max(height, 5)}%` }}
+                        >
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-sm opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                            {h.requests} reqs
+                          </div>
+                        </div>
                         {h.hour % 4 === 0 && (
-                          <span className="text-[10px] text-muted-foreground">{h.hour}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">{h.hour}h</span>
                         )}
                       </div>
                     );
@@ -364,31 +382,31 @@ export function AIMonitoringDashboard({
             </Card>
 
             {/* Slow Requests */}
-            <Card className="bg-card border-border md:col-span-2">
-              <CardHeader>
-                <CardTitle className="font-mono text-sm flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-yellow-500" />
+            <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden md:col-span-2">
+              <CardHeader className="p-6 pb-2">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-yellow-500" />
                   Slow Requests (&gt;5s)
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6 pt-4">
                 {slowRequests.length > 0 ? (
                   <div className="space-y-2">
                     {slowRequests.map((log) => (
-                      <div key={log._id} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                      <div key={log._id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-2xl hover:bg-secondary/50 transition-colors">
                         <div className="flex items-center gap-3">
-                          <Badge variant="outline" className="text-xs">{log.action}</Badge>
-                          <span className="text-xs text-muted-foreground">{log.model}</span>
+                          <Badge variant="outline" className="text-xs font-medium bg-background/50">{log.action}</Badge>
+                          <span className="text-xs text-muted-foreground font-mono">{log.model}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-muted-foreground">{log.formattedTimestamp}</span>
-                          <Badge variant="secondary" className="text-yellow-500">{formatLatency(log.latencyMs)}</Badge>
+                          <Badge variant="secondary" className="text-yellow-600 dark:text-yellow-400 bg-yellow-500/10 hover:bg-yellow-500/20">{formatLatency(log.latencyMs)}</Badge>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">No slow requests</p>
+                  <p className="text-sm text-muted-foreground text-center py-8">No slow requests detected</p>
                 )}
               </CardContent>
             </Card>
@@ -396,62 +414,65 @@ export function AIMonitoringDashboard({
         </TabsContent>
 
         {/* Errors Tab */}
-        <TabsContent value="errors">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="errors" className="mt-0 focus-visible:outline-none">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Error Stats */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="font-mono text-sm flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-500" />
+            <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+              <CardHeader className="p-6 pb-2">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-red-500" />
                   Error Breakdown (7 days)
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6 pt-4">
                 {errorStats.length > 0 ? (
                   <div className="space-y-3">
                     {errorStats.map((err) => (
-                      <div key={err.errorCode} className="flex items-center justify-between p-2 bg-red-500/10 rounded">
+                      <div key={err.errorCode} className="flex items-center justify-between p-3 bg-red-500/5 border border-red-500/10 rounded-2xl">
                         <div>
-                          <p className="font-mono text-sm">{err.errorCode}</p>
+                          <p className="font-mono text-sm font-medium text-red-600 dark:text-red-400">{err.errorCode}</p>
                           <p className="text-xs text-muted-foreground">
                             Last: {new Date(err.lastOccurred).toLocaleDateString()}
                           </p>
                         </div>
-                        <Badge variant="destructive">{err.count}</Badge>
+                        <Badge variant="destructive" className="rounded-full px-3">{err.count}</Badge>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <AlertCircle className="w-8 h-8 mx-auto text-green-500 mb-2" />
-                    <p className="text-sm text-muted-foreground">No errors in the last 7 days</p>
+                  <div className="text-center py-12">
+                    <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-3">
+                      <AlertCircle className="w-6 h-6 text-green-500" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">All Systems Operational</p>
+                    <p className="text-xs text-muted-foreground mt-1">No errors in the last 7 days</p>
                   </div>
                 )}
               </CardContent>
             </Card>
 
             {/* Recent Errors */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="font-mono text-sm">Recent Errors</CardTitle>
+            <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+              <CardHeader className="p-6 pb-2">
+                <CardTitle className="text-lg font-bold">Recent Errors</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6 pt-4">
                 {recentErrors.length > 0 ? (
                   <div className="space-y-2">
                     {recentErrors.map((log) => (
-                      <div key={log._id} className="p-2 bg-red-500/10 rounded">
-                        <div className="flex items-center justify-between mb-1">
-                          <Badge variant="outline" className="text-xs">{log.action}</Badge>
+                      <div key={log._id} className="p-3 bg-red-500/5 border border-red-500/10 rounded-2xl">
+                        <div className="flex items-center justify-between mb-2">
+                          <Badge variant="outline" className="text-xs bg-background/50">{log.action}</Badge>
                           <span className="text-xs text-muted-foreground">{log.formattedTimestamp}</span>
                         </div>
-                        <p className="text-xs text-red-400 font-mono truncate">
+                        <p className="text-xs text-red-600 dark:text-red-400 font-mono break-all">
                           {log.errorMessage || log.errorCode || 'Unknown error'}
                         </p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">No recent errors</p>
+                  <p className="text-sm text-muted-foreground text-center py-12">No recent errors</p>
                 )}
               </CardContent>
             </Card>
@@ -459,64 +480,76 @@ export function AIMonitoringDashboard({
         </TabsContent>
 
         {/* Costs Tab */}
-        <TabsContent value="costs">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="costs" className="mt-0 focus-visible:outline-none">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Cost by Model */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="font-mono text-sm flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-green-500" />
+            <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+              <CardHeader className="p-6 pb-2">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-green-500" />
                   Cost by Model
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6 pt-4">
                 {costBreakdown.length > 0 ? (
                   <div className="space-y-3">
                     {costBreakdown.map((item) => (
-                      <div key={item.model} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+                      <div key={item.model} className="flex items-center justify-between p-3 bg-secondary/30 rounded-2xl">
                         <div>
-                          <p className="font-mono text-sm">{item.model}</p>
+                          <p className="font-mono text-sm font-medium">{item.model}</p>
                           <p className="text-xs text-muted-foreground">{item.requestCount} requests</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-mono text-sm text-green-500">{formatCost(item.totalCost)}</p>
+                          <p className="font-mono text-sm font-bold text-green-600 dark:text-green-400">{formatCost(item.totalCost)}</p>
                           <p className="text-xs text-muted-foreground">{formatCost(item.avgCostPerRequest)}/req</p>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground text-center py-4">No cost data</p>
+                  <p className="text-sm text-muted-foreground text-center py-12">No cost data</p>
                 )}
               </CardContent>
             </Card>
 
             {/* Token Usage Summary */}
-            <Card className="bg-card border-border">
-              <CardHeader>
-                <CardTitle className="font-mono text-sm flex items-center gap-2">
-                  <Database className="w-4 h-4 text-blue-500" />
+            <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+              <CardHeader className="p-6 pb-2">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Database className="w-5 h-5 text-blue-500" />
                   Token Usage
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Input Tokens</span>
-                    <span className="font-mono text-green-500">{formatNumber(initialStats.totalInputTokens)}</span>
+              <CardContent className="p-6 pt-4">
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Input Tokens</span>
+                      <span className="font-mono font-medium text-foreground">{formatNumber(initialStats.totalInputTokens)}</span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-400 rounded-full" style={{ width: `${(initialStats.totalInputTokens / (initialStats.totalInputTokens + initialStats.totalOutputTokens)) * 100}%` }} />
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Output Tokens</span>
-                    <span className="font-mono text-blue-500">{formatNumber(initialStats.totalOutputTokens)}</span>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Output Tokens</span>
+                      <span className="font-mono font-medium text-foreground">{formatNumber(initialStats.totalOutputTokens)}</span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-purple-400 rounded-full" style={{ width: `${(initialStats.totalOutputTokens / (initialStats.totalInputTokens + initialStats.totalOutputTokens)) * 100}%` }} />
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Total Tokens</span>
-                    <span className="font-mono">{formatNumber(initialStats.totalInputTokens + initialStats.totalOutputTokens)}</span>
-                  </div>
-                  <div className="pt-2 border-t">
+
+                  <div className="pt-4 border-t border-border/50">
                     <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Total Tokens</span>
+                      <span className="font-mono text-foreground">{formatNumber(initialStats.totalInputTokens + initialStats.totalOutputTokens)}</span>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
                       <span className="text-sm font-medium">Estimated Total Cost</span>
-                      <span className="font-mono text-lg text-green-500">{formatCost(initialStats.totalCost)}</span>
+                      <span className="font-mono text-lg font-bold text-green-600 dark:text-green-400">{formatCost(initialStats.totalCost)}</span>
                     </div>
                   </div>
                 </div>
@@ -524,37 +557,38 @@ export function AIMonitoringDashboard({
             </Card>
 
             {/* Pricing Cache Status */}
-            <Card className="bg-card border-border md:col-span-2">
-              <CardHeader>
+            <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden md:col-span-2">
+              <CardHeader className="p-6 pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="font-mono text-sm">OpenRouter Pricing Cache</CardTitle>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <CardTitle className="text-lg font-bold">OpenRouter Pricing Cache</CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleRefreshPricing}
                     disabled={isRefreshingPricing}
+                    className="h-8 rounded-full text-xs"
                   >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshingPricing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3 h-3 mr-2 ${isRefreshingPricing ? 'animate-spin' : ''}`} />
                     Refresh
                   </Button>
                 </div>
                 <CardDescription>Live pricing from OpenRouter API (15 min cache)</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-6 pt-4">
                 {pricingCache ? (
-                  <div className="flex items-center gap-6">
+                  <div className="flex flex-wrap items-center gap-6 p-4 bg-secondary/30 rounded-2xl">
                     <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${pricingCache.isCached ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                      <span className="text-sm">{pricingCache.isCached ? 'Cached' : 'Not cached'}</span>
+                      <div className={`w-2.5 h-2.5 rounded-full ${pricingCache.isCached ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-yellow-500'}`} />
+                      <span className="text-sm font-medium">{pricingCache.isCached ? 'Cached' : 'Not cached'}</span>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      <span className="font-mono">{pricingCache.modelCount}</span> models
+                      <span className="font-mono font-medium text-foreground">{pricingCache.modelCount}</span> models
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Age: <span className="font-mono">{pricingCache.ageFormatted}</span>
+                      Age: <span className="font-mono font-medium text-foreground">{pricingCache.ageFormatted}</span>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Expires in: <span className="font-mono">{pricingCache.expiresFormatted}</span>
+                      Expires in: <span className="font-mono font-medium text-foreground">{pricingCache.expiresFormatted}</span>
                     </div>
                   </div>
                 ) : (
@@ -569,46 +603,53 @@ export function AIMonitoringDashboard({
   );
 }
 
-function StatCard({ label, value, icon: Icon, color }: { 
-  label: string; 
-  value: string; 
-  icon: any; 
+function StatCard({ label, value, icon: Icon, color, bgColor }: {
+  label: string;
+  value: string;
+  icon: any;
   color: string;
+  bgColor: string;
 }) {
   return (
-    <Card className="bg-card border-border overflow-hidden">
-      <CardContent className="p-3 sm:p-4 md:p-6">
-        <div className="flex items-center justify-between mb-2">
-          <p className="text-xs md:text-sm text-muted-foreground">{label}</p>
-          <Icon className={`w-4 h-4 ${color}`} />
+    <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card hover:shadow-xl transition-all duration-300 rounded-3xl overflow-hidden group">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between mb-4">
+          <div className={`w-12 h-12 rounded-2xl ${bgColor} flex items-center justify-center transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3`}>
+            <Icon className={`w-6 h-6 ${color}`} />
+          </div>
         </div>
-        <p className={`text-xl md:text-2xl font-mono ${color}`}>{value}</p>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
+          <p className={`text-2xl font-bold tracking-tight ${color}`}>{value}</p>
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-function PercentileBar({ label, value, max }: { label: string; value: number; max: number }) {
+function PercentileBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
   const percentage = max > 0 ? (value / max) * 100 : 0;
   return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs font-mono w-8">{label}</span>
-      <div className="flex-1 h-2 bg-muted rounded">
-        <div 
-          className="h-full bg-blue-500 rounded" 
-          style={{ width: `${percentage}%` }} 
+    <div className="flex items-center gap-4">
+      <span className="text-xs font-mono font-medium w-8 text-muted-foreground">{label}</span>
+      <div className="flex-1 h-2.5 bg-secondary rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full ${color}`}
+          style={{ width: `${percentage}%` }}
         />
       </div>
-      <span className="text-xs font-mono w-16 text-right">{formatLatency(value)}</span>
+      <span className="text-xs font-mono font-medium w-16 text-right">{formatLatency(value)}</span>
     </div>
   );
 }
 
 function EmptyState({ icon: Icon, message }: { icon: any; message: string }) {
   return (
-    <div className="text-center py-8">
-      <Icon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-      <p className="text-sm text-muted-foreground">{message}</p>
+    <div className="text-center py-16">
+      <div className="w-16 h-16 rounded-full bg-secondary/50 flex items-center justify-center mx-auto mb-4">
+        <Icon className="w-8 h-8 text-muted-foreground/50" />
+      </div>
+      <p className="text-lg font-medium text-muted-foreground">{message}</p>
     </div>
   );
 }

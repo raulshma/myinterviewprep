@@ -41,23 +41,23 @@ export async function getSidebarData(): Promise<SidebarData> {
   const iterationData = iterationResult.success
     ? iterationResult.data
     : {
-        count: 0,
-        limit: 20,
-        remaining: 20,
-        resetDate: new Date(),
-        plan: "FREE",
-        isByok: false,
-        interviews: { count: 0, limit: 3, resetDate: new Date() },
-      };
+      count: 0,
+      limit: 20,
+      remaining: 20,
+      resetDate: new Date(),
+      plan: "FREE",
+      isByok: false,
+      interviews: { count: 0, limit: 3, resetDate: new Date() },
+    };
 
   const profile = profileResult.success
     ? profileResult.data
     : {
-        firstName: null,
-        lastName: null,
-        email: null,
-        imageUrl: null,
-      };
+      firstName: null,
+      lastName: null,
+      email: null,
+      imageUrl: null,
+    };
 
   return {
     isAdmin: userIsAdmin,
@@ -83,26 +83,26 @@ export async function Sidebar() {
   const data = await getSidebarData();
 
   return (
-    <aside className="w-64 bg-sidebar flex flex-col h-screen sticky top-0">
+    <aside className="w-72 bg-sidebar/80 backdrop-blur-xl border-r border-white/10 flex flex-col h-screen sticky top-0 z-50">
       {/* Subtle gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-primary/[0.02] via-transparent to-primary/[0.02] pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
 
       {/* Logo Section */}
-      <div className="relative p-6">
+      <div className="relative p-8 pb-6">
         <ViewTransitionLink href="/" viewTransitionName="logo">
           <Logo />
         </ViewTransitionLink>
       </div>
 
       {/* Navigation */}
-      <div className="relative flex-1 overflow-y-auto">
+      <div className="relative flex-1 overflow-y-auto px-4">
         <SidebarNav isAdmin={data.isAdmin} />
       </div>
 
       {/* Bottom Section */}
-      <div className="relative">
+      <div className="relative p-4 space-y-4">
         {/* Usage Stats */}
-        <div className="p-4">
+        <div className="px-2">
           <SidebarUsage
             iterations={data.usage.iterations}
             interviews={data.usage.interviews}
@@ -112,26 +112,25 @@ export async function Sidebar() {
         </div>
 
         {/* Plan Badge */}
-        <div className="px-4 py-3">
+        <div className="px-4 py-3 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div
-                className={`w-2 h-2 ${
-                  data.usage.plan === "FREE"
+                className={`w-2 h-2 rounded-full ${data.usage.plan === "FREE"
                     ? "bg-muted-foreground"
                     : data.usage.plan === "PRO"
-                    ? "bg-blue-500"
-                    : "bg-amber-500"
-                }`}
+                      ? "bg-blue-500"
+                      : "bg-amber-500"
+                  }`}
               />
-              <span className="text-xs font-mono text-muted-foreground">
-                {data.usage.isByok ? "BYOK" : data.usage.plan} plan
+              <span className="text-xs font-medium text-foreground">
+                {data.usage.isByok ? "BYOK" : data.usage.plan} Plan
               </span>
             </div>
             {data.usage.plan === "FREE" && !data.usage.isByok && (
               <ViewTransitionLink
                 href="/settings/upgrade"
-                className="inline-flex items-center gap-1 text-xs text-primary hover:text-foreground transition-colors"
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
               >
                 <Sparkles className="w-3 h-3" />
                 <span>Upgrade</span>

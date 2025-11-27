@@ -25,32 +25,34 @@ export function SharedHeader() {
   const BadgeIcon = config.badgeIcon;
 
   return (
-    <div className="mb-8">
-      <div
-        className="inline-flex items-center gap-2 border border-primary/20 bg-primary/5 px-3 py-1.5 mb-3 text-xs text-foreground"
-        style={{ viewTransitionName: 'page-badge' }}
-      >
-        <BadgeIcon className="w-3 h-3 text-primary" />
-        <span>{config.badge}</span>
-      </div>
+    <div className="mb-10">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+        <div className="space-y-2">
+          <div
+            className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground"
+            style={{ viewTransitionName: 'page-badge' }}
+          >
+            <div className="p-1 rounded-md bg-primary/10">
+              <BadgeIcon className="w-4 h-4 text-primary" />
+            </div>
+            <span>{config.badge}</span>
+          </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
           <h1
-            className="text-2xl md:text-3xl font-mono text-foreground mb-1"
+            className="text-3xl md:text-4xl font-bold tracking-tight text-foreground"
             style={{ viewTransitionName: 'page-title' }}
           >
             {config.title}
           </h1>
           <p
-            className="text-muted-foreground text-sm"
+            className="text-lg text-muted-foreground max-w-2xl"
             style={{ viewTransitionName: 'page-description' }}
           >
             {config.description}
           </p>
         </div>
         {config.actions && (
-          <div className="flex items-center gap-3">{config.actions}</div>
+          <div className="flex items-center gap-3 pb-1">{config.actions}</div>
         )}
       </div>
     </div>

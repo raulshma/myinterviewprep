@@ -9,8 +9,8 @@ import {
   Brain,
   ArrowRight,
   Plus,
-  Clock,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,106 +53,88 @@ export function LearningPathCard({ learningPath }: LearningPathCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="border border-border bg-card hover:border-primary/30 transition-all"
+      className="relative overflow-hidden rounded-3xl bg-card border border-border group hover:border-primary/30 transition-all duration-500"
     >
-      <div className="p-6">
+      {/* Background Gradient */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+      <div className="p-6 md:p-8 relative">
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-primary/10 flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-primary" />
+        <div className="flex items-start justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center">
+              <BookOpen className="w-6 h-6 text-primary" />
             </div>
             <div>
-              <h3 className="font-mono text-foreground">Active Learning Path</h3>
-              <p className="text-sm text-muted-foreground line-clamp-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-bold text-lg text-foreground">Learning Path</h3>
+                <Badge variant="secondary" className="gap-1 rounded-full px-2.5 bg-green-500/10 text-green-500 hover:bg-green-500/20 border-green-500/20">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Active
+                </Badge>
+              </div>
+              <p className="text-muted-foreground text-sm line-clamp-1 max-w-md">
                 {learningPath.goal}
               </p>
             </div>
           </div>
-          <Badge variant="secondary" className="gap-1">
-            <CheckCircle2 className="w-3 h-3" />
-            Active
-          </Badge>
+
+          <Button asChild className="rounded-full px-6 shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
+            <Link href={`/learning/${learningPath._id}`}>
+              Continue
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Link>
+          </Button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="text-center p-3 bg-secondary/30 border border-border">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <Brain className="w-4 h-4 text-primary" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Current Focus */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-muted-foreground">Current Focus</p>
+              {currentTopic && (
+                <Badge variant="outline" className="rounded-full text-xs">
+                  {skillClusterLabels[currentTopic.skillCluster] || currentTopic.skillCluster}
+                </Badge>
+              )}
             </div>
-            <p className="text-lg font-mono text-foreground">
-              {Math.round(learningPath.overallElo)}
-            </p>
-            <p className="text-xs text-muted-foreground">ELO</p>
-          </div>
-          <div className="text-center p-3 bg-secondary/30 border border-border">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <Target className="w-4 h-4 text-primary" />
-            </div>
-            <p className="text-lg font-mono text-foreground">{totalCount}</p>
-            <p className="text-xs text-muted-foreground">Activities</p>
-          </div>
-          <div className="text-center p-3 bg-secondary/30 border border-border">
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <TrendingUp className="w-4 h-4 text-green-500" />
-            </div>
-            <p className="text-lg font-mono text-foreground">{successRate}%</p>
-            <p className="text-xs text-muted-foreground">Success</p>
-          </div>
-        </div>
 
-        {/* Current Topic */}
-        {currentTopic && (
-          <div className="mb-4 p-3 bg-primary/5 border border-primary/20">
-            <p className="text-xs text-muted-foreground mb-1">Current Topic</p>
-            <p className="font-mono text-foreground text-sm">{currentTopic.title}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="outline" className="text-xs">
-                {skillClusterLabels[currentTopic.skillCluster] || currentTopic.skillCluster}
-              </Badge>
-              <span className="text-xs text-muted-foreground">
-                Difficulty {currentTopic.difficulty}/10
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Skill Clusters */}
-        <div className="mb-4">
-          <p className="text-xs text-muted-foreground mb-2">Focus Areas</p>
-          <div className="flex flex-wrap gap-1">
-            {learningPath.skillClusters.slice(0, 4).map((cluster) => (
-              <Badge key={cluster} variant="secondary" className="text-xs">
-                {skillClusterLabels[cluster] || cluster}
-              </Badge>
-            ))}
-            {learningPath.skillClusters.length > 4 && (
-              <Badge variant="secondary" className="text-xs">
-                +{learningPath.skillClusters.length - 4}
-              </Badge>
+            {currentTopic ? (
+              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/50 backdrop-blur-sm">
+                <div className="flex items-start justify-between mb-2">
+                  <p className="font-semibold text-foreground">{currentTopic.title}</p>
+                  <span className="text-xs font-mono text-muted-foreground bg-background/50 px-2 py-1 rounded-md">
+                    Lvl {currentTopic.difficulty}
+                  </span>
+                </div>
+                <Progress value={learningPath.currentDifficulty * 10} className="h-1.5 bg-background/50" />
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-secondary/30 border border-dashed border-border/50 text-center text-sm text-muted-foreground">
+                No active topic
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Difficulty Progress */}
-        <div className="mb-4">
-          <div className="flex justify-between text-xs mb-1">
-            <span className="text-muted-foreground">Current Difficulty</span>
-            <span className="font-mono text-foreground">
-              {learningPath.currentDifficulty}/10
-            </span>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-3 rounded-2xl bg-secondary/20 border border-border/50 flex flex-col items-center justify-center text-center">
+              <Brain className="w-4 h-4 text-primary mb-2" />
+              <span className="text-xl font-bold text-foreground">{Math.round(learningPath.overallElo)}</span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">ELO</span>
+            </div>
+            <div className="p-3 rounded-2xl bg-secondary/20 border border-border/50 flex flex-col items-center justify-center text-center">
+              <Target className="w-4 h-4 text-blue-500 mb-2" />
+              <span className="text-xl font-bold text-foreground">{totalCount}</span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Activities</span>
+            </div>
+            <div className="p-3 rounded-2xl bg-secondary/20 border border-border/50 flex flex-col items-center justify-center text-center">
+              <TrendingUp className="w-4 h-4 text-green-500 mb-2" />
+              <span className="text-xl font-bold text-foreground">{successRate}%</span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Success</span>
+            </div>
           </div>
-          <Progress value={learningPath.currentDifficulty * 10} className="h-1.5" />
         </div>
-
-        {/* Action */}
-        <Button asChild className="w-full">
-          <Link href={`/learning/${learningPath._id}`}>
-            Continue Learning
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Link>
-        </Button>
       </div>
     </motion.div>
   );
@@ -163,17 +145,17 @@ function EmptyLearningPathCard() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="border border-dashed border-border bg-card/50 hover:border-primary/30 transition-all"
+      className="relative overflow-hidden rounded-3xl border border-dashed border-border bg-card/30 hover:bg-card/50 transition-all duration-500 group"
     >
-      <div className="p-6 text-center">
-        <div className="w-12 h-12 bg-secondary flex items-center justify-center mx-auto mb-4">
-          <BookOpen className="w-6 h-6 text-muted-foreground" />
+      <div className="p-8 flex flex-col items-center text-center">
+        <div className="w-16 h-16 rounded-full bg-secondary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500">
+          <Sparkles className="w-8 h-8 text-muted-foreground group-hover:text-primary transition-colors" />
         </div>
-        <h3 className="font-mono text-foreground mb-2">Start Learning</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Create a personalized learning path with adaptive difficulty and AI-generated activities.
+        <h3 className="text-xl font-bold text-foreground mb-2">Start Your Journey</h3>
+        <p className="text-muted-foreground max-w-md mb-6">
+          Create a personalized learning path with adaptive difficulty and AI-generated activities to master new skills.
         </p>
-        <Button asChild>
+        <Button asChild className="rounded-full px-8">
           <Link href="/learning/new">
             <Plus className="w-4 h-4 mr-2" />
             Create Learning Path

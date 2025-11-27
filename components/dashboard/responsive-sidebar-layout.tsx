@@ -23,12 +23,12 @@ export function ResponsiveSidebarLayout({
   return (
     <div className="flex min-h-screen bg-background">
       {/* Desktop sidebar - hidden on mobile via CSS */}
-      <div className="hidden md:block">
+      <div className="hidden md:block w-72 flex-shrink-0">
         {desktopSidebar}
       </div>
 
-      {/* Mobile layout */}
-      <div className="flex-1 flex flex-col md:contents min-w-0 w-full max-w-full overflow-hidden">
+      {/* Mobile layout & Main content */}
+      <div className="flex-1 flex flex-col min-w-0 w-full max-w-full">
         {/* Mobile header with hamburger menu */}
         {isMobile && (
           <MobileHeader

@@ -82,33 +82,35 @@ export function ApiKeysSection({ hasByokKey, plan }: ApiKeysSectionProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }}
-      className="bg-card border border-border p-4 sm:p-6 hover:border-primary/30 transition-colors group overflow-hidden"
+      className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors shrink-0">
-            <Key className="w-5 h-5 text-foreground" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+            <Key className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h2 className="font-mono text-lg text-foreground">API Keys</h2>
-            <p className="text-xs text-muted-foreground">Bring Your Own Key</p>
+            <h2 className="text-lg font-bold text-foreground">API Keys</h2>
+            <p className="text-sm text-muted-foreground">Bring Your Own Key</p>
           </div>
         </div>
         {isSaved && (
-          <Badge variant="default" className="bg-green-500/10 text-green-500 border-green-500/30 self-start sm:self-auto">
-            <Check className="w-3 h-3 mr-1" />
+          <Badge variant="default" className="bg-green-500/10 text-green-500 border-green-500/30 self-start sm:self-auto px-4 py-1.5 rounded-full">
+            <Check className="w-3 h-3 mr-2" />
             Active
           </Badge>
         )}
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* BYOK benefits */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-4 bg-gradient-to-r from-primary/5 to-transparent border border-primary/20">
-          <Infinity className="w-8 h-8 text-primary shrink-0" />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/20">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <Infinity className="w-5 h-5 text-primary" />
+          </div>
           <div>
-            <p className="text-sm font-mono text-foreground">Unlimited Usage</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm font-bold text-foreground">Unlimited Usage</p>
+            <p className="text-xs text-muted-foreground mt-1">
               Use your own OpenRouter key for unlimited iterations
             </p>
           </div>
@@ -116,11 +118,13 @@ export function ApiKeysSection({ hasByokKey, plan }: ApiKeysSectionProps) {
 
         {isSaved ? (
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 bg-green-500/5 border border-green-500/20">
-              <Check className="w-5 h-5 text-green-500 shrink-0" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl bg-green-500/5 border border-green-500/20">
+              <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+                <Check className="w-5 h-5 text-green-500" />
+              </div>
               <div>
-                <p className="text-sm text-foreground">API key configured</p>
-                <p className="text-xs text-muted-foreground">Your key is encrypted and stored securely</p>
+                <p className="text-sm font-bold text-foreground">API key configured</p>
+                <p className="text-xs text-muted-foreground mt-1">Your key is encrypted and stored securely</p>
               </div>
             </div>
             <Button
@@ -128,7 +132,7 @@ export function ApiKeysSection({ hasByokKey, plan }: ApiKeysSectionProps) {
               size="sm"
               onClick={handleRemoveApiKey}
               disabled={isLoading}
-              className="w-full"
+              className="w-full h-11 rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 border border-destructive/20"
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -139,9 +143,9 @@ export function ApiKeysSection({ hasByokKey, plan }: ApiKeysSectionProps) {
             </Button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div>
-              <Label htmlFor="apikey" className="text-xs text-muted-foreground mb-2 block">
+              <Label htmlFor="apikey" className="text-sm font-medium text-foreground mb-2 block">
                 OpenRouter API Key
               </Label>
               <div className="flex gap-2">
@@ -152,12 +156,12 @@ export function ApiKeysSection({ hasByokKey, plan }: ApiKeysSectionProps) {
                     placeholder="sk-or-..."
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    className="font-mono pr-10 bg-muted/50"
+                    className="h-11 rounded-xl bg-secondary/50 border-transparent focus:bg-background pr-10 font-mono text-sm"
                   />
                   <button
                     type="button"
                     onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
                   >
                     {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -167,7 +171,7 @@ export function ApiKeysSection({ hasByokKey, plan }: ApiKeysSectionProps) {
                 href="https://openrouter.ai/keys"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mt-2 transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary mt-2 transition-colors"
               >
                 Get your key from openrouter.ai
                 <ExternalLink className="w-3 h-3" />
@@ -175,20 +179,23 @@ export function ApiKeysSection({ hasByokKey, plan }: ApiKeysSectionProps) {
             </div>
 
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-sm text-destructive flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                {error}
+              </p>
             )}
 
-            <div className="flex items-start gap-3 p-3 bg-yellow-500/5 border border-yellow-500/20">
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-yellow-500/5 border border-yellow-500/20">
               <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5 shrink-0" />
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 Usage will be billed directly by OpenRouter. Set up usage limits in your provider dashboard.
               </p>
             </div>
 
-            <Button 
-              onClick={handleSaveApiKey} 
+            <Button
+              onClick={handleSaveApiKey}
               disabled={isLoading}
-              className="w-full"
+              className="w-full h-11 rounded-full font-medium shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Save API Key

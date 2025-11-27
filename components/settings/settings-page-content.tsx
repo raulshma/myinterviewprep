@@ -32,7 +32,7 @@ export function SettingsPageContent({ profile, children }: SettingsPageContentPr
       actions: (
         <Badge
           variant={profile.plan === 'MAX' ? 'default' : 'secondary'}
-          className="text-sm px-4 py-1.5 flex items-center gap-2 w-fit"
+          className="text-sm px-4 py-1.5 flex items-center gap-2 w-fit rounded-full"
         >
           {profile.plan === 'MAX' && <Sparkles className="w-3 h-3" />}
           {profile.plan} Plan

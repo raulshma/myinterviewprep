@@ -9,7 +9,7 @@ interface SidebarPageWrapperProps {
 
 export function SidebarPageWrapper({ children }: SidebarPageWrapperProps) {
   return (
-    <main className="flex-1 relative overflow-auto min-w-0 max-w-full">
+    <main className="flex-1 relative min-w-0 max-w-full">
       {/* Background effects */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-secondary/20" />

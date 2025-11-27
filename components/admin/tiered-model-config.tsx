@@ -47,7 +47,7 @@ interface TieredModelConfigProps {
 
 const TIER_INFO: Record<
   ModelTier,
-  { label: string; icon: typeof Zap; description: string; color: string }
+  { label: string; icon: typeof Zap; description: string; color: string; bgColor: string }
 > = {
   high: {
     label: "High Capability",
@@ -55,18 +55,21 @@ const TIER_INFO: Record<
     description:
       "Complex reasoning, detailed content generation (topics, briefs, MCQs, analogies)",
     color: "text-amber-500",
+    bgColor: "bg-amber-500/10",
   },
   medium: {
     label: "Medium Capability",
     icon: Gauge,
     description: "Structured output, moderate complexity (rapid-fire)",
     color: "text-blue-500",
+    bgColor: "bg-blue-500/10",
   },
   low: {
     label: "Low Capability",
     icon: Feather,
     description: "Simple parsing, extraction tasks (prompt parsing)",
     color: "text-green-500",
+    bgColor: "bg-green-500/10",
   },
 };
 
@@ -83,6 +86,8 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   );
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+
+  const ActiveIcon = TIER_INFO[activeTier].icon;
 
   // Check which tiers are missing configuration
   const missingTiers = (["high", "medium", "low"] as ModelTier[]).filter(
@@ -225,33 +230,36 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   }) => (
     <div
       onClick={onSelect}
-      className={`p-3 border rounded-lg cursor-pointer transition-all hover:border-foreground/50 ${
-        isSelected ? "border-foreground bg-muted/50" : "border-border"
-      }`}
+      className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 border ${isSelected
+        ? "border-primary bg-primary/5 shadow-md"
+        : "border-border/50 bg-card hover:border-border hover:shadow-sm"
+        }`}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <p className="font-mono text-sm text-foreground truncate">
+            <p className="font-semibold text-sm text-foreground truncate">
               {model.name}
             </p>
             {isSelected && (
-              <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+              <div className="bg-primary/10 rounded-full p-0.5">
+                <Check className="w-3 h-3 text-primary flex-shrink-0" />
+              </div>
             )}
           </div>
-          <p className="text-xs text-muted-foreground font-mono truncate">
+          <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">
             {model.id}
           </p>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1.5 mt-2">
-        <Badge variant="outline" className="text-xs">
-          <Layers className="w-3 h-3 mr-1" />
+      <div className="flex flex-wrap gap-1.5 mt-3">
+        <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50">
+          <Layers className="w-3 h-3 mr-1 opacity-70" />
           {(model.context_length / 1000).toFixed(0)}K
         </Badge>
-        <Badge variant="outline" className="text-xs">
-          <DollarSign className="w-3 h-3 mr-1" />
+        <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50">
+          <DollarSign className="w-3 h-3 mr-1 opacity-70" />
           {formatPrice(model.pricing.prompt)}
         </Badge>
       </div>
@@ -262,7 +270,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
     const info = TIER_INFO[tier];
     const Icon = info.icon;
     return (
-      <Badge variant="outline" className={`${info.color} border-current`}>
+      <Badge variant="outline" className={`${info.color} ${info.bgColor} border-transparent`}>
         <Icon className="w-3 h-3 mr-1" />
         {info.label}
       </Badge>
@@ -273,21 +281,22 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
     const tierConfig = config[tier];
     const isConfigured = !!tierConfig.primaryModel;
     return (
-      <Badge
-        variant={isConfigured ? "default" : "destructive"}
-        className="text-xs"
-      >
+      <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${isConfigured
+        ? "bg-green-500/10 text-green-600 dark:text-green-400"
+        : "bg-red-500/10 text-red-600 dark:text-red-400"
+        }`}>
+        <div className={`w-1.5 h-1.5 rounded-full ${isConfigured ? "bg-green-500" : "bg-red-500"}`} />
         {isConfigured ? "Configured" : "Not Set"}
-      </Badge>
+      </div>
     );
   };
 
   if (loading) {
     return (
-      <Card className="bg-card border-border">
-        <CardContent className="flex items-center justify-center py-12">
-          <Spinner className="w-6 h-6" />
-          <span className="ml-2 text-muted-foreground">Loading models...</span>
+      <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl">
+        <CardContent className="flex items-center justify-center py-24">
+          <Spinner className="w-8 h-8 text-primary" />
+          <span className="ml-3 text-muted-foreground font-medium">Loading models...</span>
         </CardContent>
       </Card>
     );
@@ -295,11 +304,15 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
 
   if (error) {
     return (
-      <Card className="bg-card border-border">
-        <CardContent className="py-8 text-center">
-          <p className="text-destructive">{error}</p>
-          <Button onClick={fetchModels} variant="outline" className="mt-4">
-            Retry
+      <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl">
+        <CardContent className="py-12 text-center">
+          <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-6 h-6 text-red-500" />
+          </div>
+          <p className="text-foreground font-medium mb-2">Failed to load models</p>
+          <p className="text-muted-foreground text-sm mb-6">{error}</p>
+          <Button onClick={fetchModels} variant="outline" className="rounded-full">
+            Retry Connection
           </Button>
         </CardContent>
       </Card>
@@ -307,75 +320,86 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   }
 
   return (
-    <Card className="bg-card border-border overflow-hidden">
-      <CardHeader className="p-4 sm:p-6">
-        <CardTitle className="font-mono">Tiered Model Configuration</CardTitle>
-        <CardDescription>
+    <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+      <CardHeader className="p-6 md:p-8 border-b border-border/50">
+        <CardTitle className="text-xl font-bold">Tiered Model Configuration</CardTitle>
+        <CardDescription className="text-base mt-2">
           Configure different models for different task complexities. Each tier
-          requires a primary model. AI features are disabled for tiers without
-          configuration.
+          requires a primary model.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6 p-4 sm:p-6 pt-0 sm:pt-0">
+      <CardContent className="space-y-8 p-6 md:p-8">
         {/* Warning for unconfigured tiers */}
         {missingTiers.length > 0 && (
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="border-0 bg-red-500/10 text-red-600 dark:text-red-400 rounded-2xl">
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              The following tiers are not configured: {missingTiers.join(", ")}.
-              AI features using these tiers will fail until configured.
+            <AlertDescription className="ml-2 font-medium">
+              Missing configuration for: {missingTiers.map(t => TIER_INFO[t].label).join(", ")}.
             </AlertDescription>
           </Alert>
         )}
 
         {/* Tier Selection Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {(["high", "medium", "low"] as ModelTier[]).map((tier) => {
             const info = TIER_INFO[tier];
             const Icon = info.icon;
             const tierConfig = config[tier];
+            const isActive = activeTier === tier;
+
             return (
               <div
                 key={tier}
-                className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                  activeTier === tier
-                    ? "border-foreground bg-muted/50"
-                    : "border-border hover:border-foreground/50"
-                }`}
+                className={`p-5 rounded-3xl cursor-pointer transition-all duration-300 border-2 ${isActive
+                  ? "border-primary bg-primary/5 shadow-lg shadow-primary/5 scale-[1.02]"
+                  : "border-transparent bg-secondary/50 hover:bg-secondary hover:scale-[1.01]"
+                  }`}
                 onClick={() => setActiveTier(tier)}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Icon className={`w-4 h-4 ${info.color}`} />
-                    <span className="text-sm font-medium">{info.label}</span>
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`w-10 h-10 rounded-2xl ${info.bgColor} flex items-center justify-center`}>
+                    <Icon className={`w-5 h-5 ${info.color}`} />
                   </div>
                   <TierStatus tier={tier} />
                 </div>
-                <p className="font-mono text-xs text-muted-foreground truncate">
-                  {tierConfig.primaryModel || "Not configured"}
+
+                <h3 className="font-bold text-foreground mb-1">{info.label}</h3>
+                <p className="text-xs text-muted-foreground line-clamp-2 mb-4 h-8">
+                  {info.description}
                 </p>
-                {tierConfig.fallbackModel && (
-                  <p className="font-mono text-xs text-muted-foreground/60 truncate">
-                    Fallback: {tierConfig.fallbackModel}
-                  </p>
-                )}
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Primary</span>
+                    <span className="font-mono font-medium truncate max-w-[100px]" title={tierConfig.primaryModel || ""}>
+                      {tierConfig.primaryModel || "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Fallback</span>
+                    <span className="font-mono text-muted-foreground/70 truncate max-w-[100px]" title={tierConfig.fallbackModel || ""}>
+                      {tierConfig.fallbackModel || "—"}
+                    </span>
+                  </div>
+                </div>
               </div>
             );
           })}
         </div>
 
         {/* Task Mappings */}
-        <div className="p-4 bg-muted/30 rounded-lg">
-          <Label className="text-sm font-medium mb-3 block">
-            Task → Tier Mappings
+        <div className="p-6 bg-secondary/30 rounded-3xl">
+          <Label className="text-sm font-semibold mb-4 block flex items-center gap-2">
+            <Layers className="w-4 h-4" />
+            Task Routing
           </Label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {taskMappings.map((mapping) => (
               <div
                 key={mapping.task}
-                className="flex items-center justify-between text-sm p-2 rounded bg-background/50"
+                className="flex items-center justify-between text-sm p-3 rounded-xl bg-background/80 shadow-sm border border-border/50"
               >
-                <span className="text-muted-foreground truncate">
+                <span className="text-foreground font-medium truncate mr-4">
                   {mapping.description}
                 </span>
                 <TierBadge tier={mapping.tier} />
@@ -385,13 +409,16 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
         </div>
 
         {/* Active Tier Configuration */}
-        <div className="space-y-4 p-4 border border-border rounded-lg">
+        <div className="space-y-6 p-6 md:p-8 border border-border/50 rounded-3xl bg-background/50 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <TierBadge tier={activeTier} />
-              <span className="text-sm text-muted-foreground">
-                {TIER_INFO[activeTier].description}
-              </span>
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-2xl ${TIER_INFO[activeTier].bgColor} flex items-center justify-center`}>
+                <ActiveIcon className={`w-5 h-5 ${TIER_INFO[activeTier].color}`} />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">{TIER_INFO[activeTier].label} Settings</h3>
+                <p className="text-sm text-muted-foreground">{TIER_INFO[activeTier].description}</p>
+              </div>
             </div>
           </div>
 
@@ -399,35 +426,52 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           <Tabs
             value={selectingFor}
             onValueChange={(v) => setSelectingFor(v as "primary" | "fallback")}
+            className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="primary">
-                Primary Model{" "}
-                {!config[activeTier].primaryModel && (
-                  <AlertTriangle className="w-3 h-3 ml-1 text-destructive" />
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="fallback">Fallback Model</TabsTrigger>
-            </TabsList>
+            <div className="flex justify-center mb-6">
+              <div className="bg-secondary/50 backdrop-blur-xl p-1 rounded-full inline-flex">
+                <TabsList className="bg-transparent gap-1 h-auto p-0">
+                  <TabsTrigger
+                    value="primary"
+                    className="rounded-full px-6 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                  >
+                    Primary Model
+                    {!config[activeTier].primaryModel && (
+                      <div className="w-2 h-2 rounded-full bg-red-500 ml-2 animate-pulse" />
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="fallback"
+                    className="rounded-full px-6 py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
+                  >
+                    Fallback Model
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+            </div>
 
-            <TabsContent value="primary" className="space-y-3">
-              <p className="text-xs text-muted-foreground">
+            <TabsContent value="primary" className="space-y-4 mt-0">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-blue-500/5 p-3 rounded-xl border border-blue-500/10">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                 Required. The main model used for this tier's tasks.
-              </p>
+              </div>
               {config[activeTier].primaryModel && (
-                <div className="p-2 bg-muted/50 rounded font-mono text-sm">
-                  {config[activeTier].primaryModel}
+                <div className="p-3 bg-secondary/50 rounded-xl font-mono text-sm flex items-center justify-between">
+                  <span>Current: {config[activeTier].primaryModel}</span>
+                  <Check className="w-4 h-4 text-green-500" />
                 </div>
               )}
             </TabsContent>
 
-            <TabsContent value="fallback" className="space-y-3">
-              <p className="text-xs text-muted-foreground">
+            <TabsContent value="fallback" className="space-y-4 mt-0">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-secondary/50 p-3 rounded-xl">
+                <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
                 Optional. Used when the primary model fails or is unavailable.
-              </p>
+              </div>
               {config[activeTier].fallbackModel && (
-                <div className="p-2 bg-muted/50 rounded font-mono text-sm">
-                  {config[activeTier].fallbackModel}
+                <div className="p-3 bg-secondary/50 rounded-xl font-mono text-sm flex items-center justify-between">
+                  <span>Current: {config[activeTier].fallbackModel}</span>
+                  <Check className="w-4 h-4 text-green-500" />
                 </div>
               )}
             </TabsContent>
@@ -435,30 +479,41 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
 
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search models..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-full min-h-[44px]"
+              className="pl-10 w-full h-12 rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary/20 transition-all"
             />
           </div>
 
           {/* Model List */}
-          <Tabs defaultValue="paid">
-            <TabsList>
-              <TabsTrigger value="paid" className="gap-2">
-                <DollarSign className="w-3 h-3" />
-                Paid ({models?.paid.length || 0})
+          <Tabs defaultValue="paid" className="w-full">
+            <TabsList className="w-full justify-start bg-transparent border-b border-border/50 rounded-none h-auto p-0 mb-4 gap-6">
+              <TabsTrigger
+                value="paid"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  Paid Models <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{models?.paid.length || 0}</Badge>
+                </div>
               </TabsTrigger>
-              <TabsTrigger value="free" className="gap-2">
-                Free ({models?.free.length || 0})
+              <TabsTrigger
+                value="free"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-0 py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4" />
+                  Free Models <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{models?.free.length || 0}</Badge>
+                </div>
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="paid">
-              <ScrollArea className="h-[250px] pr-4">
-                <div className="grid gap-2">
+            <TabsContent value="paid" className="mt-0">
+              <ScrollArea className="h-[300px] pr-4 -mr-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-2">
                   {filterModels(models?.paid || []).map((model) => (
                     <ModelCard
                       key={model.id}
@@ -477,9 +532,9 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
               </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="free">
-              <ScrollArea className="h-[250px] pr-4">
-                <div className="grid gap-2">
+            <TabsContent value="free" className="mt-0">
+              <ScrollArea className="h-[300px] pr-4 -mr-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-2">
                   {filterModels(models?.free || []).map((model) => (
                     <ModelCard
                       key={model.id}
@@ -500,43 +555,49 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           </Tabs>
 
           {/* Temperature and Max Tokens */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border">
-            <div>
-              <Label className="text-sm text-muted-foreground mb-2 block">
-                Temperature
-              </Label>
-              <Input
-                type="number"
-                value={config[activeTier].temperature}
-                onChange={(e) =>
-                  handleUpdateSettings(
-                    activeTier,
-                    "temperature",
-                    parseFloat(e.target.value) || 0
-                  )
-                }
-                step="0.1"
-                min="0"
-                max="2"
-                className="font-mono w-full min-h-[44px]"
-              />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t border-border/50">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Temperature</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  value={config[activeTier].temperature}
+                  onChange={(e) =>
+                    handleUpdateSettings(
+                      activeTier,
+                      "temperature",
+                      parseFloat(e.target.value) || 0
+                    )
+                  }
+                  step="0.1"
+                  min="0"
+                  max="2"
+                  className="font-mono h-11 rounded-xl bg-secondary/30 border-transparent focus:bg-background"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                  0.0 - 2.0
+                </div>
+              </div>
             </div>
-            <div>
-              <Label className="text-sm text-muted-foreground mb-2 block">
-                Max Tokens
-              </Label>
-              <Input
-                type="number"
-                value={config[activeTier].maxTokens}
-                onChange={(e) =>
-                  handleUpdateSettings(
-                    activeTier,
-                    "maxTokens",
-                    parseInt(e.target.value) || 0
-                  )
-                }
-                className="font-mono w-full min-h-[44px]"
-              />
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Max Tokens</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  value={config[activeTier].maxTokens}
+                  onChange={(e) =>
+                    handleUpdateSettings(
+                      activeTier,
+                      "maxTokens",
+                      parseInt(e.target.value) || 0
+                    )
+                  }
+                  className="font-mono h-11 rounded-xl bg-secondary/30 border-transparent focus:bg-background"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                  tokens
+                </div>
+              </div>
             </div>
           </div>
 
@@ -544,33 +605,34 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           <Button
             onClick={() => handleSaveTier(activeTier)}
             disabled={isPending}
-            className="w-full"
+            className="w-full h-12 rounded-xl text-base font-medium shadow-lg shadow-primary/20"
           >
             {isPending ? (
               <>
-                <Spinner className="w-4 h-4 mr-2" />
-                Saving...
+                <Spinner className="w-5 h-5 mr-2" />
+                Saving Configuration...
               </>
             ) : saved ? (
               <>
-                <Check className="w-4 h-4 mr-2" />
-                Saved!
+                <Check className="w-5 h-5 mr-2" />
+                Configuration Saved
               </>
             ) : (
-              `Save ${TIER_INFO[activeTier].label} Configuration`
+              `Save ${TIER_INFO[activeTier].label} Settings`
             )}
           </Button>
         </div>
 
         {/* Clear All Button */}
-        <div className="flex justify-end pt-4 border-t border-border">
+        <div className="flex justify-center pt-4">
           <Button
-            variant="destructive"
+            variant="ghost"
             onClick={handleClearAll}
             disabled={isPending}
+            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"
           >
             <Trash2 className="w-4 h-4 mr-2" />
-            Clear All Configurations
+            Reset All Configurations
           </Button>
         </div>
       </CardContent>

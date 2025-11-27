@@ -35,7 +35,7 @@ export function SidebarUser({
   const displayName = getDisplayName(firstName, lastName, email);
 
   return (
-    <div className="p-3">
+    <div className="p-3 py-0">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="w-full flex items-center gap-3 p-2 hover:bg-sidebar-accent/50 transition-colors text-left group">

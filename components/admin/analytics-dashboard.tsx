@@ -23,7 +23,7 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { TrendingUp, TrendingDown, Users, FileText, Cpu, Building2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Users, FileText, Cpu, Building2, Activity, PieChart as PieChartIcon, BarChart3 } from 'lucide-react';
 import type {
   UsageTrendData,
   PopularTopicData,
@@ -121,96 +121,124 @@ export function AnalyticsDashboard({
   const totalAIRequests = usageTrends.reduce((sum, d) => sum + (Number(d.aiRequests) || 0), 0);
   const totalNewUsers = usageTrends.reduce((sum, d) => sum + (Number(d.users) || 0), 0);
 
+  const SummaryCard = ({
+    title,
+    value,
+    trend,
+    icon: Icon,
+    colorClass,
+    bgColorClass
+  }: {
+    title: string;
+    value: number;
+    trend: { value: number; isPositive: boolean };
+    icon: any;
+    colorClass: string;
+    bgColorClass: string;
+  }) => (
+    <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden hover:scale-[1.02] transition-transform duration-300">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className={`w-10 h-10 rounded-2xl ${bgColorClass} flex items-center justify-center`}>
+            <Icon className={`w-5 h-5 ${colorClass}`} />
+          </div>
+          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${trend.isPositive
+              ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+              : 'bg-red-500/10 text-red-600 dark:text-red-400'
+            }`}>
+            {trend.isPositive ? (
+              <TrendingUp className="w-3 h-3" />
+            ) : (
+              <TrendingDown className="w-3 h-3" />
+            )}
+            {trend.value}%
+          </div>
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground font-medium">{title}</p>
+          <p className="text-3xl font-bold tracking-tight text-foreground">{value.toLocaleString()}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-card border-border">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">Interviews (30d)</p>
-              <FileText className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <p className="text-2xl font-mono text-foreground">{totalInterviews}</p>
-            <div className="flex items-center gap-1 mt-2">
-              {interviewTrend.isPositive ? (
-                <TrendingUp className="w-3 h-3 text-green-500" />
-              ) : (
-                <TrendingDown className="w-3 h-3 text-red-500" />
-              )}
-              <span
-                className={`text-xs ${interviewTrend.isPositive ? 'text-green-500' : 'text-red-500'}`}
-              >
-                {interviewTrend.value}% vs last week
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">AI Requests (30d)</p>
-              <Cpu className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <p className="text-2xl font-mono text-foreground">{totalAIRequests}</p>
-            <div className="flex items-center gap-1 mt-2">
-              {aiRequestTrend.isPositive ? (
-                <TrendingUp className="w-3 h-3 text-green-500" />
-              ) : (
-                <TrendingDown className="w-3 h-3 text-red-500" />
-              )}
-              <span
-                className={`text-xs ${aiRequestTrend.isPositive ? 'text-green-500' : 'text-red-500'}`}
-              >
-                {aiRequestTrend.value}% vs last week
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card border-border">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">New Users (30d)</p>
-              <Users className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <p className="text-2xl font-mono text-foreground">{totalNewUsers}</p>
-            <div className="flex items-center gap-1 mt-2">
-              {userTrend.isPositive ? (
-                <TrendingUp className="w-3 h-3 text-green-500" />
-              ) : (
-                <TrendingDown className="w-3 h-3 text-red-500" />
-              )}
-              <span className={`text-xs ${userTrend.isPositive ? 'text-green-500' : 'text-red-500'}`}>
-                {userTrend.value}% vs last week
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <SummaryCard
+          title="Interviews (30d)"
+          value={totalInterviews}
+          trend={interviewTrend}
+          icon={FileText}
+          colorClass="text-violet-500"
+          bgColorClass="bg-violet-500/10"
+        />
+        <SummaryCard
+          title="AI Requests (30d)"
+          value={totalAIRequests}
+          trend={aiRequestTrend}
+          icon={Cpu}
+          colorClass="text-orange-500"
+          bgColorClass="bg-orange-500/10"
+        />
+        <SummaryCard
+          title="New Users (30d)"
+          value={totalNewUsers}
+          trend={userTrend}
+          icon={Users}
+          colorClass="text-green-500"
+          bgColorClass="bg-green-500/10"
+        />
       </div>
 
 
       {/* Usage Trends Chart */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="font-mono">Usage Trends</CardTitle>
-          <CardDescription>Interviews, AI requests, and new users over the last 30 days</CardDescription>
+      <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+        <CardHeader className="p-6 md:p-8 border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center">
+              <Activity className="w-5 h-5 text-blue-500" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-bold">Usage Trends</CardTitle>
+              <CardDescription className="mt-1">Interviews, AI requests, and new users over the last 30 days</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 md:p-8">
           {formattedUsageTrends.length > 0 ? (
-            <ChartContainer config={usageChartConfig} className="h-64 w-full">
+            <ChartContainer config={usageChartConfig} className="h-[300px] w-full">
               <AreaChart data={formattedUsageTrends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <defs>
+                  <linearGradient id="colorInterviews" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-interviews)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-interviews)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorAiRequests" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-aiRequests)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-aiRequests)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-users)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-users)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" vertical={false} />
                 <XAxis
                   dataKey="formattedDate"
                   tickLine={false}
                   axisLine={false}
-                  tickMargin={8}
-                  tick={{ fontSize: 12 }}
+                  tickMargin={12}
+                  tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
                   interval="preserveStartEnd"
                 />
-                <YAxis tickLine={false} axisLine={false} tickMargin={8} tick={{ fontSize: 12 }} />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={12}
+                  tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <ChartLegend content={<ChartLegendContent />} />
                 <Area
@@ -218,30 +246,31 @@ export function AnalyticsDashboard({
                   dataKey="interviews"
                   stackId="1"
                   stroke="var(--color-interviews)"
-                  fill="var(--color-interviews)"
-                  fillOpacity={0.4}
+                  fill="url(#colorInterviews)"
+                  strokeWidth={2}
                 />
                 <Area
                   type="monotone"
                   dataKey="aiRequests"
                   stackId="2"
                   stroke="var(--color-aiRequests)"
-                  fill="var(--color-aiRequests)"
-                  fillOpacity={0.4}
+                  fill="url(#colorAiRequests)"
+                  strokeWidth={2}
                 />
                 <Area
                   type="monotone"
                   dataKey="users"
                   stackId="3"
                   stroke="var(--color-users)"
-                  fill="var(--color-users)"
-                  fillOpacity={0.4}
+                  fill="url(#colorUsers)"
+                  strokeWidth={2}
                 />
               </AreaChart>
             </ChartContainer>
           ) : (
-            <div className="h-64 flex items-center justify-center border border-dashed border-border rounded-lg">
-              <p className="text-sm text-muted-foreground">No usage data available yet</p>
+            <div className="h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-border/50 rounded-2xl bg-secondary/20">
+              <Activity className="w-10 h-10 text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground font-medium">No usage data available yet</p>
             </div>
           )}
         </CardContent>
@@ -249,36 +278,41 @@ export function AnalyticsDashboard({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Popular Topics */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="font-mono">Popular Job Titles</CardTitle>
-            <CardDescription>Most common interview preparation topics</CardDescription>
+        <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+          <CardHeader className="p-6 md:p-8 border-b border-border/50">
+            <CardTitle className="text-lg font-bold">Popular Job Titles</CardTitle>
+            <CardDescription className="mt-1">Most common interview preparation topics</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 md:p-8">
             {popularTopics.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {popularTopics.map((topic, i) => (
-                  <div key={topic.topic} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
-                      <span className="text-sm text-foreground truncate">{topic.topic}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-muted rounded">
-                        <div
-                          className="h-full bg-foreground rounded"
-                          style={{ width: `${topic.percentage}%` }}
-                        />
+                  <div key={topic.topic} className="group">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-secondary text-xs font-medium text-muted-foreground">
+                          {i + 1}
+                        </span>
+                        <span className="text-sm font-medium text-foreground truncate">{topic.topic}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground w-12 text-right">
+                      <span className="text-xs font-mono text-muted-foreground bg-secondary px-2 py-1 rounded-md">
                         {topic.count}
                       </span>
+                    </div>
+                    <div className="w-full h-2 bg-secondary/50 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary/80 rounded-full transition-all duration-500 group-hover:bg-primary"
+                        style={{ width: `${topic.percentage}%` }}
+                      />
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="h-48 flex items-center justify-center">
+              <div className="h-48 flex flex-col items-center justify-center text-center p-4">
+                <div className="w-12 h-12 rounded-full bg-secondary/50 flex items-center justify-center mb-3">
+                  <FileText className="w-6 h-6 text-muted-foreground/50" />
+                </div>
                 <p className="text-sm text-muted-foreground">No interview data yet</p>
               </div>
             )}
@@ -286,39 +320,44 @@ export function AnalyticsDashboard({
         </Card>
 
         {/* Top Companies */}
-        <Card className="bg-card border-border">
-          <CardHeader>
+        <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+          <CardHeader className="p-6 md:p-8 border-b border-border/50">
             <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-muted-foreground" />
-              <CardTitle className="font-mono">Top Companies</CardTitle>
+              <Building2 className="w-5 h-5 text-muted-foreground" />
+              <CardTitle className="text-lg font-bold">Top Companies</CardTitle>
             </div>
-            <CardDescription>Companies users are preparing for</CardDescription>
+            <CardDescription className="mt-1">Companies users are preparing for</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 md:p-8">
             {topCompanies.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {topCompanies.map((company, i) => (
-                  <div key={company.topic} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="text-xs text-muted-foreground w-4">{i + 1}.</span>
-                      <span className="text-sm text-foreground truncate">{company.topic}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-muted rounded">
-                        <div
-                          className="h-full bg-foreground rounded"
-                          style={{ width: `${company.percentage}%` }}
-                        />
+                  <div key={company.topic} className="group">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-secondary text-xs font-medium text-muted-foreground">
+                          {i + 1}
+                        </span>
+                        <span className="text-sm font-medium text-foreground truncate">{company.topic}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground w-12 text-right">
+                      <span className="text-xs font-mono text-muted-foreground bg-secondary px-2 py-1 rounded-md">
                         {company.count}
                       </span>
+                    </div>
+                    <div className="w-full h-2 bg-secondary/50 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500/80 rounded-full transition-all duration-500 group-hover:bg-blue-500"
+                        style={{ width: `${company.percentage}%` }}
+                      />
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="h-48 flex items-center justify-center">
+              <div className="h-48 flex flex-col items-center justify-center text-center p-4">
+                <div className="w-12 h-12 rounded-full bg-secondary/50 flex items-center justify-center mb-3">
+                  <Building2 className="w-6 h-6 text-muted-foreground/50" />
+                </div>
                 <p className="text-sm text-muted-foreground">No company data yet</p>
               </div>
             )}
@@ -329,15 +368,18 @@ export function AnalyticsDashboard({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Plan Distribution */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="font-mono">Plan Distribution</CardTitle>
-            <CardDescription>User subscription breakdown</CardDescription>
+        <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+          <CardHeader className="p-6 md:p-8 border-b border-border/50">
+            <div className="flex items-center gap-2">
+              <PieChartIcon className="w-5 h-5 text-muted-foreground" />
+              <CardTitle className="text-lg font-bold">Plan Distribution</CardTitle>
+            </div>
+            <CardDescription className="mt-1">User subscription breakdown</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 md:p-8">
             {planDistribution.length > 0 ? (
-              <div className="flex items-center gap-8">
-                <div className="w-40 h-40">
+              <div className="flex flex-col sm:flex-row items-center gap-8">
+                <div className="w-48 h-48 relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -346,34 +388,38 @@ export function AnalyticsDashboard({
                         nameKey="plan"
                         cx="50%"
                         cy="50%"
-                        innerRadius={40}
-                        outerRadius={70}
-                        paddingAngle={2}
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={4}
+                        cornerRadius={4}
                       >
                         {planDistribution.map((entry) => (
                           <Cell
                             key={entry.plan}
                             fill={PLAN_COLORS[entry.plan] || 'hsl(var(--muted))'}
+                            strokeWidth={0}
                           />
                         ))}
                       </Pie>
                     </PieChart>
                   </ResponsiveContainer>
+                  <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+                    <span className="text-2xl font-bold">{planDistribution.reduce((acc, curr) => acc + curr.count, 0)}</span>
+                    <span className="text-xs text-muted-foreground">Total Users</span>
+                  </div>
                 </div>
-                <div className="space-y-3 flex-1">
+                <div className="space-y-4 flex-1 w-full">
                   {planDistribution.map((plan) => (
-                    <div key={plan.plan} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
+                    <div key={plan.plan} className="flex items-center justify-between p-3 rounded-xl bg-secondary/30">
+                      <div className="flex items-center gap-3">
                         <div
-                          className="w-3 h-3 rounded-full"
+                          className="w-3 h-3 rounded-full shadow-sm"
                           style={{ backgroundColor: PLAN_COLORS[plan.plan] || 'hsl(var(--muted))' }}
                         />
-                        <Badge variant={plan.plan === 'MAX' ? 'default' : 'secondary'}>
-                          {plan.plan}
-                        </Badge>
+                        <span className="font-medium text-sm">{plan.plan}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-mono">{plan.count}</span>
+                        <span className="text-sm font-bold">{plan.count}</span>
                         <span className="text-xs text-muted-foreground">({plan.percentage}%)</span>
                       </div>
                     </div>
@@ -381,7 +427,10 @@ export function AnalyticsDashboard({
                 </div>
               </div>
             ) : (
-              <div className="h-48 flex items-center justify-center">
+              <div className="h-48 flex flex-col items-center justify-center text-center p-4">
+                <div className="w-12 h-12 rounded-full bg-secondary/50 flex items-center justify-center mb-3">
+                  <Users className="w-6 h-6 text-muted-foreground/50" />
+                </div>
                 <p className="text-sm text-muted-foreground">No user data yet</p>
               </div>
             )}
@@ -389,30 +438,33 @@ export function AnalyticsDashboard({
         </Card>
 
         {/* Model Usage */}
-        <Card className="bg-card border-border">
-          <CardHeader>
-            <CardTitle className="font-mono">Model Usage</CardTitle>
-            <CardDescription>AI model distribution</CardDescription>
+        <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+          <CardHeader className="p-6 md:p-8 border-b border-border/50">
+            <div className="flex items-center gap-2">
+              <Cpu className="w-5 h-5 text-muted-foreground" />
+              <CardTitle className="text-lg font-bold">Model Usage</CardTitle>
+            </div>
+            <CardDescription className="mt-1">AI model distribution</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6 md:p-8">
             {modelUsage.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {modelUsage.map((model) => {
                   const maxCount = Math.max(...modelUsage.map((m) => m.count));
                   const barWidth = maxCount > 0 ? (model.count / maxCount) * 100 : 0;
                   return (
-                    <div key={model.model} className="space-y-1">
+                    <div key={model.model} className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground font-mono truncate max-w-[200px]">
+                        <span className="text-sm font-medium truncate max-w-[200px]">
                           {model.model}
                         </span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground font-mono bg-secondary px-2 py-1 rounded-md">
                           {model.count} ({model.percentage}%)
                         </span>
                       </div>
-                      <div className="w-full h-2 bg-muted rounded">
+                      <div className="w-full h-2.5 bg-secondary/50 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-foreground rounded transition-all"
+                          className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-full transition-all duration-500"
                           style={{ width: `${barWidth}%` }}
                         />
                       </div>
@@ -421,7 +473,10 @@ export function AnalyticsDashboard({
                 })}
               </div>
             ) : (
-              <div className="h-48 flex items-center justify-center">
+              <div className="h-48 flex flex-col items-center justify-center text-center p-4">
+                <div className="w-12 h-12 rounded-full bg-secondary/50 flex items-center justify-center mb-3">
+                  <Cpu className="w-6 h-6 text-muted-foreground/50" />
+                </div>
                 <p className="text-sm text-muted-foreground">No AI usage data yet</p>
               </div>
             )}
@@ -430,57 +485,67 @@ export function AnalyticsDashboard({
       </div>
 
       {/* Token Usage Trends */}
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="font-mono">Token Usage Trends</CardTitle>
-          <CardDescription>Input and output token consumption over time</CardDescription>
+      <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+        <CardHeader className="p-6 md:p-8 border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-cyan-500" />
+            </div>
+            <div>
+              <CardTitle className="text-xl font-bold">Token Usage Trends</CardTitle>
+              <CardDescription className="mt-1">Input and output token consumption over time</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6 md:p-8">
           {formattedTokenTrends.some((d) => d.inputTokens > 0 || d.outputTokens > 0) ? (
-            <ChartContainer config={tokenChartConfig} className="h-64 w-full">
+            <ChartContainer config={tokenChartConfig} className="h-[300px] w-full">
               <BarChart data={formattedTokenTrends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" vertical={false} />
                 <XAxis
                   dataKey="formattedDate"
                   tickLine={false}
                   axisLine={false}
-                  tickMargin={8}
-                  tick={{ fontSize: 12 }}
+                  tickMargin={12}
+                  tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
                   interval="preserveStartEnd"
                 />
                 <YAxis
                   tickLine={false}
                   axisLine={false}
-                  tickMargin={8}
-                  tick={{ fontSize: 12 }}
+                  tickMargin={12}
+                  tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
                   tickFormatter={(value) => {
                     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
                     if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
                     return value;
                   }}
                 />
-                <ChartTooltip 
+                <ChartTooltip
                   content={<ChartTooltipContent />}
-                  cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }}
+                  cursor={{ fill: 'hsl(var(--muted))', opacity: 0.1 }}
                 />
                 <ChartLegend content={<ChartLegendContent />} />
                 <Bar
                   dataKey="inputTokens"
                   stackId="tokens"
-                  fill="#22d3ee"
-                  radius={[0, 0, 0, 0]}
+                  fill="var(--color-inputTokens)"
+                  radius={[0, 0, 4, 4]}
+                  maxBarSize={50}
                 />
                 <Bar
                   dataKey="outputTokens"
                   stackId="tokens"
-                  fill="#f472b6"
+                  fill="var(--color-outputTokens)"
                   radius={[4, 4, 0, 0]}
+                  maxBarSize={50}
                 />
               </BarChart>
             </ChartContainer>
           ) : (
-            <div className="h-64 flex items-center justify-center border border-dashed border-border rounded-lg">
-              <p className="text-sm text-muted-foreground">No token usage data available yet</p>
+            <div className="h-[300px] flex flex-col items-center justify-center border-2 border-dashed border-border/50 rounded-2xl bg-secondary/20">
+              <BarChart3 className="w-10 h-10 text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground font-medium">No token usage data available yet</p>
             </div>
           )}
         </CardContent>

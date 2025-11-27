@@ -57,8 +57,9 @@ export function AdminStatsGrid({ stats }: AdminStatsGridProps) {
       label: "Total Users",
       value: formatNumber(stats.totalUsers),
       icon: Users,
-      color: "text-foreground",
-      bgColor: "bg-secondary",
+      color: "text-blue-500",
+      bgColor: "bg-blue-500/10",
+      borderColor: "border-blue-500/20",
     },
     {
       label: "Active This Week",
@@ -66,13 +67,15 @@ export function AdminStatsGrid({ stats }: AdminStatsGridProps) {
       icon: Activity,
       color: "text-green-500",
       bgColor: "bg-green-500/10",
+      borderColor: "border-green-500/20",
     },
     {
       label: "Total Interviews",
       value: formatNumber(stats.totalInterviews),
       icon: FileText,
-      color: "text-blue-500",
-      bgColor: "bg-blue-500/10",
+      color: "text-indigo-500",
+      bgColor: "bg-indigo-500/10",
+      borderColor: "border-indigo-500/20",
     },
     {
       label: "AI Requests",
@@ -80,6 +83,7 @@ export function AdminStatsGrid({ stats }: AdminStatsGridProps) {
       icon: Cpu,
       color: "text-purple-500",
       bgColor: "bg-purple-500/10",
+      borderColor: "border-purple-500/20",
     },
   ];
 
@@ -100,57 +104,60 @@ export function AdminStatsGrid({ stats }: AdminStatsGridProps) {
       label: "Avg Latency",
       value: formatLatency(stats.avgLatencyMs),
       icon: Clock,
-      color: "text-yellow-500",
+      color: "text-amber-500",
     },
     {
       label: "Total Cost",
       value: formatCost(stats.totalCost),
       icon: DollarSign,
-      color: "text-green-500",
+      color: "text-green-600",
     },
     {
       label: "Error Rate",
       value: `${stats.errorRate}%`,
       icon: AlertTriangle,
-      color: stats.errorRate > 5 ? "text-red-500" : "text-yellow-500",
+      color: stats.errorRate > 5 ? "text-red-500" : "text-amber-500",
     },
     {
       label: "Time to First Token",
       value: formatLatency(stats.avgTimeToFirstToken),
       icon: TrendingUp,
-      color: "text-purple-500",
+      color: "text-violet-500",
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Primary Stats */}
       <motion.div
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
       >
         {primaryStats.map((stat) => (
           <motion.div key={stat.label} variants={itemVariants}>
-            <Card className="bg-card/80 backdrop-blur-sm border-border hover:border-primary/30 transition-all duration-300 group overflow-hidden">
-              <CardContent className="p-4 sm:p-6">
+            <Card className="relative overflow-hidden border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card hover:shadow-xl transition-all duration-300 rounded-3xl h-full group">
+              <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-transparent via-transparent to-${stat.color.split('-')[1]}-500/5`} />
+              <CardContent className="p-6 flex flex-col justify-between h-full relative z-10">
                 <div className="flex items-start justify-between mb-4">
                   <div
-                    className={`w-12 h-12 ${stat.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform`}
+                    className={`w-12 h-12 rounded-2xl ${stat.bgColor} flex items-center justify-center transition-transform duration-300 group-hover:scale-105 group-hover:rotate-3`}
                   >
-                    <stat.icon className={`w-5 h-5 ${stat.color}`} />
+                    <stat.icon className={`w-6 h-6 ${stat.color}`} />
                   </div>
-                  <div className="w-8 h-8 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="w-8 h-8 rounded-full bg-secondary/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 -translate-y-2 group-hover:translate-y-0">
                     <TrendingUp className="w-4 h-4 text-muted-foreground" />
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground mb-1">
-                  {stat.label}
-                </p>
-                <p className={`text-3xl font-mono ${stat.color}`}>
-                  {stat.value}
-                </p>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-1">
+                    {stat.label}
+                  </p>
+                  <p className="text-3xl font-bold tracking-tight text-foreground">
+                    {stat.value}
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </motion.div>
@@ -158,30 +165,35 @@ export function AdminStatsGrid({ stats }: AdminStatsGridProps) {
       </motion.div>
 
       {/* AI Stats */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3"
-      >
-        {aiStats.map((stat) => (
-          <motion.div key={stat.label} variants={itemVariants}>
-            <Card className="bg-card/60 backdrop-blur-sm border-border hover:border-primary/20 transition-all duration-300 overflow-hidden">
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <stat.icon className={`w-4 h-4 ${stat.color}`} />
-                  <p className="text-xs text-muted-foreground truncate">
-                    {stat.label}
+      <div>
+        <h3 className="text-lg font-semibold mb-4 px-1">AI Performance</h3>
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"
+        >
+          {aiStats.map((stat) => (
+            <motion.div key={stat.label} variants={itemVariants}>
+              <Card className="border-0 shadow-md shadow-black/5 dark:shadow-black/20 bg-card/50 backdrop-blur-sm hover:bg-card hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden group">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className="p-1.5 rounded-lg bg-secondary/50 group-hover:bg-secondary transition-colors">
+                      <stat.icon className={`w-4 h-4 ${stat.color}`} />
+                    </div>
+                    <p className="text-xs font-medium text-muted-foreground truncate leading-none">
+                      {stat.label}
+                    </p>
+                  </div>
+                  <p className="text-xl font-bold tracking-tight text-foreground pl-0.5">
+                    {stat.value}
                   </p>
-                </div>
-                <p className={`text-xl font-mono ${stat.color}`}>
-                  {stat.value}
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </motion.div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
+      </div>
     </div>
   );
 }

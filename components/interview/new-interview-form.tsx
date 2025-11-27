@@ -23,6 +23,7 @@ import {
   Brain,
   CheckCircle2,
   Info,
+  ArrowRight,
 } from 'lucide-react';
 import { createInterview, createInterviewFromPrompt } from '@/lib/actions/interview';
 import { useSharedHeader } from '@/components/dashboard/shared-header-context';
@@ -59,9 +60,9 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
       title: 'Create Interview Prep',
       description: 'Create your personalized preparation plan',
       actions: !usageData.isByok ? (
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm bg-secondary/50 px-3 py-1.5 rounded-full border border-border/50">
           <div className={`w-2 h-2 rounded-full ${isAtLimit ? 'bg-destructive' : 'bg-green-500'}`} />
-          <span className="text-muted-foreground">
+          <span className="text-muted-foreground font-medium">
             {remainingInterviews} of {usageData.interviews.limit} remaining
           </span>
         </div>
@@ -212,11 +213,11 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="mb-6 flex items-center gap-3 p-4 bg-destructive/10 border border-destructive/20 text-destructive text-sm"
+            className="mb-6 flex items-center gap-3 p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-sm"
           >
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <p>{generalError}</p>
-            <button onClick={() => setGeneralError(null)} className="ml-auto hover:bg-destructive/20 p-1">
+            <button onClick={() => setGeneralError(null)} className="ml-auto hover:bg-destructive/20 p-1 rounded-full">
               <X className="w-4 h-4" />
             </button>
           </motion.div>
@@ -228,12 +229,12 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 flex items-center gap-3 p-4 bg-secondary border border-border text-sm"
+          className="mb-6 flex items-center gap-3 p-4 rounded-2xl bg-secondary border border-border text-sm"
         >
           <Info className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
           <p className="text-muted-foreground">
             You've reached your {usageData.plan} plan limit.{' '}
-            <Link href="/settings" className="text-foreground underline hover:no-underline">
+            <Link href="/settings" className="text-foreground underline hover:no-underline font-medium">
               Upgrade your plan
             </Link>{' '}
             to create more interviews.
@@ -243,32 +244,40 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 md:gap-8">
         {/* Main form area */}
-        <div className="lg:col-span-3 space-y-4 md:space-y-6">
+        <div className="lg:col-span-3 space-y-6">
           {/* Quick Start Card */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <form onSubmit={handlePromptSubmit}>
-              <div className="bg-card border border-border p-4 md:p-8 hover:border-primary/30 transition-colors">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-primary/10 flex items-center justify-center">
-                    <Wand2 className="w-5 h-5 text-primary" />
+              <div className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+                    <Wand2 className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-mono text-foreground">Quick Start</h2>
+                    <h2 className="text-lg font-bold text-foreground">Quick Start</h2>
                     <p className="text-sm text-muted-foreground">Describe your interview in natural language</p>
                   </div>
                 </div>
-                <Textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="e.g., I'm preparing for a Senior Frontend Engineer interview at Stripe..."
-                  className="font-mono min-h-[140px] bg-secondary/30 border-border focus:border-primary/50 resize-none"
-                  disabled={isLoading || isAtLimit}
-                />
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mt-4">
-                  <p className="text-xs text-muted-foreground">
-                    {prompt.length < 10 ? `${10 - prompt.length} more characters needed` : '✓ Ready to create'}
-                  </p>
-                  <Button type="submit" disabled={!canSubmitPrompt || isLoading} className="w-full sm:w-auto min-h-[44px]">
+                <div className="relative">
+                  <Textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="e.g., I'm preparing for a Senior Frontend Engineer interview at Stripe. I have 5 years of experience with React, Node.js, and TypeScript..."
+                    className="font-mono text-sm min-h-[160px] bg-secondary/30 border-border/50 focus:border-primary/30 focus:ring-0 resize-none rounded-2xl p-4 leading-relaxed"
+                    disabled={isLoading || isAtLimit}
+                  />
+                  <div className="absolute bottom-4 right-4">
+                    <p className="text-[10px] text-muted-foreground bg-background/80 backdrop-blur-sm px-2 py-1 rounded-full border border-border/50">
+                      {prompt.length < 10 ? `${10 - prompt.length} more chars` : 'Ready'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end mt-4">
+                  <Button
+                    type="submit"
+                    disabled={!canSubmitPrompt || isLoading}
+                    className="rounded-full px-6 h-11 font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                  >
                     {isPromptSubmitting ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -287,10 +296,10 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
           </motion.div>
 
           {/* Divider */}
-          <motion.div className="relative flex items-center gap-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">or</span>
-            <div className="flex-1 h-px bg-border" />
+          <motion.div className="relative flex items-center gap-4 py-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }}>
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">OR</span>
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-border to-transparent" />
           </motion.div>
 
           {/* Detailed Form Toggle */}
@@ -298,15 +307,20 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
             <Button
               type="button"
               variant="outline"
-              className="w-full justify-between bg-card hover:bg-secondary/50 border-border h-14 min-h-[44px]"
+              className="w-full justify-between bg-card/30 hover:bg-card/50 border-border/50 h-16 rounded-2xl group transition-all duration-300"
               onClick={() => setShowDetailedForm(!showDetailedForm)}
               disabled={isLoading}
             >
-              <div className="flex items-center gap-3">
-                <FileText className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm">Fill in details manually</span>
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-secondary/50 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                  <FileText className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+                <div className="text-left">
+                  <span className="block text-sm font-medium text-foreground">Fill in details manually</span>
+                  <span className="block text-xs text-muted-foreground">Upload resume and job description</span>
+                </div>
               </div>
-              {showDetailedForm ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+              {showDetailedForm ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
             </Button>
           </motion.div>
 
@@ -314,11 +328,11 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
           <AnimatePresence>
             {showDetailedForm && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }}>
-                <form onSubmit={handleDetailedSubmit} className="space-y-4 md:space-y-6">
-                  <div className="bg-card border border-border p-4 md:p-8 space-y-4 md:space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-4">
+                <form onSubmit={handleDetailedSubmit} className="pt-2">
+                  <div className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <Label htmlFor="jobTitle" className="text-sm text-muted-foreground block">
+                        <Label htmlFor="jobTitle" className="text-sm font-medium text-foreground ml-1">
                           Job Title <span className="text-destructive">*</span>
                         </Label>
                         <Input
@@ -326,13 +340,13 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
                           value={jobTitle}
                           onChange={(e) => { setJobTitle(e.target.value); if (errors.jobTitle) setErrors((prev) => ({ ...prev, jobTitle: '' })); }}
                           placeholder="Senior Frontend Engineer"
-                          className={`w-full font-mono bg-secondary/30 min-h-[44px] ${errors.jobTitle ? 'border-destructive' : ''}`}
+                          className={`h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/30 focus:ring-0 ${errors.jobTitle ? 'border-destructive/50' : ''}`}
                           disabled={isLoading || isAtLimit}
                         />
-                        {errors.jobTitle && <p className="text-xs text-destructive mt-1">{errors.jobTitle}</p>}
+                        {errors.jobTitle && <p className="text-xs text-destructive ml-1">{errors.jobTitle}</p>}
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="company" className="text-sm text-muted-foreground block">
+                        <Label htmlFor="company" className="text-sm font-medium text-foreground ml-1">
                           Company <span className="text-destructive">*</span>
                         </Label>
                         <Input
@@ -340,94 +354,115 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
                           value={company}
                           onChange={(e) => { setCompany(e.target.value); if (errors.company) setErrors((prev) => ({ ...prev, company: '' })); }}
                           placeholder="Stripe"
-                          className={`w-full font-mono bg-secondary/30 min-h-[44px] ${errors.company ? 'border-destructive' : ''}`}
+                          className={`h-12 rounded-xl bg-secondary/30 border-border/50 focus:border-primary/30 focus:ring-0 ${errors.company ? 'border-destructive/50' : ''}`}
                           disabled={isLoading || isAtLimit}
                         />
-                        {errors.company && <p className="text-xs text-destructive mt-1">{errors.company}</p>}
+                        {errors.company && <p className="text-xs text-destructive ml-1">{errors.company}</p>}
                       </div>
                     </div>
 
                     {/* Resume Upload */}
                     <div className="space-y-2">
-                      <Label className="text-sm text-muted-foreground block">Resume (optional)</Label>
+                      <Label className="text-sm font-medium text-foreground ml-1">Resume (optional)</Label>
                       {!showManualResume ? (
                         <div
                           onDragOver={handleDragOver}
                           onDragLeave={handleDragLeave}
                           onDrop={handleDrop}
-                          className={`border-2 border-dashed p-6 text-center transition-all min-h-[100px] flex flex-col items-center justify-center ${
-                            isDragging ? 'border-primary bg-primary/5' : resumeFile ? 'border-primary/50 bg-primary/5' : errors.resumeFile ? 'border-destructive' : 'border-border hover:border-muted-foreground bg-secondary/20'
-                          }`}
+                          className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 min-h-[120px] flex flex-col items-center justify-center group ${isDragging ? 'border-primary bg-primary/5' : resumeFile ? 'border-primary/20 bg-primary/5' : errors.resumeFile ? 'border-destructive/50' : 'border-border/50 hover:border-primary/20 hover:bg-secondary/20'
+                            }`}
                         >
                           {resumeFile ? (
-                            <div className="flex items-center justify-center gap-3">
-                              <FileText className="w-6 h-6 text-muted-foreground" />
-                              <div className="text-left">
-                                <p className="text-sm text-foreground font-mono">{resumeFile.name}</p>
+                            <div className="flex items-center justify-center gap-4 w-full max-w-md bg-background/50 p-3 rounded-xl border border-border/50">
+                              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                <FileText className="w-5 h-5 text-primary" />
+                              </div>
+                              <div className="text-left flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{resumeFile.name}</p>
                                 <p className="text-xs text-muted-foreground">{(resumeFile.size / 1024).toFixed(1)} KB</p>
                               </div>
-                              <Button type="button" variant="ghost" size="icon" onClick={() => setResumeFile(null)} className="ml-2" disabled={isLoading}>
+                              <Button type="button" variant="ghost" size="icon" onClick={() => setResumeFile(null)} className="rounded-full hover:bg-destructive/10 hover:text-destructive" disabled={isLoading}>
                                 <X className="w-4 h-4" />
                               </Button>
                             </div>
                           ) : (
                             <>
-                              <Upload className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
-                              <p className="text-sm text-muted-foreground mb-1">
-                                Drag and drop your resume, or{' '}
-                                <label className="text-foreground hover:underline cursor-pointer">
-                                  browse
-                                  <input type="file" accept=".pdf,.doc,.docx" onChange={handleFileSelect} className="hidden" disabled={isLoading || isAtLimit} />
-                                </label>
+                              <div className="w-12 h-12 rounded-full bg-secondary/50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform duration-300">
+                                <Upload className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                              </div>
+                              <p className="text-sm text-foreground font-medium mb-1">
+                                Click to upload or drag and drop
                               </p>
-                              <p className="text-xs text-muted-foreground">PDF or DOCX up to 5MB</p>
+                              <p className="text-xs text-muted-foreground mb-3">
+                                PDF or DOCX up to 5MB
+                              </p>
+                              <input type="file" accept=".pdf,.doc,.docx" onChange={handleFileSelect} className="hidden" id="resume-upload" disabled={isLoading || isAtLimit} />
+                              <label htmlFor="resume-upload" className="absolute inset-0 cursor-pointer" />
                             </>
                           )}
                         </div>
                       ) : (
-                        <div>
-                          <Textarea value={resumeText} onChange={(e) => setResumeText(e.target.value)} placeholder="Paste your resume text here..." className="w-full font-mono min-h-[120px] bg-secondary/30" disabled={isLoading || isAtLimit} />
-                          <Button type="button" variant="link" size="sm" className="mt-1 p-0 h-auto text-xs min-h-[44px]" onClick={() => { setShowManualResume(false); setResumeText(''); }}>
-                            Upload file instead
+                        <div className="relative">
+                          <Textarea
+                            value={resumeText}
+                            onChange={(e) => setResumeText(e.target.value)}
+                            placeholder="Paste your resume text here..."
+                            className="w-full font-mono text-sm min-h-[140px] bg-secondary/30 border-border/50 rounded-2xl p-4 focus:border-primary/30 focus:ring-0"
+                            disabled={isLoading || isAtLimit}
+                          />
+                          <Button type="button" variant="ghost" size="sm" className="absolute top-2 right-2 h-8 text-xs" onClick={() => { setShowManualResume(false); setResumeText(''); }}>
+                            <X className="w-3 h-3 mr-1" /> Cancel
                           </Button>
                         </div>
                       )}
                       {errors.resumeFile && (
-                        <div className="mt-2">
+                        <div className="mt-2 ml-1">
                           <p className="text-xs text-destructive">{errors.resumeFile}</p>
-                          {!showManualResume && (
-                            <Button type="button" variant="link" size="sm" className="p-0 h-auto text-xs min-h-[44px]" onClick={() => { setShowManualResume(true); setResumeFile(null); setErrors((prev) => ({ ...prev, resumeFile: '' })); }}>
-                              Enter resume text manually
-                            </Button>
-                          )}
+                        </div>
+                      )}
+                      {!showManualResume && !resumeFile && (
+                        <div className="text-right">
+                          <Button type="button" variant="link" size="sm" className="h-auto text-xs text-muted-foreground hover:text-primary px-0" onClick={() => { setShowManualResume(true); setResumeFile(null); setErrors((prev) => ({ ...prev, resumeFile: '' })); }}>
+                            Or paste text manually
+                          </Button>
                         </div>
                       )}
                     </div>
 
                     {/* Job Description */}
                     <div className="space-y-2">
-                      <Label htmlFor="jobDescription" className="text-sm text-muted-foreground block">
+                      <Label htmlFor="jobDescription" className="text-sm font-medium text-foreground ml-1">
                         Job Description <span className="text-destructive">*</span>
                       </Label>
-                      <Textarea
-                        id="jobDescription"
-                        value={jobDescription}
-                        onChange={(e) => { setJobDescription(e.target.value); if (errors.jobDescription) setErrors((prev) => ({ ...prev, jobDescription: '' })); }}
-                        placeholder="Paste the full job description here..."
-                        className={`w-full font-mono min-h-[180px] bg-secondary/30 resize-none ${errors.jobDescription ? 'border-destructive' : ''}`}
-                        disabled={isLoading || isAtLimit}
-                      />
-                      <div className="flex justify-between mt-1">
-                        {errors.jobDescription ? (
-                          <p className="text-xs text-destructive">{errors.jobDescription}</p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground">{jobDescription.length < 50 ? `${50 - jobDescription.length} more characters needed` : '✓ Minimum length met'}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground">{jobDescription.length}/10000</p>
+                      <div className="relative">
+                        <Textarea
+                          id="jobDescription"
+                          value={jobDescription}
+                          onChange={(e) => { setJobDescription(e.target.value); if (errors.jobDescription) setErrors((prev) => ({ ...prev, jobDescription: '' })); }}
+                          placeholder="Paste the full job description here..."
+                          className={`w-full font-mono text-sm min-h-[200px] bg-secondary/30 border-border/50 rounded-2xl p-4 focus:border-primary/30 focus:ring-0 resize-none ${errors.jobDescription ? 'border-destructive/50' : ''}`}
+                          disabled={isLoading || isAtLimit}
+                        />
+                        <div className="absolute bottom-4 right-4 flex items-center gap-3">
+                          {errors.jobDescription ? (
+                            <span className="text-[10px] text-destructive bg-destructive/10 px-2 py-1 rounded-full">{errors.jobDescription}</span>
+                          ) : (
+                            <span className={`text-[10px] px-2 py-1 rounded-full border ${jobDescription.length < 50 ? 'bg-secondary text-muted-foreground border-border' : 'bg-green-500/10 text-green-500 border-green-500/20'}`}>
+                              {jobDescription.length < 50 ? `${50 - jobDescription.length} more needed` : 'Minimum met'}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-muted-foreground bg-background/80 backdrop-blur-sm px-2 py-1 rounded-full border border-border/50">
+                            {jobDescription.length}/10000
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    <Button type="submit" disabled={!canSubmitDetailed || isLoading} className="w-full min-h-[44px]">
+                    <Button
+                      type="submit"
+                      disabled={!canSubmitDetailed || isLoading}
+                      className="w-full h-12 rounded-full font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all hover:scale-[1.01] active:scale-[0.99] mt-4"
+                    >
                       {isSubmitting ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -448,33 +483,55 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
         </div>
 
         {/* Side panel */}
-        <motion.div className="lg:col-span-2 space-y-4 md:space-y-6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
-          <div className="bg-card border border-border p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Target className="w-4 h-4 text-primary" />
-              <h3 className="font-mono text-sm text-foreground">Tips for best results</h3>
+        <motion.div className="lg:col-span-2 space-y-6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4, delay: 0.2 }}>
+          <div className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 rounded-3xl">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Target className="w-4 h-4 text-primary" />
+              </div>
+              <h3 className="font-bold text-sm text-foreground">Tips for best results</h3>
             </div>
-            <ul className="space-y-3">
+            <ul className="space-y-4">
               {tips.map((tip, i) => (
-                <motion.li key={tip} className="flex items-start gap-2 text-sm text-muted-foreground" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.05 }}>
-                  <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  {tip}
+                <motion.li key={tip} className="flex items-start gap-3 text-sm text-muted-foreground" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.05 }}>
+                  <CheckCircle2 className="w-5 h-5 text-green-500/80 mt-0.5 flex-shrink-0" />
+                  <span className="leading-relaxed">{tip}</span>
                 </motion.li>
               ))}
             </ul>
           </div>
 
-          <div className="bg-gradient-to-br from-card to-secondary/20 border border-border p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Brain className="w-4 h-4 text-primary" />
-              <h3 className="font-mono text-sm text-foreground">What you'll get</h3>
+          <div className="relative overflow-hidden bg-gradient-to-br from-primary/5 to-purple-500/5 border border-white/10 p-6 rounded-3xl">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+            <div className="relative">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Brain className="w-4 h-4 text-primary" />
+                </div>
+                <h3 className="font-bold text-sm text-foreground">What you'll get</h3>
+              </div>
+              <ul className="space-y-3">
+                {[
+                  'Personalized opening brief',
+                  'Key revision topics',
+                  'Practice MCQs',
+                  'Rapid-fire questions'
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="mt-6 pt-6 border-t border-border/50">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Powered by AI</span>
+                  <Sparkles className="w-3 h-3 text-primary/50" />
+                </div>
+              </div>
             </div>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>• Personalized opening brief</li>
-              <li>• Key revision topics</li>
-              <li>• Practice MCQs</li>
-              <li>• Rapid-fire questions</li>
-            </ul>
           </div>
         </motion.div>
       </div>

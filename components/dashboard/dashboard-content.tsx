@@ -57,55 +57,57 @@ export function DashboardContent({
     <div className="overflow-hidden">
       {/* Search & Filters */}
       <motion.div
-        className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6"
+        className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.2 }}
       >
-        <div className="relative flex-1 w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by role or company..."
-            className="pl-10 font-mono bg-card border-border"
+            placeholder="Search interviews..."
+            className="pl-11 h-12 rounded-full bg-secondary/50 border-transparent focus:bg-background focus:border-primary/20 transition-all duration-300"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-          <div className="flex items-center gap-1 border border-border bg-card p-1 w-full sm:w-auto">
-            <Filter className="w-4 h-4 text-muted-foreground ml-2" />
-            {(["all", "active", "completed"] as const).map((status) => (
-              <Button
-                key={status}
-                variant={filterStatus === status ? "secondary" : "ghost"}
-                size="sm"
-                className="text-xs capitalize flex-1 sm:flex-none"
-                onClick={() => setFilterStatus(status)}
-              >
-                {status}
-              </Button>
-            ))}
-          </div>
+        <div className="flex items-center gap-2 bg-secondary/30 p-1 rounded-full border border-border/50">
+          {(["all", "active", "completed"] as const).map((status) => (
+            <Button
+              key={status}
+              variant={filterStatus === status ? "secondary" : "ghost"}
+              size="sm"
+              className={`rounded-full px-4 text-xs capitalize transition-all duration-300 ${filterStatus === status
+                  ? "bg-background shadow-sm text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+                }`}
+              onClick={() => setFilterStatus(status)}
+            >
+              {status}
+            </Button>
+          ))}
+        </div>
 
-          <div className="flex items-center border border-border bg-card p-1 w-full sm:w-auto justify-center sm:justify-start">
-            <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="sm"
-              className="px-2 flex-1 sm:flex-none"
-              onClick={() => setViewMode("grid")}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="sm"
-              className="px-2 flex-1 sm:flex-none"
-              onClick={() => setViewMode("list")}
-            >
-              <List className="w-4 h-4" />
-            </Button>
-          </div>
+        <div className="hidden sm:flex items-center gap-1 bg-secondary/30 p-1 rounded-full border border-border/50">
+          <Button
+            variant={viewMode === "grid" ? "secondary" : "ghost"}
+            size="icon"
+            className={`w-8 h-8 rounded-full transition-all duration-300 ${viewMode === "grid" ? "bg-background shadow-sm" : ""
+              }`}
+            onClick={() => setViewMode("grid")}
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "secondary" : "ghost"}
+            size="icon"
+            className={`w-8 h-8 rounded-full transition-all duration-300 ${viewMode === "list" ? "bg-background shadow-sm" : ""
+              }`}
+            onClick={() => setViewMode("list")}
+          >
+            <List className="w-4 h-4" />
+          </Button>
         </div>
       </motion.div>
 
@@ -114,11 +116,38 @@ export function DashboardContent({
         <motion.div
           className={
             viewMode === "grid"
-              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-              : "flex flex-col gap-3 min-w-0"
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              : "flex flex-col gap-4 min-w-0"
           }
           layout
         >
+          {/* Add New Card */}
+          <motion.div
+            layout
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+          >
+            <Link href="/dashboard/new">
+              <div
+                className={`group relative overflow-hidden rounded-3xl border border-dashed border-border/60 hover:border-primary/50 transition-all duration-500 flex flex-col items-center justify-center cursor-pointer bg-card/30 hover:bg-card/80 ${viewMode === "grid" ? "h-full min-h-[280px]" : "h-24 flex-row gap-4"
+                  }`}
+              >
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                  <Plus className="w-6 h-6 text-primary" />
+                </div>
+                <div className={viewMode === "grid" ? "mt-4 text-center" : "text-left"}>
+                  <p className="font-medium text-foreground group-hover:text-primary transition-colors">
+                    New Interview
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Start a new preparation
+                  </p>
+                </div>
+              </div>
+            </Link>
+          </motion.div>
+
           {filteredInterviews.map((interview, index) => (
             <motion.div
               key={interview._id}
@@ -126,7 +155,7 @@ export function DashboardContent({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3, delay: index * 0.03 }}
+              transition={{ duration: 0.4, delay: index * 0.05 }}
             >
               <InterviewCardNew
                 interview={interview}
@@ -136,53 +165,26 @@ export function DashboardContent({
               />
             </motion.div>
           ))}
-
-          {/* Add New Card */}
-          <motion.div
-            layout
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{
-              duration: 0.3,
-              delay: filteredInterviews.length * 0.03,
-            }}
-          >
-            <Link href="/dashboard/new">
-              <div
-                className={`group border border-dashed border-border hover:border-primary/50 transition-all duration-300 flex items-center justify-center cursor-pointer bg-card/50 hover:bg-card ${
-                  viewMode === "grid" ? "h-full min-h-[240px]" : "h-20"
-                }`}
-              >
-                <div className="text-center">
-                  <div className="w-12 h-12 mx-auto mb-3 bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                    <Plus className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-                  </div>
-                  <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                    Create new interview prep
-                  </p>
-                </div>
-              </div>
-            </Link>
-          </motion.div>
         </motion.div>
       </AnimatePresence>
 
       {/* Empty state */}
       {filteredInterviews.length === 0 && interviews.length > 0 && (
         <motion.div
-          className="text-center py-16"
+          className="text-center py-24"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          <div className="w-16 h-16 mx-auto mb-4 bg-secondary flex items-center justify-center">
-            <Search className="w-6 h-6 text-muted-foreground" />
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-secondary/50 flex items-center justify-center">
+            <Search className="w-8 h-8 text-muted-foreground" />
           </div>
-          <p className="text-muted-foreground mb-2">
-            No interviews match your search
+          <h3 className="text-lg font-medium mb-2">No interviews found</h3>
+          <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+            We couldn't find any interviews matching your search criteria.
           </p>
           <Button
             variant="outline"
-            size="sm"
+            className="rounded-full px-6"
             onClick={() => {
               setSearchQuery("");
               setFilterStatus("all");

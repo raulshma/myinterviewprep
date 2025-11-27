@@ -211,7 +211,7 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="bg-card border border-border p-6"
+        className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl"
       >
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -226,33 +226,33 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5 }}
-      className="bg-card border border-border p-4 sm:p-6 hover:border-primary/30 transition-colors group overflow-hidden"
+      className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm"
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-secondary flex items-center justify-center group-hover:bg-primary/10 transition-colors shrink-0">
-            <Settings className="w-5 h-5 text-foreground" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+            <Settings className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h2 className="font-mono text-lg text-foreground">Model Configuration</h2>
-            <p className="text-xs text-muted-foreground">Configure models for your API key</p>
+            <h2 className="text-lg font-bold text-foreground">Model Configuration</h2>
+            <p className="text-sm text-muted-foreground">Configure models for your API key</p>
           </div>
         </div>
-        <Badge variant={configuredCount === 3 ? 'default' : 'secondary'}>
+        <Badge variant={configuredCount === 3 ? 'default' : 'secondary'} className="px-4 py-1.5 rounded-full">
           {configuredCount}/3 Configured
         </Badge>
       </div>
 
       {error && (
-        <Alert variant="destructive" className="mb-4">
+        <Alert variant="destructive" className="mb-6 rounded-2xl bg-destructive/10 border-destructive/20">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* Tier Selection */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {(['high', 'medium', 'low'] as ModelTier[]).map(tier => {
             const info = TIER_INFO[tier];
             const Icon = info.icon;
@@ -260,21 +260,20 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
             return (
               <div
                 key={tier}
-                className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                  activeTier === tier
-                    ? 'border-foreground bg-muted/50'
-                    : 'border-border hover:border-foreground/50'
-                }`}
+                className={`p-4 rounded-2xl border cursor-pointer transition-all ${activeTier === tier
+                    ? 'border-primary/50 bg-primary/5 shadow-[0_0_15px_rgba(var(--primary),0.1)]'
+                    : 'border-white/5 bg-secondary/30 hover:bg-secondary/50 hover:border-white/10'
+                  }`}
                 onClick={() => setActiveTier(tier)}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-1.5">
-                    <Icon className={`w-3.5 h-3.5 ${info.color}`} />
-                    <span className="text-xs font-medium">{info.label}</span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Icon className={`w-4 h-4 ${info.color}`} />
+                    <span className="text-sm font-bold">{info.label}</span>
                   </div>
-                  {isConfigured(tier) && <Check className="w-3 h-3 text-green-500" />}
+                  {isConfigured(tier) && <Check className="w-4 h-4 text-green-500" />}
                 </div>
-                <p className="font-mono text-[10px] text-muted-foreground truncate">
+                <p className="font-mono text-xs text-muted-foreground truncate">
                   {tierConfig.model || 'Not set'}
                 </p>
               </div>
@@ -283,21 +282,21 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
         </div>
 
         {/* Active Tier Config */}
-        <div className="space-y-3 p-4 border border-border rounded-lg bg-muted/20">
+        <div className="space-y-4 p-5 border border-white/10 rounded-3xl bg-secondary/20">
           <div className="flex items-center gap-2 text-sm">
             {(() => {
               const Icon = TIER_INFO[activeTier].icon;
               return <Icon className={`w-4 h-4 ${TIER_INFO[activeTier].color}`} />;
             })()}
-            <span className="font-medium">{TIER_INFO[activeTier].label} Tier</span>
+            <span className="font-bold">{TIER_INFO[activeTier].label} Tier</span>
             <span className="text-muted-foreground">— {TIER_INFO[activeTier].description}</span>
           </div>
 
           {/* Model Type Tabs */}
           <Tabs value={selectingFor} onValueChange={v => setSelectingFor(v as 'primary' | 'fallback')}>
-            <TabsList className="grid w-full grid-cols-2 h-8">
-              <TabsTrigger value="primary" className="text-xs">Primary</TabsTrigger>
-              <TabsTrigger value="fallback" className="text-xs">Fallback</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 h-10 rounded-xl bg-secondary/50 p-1">
+              <TabsTrigger value="primary" className="rounded-lg text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">Primary</TabsTrigger>
+              <TabsTrigger value="fallback" className="rounded-lg text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">Fallback</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -308,23 +307,23 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
               placeholder="Search models..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="pl-10 h-9 text-sm"
+              className="pl-10 h-10 rounded-xl bg-secondary/50 border-transparent focus:bg-background transition-all text-sm"
             />
           </div>
 
           {/* Model List */}
           <Tabs defaultValue="paid">
-            <TabsList className="h-8">
-              <TabsTrigger value="paid" className="text-xs gap-1">
+            <TabsList className="h-9 rounded-lg bg-transparent p-0 gap-4 mb-2 justify-start">
+              <TabsTrigger value="paid" className="text-xs gap-1 rounded-full px-4 border border-transparent data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20">
                 <DollarSign className="w-3 h-3" />
                 Paid
               </TabsTrigger>
-              <TabsTrigger value="free" className="text-xs">Free</TabsTrigger>
+              <TabsTrigger value="free" className="text-xs rounded-full px-4 border border-transparent data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-primary/20">Free</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="paid" className="mt-2">
-              <ScrollArea className="h-[180px]">
-                <div className="space-y-1.5 pr-4">
+            <TabsContent value="paid" className="mt-0">
+              <ScrollArea className="h-[200px] rounded-xl border border-white/5 bg-background/30 p-2">
+                <div className="space-y-1">
                   {filterModels(models?.paid || []).map(model => {
                     const tierConfig = getTierConfig(activeTier);
                     const isSelected = selectingFor === 'primary'
@@ -334,24 +333,25 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
                       <div
                         key={model.id}
                         onClick={() => handleSelectModel(model.id, activeTier, selectingFor)}
-                        className={`p-2 border rounded cursor-pointer transition-all hover:border-foreground/50 ${
-                          isSelected ? 'border-foreground bg-muted/50' : 'border-border'
-                        }`}
+                        className={`p-3 rounded-lg cursor-pointer transition-all ${isSelected
+                            ? 'bg-primary/10 border border-primary/20'
+                            : 'hover:bg-secondary/50 border border-transparent'
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1 min-w-0">
-                            <p className="font-mono text-xs text-foreground truncate">{model.name}</p>
-                            <p className="text-[10px] text-muted-foreground truncate">{model.id}</p>
+                            <p className="font-mono text-xs font-medium text-foreground truncate">{model.name}</p>
+                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{model.id}</p>
                           </div>
-                          <div className="flex items-center gap-1.5 ml-2">
-                            <Badge variant="outline" className="text-[10px] h-5">
-                              <Layers className="w-2.5 h-2.5 mr-0.5" />
+                          <div className="flex items-center gap-2 ml-2">
+                            <Badge variant="outline" className="text-[10px] h-5 bg-background/50 border-white/10">
+                              <Layers className="w-2.5 h-2.5 mr-1" />
                               {(model.context_length / 1000).toFixed(0)}K
                             </Badge>
-                            <Badge variant="outline" className="text-[10px] h-5">
+                            <Badge variant="outline" className="text-[10px] h-5 bg-background/50 border-white/10">
                               {formatPrice(model.pricing.prompt)}
                             </Badge>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-green-500" />}
+                            {isSelected && <Check className="w-4 h-4 text-primary" />}
                           </div>
                         </div>
                       </div>
@@ -361,9 +361,9 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
               </ScrollArea>
             </TabsContent>
 
-            <TabsContent value="free" className="mt-2">
-              <ScrollArea className="h-[180px]">
-                <div className="space-y-1.5 pr-4">
+            <TabsContent value="free" className="mt-0">
+              <ScrollArea className="h-[200px] rounded-xl border border-white/5 bg-background/30 p-2">
+                <div className="space-y-1">
                   {filterModels(models?.free || []).map(model => {
                     const tierConfig = getTierConfig(activeTier);
                     const isSelected = selectingFor === 'primary'
@@ -373,17 +373,18 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
                       <div
                         key={model.id}
                         onClick={() => handleSelectModel(model.id, activeTier, selectingFor)}
-                        className={`p-2 border rounded cursor-pointer transition-all hover:border-foreground/50 ${
-                          isSelected ? 'border-foreground bg-muted/50' : 'border-border'
-                        }`}
+                        className={`p-3 rounded-lg cursor-pointer transition-all ${isSelected
+                            ? 'bg-primary/10 border border-primary/20'
+                            : 'hover:bg-secondary/50 border border-transparent'
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1 min-w-0">
-                            <p className="font-mono text-xs text-foreground truncate">{model.name}</p>
+                            <p className="font-mono text-xs font-medium text-foreground truncate">{model.name}</p>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            <Badge variant="outline" className="text-[10px] h-5 text-green-500">Free</Badge>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-green-500" />}
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-[10px] h-5 text-green-500 bg-green-500/10 border-green-500/20">Free</Badge>
+                            {isSelected && <Check className="w-4 h-4 text-primary" />}
                           </div>
                         </div>
                       </div>
@@ -395,9 +396,9 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
           </Tabs>
 
           {/* Temperature & Max Tokens */}
-          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-border">
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Temperature</Label>
+              <Label className="text-xs font-medium text-muted-foreground mb-2 block">Temperature</Label>
               <Input
                 type="number"
                 value={getTierConfig(activeTier).temperature}
@@ -405,24 +406,28 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
                 step="0.1"
                 min="0"
                 max="2"
-                className="font-mono h-8 text-sm"
+                className="font-mono h-9 rounded-lg bg-secondary/50 border-transparent focus:bg-background text-sm"
               />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Max Tokens</Label>
+              <Label className="text-xs font-medium text-muted-foreground mb-2 block">Max Tokens</Label>
               <Input
                 type="number"
                 value={getTierConfig(activeTier).maxTokens}
                 onChange={e => handleUpdateSettings(activeTier, 'maxTokens', parseInt(e.target.value) || 0)}
-                className="font-mono h-8 text-sm"
+                className="font-mono h-9 rounded-lg bg-secondary/50 border-transparent focus:bg-background text-sm"
               />
             </div>
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2">
-          <Button onClick={handleSave} disabled={isPending} className="flex-1">
+        <div className="flex gap-3">
+          <Button
+            onClick={handleSave}
+            disabled={isPending}
+            className="flex-1 rounded-full h-11 font-medium shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
             {isPending ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : saved ? (
@@ -430,21 +435,27 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
             ) : null}
             {saved ? 'Saved!' : 'Save Configuration'}
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleAutoFill} 
+          <Button
+            variant="outline"
+            onClick={handleAutoFill}
             disabled={isPending}
             title="Copy system configuration"
+            className="rounded-full w-11 h-11 p-0 bg-transparent border-white/10 hover:bg-secondary/50 hover:border-primary/20"
           >
             <Wand2 className="w-4 h-4" />
           </Button>
-          <Button variant="outline" onClick={handleClear} disabled={isPending}>
+          <Button
+            variant="outline"
+            onClick={handleClear}
+            disabled={isPending}
+            className="rounded-full w-11 h-11 p-0 bg-transparent border-white/10 hover:bg-destructive/10 hover:border-destructive/20 hover:text-destructive"
+          >
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
 
         <p className="text-[10px] text-muted-foreground text-center">
-          Use <Wand2 className="w-3 h-3 inline" /> to copy admin's model selection. Your key is always used for API calls.
+          Use <Wand2 className="w-3 h-3 inline mx-0.5" /> to copy admin's model selection. Your key is always used for API calls.
         </p>
       </div>
     </motion.div>
