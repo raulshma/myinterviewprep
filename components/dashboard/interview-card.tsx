@@ -73,11 +73,6 @@ export function InterviewCardNew({
       >
         <div
           className="group relative overflow-hidden rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-300 p-4 flex items-center gap-4"
-          style={
-            {
-              viewTransitionName: `interview-card-${interview._id}`,
-            } as React.CSSProperties
-          }
         >
           {/* Icon */}
           <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
@@ -155,7 +150,7 @@ export function InterviewCardNew({
             </ResponsiveDropdown>
           </div>
         </div>
-      </ViewTransitionLink>
+      </ViewTransitionLink >
     );
   }
 
@@ -166,11 +161,6 @@ export function InterviewCardNew({
     >
       <div
         className="group relative overflow-hidden rounded-3xl bg-card border border-border hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-500 h-full flex flex-col"
-        style={
-          {
-            viewTransitionName: `interview-card-${interview._id}`,
-          } as React.CSSProperties
-        }
       >
         {/* Header */}
         <div className="p-6 pb-4">
