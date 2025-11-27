@@ -505,7 +505,7 @@ export function InterviewWorkspace({
       : interview.modules.rapidFire;
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen bg-background relative">
       {/* Background effects */}
       <div className="fixed inset-0 bg-gradient-to-br from-background via-background to-secondary/20 pointer-events-none" />
 
@@ -522,7 +522,7 @@ export function InterviewWorkspace({
           isGenerating={isGenerating}
         />
 
-        <div className="flex">
+        <div className="flex items-start">
           <InterviewSidebar
             interviewId={interviewId}
             topics={revisionTopics}

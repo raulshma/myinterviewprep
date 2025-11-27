@@ -109,7 +109,7 @@ export function ResponsiveDropdownItem({
         onClick={(e) => onClick?.(e)}
         disabled={disabled}
         className={cn(
-          'flex w-full items-center gap-3 rounded-md px-4 py-3 text-left text-sm transition-colors min-h-[44px]',
+          'flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm transition-colors min-h-[44px]',
           'hover:bg-accent focus:bg-accent focus:outline-none',
           variant === 'destructive' && 'text-destructive hover:bg-destructive/10',
           disabled && 'pointer-events-none opacity-50',

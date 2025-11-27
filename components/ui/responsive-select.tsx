@@ -64,7 +64,7 @@ export function ResponsiveSelect({
           onClick={() => !disabled && setOpen(true)}
           disabled={disabled}
           className={cn(
-            'border-input data-[placeholder]:text-muted-foreground flex w-full items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs min-h-[44px]',
+            'border-input data-[placeholder]:text-muted-foreground flex w-full items-center justify-between gap-2 rounded-xl border bg-transparent px-3 py-2 text-sm shadow-sm min-h-[44px]',
             'focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none',
             'disabled:cursor-not-allowed disabled:opacity-50',
             triggerClassName
@@ -108,7 +108,7 @@ export function ResponsiveSelect({
                   }}
                   disabled={option.disabled}
                   className={cn(
-                    'flex w-full items-center justify-between rounded-md px-4 py-3 text-left text-sm transition-colors min-h-[44px]',
+                    'flex w-full items-center justify-between rounded-lg px-4 py-3 text-left text-sm transition-colors min-h-[44px]',
                     'hover:bg-accent focus:bg-accent focus:outline-none',
                     option.disabled && 'pointer-events-none opacity-50',
                     value === option.value && 'bg-accent'

@@ -183,6 +183,8 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
                     >
                       {isLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : isMax ? (
+                        <Sparkles className="w-4 h-4 mr-2" />
                       ) : (
                         <Zap className="w-4 h-4 mr-2" />
                       )}
