@@ -179,6 +179,49 @@ function getDifficultyDescription(difficulty: DifficultyLevel): string {
 
 
 /**
+ * Build enhanced topic context from detailed topic fields
+ */
+function buildTopicContext(topic: LearningTopic): string {
+  const sections: string[] = [];
+  
+  sections.push(`Topic: ${topic.title}`);
+  sections.push(`Description: ${topic.description}`);
+  
+  if (topic.learningObjectives && topic.learningObjectives.length > 0) {
+    const objectives = topic.learningObjectives
+      .filter(obj => obj.isCore)
+      .map(obj => `  - ${obj.description}`)
+      .join('\n');
+    if (objectives) {
+      sections.push(`Core Learning Objectives:\n${objectives}`);
+    }
+  }
+  
+  if (topic.keyConceptsToMaster && topic.keyConceptsToMaster.length > 0) {
+    sections.push(`Key Concepts: ${topic.keyConceptsToMaster.join(', ')}`);
+  }
+  
+  if (topic.subtopics && topic.subtopics.length > 0) {
+    const subtopics = topic.subtopics.map(s => `  - ${s.title}: ${s.description}`).join('\n');
+    sections.push(`Subtopics:\n${subtopics}`);
+  }
+  
+  if (topic.commonMistakes && topic.commonMistakes.length > 0) {
+    sections.push(`Common Mistakes to Address: ${topic.commonMistakes.join('; ')}`);
+  }
+  
+  if (topic.realWorldApplications && topic.realWorldApplications.length > 0) {
+    sections.push(`Real-World Applications: ${topic.realWorldApplications.join(', ')}`);
+  }
+  
+  if (topic.interviewRelevance) {
+    sections.push(`Interview Relevance: ${topic.interviewRelevance}`);
+  }
+  
+  return sections.join('\n\n');
+}
+
+/**
  * Generate MCQ Activity
  * Uses HIGH tier model - requires accurate technical knowledge
  * 
@@ -192,20 +235,26 @@ export async function generateMCQ(
   const tierConfig = await getEffectiveConfig("generate_mcq_activity", byokConfig);
   const openrouter = getOpenRouterClient(apiKey);
 
+  const topicContext = buildTopicContext(ctx.topic);
+
   const prompt = `Generate a multiple choice question for learning about "${ctx.topic.title}".
 
+## Context
 Learning Goal: ${ctx.goal}
-Topic: ${ctx.topic.title}
-Topic Description: ${ctx.topic.description}
 Skill Cluster: ${ctx.skillCluster}
 Difficulty Level: ${ctx.difficulty}/10 (${getDifficultyDescription(ctx.difficulty)})
 
-Requirements:
-1. Create a clear, specific question that tests understanding of the topic
+## Topic Details
+${topicContext}
+
+## Requirements
+1. Create a clear, specific question that tests understanding of one of the key concepts or learning objectives
 2. Provide exactly 4 answer options
 3. One option must be correct, three must be plausible but incorrect
 4. Include a detailed explanation of why the correct answer is right
 5. The difficulty should match level ${ctx.difficulty}/10
+6. If possible, incorporate common mistakes as incorrect options to help learners recognize them
+7. Connect the question to real-world applications when appropriate
 
 Generate a JSON object with:
 - type: "mcq"
@@ -239,28 +288,34 @@ export async function generateCodingChallenge(
   const tierConfig = await getEffectiveConfig("generate_coding_challenge", byokConfig);
   const openrouter = getOpenRouterClient(apiKey);
 
+  const topicContext = buildTopicContext(ctx.topic);
+
   const prompt = `Generate a coding challenge for learning about "${ctx.topic.title}".
 
+## Context
 Learning Goal: ${ctx.goal}
-Topic: ${ctx.topic.title}
-Topic Description: ${ctx.topic.description}
 Skill Cluster: ${ctx.skillCluster}
 Difficulty Level: ${ctx.difficulty}/10 (${getDifficultyDescription(ctx.difficulty)})
 
-Requirements:
-1. Create a practical coding problem that tests the topic concepts
+## Topic Details
+${topicContext}
+
+## Requirements
+1. Create a practical coding problem that tests one or more of the key concepts or learning objectives
 2. Provide clear input and output format specifications
 3. Include specific evaluation criteria for the solution
 4. Provide sample input and expected output
 5. Optionally include starter code if helpful
 6. The difficulty should match level ${ctx.difficulty}/10
+7. Design the problem to reflect real-world applications when possible
+8. Consider common mistakes and design the problem to help learners avoid them
 
 Generate a JSON object with:
 - type: "coding-challenge"
-- problemDescription: detailed problem statement
+- problemDescription: detailed problem statement with context and requirements
 - inputFormat: description of input format
 - outputFormat: description of expected output format
-- evaluationCriteria: array of criteria for evaluating the solution
+- evaluationCriteria: array of criteria for evaluating the solution (include edge cases)
 - starterCode: optional starter code template
 - sampleInput: example input
 - sampleOutput: expected output for the sample input`;
@@ -291,27 +346,39 @@ export async function generateDebuggingTask(
   const tierConfig = await getEffectiveConfig("generate_debugging_task", byokConfig);
   const openrouter = getOpenRouterClient(apiKey);
 
+  const topicContext = buildTopicContext(ctx.topic);
+  
+  // Extract common mistakes to incorporate into bugs
+  const commonMistakesContext = ctx.topic.commonMistakes && ctx.topic.commonMistakes.length > 0
+    ? `\n\nCommon Mistakes to Incorporate as Bugs:\n${ctx.topic.commonMistakes.map(m => `- ${m}`).join('\n')}`
+    : '';
+
   const prompt = `Generate a debugging task for learning about "${ctx.topic.title}".
 
+## Context
 Learning Goal: ${ctx.goal}
-Topic: ${ctx.topic.title}
-Topic Description: ${ctx.topic.description}
 Skill Cluster: ${ctx.skillCluster}
 Difficulty Level: ${ctx.difficulty}/10 (${getDifficultyDescription(ctx.difficulty)})
 
-Requirements:
-1. Create code with intentional bugs related to the topic
+## Topic Details
+${topicContext}${commonMistakesContext}
+
+## Requirements
+1. Create code with intentional bugs related to the topic's key concepts
 2. The bugs should be realistic - ones that developers commonly encounter
-3. Describe the expected behavior clearly
-4. Optionally provide hints to guide the learner
-5. The difficulty should match level ${ctx.difficulty}/10
-6. For lower difficulty, include more obvious bugs; for higher difficulty, include subtle bugs
+3. If common mistakes are listed above, incorporate them as bugs in the code
+4. Describe the expected behavior clearly
+5. Provide hints to guide the learner (more hints for lower difficulty)
+6. The difficulty should match level ${ctx.difficulty}/10
+7. For lower difficulty (1-4), include 1-2 obvious bugs with clear hints
+8. For medium difficulty (5-7), include 2-3 bugs with subtle hints
+9. For higher difficulty (8-10), include multiple subtle bugs with minimal hints
 
 Generate a JSON object with:
 - type: "debugging-task"
-- buggyCode: code containing intentional bugs (use realistic code)
+- buggyCode: code containing intentional bugs (use realistic, production-like code)
 - expectedBehavior: description of what the code should do when fixed
-- hints: optional array of hints to help find the bugs`;
+- hints: array of hints to help find the bugs (adjust quantity based on difficulty)`;
 
   const result = await generateObject({
     model: openrouter(tierConfig.model),
@@ -338,27 +405,35 @@ export async function generateConceptExplanation(
   const tierConfig = await getEffectiveConfig("generate_concept_explanation", byokConfig);
   const openrouter = getOpenRouterClient(apiKey);
 
-  const prompt = `Generate a concept explanation for learning about "${ctx.topic.title}".
+  const topicContext = buildTopicContext(ctx.topic);
 
+  const prompt = `Generate a comprehensive concept explanation for learning about "${ctx.topic.title}".
+
+## Context
 Learning Goal: ${ctx.goal}
-Topic: ${ctx.topic.title}
-Topic Description: ${ctx.topic.description}
 Skill Cluster: ${ctx.skillCluster}
 Difficulty Level: ${ctx.difficulty}/10 (${getDifficultyDescription(ctx.difficulty)})
 
-Requirements:
-1. Provide a comprehensive explanation of the concept
-2. Include key points that summarize the most important aspects
-3. Optionally include practical examples
-4. Adapt the complexity to difficulty level ${ctx.difficulty}/10
-5. For lower difficulty, use simpler language and more analogies
-6. For higher difficulty, include advanced nuances and edge cases
+## Topic Details
+${topicContext}
+
+## Requirements
+1. Provide a COMPREHENSIVE explanation covering all key concepts and learning objectives
+2. Structure the explanation with clear sections using markdown headers
+3. Include key points that summarize the most important aspects (5-7 points)
+4. Include practical, real-world examples that demonstrate the concepts
+5. Address common mistakes and misconceptions
+6. Explain why this topic matters for technical interviews
+7. Adapt the complexity to difficulty level ${ctx.difficulty}/10
+8. For lower difficulty (1-4), use simpler language, more analogies, and step-by-step explanations
+9. For medium difficulty (5-7), balance theory with practical application
+10. For higher difficulty (8-10), include advanced nuances, edge cases, and performance considerations
 
 Generate a JSON object with:
 - type: "concept-explanation"
-- content: detailed explanation in markdown format
-- keyPoints: array of key takeaways (3-5 points)
-- examples: optional array of practical examples`;
+- content: detailed explanation in markdown format (include headers, code examples, and clear structure)
+- keyPoints: array of 5-7 key takeaways
+- examples: array of 2-4 practical examples with code snippets where appropriate`;
 
   const result = await generateObject({
     model: openrouter(tierConfig.model),
@@ -542,17 +617,23 @@ function getPromptForActivityType(
   ctx: ActivityGeneratorContext,
   activityType: ActivityType
 ): string {
-  const baseContext = `Learning Goal: ${ctx.goal}
-Topic: ${ctx.topic.title}
-Topic Description: ${ctx.topic.description}
+  const topicContext = buildTopicContext(ctx.topic);
+  
+  const baseContext = `## Context
+Learning Goal: ${ctx.goal}
 Skill Cluster: ${ctx.skillCluster}
-Difficulty Level: ${ctx.difficulty}/10 (${getDifficultyDescription(ctx.difficulty)})`;
+Difficulty Level: ${ctx.difficulty}/10 (${getDifficultyDescription(ctx.difficulty)})
+
+## Topic Details
+${topicContext}`;
 
   switch (activityType) {
     case 'mcq':
       return `Generate a multiple choice question for learning about "${ctx.topic.title}".
 
 ${baseContext}
+
+Create a question that tests understanding of the key concepts. Include 4 plausible options with one correct answer and a detailed explanation.
 
 Generate a JSON object with type "mcq", question, options (exactly 4), correctAnswer, and explanation.`;
 
@@ -561,6 +642,8 @@ Generate a JSON object with type "mcq", question, options (exactly 4), correctAn
 
 ${baseContext}
 
+Create a practical problem that tests the topic's key concepts with clear requirements and evaluation criteria.
+
 Generate a JSON object with type "coding-challenge", problemDescription, inputFormat, outputFormat, evaluationCriteria, sampleInput, and sampleOutput.`;
 
     case 'debugging-task':
@@ -568,15 +651,19 @@ Generate a JSON object with type "coding-challenge", problemDescription, inputFo
 
 ${baseContext}
 
-Generate a JSON object with type "debugging-task", buggyCode, expectedBehavior, and optional hints.`;
+Create realistic buggy code that incorporates common mistakes. Provide hints appropriate for the difficulty level.
+
+Generate a JSON object with type "debugging-task", buggyCode, expectedBehavior, and hints array.`;
 
     case 'concept-explanation':
     default:
-      return `Generate a concept explanation for learning about "${ctx.topic.title}".
+      return `Generate a comprehensive concept explanation for learning about "${ctx.topic.title}".
 
 ${baseContext}
 
-Generate a JSON object with type "concept-explanation", content (markdown), keyPoints (array), and optional examples.`;
+Provide a thorough explanation covering all key concepts, with practical examples and key takeaways.
+
+Generate a JSON object with type "concept-explanation", content (detailed markdown), keyPoints (5-7 items), and examples (2-4 practical examples).`;
   }
 }
 

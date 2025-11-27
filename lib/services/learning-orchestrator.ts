@@ -149,11 +149,21 @@ function getOpenRouterClient(apiKey?: string) {
   return createOpenRouter({ apiKey: key });
 }
 
-// Schema for parsed learning goal
+// Schema for parsed learning goal - now generates comprehensive curriculum
 const ParsedGoalSchema = z.object({
   skillClusters: z.array(SkillClusterSchema).min(1),
   suggestedDifficulty: DifficultyLevelSchema,
-  initialTopic: LearningTopicSchema,
+  pathOverview: z.object({
+    estimatedTotalHours: z.number().min(1),
+    targetOutcome: z.string().min(1),
+    prerequisites: z.array(z.string()).default([]),
+    milestones: z.array(z.object({
+      title: z.string().min(1),
+      description: z.string().min(1),
+      topicIds: z.array(z.string()).min(1),
+    })).min(1),
+  }),
+  topics: z.array(LearningTopicSchema).min(5).max(15), // Generate 5-15 comprehensive topics
 });
 
 // Schema for generated topic
@@ -185,7 +195,7 @@ export function validateGoal(goal: string): { valid: boolean; error?: string } {
 }
 
 /**
- * Parse learning goal to extract skill clusters and initial topic
+ * Parse learning goal to extract skill clusters and generate comprehensive curriculum
  * Requirements: 1.1, 1.2, 1.3
  */
 export async function parseGoal(
@@ -195,34 +205,98 @@ export async function parseGoal(
 ): Promise<{
   skillClusters: SkillCluster[];
   suggestedDifficulty: DifficultyLevel;
-  initialTopic: LearningTopic;
+  pathOverview: {
+    estimatedTotalHours: number;
+    targetOutcome: string;
+    prerequisites: string[];
+    milestones: Array<{
+      title: string;
+      description: string;
+      topicIds: string[];
+    }>;
+  };
+  topics: LearningTopic[];
 }> {
   const tierConfig = await getEffectiveConfig("parse_learning_goal", byokConfig);
   const openrouter = getOpenRouterClient(apiKey);
 
-  const prompt = `Analyze this learning goal and extract the relevant information:
+  const prompt = `You are designing a comprehensive, interview-focused learning curriculum. Analyze this learning goal and create an extensive, structured learning path.
 
 Learning Goal: "${goal}"
 
-Based on this goal:
-1. Identify the relevant skill clusters from this list: dsa, oop, system-design, debugging, databases, api-design, testing, devops, frontend, backend, security, performance
-2. Suggest an appropriate starting difficulty level (1-10 scale, where 5 is intermediate)
-3. Generate an initial topic to start learning
+Create a DETAILED and COMPREHENSIVE learning path with the following:
 
-For the initial topic:
-- Create a unique ID (format: topic_<random_string>)
-- Give it a clear, specific title
-- Write a brief description
-- Assign it to the most relevant skill cluster
-- Set an appropriate difficulty level
-- List any prerequisites (empty array if none)
+## 1. Skill Clusters
+Identify ALL relevant skill clusters from: dsa, oop, system-design, debugging, databases, api-design, testing, devops, frontend, backend, security, performance
 
-Consider the user's implied experience level from their goal when setting difficulty.`;
+## 2. Difficulty Assessment
+Suggest starting difficulty (1-10 scale, where 1-3 is beginner, 4-6 is intermediate, 7-10 is advanced)
+
+## 3. Path Overview
+- estimatedTotalHours: Total hours to complete the entire path
+- targetOutcome: What the learner will be able to do after completing this path
+- prerequisites: What the learner should already know before starting
+- milestones: 3-5 major milestones that mark significant progress points
+
+## 4. Topics (Generate 8-12 comprehensive topics)
+For EACH topic, provide:
+
+- id: Unique identifier (format: topic_<descriptive_slug>_<random_4chars>)
+- title: Clear, specific title
+- description: 2-3 sentence description of what this topic covers
+- skillCluster: Primary skill cluster this belongs to
+- difficulty: Difficulty level (1-10)
+- prerequisites: Array of topic IDs that should be completed first
+- order: Suggested order in the learning path (0-indexed)
+- estimatedMinutes: Time to master this topic (15-120 minutes)
+- interviewRelevance: Why this topic matters for technical interviews
+
+- learningObjectives: 3-5 specific, measurable objectives like:
+  - { id: "obj_1", description: "Explain the time complexity of common sorting algorithms", isCore: true }
+  - { id: "obj_2", description: "Implement quicksort from scratch", isCore: true }
+  - { id: "obj_3", description: "Compare and contrast different sorting approaches", isCore: false }
+
+- subtopics: 2-4 subtopics that break down the main topic:
+  - { id: "sub_1", title: "Understanding Big O Notation", description: "...", estimatedMinutes: 20 }
+
+- keyConceptsToMaster: 4-6 key concepts as strings, e.g., ["Time complexity", "Space complexity", "Best/worst/average case"]
+
+- commonMistakes: 2-4 common mistakes learners make, e.g., ["Confusing O(n) with O(n²)", "Forgetting edge cases"]
+
+- realWorldApplications: 2-3 real-world applications, e.g., ["Database indexing", "Search engine ranking"]
+
+- resources: 2-3 recommended resources:
+  - { title: "Visualgo Sorting", type: "practice", description: "Interactive sorting visualizations" }
+  - Types: documentation, article, video, practice, book
+
+## Topic Sequencing Guidelines:
+1. Start with foundational concepts before advanced ones
+2. Build complexity gradually
+3. Group related topics together
+4. Ensure prerequisites form a logical dependency graph
+5. Include both theoretical understanding and practical application topics
+6. Cover common interview patterns and questions for each area
+
+## Quality Requirements:
+- Each topic should be substantial enough for 15-120 minutes of focused learning
+- Learning objectives should be specific and measurable
+- Include topics that cover both breadth and depth
+- Ensure the path prepares for real technical interviews
+- Include debugging and problem-solving topics where relevant`;
 
   const result = await generateObject({
     model: openrouter(tierConfig.model),
     schema: ParsedGoalSchema,
-    system: `You are an expert learning path designer. Your role is to analyze learning goals and create structured learning paths. Be specific and practical in your topic suggestions.`,
+    system: `You are a world-class technical educator and interview preparation specialist with deep expertise in software engineering education. Your role is to design comprehensive, structured learning paths that thoroughly prepare candidates for technical interviews.
+
+Key principles:
+- Be thorough and detailed - learners need comprehensive coverage
+- Focus on practical, interview-relevant skills
+- Build knowledge progressively from fundamentals to advanced concepts
+- Include real-world context and applications
+- Anticipate common misconceptions and address them
+- Create clear dependencies between topics
+- Balance theory with hands-on practice opportunities`,
     prompt,
     temperature: tierConfig.temperature,
   });
@@ -247,10 +321,10 @@ export async function initializePath(
     throw new Error(validation.error);
   }
 
-  // Parse goal to extract skill clusters and initial topic
+  // Parse goal to extract skill clusters and comprehensive curriculum
   const parsed = await parseGoal(goal, apiKey, byokConfig);
 
-  // Create the learning path
+  // Create the learning path with overview metadata
   const learningPath = await learningPathRepository.create({
     userId,
     goal: goal.trim(),
@@ -261,13 +335,21 @@ export async function initializePath(
     isActive: true,
   });
 
-  // Add the initial topic
-  await learningPathRepository.addTopic(learningPath._id, parsed.initialTopic);
+  // Sort topics by order and add all of them to the learning path
+  const sortedTopics = [...parsed.topics].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  
+  for (const topic of sortedTopics) {
+    await learningPathRepository.addTopic(learningPath._id, topic);
+  }
 
-  // Set the initial topic as current
+  // Set the first topic (lowest order, no prerequisites) as current
+  const firstTopic = sortedTopics.find(t => 
+    !t.prerequisites || t.prerequisites.length === 0
+  ) || sortedTopics[0];
+  
   await learningPathRepository.setCurrentTopic(
     learningPath._id,
-    parsed.initialTopic.id
+    firstTopic.id
   );
 
   // Fetch and return the updated path
@@ -319,8 +401,13 @@ export async function selectNextTopic(
 
   // If there are available topics, select based on ELO and difficulty
   if (availableTopics.length > 0) {
-    // Sort by how close the topic difficulty is to current difficulty
+    // Sort by order first, then by difficulty match
     const sortedTopics = availableTopics.sort((a, b) => {
+      // Prefer topics with lower order (earlier in curriculum)
+      const orderDiff = (a.order ?? 999) - (b.order ?? 999);
+      if (orderDiff !== 0) return orderDiff;
+      
+      // Then by how close the topic difficulty is to current difficulty
       const aDiff = Math.abs(a.difficulty - path.currentDifficulty);
       const bDiff = Math.abs(b.difficulty - path.currentDifficulty);
       return aDiff - bDiff;
@@ -328,27 +415,67 @@ export async function selectNextTopic(
     return sortedTopics[0];
   }
 
-  // No available topics - generate a new one
-  const prompt = `Generate a new learning topic for this learning path.
+  // No available topics - generate a comprehensive new one
+  const completedTopicsList = path.topics
+    .filter((t) => completedTopicIds.has(t.id))
+    .map((t) => `- ${t.title} (${t.skillCluster}, difficulty ${t.difficulty})`)
+    .join("\n") || "None";
 
+  const prompt = `Generate a NEW, COMPREHENSIVE learning topic to extend this learning path.
+
+## Current Learning Path Context
 Learning Goal: "${path.goal}"
 Skill Clusters: ${path.skillClusters.join(", ")}
 Current ELO: ${path.overallElo}
-Current Difficulty: ${path.currentDifficulty}/10
-Completed Topics: ${path.topics.filter((t) => completedTopicIds.has(t.id)).map((t) => t.title).join(", ") || "None"}
+Current Difficulty Level: ${path.currentDifficulty}/10
 
-Generate a new topic that:
-1. Advances the user's learning toward their goal
-2. Is appropriate for their current skill level (ELO ${path.overallElo}, difficulty ${path.currentDifficulty})
-3. Builds on what they've already learned
-4. Belongs to one of their skill clusters: ${path.skillClusters.join(", ")}
+## Completed Topics:
+${completedTopicsList}
 
-Create a unique ID (format: topic_<random_string>), clear title, description, and set appropriate difficulty.`;
+## Requirements for the New Topic
+
+Generate a topic that:
+1. Advances the user toward their learning goal
+2. Matches their current skill level (ELO ${path.overallElo}, difficulty ${path.currentDifficulty})
+3. Builds logically on completed topics
+4. Belongs to one of: ${path.skillClusters.join(", ")}
+5. Covers material NOT already covered in completed topics
+
+Provide a DETAILED topic with:
+- id: Unique identifier (topic_<descriptive_slug>_<random_4chars>)
+- title: Clear, specific title
+- description: 2-3 sentence description
+- skillCluster: Primary skill cluster
+- difficulty: Appropriate difficulty (1-10)
+- prerequisites: IDs of topics that should be completed first (from existing topics)
+- order: Next order number (${path.topics.length})
+- estimatedMinutes: Time to master (15-120 minutes)
+- interviewRelevance: Why this matters for interviews
+
+- learningObjectives: 3-5 specific, measurable objectives with:
+  - id: Unique objective ID
+  - description: What the learner will be able to do
+  - isCore: Whether this is a core (required) objective
+
+- subtopics: 2-4 subtopics breaking down the main topic:
+  - id: Unique subtopic ID
+  - title: Subtopic title
+  - description: What this subtopic covers
+  - estimatedMinutes: Time for this subtopic
+
+- keyConceptsToMaster: 4-6 key concepts as strings
+- commonMistakes: 2-4 common mistakes learners make
+- realWorldApplications: 2-3 real-world applications
+
+- resources: 2-3 recommended resources with:
+  - title: Resource name
+  - type: One of: documentation, article, video, practice, book
+  - description: Brief description of the resource`;
 
   const result = await generateObject({
     model: openrouter(tierConfig.model),
     schema: GeneratedTopicSchema,
-    system: `You are an expert learning path designer. Generate topics that progressively build skills and knowledge.`,
+    system: `You are a world-class technical educator designing comprehensive learning content. Create detailed, interview-focused topics that thoroughly prepare candidates. Each topic should be substantial and include practical, actionable learning objectives.`,
     prompt,
     temperature: tierConfig.temperature,
   });
