@@ -35,7 +35,7 @@ export default async function SettingsPage() {
         <div className="space-y-6 min-w-0">
           <SubscriptionSection profile={profile} subscription={subscription} />
           <BYOKUsageStatsSection hasByokKey={profile.hasByokKey} />
-          <CustomThemeSection />
+          <CustomThemeSection plan={profile.plan} />
           <DataManagementSection />
         </div>
       </div>

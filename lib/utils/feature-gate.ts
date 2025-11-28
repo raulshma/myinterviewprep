@@ -13,7 +13,8 @@ export type PlanFeature =
   | 'pdf_export'
   | 'byok'
   | 'custom_prompts'
-  | 'advanced_ai';
+  | 'advanced_ai'
+  | 'custom_theme';
 
 /**
  * Result of a feature access check
@@ -33,6 +34,7 @@ export const FEATURE_ACCESS_MAP: Record<PlanFeature, UserPlan[]> = {
   byok: ['MAX'],
   custom_prompts: ['MAX'],
   advanced_ai: ['PRO', 'MAX'],
+  custom_theme: ['PRO', 'MAX'],
 };
 
 /**

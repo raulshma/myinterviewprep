@@ -12,6 +12,7 @@ import {
   Key,
   Settings,
   Wand2,
+  Palette,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getAvailableFeatures, type PlanFeature } from '@/lib/utils/feature-gate';
@@ -52,12 +53,19 @@ const FEATURE_INFO: Record<PlanFeature, { label: string; description: string; ic
     icon: <Sparkles className="w-5 h-5" />,
     minPlan: 'PRO',
   },
+  custom_theme: {
+    label: 'Custom Theme',
+    description: 'Personalize your workspace with custom shadcn/ui themes',
+    icon: <Palette className="w-5 h-5" />,
+    minPlan: 'PRO',
+  },
 };
 
 const ALL_FEATURES: PlanFeature[] = [
   'analogy_all_styles',
   'pdf_export',
   'advanced_ai',
+  'custom_theme',
   'custom_prompts',
   'byok',
 ];

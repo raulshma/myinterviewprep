@@ -1,14 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Palette, Trash2, Check, ExternalLink } from "lucide-react";
+import { Palette, Trash2, Check, ExternalLink, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { motion } from "framer-motion";
 import { useCustomTheme } from "@/hooks/use-custom-theme";
 import { useToast } from "@/hooks/use-toast";
+import { canAccess } from "@/lib/utils/feature-gate";
+import type { UserPlan } from "@/lib/db/schemas/user";
+import Link from "next/link";
 
-export function CustomThemeSection() {
+interface CustomThemeSectionProps {
+  plan: UserPlan;
+}
+
+export function CustomThemeSection({ plan }: CustomThemeSectionProps) {
+  const access = canAccess("custom_theme", plan);
   const {
     customCSS,
     setCustomCSS,
@@ -66,6 +74,60 @@ export function CustomThemeSection() {
   };
 
   if (!isLoaded) return null;
+
+  // Locked state for FREE users
+  if (!access.allowed) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+        className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm relative overflow-hidden"
+      >
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+            <Palette className="w-6 h-6 text-primary" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-foreground">Custom Theme</h2>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                <Lock className="h-3 w-3" />
+                PRO
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Personalize your experience with custom shadcn/ui themes.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4 opacity-50 pointer-events-none select-none">
+          <Textarea
+            placeholder={`:root {
+  --background: oklch(0.91 0.05 82.78);
+  --foreground: oklch(0.41 0.08 78.86);
+  /* ... paste your full theme CSS here */
+}`}
+            disabled
+            rows={6}
+            className="font-mono text-xs bg-secondary/30 border-white/10 rounded-2xl p-4 leading-relaxed"
+          />
+        </div>
+
+        <div className="mt-6 pt-4 border-t border-white/10">
+          <p className="text-sm text-muted-foreground mb-3">
+            Upgrade to PRO to unlock custom themes and personalize your workspace.
+          </p>
+          <Link href="/pricing">
+            <Button className="rounded-full h-10 font-medium">
+              Upgrade to PRO
+            </Button>
+          </Link>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
