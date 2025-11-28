@@ -6,7 +6,7 @@ import { Check, Loader2, Sparkles, Zap, Shield, Infinity, Settings, X, HelpCircl
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { createCheckout, createPortalSession } from '@/lib/actions/stripe';
+import { createCheckout, createPortalSession, downgradeSubscription, cancelSubscriptionAction } from '@/lib/actions/stripe';
 import { useSharedHeader } from '@/components/dashboard/shared-header-context';
 import { PRICING_TIERS, COMPARISON_FEATURES, formatPrice, type PricingTier } from '@/lib/pricing-data';
 
@@ -14,12 +14,15 @@ interface UpgradePageContentProps {
   profile: {
     plan: string;
     hasStripeSubscription: boolean;
+    subscriptionCancelAt?: string | null;
   };
 }
 
 export function UpgradePageContent({ profile }: UpgradePageContentProps) {
   const { setHeader } = useSharedHeader();
   const [isLoading, setIsLoading] = useState(false);
+  const [downgradeLoading, setDowngradeLoading] = useState<string | null>(null);
+  const [showDowngradeConfirm, setShowDowngradeConfirm] = useState<'PRO' | 'FREE' | null>(null);
 
   useEffect(() => {
     setHeader({
@@ -29,6 +32,35 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
       badgeIcon: Sparkles,
     });
   }, [setHeader]);
+
+  const handleDowngrade = async (targetPlan: 'PRO' | 'FREE') => {
+    setDowngradeLoading(targetPlan);
+    try {
+      const result = targetPlan === 'FREE' 
+        ? await cancelSubscriptionAction()
+        : await downgradeSubscription(targetPlan);
+      
+      if (result.success) {
+        // Refresh the page to show updated plan
+        window.location.reload();
+      } else {
+        console.error('Downgrade failed:', result.error);
+      }
+    } catch (error) {
+      console.error('Failed to downgrade:', error);
+    } finally {
+      setDowngradeLoading(null);
+      setShowDowngradeConfirm(null);
+    }
+  };
+
+  // Check if user can downgrade to a specific tier
+  const canDowngradeTo = (tierId: string): boolean => {
+    if (!profile.hasStripeSubscription) return false;
+    if (profile.plan === 'MAX' && tierId === 'pro') return true;
+    if ((profile.plan === 'MAX' || profile.plan === 'PRO') && tierId === 'free') return true;
+    return false;
+  };
 
   const handleSubscribe = async (planId: string) => {
     if (planId === 'free') return;
@@ -159,7 +191,7 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
                   ))}
                 </div>
 
-                <div className="mt-auto">
+                <div className="mt-auto space-y-3">
                   {isCurrent ? (
                     <Button
                       disabled
@@ -168,13 +200,54 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
                     >
                       Current Plan
                     </Button>
-                  ) : tier.id === 'free' ? (
+                  ) : canDowngradeTo(tier.id) ? (
+                    showDowngradeConfirm === (tier.id === 'free' ? 'FREE' : 'PRO') ? (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground text-center">
+                          {tier.id === 'free' 
+                            ? 'Your subscription will be cancelled at the end of the billing period.'
+                            : 'Your plan will change at the end of the billing period.'}
+                        </p>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleDowngrade(tier.id === 'free' ? 'FREE' : 'PRO')}
+                            disabled={downgradeLoading !== null}
+                            variant="destructive"
+                            className="flex-1 h-10 rounded-full"
+                          >
+                            {downgradeLoading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              'Confirm'
+                            )}
+                          </Button>
+                          <Button
+                            onClick={() => setShowDowngradeConfirm(null)}
+                            disabled={downgradeLoading !== null}
+                            variant="outline"
+                            className="flex-1 h-10 rounded-full border-white/10"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={() => setShowDowngradeConfirm(tier.id === 'free' ? 'FREE' : 'PRO')}
+                        disabled={isLoading || !!profile.subscriptionCancelAt}
+                        variant="outline"
+                        className="w-full h-12 rounded-full border-white/10 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20"
+                      >
+                        {profile.subscriptionCancelAt ? 'Cancellation Pending' : 'Downgrade'}
+                      </Button>
+                    )
+                  ) : tier.id === 'free' && profile.plan === 'FREE' ? (
                     <Button
                       disabled
                       variant="outline"
                       className="w-full h-12 rounded-full border-white/10 bg-white/5"
                     >
-                      Downgrade
+                      Current Plan
                     </Button>
                   ) : (
                     <Button
