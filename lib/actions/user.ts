@@ -391,6 +391,7 @@ export interface SettingsPageData {
     interviews: { count: number; limit: number; resetDate: Date };
     hasStripeSubscription: boolean;
     hasByokKey: boolean;
+    subscriptionCancelAt?: string | null;
   };
   subscription: {
     plan: string;
@@ -410,6 +411,21 @@ const getSettingsPageDataInternal = cache(async (): Promise<SettingsPageData | n
   const defaultIterations = { count: 0, limit: 20, resetDate: getDefaultResetDate() };
   const defaultInterviews = { count: 0, limit: 3, resetDate: getDefaultResetDate() };
   
+  // Check if subscription is scheduled for cancellation
+  let subscriptionCancelAt: string | null = null;
+  if (dbUser?.stripeSubscriptionId) {
+    try {
+      const { getSubscription, getSubscriptionPeriodEnd } = await import('@/lib/services/stripe');
+      const subscription = await getSubscription(dbUser.stripeSubscriptionId);
+      if (subscription?.cancel_at_period_end) {
+        const periodEnd = getSubscriptionPeriodEnd(subscription);
+        subscriptionCancelAt = new Date(periodEnd * 1000).toISOString();
+      }
+    } catch (error) {
+      console.error('Failed to fetch subscription status:', error);
+    }
+  }
+  
   const profile = {
     clerkId: authUser.clerkId,
     email: authUser.email,
@@ -421,6 +437,7 @@ const getSettingsPageDataInternal = cache(async (): Promise<SettingsPageData | n
     interviews: dbUser?.interviews ?? defaultInterviews,
     hasStripeSubscription: !!dbUser?.stripeCustomerId,
     hasByokKey: !!authUser.byokApiKey,
+    subscriptionCancelAt,
   };
 
   const subscription = {

@@ -197,6 +197,68 @@ export async function getSubscription(subscriptionId: string): Promise<Stripe.Su
   }
 }
 
+/**
+ * Get subscription period end timestamp
+ * Handles different Stripe API versions where current_period_end might be typed differently
+ */
+export function getSubscriptionPeriodEnd(subscription: Stripe.Subscription): number {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (subscription as any).current_period_end as number;
+}
+
+export interface DowngradeSubscriptionParams {
+  subscriptionId: string;
+  newPlan: 'PRO' | 'FREE';
+  clerkId: string;
+}
+
+export async function downgradeSubscription(params: DowngradeSubscriptionParams): Promise<Stripe.Subscription> {
+  const { subscriptionId, newPlan, clerkId } = params;
+
+  // If downgrading to FREE, cancel the subscription at period end
+  if (newPlan === 'FREE') {
+    return stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: true,
+      metadata: {
+        clerkId,
+        pendingDowngrade: 'FREE',
+      },
+    });
+  }
+
+  // Downgrading to PRO (from MAX)
+  const planConfig = PLAN_CONFIGS[newPlan];
+  if (!planConfig || !planConfig.priceId) {
+    throw new Error(`Invalid plan or missing price ID for plan: ${newPlan}`);
+  }
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subscriptionItemId = subscription.items.data[0]?.id;
+
+  if (!subscriptionItemId) {
+    throw new Error('No subscription item found');
+  }
+
+  // Schedule the downgrade for the end of the current billing period
+  // Using 'none' proration to apply the change at next renewal
+  const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
+    items: [
+      {
+        id: subscriptionItemId,
+        price: planConfig.priceId,
+      },
+    ],
+    proration_behavior: 'none',
+    billing_cycle_anchor: 'unchanged',
+    metadata: {
+      clerkId,
+      plan: newPlan,
+    },
+  });
+
+  return updatedSubscription;
+}
+
 export function constructWebhookEvent(
   payload: string | Buffer,
   signature: string
