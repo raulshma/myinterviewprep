@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, startTransition } from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { InterviewHeader } from "@/components/interview/interview-header";
@@ -331,8 +331,10 @@ export function InterviewWorkspace({
     });
   }, []);
 
-  const isGenerating = Object.values(moduleStatus).some(
-    (s) => s === "loading" || s === "streaming"
+  // Memoize isGenerating to prevent recalculating on every render
+  const isGenerating = useMemo(
+    () => Object.values(moduleStatus).some((s) => s === "loading" || s === "streaming"),
+    [moduleStatus]
   );
 
   // Refs for auto-scroll behavior - use refs to avoid re-renders
@@ -465,26 +467,29 @@ export function InterviewWorkspace({
         await processDataStream(
           response,
           (data: unknown) => {
-            switch (module) {
-              case "openingBrief":
-                // For opening brief, data can be the full object or just content string
-                const briefData = data as { content?: string } | string;
-                if (typeof briefData === "string") {
-                  setStreamingBrief(briefData);
-                } else if (briefData?.content) {
-                  setStreamingBrief(briefData.content);
-                }
-                break;
-              case "revisionTopics":
-                setStreamingTopics(data as RevisionTopic[]);
-                break;
-              case "mcqs":
-                setStreamingMcqs(data as MCQ[]);
-                break;
-              case "rapidFire":
-                setStreamingRapidFire(data as RapidFire[]);
-                break;
-            }
+            // Use startTransition for non-urgent streaming updates to keep UI responsive
+            startTransition(() => {
+              switch (module) {
+                case "openingBrief":
+                  // For opening brief, data can be the full object or just content string
+                  const briefData = data as { content?: string } | string;
+                  if (typeof briefData === "string") {
+                    setStreamingBrief(briefData);
+                  } else if (briefData?.content) {
+                    setStreamingBrief(briefData.content);
+                  }
+                  break;
+                case "revisionTopics":
+                  setStreamingTopics(data as RevisionTopic[]);
+                  break;
+                case "mcqs":
+                  setStreamingMcqs(data as MCQ[]);
+                  break;
+                case "rapidFire":
+                  setStreamingRapidFire(data as RapidFire[]);
+                  break;
+              }
+            });
           },
           async () => {
             setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
@@ -660,26 +665,29 @@ export function InterviewWorkspace({
       await processDataStream(
         response,
         (data: unknown) => {
-          switch (module) {
-            case "openingBrief":
-              // For opening brief, data can be the full object or just content string
-              const briefData = data as { content?: string } | string;
-              if (typeof briefData === "string") {
-                setStreamingBrief(briefData);
-              } else if (briefData?.content) {
-                setStreamingBrief(briefData.content);
-              }
-              break;
-            case "revisionTopics":
-              setStreamingTopics(data as RevisionTopic[]);
-              break;
-            case "mcqs":
-              setStreamingMcqs(data as MCQ[]);
-              break;
-            case "rapidFire":
-              setStreamingRapidFire(data as RapidFire[]);
-              break;
-          }
+          // Use startTransition for non-urgent streaming updates to keep UI responsive
+          startTransition(() => {
+            switch (module) {
+              case "openingBrief":
+                // For opening brief, data can be the full object or just content string
+                const briefData = data as { content?: string } | string;
+                if (typeof briefData === "string") {
+                  setStreamingBrief(briefData);
+                } else if (briefData?.content) {
+                  setStreamingBrief(briefData.content);
+                }
+                break;
+              case "revisionTopics":
+                setStreamingTopics(data as RevisionTopic[]);
+                break;
+              case "mcqs":
+                setStreamingMcqs(data as MCQ[]);
+                break;
+              case "rapidFire":
+                setStreamingRapidFire(data as RapidFire[]);
+                break;
+            }
+          });
         },
         async () => {
           setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
@@ -721,23 +729,26 @@ export function InterviewWorkspace({
       await processDataStream(
         response,
         (data: unknown) => {
-          switch (module) {
-            case "revisionTopics":
-              setStreamingTopics([
-                ...interview.modules.revisionTopics,
-                ...(data as RevisionTopic[]),
-              ]);
-              break;
-            case "mcqs":
-              setStreamingMcqs([...interview.modules.mcqs, ...(data as MCQ[])]);
-              break;
-            case "rapidFire":
-              setStreamingRapidFire([
-                ...interview.modules.rapidFire,
-                ...(data as RapidFire[]),
-              ]);
-              break;
-          }
+          // Use startTransition for non-urgent streaming updates to keep UI responsive
+          startTransition(() => {
+            switch (module) {
+              case "revisionTopics":
+                setStreamingTopics([
+                  ...interview.modules.revisionTopics,
+                  ...(data as RevisionTopic[]),
+                ]);
+                break;
+              case "mcqs":
+                setStreamingMcqs([...interview.modules.mcqs, ...(data as MCQ[])]);
+                break;
+              case "rapidFire":
+                setStreamingRapidFire([
+                  ...interview.modules.rapidFire,
+                  ...(data as RapidFire[]),
+                ]);
+                break;
+            }
+          });
         },
         async () => {
           setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
@@ -755,7 +766,8 @@ export function InterviewWorkspace({
     }
   };
 
-  const getProgress = useCallback(() => {
+  // Memoize progress calculation for better performance
+  const progress = useMemo(() => {
     const modules = [
       !!interview.modules.openingBrief,
       interview.modules.revisionTopics.length > 0,
@@ -763,7 +775,7 @@ export function InterviewWorkspace({
       interview.modules.rapidFire.length > 0,
     ];
     return Math.round((modules.filter(Boolean).length / 4) * 100);
-  }, [interview]);
+  }, [interview.modules]);
 
   const openingBrief = interview.modules.openingBrief;
   const revisionTopics =
@@ -791,7 +803,7 @@ export function InterviewWorkspace({
             day: "numeric",
             year: "numeric",
           })}
-          progress={getProgress()}
+          progress={progress}
           isGenerating={isGenerating}
           userPlan={userPlan}
           interviewId={interviewId}

@@ -124,6 +124,7 @@ export async function GET(request: NextRequest) {
           interviewId: "feedback-analysis",
           userId: user._id,
           action: "AGGREGATE_ANALYSIS",
+          status: "success",
           model: modelId,
           prompt: `Aggregate analysis for ${feedbackEntries.length} feedback entries`,
           response: JSON.stringify(aggregatedAnalysis.skillGaps),

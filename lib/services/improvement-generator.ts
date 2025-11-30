@@ -699,6 +699,7 @@ export async function* streamActivities(
         interviewId,
         userId,
         action: 'STREAM_IMPROVEMENT_ACTIVITY',
+        status: 'success',
         model: modelId,
         prompt: promptText,
         systemPrompt: getActivitySystemPrompt(),

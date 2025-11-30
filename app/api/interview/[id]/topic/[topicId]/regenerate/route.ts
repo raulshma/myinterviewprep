@@ -264,6 +264,7 @@ export async function POST(
             interviewId,
             userId: user._id,
             action: "REGENERATE_ANALOGY",
+            status: "success",
             model: modelId,
             prompt: `Regenerate topic "${topic.title}" with ${style} style`,
             response: responseText,

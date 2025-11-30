@@ -151,21 +151,21 @@ export async function POST(
         let lastSentData: string | null = null;
         let pendingData: unknown = null;
 
-        // Helper to send data with throttling
-        const sendThrottled = (data: unknown, force = false) => {
+        // Helper to send data with throttling - uses 'data' type per AI SDK v5
+        const sendThrottled = (partialData: unknown, force = false) => {
           const now = Date.now();
-          const dataStr = JSON.stringify(data);
+          const dataStr = JSON.stringify(partialData);
           
           // Skip if data hasn't changed
           if (dataStr === lastSentData && !force) return;
           
-          pendingData = data;
+          pendingData = partialData;
           
           if (force || now - lastSentTime >= THROTTLE_MS) {
             writer.write({
-              type: "data-partial",
+              type: "data-partial" as const,
               data: {
-                type: "partial",
+                type: "partial" as const,
                 module,
                 data: pendingData,
               },
@@ -226,9 +226,9 @@ export async function POST(
 
           // Write the final complete object as custom data part
           writer.write({
-            type: "data-complete",
+            type: "data-complete" as const,
             data: {
-              type: "complete",
+              type: "complete" as const,
               module,
               data: extractFinalData(module, finalObject),
             },
@@ -245,6 +245,7 @@ export async function POST(
             interviewId,
             userId: user._id,
             action: getActionForModule(module),
+            status: "success",
             model: result.modelId,
             prompt: `Generate ${module} for ${interview.jobDetails.title} at ${interview.jobDetails.company}`,
             response: responseText,
@@ -261,9 +262,9 @@ export async function POST(
 
           // Write error as custom data part
           writer.write({
-            type: "data-error",
+            type: "data-error" as const,
             data: {
-              type: "error",
+              type: "error" as const,
               module,
               error:
                 error instanceof Error
@@ -278,8 +279,9 @@ export async function POST(
           });
         }
       },
-      onError: (error: unknown) => {
+      onError(error: unknown) {
         console.error("UI stream error:", error);
+        // Error messages are masked by default for security per AI SDK v5
         return error instanceof Error ? error.message : "Stream error occurred";
       },
     });

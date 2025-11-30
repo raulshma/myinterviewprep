@@ -68,12 +68,14 @@ async function getChatModelConfig(
   } | null
 ): Promise<{
   model: string;
+  modelId: string; // Formatted as "tier - model" for logging
   temperature: number;
 }> {
   // Check BYOK config first
   if (byokTierConfig?.low?.model) {
     return {
       model: byokTierConfig.low.model,
+      modelId: `low - ${byokTierConfig.low.model}`,
       temperature: byokTierConfig.low.temperature ?? 0.7,
     };
   }
@@ -87,6 +89,7 @@ async function getChatModelConfig(
 
   return {
     model: tierConfig.primaryModel,
+    modelId: `low - ${tierConfig.primaryModel}`,
     temperature: tierConfig.temperature,
   };
 }
@@ -300,7 +303,8 @@ Be conversational but professional. Use markdown formatting for better readabili
           interviewId,
           userId: user._id,
           action: "TOPIC_CHAT",
-          model: modelConfig.model,
+          status: "success",
+          model: modelConfig.modelId,
           prompt: "[redacted]", // Don't store user messages for privacy
           response: "", // Don't store response for chat privacy
           tokenUsage: {

@@ -147,11 +147,16 @@ export async function createInterviewFromPrompt(
       interviewId: "prompt-parse",
       userId: user._id,
       action: "PARSE_PROMPT",
+      status: "success",
       model: modelId,
       prompt: input.prompt.trim(),
       response: JSON.stringify(parsedDetails),
+      toolsUsed: loggerCtx.toolsUsed,
+      searchQueries: loggerCtx.searchQueries,
+      searchResults: loggerCtx.searchResults,
       tokenUsage: extractTokenUsage(usage),
       latencyMs: loggerCtx.getLatencyMs(),
+      timeToFirstToken: loggerCtx.getTimeToFirstToken(),
       metadata: loggerCtx.metadata,
     });
 

@@ -292,6 +292,7 @@ export async function POST(request: NextRequest) {
               interviewId: "feedback-improvement",
               userId: user._id,
               action: "STREAM_IMPROVEMENT_ACTIVITY",
+              status: "success",
               model: modelId,
               prompt: `Generate ${selectedActivityType} for skill gap: ${skillGap.skillCluster}`,
               response: responseText,

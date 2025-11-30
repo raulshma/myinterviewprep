@@ -550,6 +550,24 @@ const StreamingActivitySchema = z.object({
 });
 
 /**
+ * Map activity types to their corresponding task names for tier config
+ */
+function getTaskForActivityType(activityType: ActivityType): string {
+  switch (activityType) {
+    case 'mcq':
+      return 'generate_mcq_activity';
+    case 'coding-challenge':
+      return 'generate_coding_challenge';
+    case 'debugging-task':
+      return 'generate_debugging_task';
+    case 'concept-explanation':
+      return 'generate_concept_explanation';
+    default:
+      return 'generate_mcq_activity';
+  }
+}
+
+/**
  * Stream activity generation
  * Returns a streaming response for real-time UI updates
  * 
@@ -561,9 +579,7 @@ export async function streamActivity(
   apiKey?: string,
   byokConfig?: BYOKTierConfig
 ) {
-  const task = activityType === 'concept-explanation' 
-    ? 'generate_concept_explanation' 
-    : 'generate_mcq_activity';
+  const task = getTaskForActivityType(activityType);
   
   const tierConfig = await getEffectiveConfig(task, byokConfig);
   const openrouter = getOpenRouterClient(apiKey);

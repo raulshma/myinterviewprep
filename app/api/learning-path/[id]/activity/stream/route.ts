@@ -369,6 +369,7 @@ export async function POST(
               interviewId: pathId, // Using pathId as interviewId for logging
               userId: user._id,
               action: ACTIVITY_TYPE_TO_ACTION[activityType],
+              status: "success",
               model: modelId,
               prompt: `Generate ${activityType} for topic "${topic.title}" in learning path`,
               response: responseText,
