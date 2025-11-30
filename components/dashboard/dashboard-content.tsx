@@ -63,54 +63,56 @@ export function DashboardContent({
         transition={{ duration: 0.3, delay: 0.2 }}
       >
         <div className="relative w-full sm:max-w-md">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search interviews..."
-            className="pl-11 h-12 rounded-full bg-secondary/50 border-transparent focus:bg-background focus:border-primary/20 transition-all duration-300"
+            className="pl-10 h-10 rounded-lg bg-background border-border focus:border-primary transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        <div className="flex items-center gap-2 bg-secondary/30 p-1 rounded-full border border-border/50">
-          {(["all", "active", "completed"] as const).map((status) => (
-            <Button
-              key={status}
-              variant={filterStatus === status ? "secondary" : "ghost"}
-              size="sm"
-              className={`rounded-full px-4 text-xs capitalize transition-all duration-300 ${
-                filterStatus === status
-                  ? "bg-background shadow-sm text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => setFilterStatus(status)}
-            >
-              {status}
-            </Button>
-          ))}
-        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-lg border border-border">
+            {(["all", "active", "completed"] as const).map((status) => (
+              <Button
+                key={status}
+                variant={filterStatus === status ? "secondary" : "ghost"}
+                size="sm"
+                className={`rounded-md px-3 h-8 text-xs capitalize transition-all ${
+                  filterStatus === status
+                    ? "bg-background shadow-sm text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => setFilterStatus(status)}
+              >
+                {status}
+              </Button>
+            ))}
+          </div>
 
-        <div className="hidden sm:flex items-center gap-1 bg-secondary/30 p-1 rounded-full border border-border/50">
-          <Button
-            variant={viewMode === "grid" ? "secondary" : "ghost"}
-            size="icon"
-            className={`w-8 h-8 rounded-full transition-all duration-300 ${
-              viewMode === "grid" ? "bg-background shadow-sm" : ""
-            }`}
-            onClick={() => setViewMode("grid")}
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </Button>
-          <Button
-            variant={viewMode === "list" ? "secondary" : "ghost"}
-            size="icon"
-            className={`w-8 h-8 rounded-full transition-all duration-300 ${
-              viewMode === "list" ? "bg-background shadow-sm" : ""
-            }`}
-            onClick={() => setViewMode("list")}
-          >
-            <List className="w-4 h-4" />
-          </Button>
+          <div className="hidden sm:flex items-center gap-1 bg-secondary/50 p-1 rounded-lg border border-border">
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="icon"
+              className={`w-8 h-8 rounded-md transition-all ${
+                viewMode === "grid" ? "bg-background shadow-sm" : ""
+              }`}
+              onClick={() => setViewMode("grid")}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="icon"
+              className={`w-8 h-8 rounded-md transition-all ${
+                viewMode === "list" ? "bg-background shadow-sm" : ""
+              }`}
+              onClick={() => setViewMode("list")}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </motion.div>
 
@@ -133,14 +135,14 @@ export function DashboardContent({
           >
             <Link href="/dashboard/new">
               <div
-                className={`group relative overflow-hidden rounded-3xl border border-dashed border-border/60 hover:border-primary/50 transition-all duration-500 flex flex-col items-center justify-center cursor-pointer bg-card/30 hover:bg-card/80 ${
+                className={`group relative overflow-hidden rounded-xl border border-dashed border-border hover:border-primary/50 transition-all duration-300 flex flex-col items-center justify-center cursor-pointer bg-card hover:bg-secondary/50 ${
                   viewMode === "grid"
-                    ? "h-full min-h-[280px]"
-                    : "h-24 flex-row gap-4"
+                    ? "h-full min-h-[200px]"
+                    : "h-20 flex-row gap-4"
                 }`}
               >
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                  <Plus className="w-6 h-6 text-primary" />
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <Plus className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
                 </div>
                 <div
                   className={
@@ -150,9 +152,11 @@ export function DashboardContent({
                   <p className="font-medium text-foreground group-hover:text-primary transition-colors">
                     New Interview
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    Start a new preparation
-                  </p>
+                  {viewMode === "grid" && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Start a new preparation
+                    </p>
+                  )}
                 </div>
               </div>
             </Link>
@@ -185,7 +189,7 @@ export function DashboardContent({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         >
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-secondary/50 flex items-center justify-center">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-secondary flex items-center justify-center">
             <Search className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium mb-2">No interviews found</h3>

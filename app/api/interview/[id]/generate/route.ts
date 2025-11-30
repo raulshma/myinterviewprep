@@ -5,7 +5,7 @@ import {
   createUIMessageStream,
   createUIMessageStreamResponse,
 } from "ai";
-import { createResumableStreamContext } from "resumable-stream";
+import { getResumableStreamContext } from "@/lib/services/resumable-stream-context";
 import {
   getAuthUserId,
   getByokApiKey,
@@ -300,8 +300,8 @@ export async function POST(
       // consumeSseStream receives the SSE stream as a ReadableStream<string>
       // which is exactly what resumable-stream expects
       async consumeSseStream({ stream: sseStream }) {
-        // Create a resumable stream context with waitUntil for background work
-        const streamContext = createResumableStreamContext({ waitUntil: after });
+        // Get the singleton resumable stream context
+        const streamContext = getResumableStreamContext();
         
         // Create the resumable stream from the SSE stream
         await streamContext.createNewResumableStream(resumableStreamId, () => sseStream);

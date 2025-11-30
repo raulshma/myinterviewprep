@@ -515,7 +515,7 @@ Focus on topics that:
 
 /**
  * Generate MCQs with streaming and duplicate prevention
- * Uses MEDIUM tier model - structured output with moderate complexity
+ * Uses HIGH tier model - requires accurate technical knowledge for quality questions
  * Requirements: 5.1, 5.2, 5.4
  */
 export async function generateMCQs(

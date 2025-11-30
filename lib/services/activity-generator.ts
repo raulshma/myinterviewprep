@@ -43,14 +43,6 @@ export interface ActivityGeneratorContext {
   previousActivities?: ActivityType[];
 }
 
-// Add learning path tasks to tier mapping
-const LEARNING_PATH_TASK_TIERS: Record<string, ModelTier> = {
-  generate_mcq_activity: "high",
-  generate_coding_challenge: "high",
-  generate_debugging_task: "high",
-  generate_concept_explanation: "medium",
-};
-
 /**
  * Get tier setting key
  */
@@ -89,7 +81,7 @@ async function getTierConfigFromDB(tier: ModelTier): Promise<TierModelConfig> {
 
 
 /**
- * Get effective config for a learning path task, considering BYOK overrides
+ * Get effective config for an activity task, considering BYOK overrides
  */
 async function getEffectiveConfig(
   task: string,
@@ -101,7 +93,7 @@ async function getEffectiveConfig(
   maxTokens: number;
   tier: ModelTier;
 }> {
-  const tier = LEARNING_PATH_TASK_TIERS[task] || TASK_TIER_MAPPING[task] || "high";
+  const tier = TASK_TIER_MAPPING[task] || "high";
 
   // Check if BYOK user has configured this tier
   if (byokConfig?.[tier]?.model) {

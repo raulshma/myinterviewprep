@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
-import { after } from "next/server";
 import { UI_MESSAGE_STREAM_HEADERS } from "ai";
-import { createResumableStreamContext } from "resumable-stream";
+import { getResumableStreamContext } from "@/lib/services/resumable-stream-context";
 import { getAuthUserId } from "@/lib/auth/get-user";
 import { userRepository } from "@/lib/db/repositories/user-repository";
 import { interviewRepository } from "@/lib/db/repositories/interview-repository";
@@ -71,9 +70,9 @@ export async function GET(
     }
 
     try {
-      // Create stream context and resume the existing stream
+      // Get the singleton stream context and resume the existing stream
       // The resumed stream is already in SSE format (ReadableStream<string>)
-      const streamContext = createResumableStreamContext({ waitUntil: after });
+      const streamContext = getResumableStreamContext();
       const resumedStream = await streamContext.resumeExistingStream(
         activeStream.resumableStreamId
       );

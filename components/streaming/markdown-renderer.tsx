@@ -4,12 +4,14 @@
  * Markdown Renderer using llm-ui
  * Displays streaming markdown content with code block support
  * Based on: https://github.com/richardgill/llm-ui
+ * 
+ * OPTIMIZED: Only loads required themes and common languages
+ * to prevent page slowdown during streaming
  */
 
+import { memo, useMemo } from "react";
 import type { CodeToHtmlOptions } from "@llm-ui/code";
 import {
-  allLangs,
-  allLangsAlias,
   codeBlockLookBack,
   findCompleteCodeBlock,
   findPartialCodeBlock,
@@ -22,21 +24,87 @@ import parseHtml from "html-react-parser";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { getHighlighterCore } from "shiki/core";
-import { bundledLanguagesInfo } from "shiki/langs";
-// NOTE: For production, consider importing specific themes to reduce bundle size
-// import githubDark from "shiki/themes/github-dark.mjs";
-import { bundledThemes } from "shiki/themes";
 import getWasm from "shiki/wasm";
 import { cn } from "@/lib/utils";
 
+// Import only required themes (2 vs 40+)
+import githubDark from "shiki/themes/github-dark.mjs";
+import githubLight from "shiki/themes/github-light.mjs";
+
+// Import only commonly used languages (avoids loading 200+ languages)
+import javascript from "shiki/langs/javascript.mjs";
+import typescript from "shiki/langs/typescript.mjs";
+import python from "shiki/langs/python.mjs";
+import java from "shiki/langs/java.mjs";
+import cpp from "shiki/langs/cpp.mjs";
+import csharp from "shiki/langs/csharp.mjs";
+import go from "shiki/langs/go.mjs";
+import rust from "shiki/langs/rust.mjs";
+import sql from "shiki/langs/sql.mjs";
+import json from "shiki/langs/json.mjs";
+import yaml from "shiki/langs/yaml.mjs";
+import markdown from "shiki/langs/markdown.mjs";
+import bash from "shiki/langs/bash.mjs";
+import html from "shiki/langs/html.mjs";
+import css from "shiki/langs/css.mjs";
+import jsx from "shiki/langs/jsx.mjs";
+import tsx from "shiki/langs/tsx.mjs";
+import ruby from "shiki/langs/ruby.mjs";
+import php from "shiki/langs/php.mjs";
+import swift from "shiki/langs/swift.mjs";
+import kotlin from "shiki/langs/kotlin.mjs";
+import scala from "shiki/langs/scala.mjs";
+import graphql from "shiki/langs/graphql.mjs";
+import dockerfile from "shiki/langs/dockerfile.mjs";
+
 // -------Step 1: Create a code block component with Shiki-------
 
-// Load highlighter once with optimized bundle using getHighlighterCore
+// Load highlighter once with ONLY required themes and common languages
 const highlighter = loadHighlighter(
   getHighlighterCore({
-    langs: allLangs(bundledLanguagesInfo),
-    langAlias: allLangsAlias(bundledLanguagesInfo),
-    themes: Object.values(bundledThemes),
+    langs: [
+      javascript,
+      typescript,
+      python,
+      java,
+      cpp,
+      csharp,
+      go,
+      rust,
+      sql,
+      json,
+      yaml,
+      markdown,
+      bash,
+      html,
+      css,
+      jsx,
+      tsx,
+      ruby,
+      php,
+      swift,
+      kotlin,
+      scala,
+      graphql,
+      dockerfile,
+    ],
+    // Language aliases for common names
+    langAlias: {
+      js: "javascript",
+      ts: "typescript",
+      py: "python",
+      rb: "ruby",
+      sh: "bash",
+      shell: "bash",
+      zsh: "bash",
+      yml: "yaml",
+      md: "markdown",
+      c: "cpp",
+      "c++": "cpp",
+      "c#": "csharp",
+      cs: "csharp",
+    },
+    themes: [githubDark, githubLight],
     loadWasm: getWasm,
   })
 );
@@ -49,8 +117,8 @@ const codeToHtmlOptions: CodeToHtmlOptions = {
   defaultColor: false,
 };
 
-// Code block component with Shiki syntax highlighting
-const CodeBlock: LLMOutputComponent = ({ blockMatch }) => {
+// Memoized Code block component with Shiki syntax highlighting
+const CodeBlock: LLMOutputComponent = memo(({ blockMatch }) => {
   const { html, code } = useCodeBlockToHtml({
     markdownCodeBlock: blockMatch.output,
     highlighter,
@@ -71,7 +139,9 @@ const CodeBlock: LLMOutputComponent = ({ blockMatch }) => {
       {parseHtml(html)}
     </div>
   );
-};
+});
+
+CodeBlock.displayName = "CodeBlock";
 
 // -------Step 2: Main MarkdownRenderer component-------
 
@@ -82,37 +152,49 @@ interface MarkdownRendererProps {
   proseClassName?: string;
 }
 
-export function MarkdownRenderer({
-  content,
-  isStreaming = false,
-  className,
-  proseClassName,
-}: MarkdownRendererProps) {
-  // Markdown component with styling using react-markdown
-  // Defined inside to access proseClassName
-  const MarkdownComponent: LLMOutputComponent = ({ blockMatch }) => {
+// Memoized Markdown component to prevent re-renders
+const createMarkdownComponent = (proseClassName?: string): LLMOutputComponent => 
+  memo(({ blockMatch }) => {
     const markdown = blockMatch.output;
     return (
       <div className={cn("prose dark:prose-invert max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:my-0 prose-code:before:content-none prose-code:after:content-none prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm", proseClassName)}>
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
       </div>
     );
-  };
+  });
+
+export function MarkdownRenderer({
+  content,
+  isStreaming = false,
+  className,
+  proseClassName,
+}: MarkdownRendererProps) {
+  // Memoize the markdown component to prevent recreation on each render
+  const MarkdownComponent = useMemo(
+    () => createMarkdownComponent(proseClassName),
+    [proseClassName]
+  );
+
+  // Memoize blocks configuration
+  const blocks = useMemo(() => [
+    {
+      component: CodeBlock,
+      findCompleteMatch: findCompleteCodeBlock(),
+      findPartialMatch: findPartialCodeBlock(),
+      lookBack: codeBlockLookBack(),
+    },
+  ], []);
+
+  // Memoize fallback block
+  const fallbackBlock = useMemo(() => ({
+    component: MarkdownComponent,
+    lookBack: markdownLookBack(),
+  }), [MarkdownComponent]);
 
   const { blockMatches } = useLLMOutput({
     llmOutput: content,
-    fallbackBlock: {
-      component: MarkdownComponent,
-      lookBack: markdownLookBack(),
-    },
-    blocks: [
-      {
-        component: CodeBlock,
-        findCompleteMatch: findCompleteCodeBlock(),
-        findPartialMatch: findPartialCodeBlock(),
-        lookBack: codeBlockLookBack(),
-      },
-    ],
+    fallbackBlock,
+    blocks,
     isStreamFinished: !isStreaming,
   });
 

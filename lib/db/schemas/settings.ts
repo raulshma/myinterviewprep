@@ -79,8 +79,18 @@ export const TASK_TIER_MAPPING: Record<string, ModelTier> = {
   // Feedback feature tasks
   analyze_feedback_entry: "high",      // Complex skill gap analysis
   aggregate_feedback_analysis: "high", // Comprehensive weakness analysis
-  generate_improvement_plan: "high",   // Strategic planning
-  stream_improvement_activity: "medium", // Activity generation (varies by type)
+  stream_improvement_activity: "medium", // Activity generation (streaming)
+
+  // Learning path tasks
+  parse_learning_goal: "medium",       // Goal parsing with moderate complexity
+  generate_topic: "high",              // Topic generation requires deep knowledge
+  select_next_topic: "medium",         // Topic selection with moderate reasoning
+
+  // Activity generator tasks
+  generate_mcq_activity: "high",       // MCQ activities require accurate content
+  generate_coding_challenge: "high",   // Coding challenges need complex problem design
+  generate_debugging_task: "high",     // Debugging tasks require technical accuracy
+  generate_concept_explanation: "medium", // Explanations with moderate complexity
 } as const;
 
 export type AITask = keyof typeof TASK_TIER_MAPPING;
@@ -98,6 +108,14 @@ export const TASK_DESCRIPTIONS: Record<string, string> = {
   // Feedback feature tasks
   analyze_feedback_entry: "Analyze interview feedback to identify skill gaps",
   aggregate_feedback_analysis: "Aggregate feedback entries into weakness analysis",
-  generate_improvement_plan: "Generate targeted improvement plan for skill gaps",
   stream_improvement_activity: "Stream improvement activity content in real-time",
+  // Learning path tasks
+  parse_learning_goal: "Parse learning goal into skill clusters",
+  generate_topic: "Generate learning topic with detailed content",
+  select_next_topic: "Select next topic based on progress",
+  // Activity generator tasks
+  generate_mcq_activity: "Generate MCQ learning activity",
+  generate_coding_challenge: "Generate coding challenge activity",
+  generate_debugging_task: "Generate debugging task activity",
+  generate_concept_explanation: "Generate concept explanation activity",
 };

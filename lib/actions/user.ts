@@ -1,4 +1,4 @@
-'use server';
+"use server";
 
 /**
  * User Server Actions
@@ -6,16 +6,16 @@
  * Requirements: 1.2, 1.4, 1.5
  */
 
-import { cache } from 'react';
-import { getAuthUserId, getAuthUser, hasByokApiKey } from '@/lib/auth/get-user';
-import { userRepository } from '@/lib/db/repositories/user-repository';
-import { createAPIError, type APIError } from '@/lib/schemas/error';
-import type { User, UserPreferences } from '@/lib/db/schemas/user';
+import { cache } from "react";
+import { getAuthUserId, getAuthUser, hasByokApiKey } from "@/lib/auth/get-user";
+import { userRepository } from "@/lib/db/repositories/user-repository";
+import { createAPIError, type APIError } from "@/lib/schemas/error";
+import type { User, UserPreferences } from "@/lib/db/schemas/user";
 
 /**
  * Result type for server actions
  */
-export type ActionResult<T> = 
+export type ActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: APIError };
 
@@ -35,66 +35,67 @@ const getCachedDbUser = cache(async (clerkId: string) => {
 export async function getOrCreateUser(): Promise<ActionResult<User>> {
   try {
     const clerkId = await getAuthUserId();
-    
+
     // Try to find existing user
     let user = await userRepository.findByClerkId(clerkId);
-    
+
     if (!user) {
       // Create new user with default FREE plan settings
       // Requirements: 1.2 - Default FREE plan with iteration count 0 and limit 20
       user = await userRepository.create({
         clerkId,
-        plan: 'FREE',
+        plan: "FREE",
         iterations: {
           count: 0,
           limit: 20,
           resetDate: getDefaultResetDate(),
         },
         preferences: {
-          theme: 'dark',
-          defaultAnalogy: 'professional',
+          theme: "dark",
+          defaultAnalogy: "professional",
         },
       });
     }
 
     return { success: true, data: user };
   } catch (error) {
-    console.error('getOrCreateUser error:', error);
+    console.error("getOrCreateUser error:", error);
     return {
       success: false,
-      error: createAPIError('DATABASE_ERROR', 'Failed to get or create user'),
+      error: createAPIError("DATABASE_ERROR", "Failed to get or create user"),
     };
   }
 }
-
 
 /**
  * Check if user can perform an iteration (generation)
  * BYOK users bypass iteration limits
  * Requirements: 1.4, 1.5
  */
-export async function checkIterationLimit(): Promise<ActionResult<{
-  canGenerate: boolean;
-  isByok: boolean;
-  currentCount: number;
-  limit: number;
-  resetDate: Date;
-}>> {
+export async function checkIterationLimit(): Promise<
+  ActionResult<{
+    canGenerate: boolean;
+    isByok: boolean;
+    currentCount: number;
+    limit: number;
+    resetDate: Date;
+  }>
+> {
   try {
     const clerkId = await getAuthUserId();
     const user = await userRepository.findByClerkId(clerkId);
-    
+
     if (!user) {
       return {
         success: false,
-        error: createAPIError('AUTH_ERROR', 'User not found'),
+        error: createAPIError("AUTH_ERROR", "User not found"),
       };
     }
 
     // Check if user has BYOK API key
     // Requirements: 1.4 - BYOK users bypass iteration limits
     const isByok = await hasByokApiKey();
-    
+
     if (isByok) {
       return {
         success: true,
@@ -123,10 +124,13 @@ export async function checkIterationLimit(): Promise<ActionResult<{
       },
     };
   } catch (error) {
-    console.error('checkIterationLimit error:', error);
+    console.error("checkIterationLimit error:", error);
     return {
       success: false,
-      error: createAPIError('DATABASE_ERROR', 'Failed to check iteration limit'),
+      error: createAPIError(
+        "DATABASE_ERROR",
+        "Failed to check iteration limit"
+      ),
     };
   }
 }
@@ -140,22 +144,22 @@ export async function updatePreferences(
 ): Promise<ActionResult<User>> {
   try {
     const clerkId = await getAuthUserId();
-    
+
     const user = await userRepository.updatePreferences(clerkId, preferences);
-    
+
     if (!user) {
       return {
         success: false,
-        error: createAPIError('NOT_FOUND', 'User not found'),
+        error: createAPIError("NOT_FOUND", "User not found"),
       };
     }
 
     return { success: true, data: user };
   } catch (error) {
-    console.error('updatePreferences error:', error);
+    console.error("updatePreferences error:", error);
     return {
       success: false,
-      error: createAPIError('DATABASE_ERROR', 'Failed to update preferences'),
+      error: createAPIError("DATABASE_ERROR", "Failed to update preferences"),
     };
   }
 }
@@ -167,20 +171,20 @@ export async function getCurrentUser(): Promise<ActionResult<User>> {
   try {
     const clerkId = await getAuthUserId();
     const user = await userRepository.findByClerkId(clerkId);
-    
+
     if (!user) {
       return {
         success: false,
-        error: createAPIError('NOT_FOUND', 'User not found'),
+        error: createAPIError("NOT_FOUND", "User not found"),
       };
     }
 
     return { success: true, data: user };
   } catch (error) {
-    console.error('getCurrentUser error:', error);
+    console.error("getCurrentUser error:", error);
     return {
       success: false,
-      error: createAPIError('DATABASE_ERROR', 'Failed to get user'),
+      error: createAPIError("DATABASE_ERROR", "Failed to get user"),
     };
   }
 }
@@ -194,7 +198,7 @@ const getIterationStatusInternal = cache(async () => {
     getAuthUser(),
     hasByokApiKey(),
   ]);
-  
+
   if (!authUser) {
     return null;
   }
@@ -204,7 +208,11 @@ const getIterationStatusInternal = cache(async () => {
     return null;
   }
 
-  const interviews = user.interviews ?? { count: 0, limit: 3, resetDate: getDefaultResetDate() };
+  const interviews = user.interviews ?? {
+    count: 0,
+    limit: 3,
+    resetDate: getDefaultResetDate(),
+  };
 
   return {
     count: user.iterations.count,
@@ -221,31 +229,33 @@ const getIterationStatusInternal = cache(async () => {
  * Get user's iteration and interview status
  * Uses React cache() to deduplicate calls within a request
  */
-export async function getIterationStatus(): Promise<ActionResult<{
-  count: number;
-  limit: number;
-  remaining: number;
-  resetDate: Date;
-  plan: string;
-  isByok: boolean;
-  interviews: { count: number; limit: number; resetDate: Date };
-}>> {
+export async function getIterationStatus(): Promise<
+  ActionResult<{
+    count: number;
+    limit: number;
+    remaining: number;
+    resetDate: Date;
+    plan: string;
+    isByok: boolean;
+    interviews: { count: number; limit: number; resetDate: Date };
+  }>
+> {
   try {
     const data = await getIterationStatusInternal();
-    
+
     if (!data) {
       return {
         success: false,
-        error: createAPIError('NOT_FOUND', 'User not found'),
+        error: createAPIError("NOT_FOUND", "User not found"),
       };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('getIterationStatus error:', error);
+    console.error("getIterationStatus error:", error);
     return {
       success: false,
-      error: createAPIError('DATABASE_ERROR', 'Failed to get iteration status'),
+      error: createAPIError("DATABASE_ERROR", "Failed to get iteration status"),
     };
   }
 }
@@ -268,22 +278,30 @@ function getDefaultResetDate(): Date {
  */
 const getUserProfileInternal = cache(async () => {
   const authUser = await getAuthUser();
-  
+
   if (!authUser) {
     return null;
   }
 
   const dbUser = await getCachedDbUser(authUser.clerkId);
-  
+
   return {
     clerkId: authUser.clerkId,
     email: authUser.email,
     firstName: authUser.firstName,
     lastName: authUser.lastName,
     imageUrl: authUser.imageUrl,
-    plan: dbUser?.plan ?? 'FREE',
-    iterations: dbUser?.iterations ?? { count: 0, limit: 20, resetDate: getDefaultResetDate() },
-    interviews: dbUser?.interviews ?? { count: 0, limit: 3, resetDate: getDefaultResetDate() },
+    plan: dbUser?.plan ?? "FREE",
+    iterations: dbUser?.iterations ?? {
+      count: 0,
+      limit: 20,
+      resetDate: getDefaultResetDate(),
+    },
+    interviews: dbUser?.interviews ?? {
+      count: 0,
+      limit: 3,
+      resetDate: getDefaultResetDate(),
+    },
     hasStripeSubscription: !!dbUser?.stripeCustomerId,
     hasByokKey: !!authUser.byokApiKey,
   };
@@ -293,34 +311,36 @@ const getUserProfileInternal = cache(async () => {
  * Get user profile data including Clerk info
  * Uses React cache() to deduplicate calls within a request
  */
-export async function getUserProfile(): Promise<ActionResult<{
-  clerkId: string;
-  email: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  imageUrl: string | null;
-  plan: string;
-  iterations: { count: number; limit: number; resetDate: Date };
-  interviews: { count: number; limit: number; resetDate: Date };
-  hasStripeSubscription: boolean;
-  hasByokKey: boolean;
-}>> {
+export async function getUserProfile(): Promise<
+  ActionResult<{
+    clerkId: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    imageUrl: string | null;
+    plan: string;
+    iterations: { count: number; limit: number; resetDate: Date };
+    interviews: { count: number; limit: number; resetDate: Date };
+    hasStripeSubscription: boolean;
+    hasByokKey: boolean;
+  }>
+> {
   try {
     const data = await getUserProfileInternal();
-    
+
     if (!data) {
       return {
         success: false,
-        error: createAPIError('AUTH_ERROR', 'Not authenticated'),
+        error: createAPIError("AUTH_ERROR", "Not authenticated"),
       };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('getUserProfile error:', error);
+    console.error("getUserProfile error:", error);
     return {
       success: false,
-      error: createAPIError('DATABASE_ERROR', 'Failed to get user profile'),
+      error: createAPIError("DATABASE_ERROR", "Failed to get user profile"),
     };
   }
 }
@@ -328,12 +348,14 @@ export async function getUserProfile(): Promise<ActionResult<{
 /**
  * Save BYOK API key to Clerk user metadata
  */
-export async function saveByokApiKey(apiKey: string): Promise<ActionResult<{ saved: boolean }>> {
+export async function saveByokApiKey(
+  apiKey: string
+): Promise<ActionResult<{ saved: boolean }>> {
   try {
-    const { clerkClient } = await import('@clerk/nextjs/server');
+    const { clerkClient } = await import("@clerk/nextjs/server");
     const clerkId = await getAuthUserId();
     const client = await clerkClient();
-    
+
     await client.users.updateUserMetadata(clerkId, {
       privateMetadata: {
         openRouterApiKey: apiKey || null,
@@ -342,10 +364,10 @@ export async function saveByokApiKey(apiKey: string): Promise<ActionResult<{ sav
 
     return { success: true, data: { saved: true } };
   } catch (error) {
-    console.error('saveByokApiKey error:', error);
+    console.error("saveByokApiKey error:", error);
     return {
       success: false,
-      error: createAPIError('DATABASE_ERROR', 'Failed to save API key'),
+      error: createAPIError("DATABASE_ERROR", "Failed to save API key"),
     };
   }
 }
@@ -353,12 +375,14 @@ export async function saveByokApiKey(apiKey: string): Promise<ActionResult<{ sav
 /**
  * Remove BYOK API key from Clerk user metadata
  */
-export async function removeByokApiKey(): Promise<ActionResult<{ removed: boolean }>> {
+export async function removeByokApiKey(): Promise<
+  ActionResult<{ removed: boolean }>
+> {
   try {
-    const { clerkClient } = await import('@clerk/nextjs/server');
+    const { clerkClient } = await import("@clerk/nextjs/server");
     const clerkId = await getAuthUserId();
     const client = await clerkClient();
-    
+
     await client.users.updateUserMetadata(clerkId, {
       privateMetadata: {
         openRouterApiKey: null,
@@ -367,10 +391,10 @@ export async function removeByokApiKey(): Promise<ActionResult<{ removed: boolea
 
     return { success: true, data: { removed: true } };
   } catch (error) {
-    console.error('removeByokApiKey error:', error);
+    console.error("removeByokApiKey error:", error);
     return {
       success: false,
-      error: createAPIError('DATABASE_ERROR', 'Failed to remove API key'),
+      error: createAPIError("DATABASE_ERROR", "Failed to remove API key"),
     };
   }
 }
@@ -399,76 +423,93 @@ export interface SettingsPageData {
   };
 }
 
-const getSettingsPageDataInternal = cache(async (): Promise<SettingsPageData | null> => {
-  const authUser = await getAuthUser();
-  
-  if (!authUser) {
-    return null;
-  }
+const getSettingsPageDataInternal = cache(
+  async (): Promise<SettingsPageData | null> => {
+    const authUser = await getAuthUser();
 
-  const dbUser = await getCachedDbUser(authUser.clerkId);
-  
-  const defaultIterations = { count: 0, limit: 20, resetDate: getDefaultResetDate() };
-  const defaultInterviews = { count: 0, limit: 3, resetDate: getDefaultResetDate() };
-  
-  // Check if subscription is scheduled for cancellation
-  let subscriptionCancelAt: string | null = null;
-  if (dbUser?.stripeSubscriptionId) {
-    try {
-      const { getSubscription, getSubscriptionPeriodEnd } = await import('@/lib/services/stripe');
-      const subscription = await getSubscription(dbUser.stripeSubscriptionId);
-      if (subscription?.cancel_at_period_end) {
-        const periodEnd = getSubscriptionPeriodEnd(subscription);
-        subscriptionCancelAt = new Date(periodEnd * 1000).toISOString();
-      }
-    } catch (error) {
-      console.error('Failed to fetch subscription status:', error);
+    if (!authUser) {
+      return null;
     }
+
+    const dbUser = await getCachedDbUser(authUser.clerkId);
+
+    const defaultIterations = {
+      count: 0,
+      limit: 20,
+      resetDate: getDefaultResetDate(),
+    };
+    const defaultInterviews = {
+      count: 0,
+      limit: 3,
+      resetDate: getDefaultResetDate(),
+    };
+
+    // Check if subscription is scheduled for cancellation
+    let subscriptionCancelAt: string | null = null;
+    if (dbUser?.stripeSubscriptionId) {
+      try {
+        const { getSubscription, getSubscriptionPeriodEnd } = await import(
+          "@/lib/services/stripe"
+        );
+        const subscription = await getSubscription(dbUser.stripeSubscriptionId);
+        if (subscription?.cancel_at_period_end) {
+          const periodEnd = getSubscriptionPeriodEnd(subscription);
+          // Validate periodEnd is a valid timestamp before converting to ISO string
+          if (periodEnd && !isNaN(periodEnd) && periodEnd > 0) {
+            subscriptionCancelAt = new Date(periodEnd * 1000).toISOString();
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch subscription status:", error);
+      }
+    }
+
+    const profile = {
+      clerkId: authUser.clerkId,
+      email: authUser.email,
+      firstName: authUser.firstName,
+      lastName: authUser.lastName,
+      imageUrl: authUser.imageUrl,
+      plan: dbUser?.plan ?? "FREE",
+      iterations: dbUser?.iterations ?? defaultIterations,
+      interviews: dbUser?.interviews ?? defaultInterviews,
+      hasStripeSubscription: !!dbUser?.stripeCustomerId,
+      hasByokKey: !!authUser.byokApiKey,
+      subscriptionCancelAt,
+    };
+
+    const subscription = {
+      plan: dbUser?.plan ?? "FREE",
+      hasSubscription: !!dbUser?.stripeCustomerId,
+    };
+
+    return { profile, subscription };
   }
-  
-  const profile = {
-    clerkId: authUser.clerkId,
-    email: authUser.email,
-    firstName: authUser.firstName,
-    lastName: authUser.lastName,
-    imageUrl: authUser.imageUrl,
-    plan: dbUser?.plan ?? 'FREE',
-    iterations: dbUser?.iterations ?? defaultIterations,
-    interviews: dbUser?.interviews ?? defaultInterviews,
-    hasStripeSubscription: !!dbUser?.stripeCustomerId,
-    hasByokKey: !!authUser.byokApiKey,
-    subscriptionCancelAt,
-  };
-
-  const subscription = {
-    plan: dbUser?.plan ?? 'FREE',
-    hasSubscription: !!dbUser?.stripeCustomerId,
-  };
-
-  return { profile, subscription };
-});
+);
 
 /**
  * Get all settings page data in one call
  * Uses React cache() to deduplicate within a request
  */
-export async function getSettingsPageData(): Promise<ActionResult<SettingsPageData>> {
+export async function getSettingsPageData(): Promise<
+  ActionResult<SettingsPageData>
+> {
   try {
     const data = await getSettingsPageDataInternal();
-    
+
     if (!data) {
       return {
         success: false,
-        error: createAPIError('AUTH_ERROR', 'Not authenticated'),
+        error: createAPIError("AUTH_ERROR", "Not authenticated"),
       };
     }
 
     return { success: true, data };
   } catch (error) {
-    console.error('getSettingsPageData error:', error);
+    console.error("getSettingsPageData error:", error);
     return {
       success: false,
-      error: createAPIError('DATABASE_ERROR', 'Failed to get settings data'),
+      error: createAPIError("DATABASE_ERROR", "Failed to get settings data"),
     };
   }
 }

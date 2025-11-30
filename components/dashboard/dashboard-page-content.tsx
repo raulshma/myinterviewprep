@@ -2,17 +2,15 @@
 
 import { useEffect, Suspense } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Briefcase, Sparkles } from "lucide-react";
+import { Plus, Briefcase } from "lucide-react";
 import { useSharedHeader } from "./shared-header-context";
 import { DashboardContent } from "./dashboard-content";
 import { ViewTransitionLink } from "@/components/transitions/view-transition-link";
 import { DashboardHero } from "./dashboard-hero";
 import { StatsBentoGrid } from "./stats-bento-grid";
-import { LearningPathCard } from "./learning-path-card";
 import { CheckoutSuccessDialog } from "./checkout-success-dialog";
 import type { DashboardInterviewData } from "@/lib/actions/dashboard";
 import type { LearningPath } from "@/lib/db/schemas/learning-path";
-import { motion } from "framer-motion";
 
 interface DashboardPageContentProps {
   interviews: DashboardInterviewData[];
@@ -51,29 +49,16 @@ export function DashboardPageContent({
   }, [setHeader]);
 
   return (
-    <div className="w-full space-y-12 pb-20">
+    <div className="w-full space-y-8 pb-20">
       {/* Checkout Success Dialog */}
       <Suspense fallback={null}>
         <CheckoutSuccessDialog plan={plan} />
       </Suspense>
 
-      {/* Learning Path Section */}
-      <section>
-        <div className="flex items-center justify-between mb-6 px-1">
-          <div className="space-y-1">
-            <h2 className="text-2xl font-bold tracking-tight">Current Focus</h2>
-            <p className="text-muted-foreground">
-              Continue your personalized learning journey
-            </p>
-          </div>
-        </div>
-        <LearningPathCard learningPath={learningPath} />
-      </section>
-
       {/* Greeting & Stats Section */}
-      <section className="space-y-8">
+      <section className="space-y-6">
         <DashboardHero />
-        <StatsBentoGrid stats={stats} />
+        <StatsBentoGrid stats={stats} learningPath={learningPath} />
       </section>
 
       {/* Interviews Section */}

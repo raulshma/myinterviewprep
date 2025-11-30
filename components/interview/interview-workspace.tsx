@@ -550,25 +550,38 @@ export function InterviewWorkspace({
 
     const excluded = interview.excludedModules ?? [];
 
-    // Check if there's at least one non-excluded module without content
-    // Also skip modules that are currently streaming (resumed)
+    // Helper to check if a module needs generation
+    const moduleNeedsGeneration = (module: ModuleKey): boolean => {
+      // Skip if excluded
+      if (excluded.includes(module)) return false;
+      // Skip if already resumed
+      if (resumedModules.has(module)) return false;
+      // Skip if currently streaming
+      if (moduleStatus[module] === "streaming") return false;
+      // Skip if already complete
+      if (moduleStatus[module] === "complete") return false;
+      
+      // Check if module has content
+      switch (module) {
+        case "openingBrief":
+          return !interview.modules.openingBrief;
+        case "revisionTopics":
+          return interview.modules.revisionTopics.length === 0;
+        case "mcqs":
+          return interview.modules.mcqs.length === 0;
+        case "rapidFire":
+          return interview.modules.rapidFire.length === 0;
+        default:
+          return false;
+      }
+    };
+
+    // Check if there's at least one module that needs generation
     const needsGeneration =
-      (!excluded.includes("openingBrief") &&
-        !interview.modules.openingBrief &&
-        !resumedModules.has("openingBrief") &&
-        moduleStatus.openingBrief !== "streaming") ||
-      (!excluded.includes("revisionTopics") &&
-        interview.modules.revisionTopics.length === 0 &&
-        !resumedModules.has("revisionTopics") &&
-        moduleStatus.revisionTopics !== "streaming") ||
-      (!excluded.includes("mcqs") &&
-        interview.modules.mcqs.length === 0 &&
-        !resumedModules.has("mcqs") &&
-        moduleStatus.mcqs !== "streaming") ||
-      (!excluded.includes("rapidFire") &&
-        interview.modules.rapidFire.length === 0 &&
-        !resumedModules.has("rapidFire") &&
-        moduleStatus.rapidFire !== "streaming");
+      moduleNeedsGeneration("openingBrief") ||
+      moduleNeedsGeneration("revisionTopics") ||
+      moduleNeedsGeneration("mcqs") ||
+      moduleNeedsGeneration("rapidFire");
 
     if (needsGeneration) {
       generationStartedRef.current = true;
@@ -587,12 +600,34 @@ export function InterviewWorkspace({
       "rapidFire",
     ];
 
-    // Filter out excluded modules and modules that are already streaming (resumed)
+    // Helper to check if module already has content
+    const hasContent = (module: ModuleKey): boolean => {
+      switch (module) {
+        case "openingBrief":
+          return !!interview.modules.openingBrief;
+        case "revisionTopics":
+          return interview.modules.revisionTopics.length > 0;
+        case "mcqs":
+          return interview.modules.mcqs.length > 0;
+        case "rapidFire":
+          return interview.modules.rapidFire.length > 0;
+        default:
+          return false;
+      }
+    };
+
+    // Filter out:
+    // - excluded modules
+    // - modules already streaming (resumed)
+    // - modules that already have content
+    // - modules with complete status
     const modulesToGenerate = allModules.filter(
       (m) =>
         !excludedModules.includes(m) &&
         !resumedModules.has(m) &&
-        moduleStatus[m] !== "streaming"
+        moduleStatus[m] !== "streaming" &&
+        moduleStatus[m] !== "complete" &&
+        !hasContent(m)
     );
 
     const moduleTasks = modulesToGenerate.map(
@@ -919,14 +954,18 @@ export function InterviewWorkspace({
                     const isCurrentlyStreaming = isStreaming && isLastTopic;
                     const hasContent = topic.content && topic.content.length > 0;
                     
-                    // Expanded view for the currently streaming topic
+                    // Expanded view for the currently streaming topic - show title and preview only
                     if (isCurrentlyStreaming && hasContent) {
+                      // Show only first ~200 chars of the streaming content as preview
+                      const previewContent = topic.content.slice(0, 200);
+                      const isContentTruncated = topic.content.length > 200;
+                      
                       return (
                         <div
                           key={topic.id || `topic-${index}`}
                           className="rounded-2xl border border-primary/30 bg-primary/5 overflow-hidden"
                         >
-                          <div className="flex items-center justify-between p-4 border-b border-border/50">
+                          <div className="flex items-center justify-between p-4">
                             <div className="flex items-center gap-4">
                               <div className="relative">
                                 <div
@@ -940,32 +979,32 @@ export function InterviewWorkspace({
                                 />
                                 <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-primary/50 animate-ping" />
                               </div>
-                              <div>
+                              <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-foreground">
                                   {topic.title || "Generating..."}
                                 </p>
                                 {topic.reason && (
-                                  <p className="text-sm text-muted-foreground">
+                                  <p className="text-sm text-muted-foreground line-clamp-1">
                                     {topic.reason}
                                   </p>
                                 )}
+                                {/* Streaming content preview */}
+                                <p className="text-xs text-muted-foreground/70 mt-2 line-clamp-2 font-mono">
+                                  {previewContent}
+                                  {isContentTruncated && (
+                                    <span className="animate-pulse">▊</span>
+                                  )}
+                                </p>
                               </div>
                             </div>
                             {topic.confidence && (
                               <Badge
                                 variant="outline"
-                                className="capitalize rounded-full px-3"
+                                className="capitalize rounded-full px-3 shrink-0 ml-4"
                               >
                                 {topic.confidence}
                               </Badge>
                             )}
-                          </div>
-                          <div className="p-4">
-                            <MarkdownRenderer
-                              content={topic.content}
-                              isStreaming={true}
-                              className="text-sm text-muted-foreground leading-relaxed"
-                            />
                           </div>
                         </div>
                       );

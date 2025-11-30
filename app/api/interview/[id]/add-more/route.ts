@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { generateId } from "ai";
 import { createUIMessageStream, createUIMessageStreamResponse } from "ai";
-import { createResumableStreamContext } from "resumable-stream";
+import { getResumableStreamContext } from "@/lib/services/resumable-stream-context";
 import {
   getAuthUserId,
   getByokApiKey,
@@ -328,7 +328,7 @@ export async function POST(
         "X-Module": module,
       },
       async consumeSseStream({ stream: sseStream }) {
-        const streamContext = createResumableStreamContext({ waitUntil: after });
+        const streamContext = getResumableStreamContext();
         await streamContext.createNewResumableStream(resumableStreamId, () => sseStream);
         await updateResumableStreamId(interviewId, moduleKey, resumableStreamId);
       },

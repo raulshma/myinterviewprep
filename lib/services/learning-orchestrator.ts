@@ -40,6 +40,7 @@ import {
 import { getSettingsCollection } from "@/lib/db/collections";
 import {
   SETTINGS_KEYS,
+  TASK_TIER_MAPPING,
   type ModelTier,
   type TierModelConfig,
 } from "@/lib/db/schemas/settings";
@@ -48,13 +49,6 @@ import type { BYOKTierConfig } from "./ai-engine";
 // Constants
 const MIN_GOAL_LENGTH = 10;
 const RECENT_RESULTS_COUNT = 10;
-
-// Learning path task tiers
-const LEARNING_PATH_TASK_TIERS: Record<string, ModelTier> = {
-  parse_learning_goal: "medium",
-  generate_topic: "high",
-  select_next_topic: "medium",
-};
 
 /**
  * Get tier setting key
@@ -106,7 +100,7 @@ async function getEffectiveConfig(
   maxTokens: number;
   tier: ModelTier;
 }> {
-  const tier = LEARNING_PATH_TASK_TIERS[task] || "high";
+  const tier = TASK_TIER_MAPPING[task] || "high";
 
   // Check if BYOK user has configured this tier
   if (byokConfig?.[tier]?.model) {
