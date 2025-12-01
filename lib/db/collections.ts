@@ -9,6 +9,7 @@ export const COLLECTIONS = {
   SETTINGS: 'settings',
   TOPIC_CHATS: 'topic_chats',
   AI_CONVERSATIONS: 'ai_conversations',
+  CHAT_IMAGES: 'chat_images',
   LEARNING_PATHS: 'learning_paths',
   FEEDBACK_ENTRIES: 'feedback_entries',
   WEAKNESS_ANALYSES: 'weakness_analyses',
@@ -164,6 +165,7 @@ export interface AIConversationDocument extends Document {
       state: 'input-streaming' | 'input-available' | 'output-available' | 'output-error';
       errorText?: string;
     }>;
+    imageIds?: string[]; // References to images in chat_images collection
     createdAt: Date;
   }>;
   context?: {
@@ -181,6 +183,23 @@ export interface AIConversationDocument extends Document {
 export async function getAIConversationsCollection(): Promise<Collection<AIConversationDocument>> {
   const db = await getDb();
   return db.collection<AIConversationDocument>(COLLECTIONS.AI_CONVERSATIONS);
+}
+
+export interface ChatImageDocument extends Document {
+  _id: string;
+  userId: string;
+  conversationId: string;
+  messageId: string;
+  filename: string;
+  mediaType: string;
+  data: string;
+  size: number;
+  createdAt: Date;
+}
+
+export async function getChatImagesCollection(): Promise<Collection<ChatImageDocument>> {
+  const db = await getDb();
+  return db.collection<ChatImageDocument>(COLLECTIONS.CHAT_IMAGES);
 }
 
 export interface TopicChatDocument extends Document {

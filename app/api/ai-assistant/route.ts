@@ -10,6 +10,7 @@ import { userRepository } from "@/lib/db/repositories/user-repository";
 import { interviewRepository } from "@/lib/db/repositories/interview-repository";
 import { learningPathRepository } from "@/lib/db/repositories/learning-path-repository";
 import { aiConversationRepository } from "@/lib/db/repositories/ai-conversation-repository";
+import { chatImageRepository } from "@/lib/db/repositories/chat-image-repository";
 import {
   runOrchestrator,
   type OrchestratorContext,
@@ -21,6 +22,7 @@ import {
   PRO_CHAT_MESSAGE_LIMIT,
   MAX_CHAT_MESSAGE_LIMIT,
 } from "@/lib/pricing-data";
+import type { AIMessage } from "@/lib/db/schemas/ai-conversation";
 
 /**
  * POST /api/ai-assistant
@@ -97,6 +99,7 @@ export async function POST(request: NextRequest) {
 
     // Create conversation on first message if no conversationId provided
     let activeConversationId = conversationId;
+    let isNewConversation = false;
     if (!activeConversationId && messages.length === 1) {
       const firstMessage = getLastUserMessage(messages);
       const conversation = await aiConversationRepository.create(
@@ -105,6 +108,44 @@ export async function POST(request: NextRequest) {
         { interviewId, learningPathId, toolsUsed: [] }
       );
       activeConversationId = conversation._id;
+      isNewConversation = true;
+    }
+
+    // Persist the user message to the conversation
+    if (activeConversationId) {
+      const lastUserMsg = messages[messages.length - 1];
+      if (lastUserMsg && lastUserMsg.role === "user") {
+        // Extract image data from file parts and store separately
+        const imageIds: string[] = [];
+        const fileParts = lastUserMsg.parts?.filter(
+          (p): p is { type: "file"; mediaType: string; url: string; filename?: string } =>
+            p.type === "file" && p.mediaType?.startsWith("image/")
+        ) || [];
+
+        if (fileParts.length > 0) {
+          const imagesToCreate = fileParts.map((part) => ({
+            userId: user._id,
+            conversationId: activeConversationId!,
+            messageId: lastUserMsg.id,
+            filename: part.filename || `image_${Date.now()}`,
+            mediaType: part.mediaType,
+            data: part.url, // Base64 data URL
+            size: Math.ceil((part.url.length * 3) / 4), // Approximate size
+          }));
+
+          const savedImages = await chatImageRepository.createMany(imagesToCreate);
+          imageIds.push(...savedImages.map((img) => img._id));
+        }
+
+        const userMessage: AIMessage = {
+          id: lastUserMsg.id,
+          role: "user",
+          content: getLastUserMessage(messages),
+          imageIds: imageIds.length > 0 ? imageIds : undefined,
+          createdAt: new Date(),
+        };
+        await aiConversationRepository.addMessage(activeConversationId, userMessage);
+      }
     }
 
     // Build orchestrator context
@@ -178,10 +219,46 @@ export async function POST(request: NextRequest) {
       getLastUserMessage(messages).length / 4
     );
 
+    // Track assistant response for persistence
+    let assistantResponseText = "";
+    let assistantMessageId = "";
+
     // Use toUIMessageStreamResponse directly for proper client compatibility
     const response = orchestratorStream.toUIMessageStreamResponse({
       originalMessages: messages,
-      onFinish: async () => {
+      onFinish: async (result) => {
+        // Extract assistant response from the result
+        if (result.messages && result.messages.length > 0) {
+          const lastMsg = result.messages[result.messages.length - 1];
+          if (lastMsg.role === "assistant") {
+            assistantMessageId = lastMsg.id;
+            // Extract text content from parts
+            assistantResponseText = lastMsg.parts
+              ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
+              .map((p) => p.text)
+              .join("") || "";
+          }
+        }
+
+        // Persist assistant message to conversation
+        if (activeConversationId && assistantResponseText) {
+          const assistantMessage: AIMessage = {
+            id: assistantMessageId || `assistant_${Date.now()}`,
+            role: "assistant",
+            content: assistantResponseText,
+            toolCalls: toolStatuses.length > 0 ? toolStatuses.map((t, idx) => ({
+              id: `${t.toolName}_${idx}`,
+              name: t.toolName,
+              input: t.input,
+              output: t.output,
+              state: t.status === "complete" ? "output-available" as const : 
+                     t.status === "error" ? "output-error" as const : "input-available" as const,
+            })) : undefined,
+            createdAt: new Date(),
+          };
+          await aiConversationRepository.addMessage(activeConversationId, assistantMessage);
+        }
+
         // Log the AI request after completion
         await logAIRequest({
           interviewId: interviewId || learningPathId || "ai-assistant",
@@ -190,7 +267,7 @@ export async function POST(request: NextRequest) {
           status: "success",
           model: "orchestrator",
           prompt: getLastUserMessage(messages),
-          response: "streaming-complete",
+          response: assistantResponseText || "streaming-complete",
           toolsUsed: toolStatuses.map((t) => t.toolName),
           searchQueries: loggerCtx.searchQueries,
           searchResults: loggerCtx.searchResults,
@@ -208,10 +285,13 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Add conversation ID to response headers if created
-    if (activeConversationId && !conversationId) {
+    // Add conversation ID and new conversation flag to response headers
+    if (activeConversationId) {
       const headers = new Headers(response.headers);
       headers.set("X-Conversation-Id", activeConversationId);
+      if (isNewConversation) {
+        headers.set("X-New-Conversation", "true");
+      }
       return new Response(response.body, {
         status: response.status,
         headers,

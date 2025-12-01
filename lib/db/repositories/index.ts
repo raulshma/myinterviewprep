@@ -4,3 +4,4 @@ export * from './ai-log-repository';
 export * from './learning-path-repository';
 export * from './feedback-repository';
 export * from './ai-conversation-repository';
+export * from './chat-image-repository';

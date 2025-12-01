@@ -6,3 +6,10 @@ export { ThinkingIndicator } from "./thinking-indicator";
 export { ArchivedConversationsModal } from "./archived-conversations-modal";
 export { VirtualizedMessageList } from "./virtualized-message-list";
 export { ModelSelector } from "./model-selector";
+export {
+  AIChatPageSkeleton,
+  ChatHistorySkeleton,
+  ChatMainSkeleton,
+  ChatMessagesSkeleton,
+  ToolsSidebarSkeleton,
+} from "./chat-skeleton";

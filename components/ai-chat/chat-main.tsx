@@ -363,6 +363,11 @@ export function AIChatMain({
     learningPathId,
     conversationId,
     selectedModelId: isMaxPlan ? selectedModelId : undefined,
+    onConversationCreated: (id) => {
+      // Notify parent that a new conversation was created
+      const tempTitle = "New Chat";
+      onConversationCreated?.(id, tempTitle);
+    },
     onError: (error) => {
       console.error("Assistant error:", error);
     },
@@ -443,27 +448,30 @@ export function AIChatMain({
   useEffect(() => {
     if (
       conversationId &&
-      messages.length === 1 &&
-      messages[0].role === "user" &&
+      messages.length >= 1 &&
       !titleGeneratedRef.current
     ) {
-      titleGeneratedRef.current = true;
-      const messageContent = getMessageTextContent(messages[0]);
-      if (messageContent) {
-        // Immediately show a truncated title while AI generates the real one
-        const tempTitle =
-          messageContent.slice(0, 40) +
-          (messageContent.length > 40 ? "..." : "");
-        onConversationUpdate?.(conversationId, tempTitle);
+      // Find the first user message
+      const firstUserMessage = messages.find((m) => m.role === "user");
+      if (firstUserMessage) {
+        titleGeneratedRef.current = true;
+        const messageContent = getMessageTextContent(firstUserMessage);
+        if (messageContent) {
+          // Immediately show a truncated title while AI generates the real one
+          const tempTitle =
+            messageContent.slice(0, 40) +
+            (messageContent.length > 40 ? "..." : "");
+          onConversationUpdate?.(conversationId, tempTitle);
 
-        // Generate AI title in background
-        generateConversationTitle(conversationId, messageContent).then(
-          (result) => {
-            if (result.success && result.data) {
-              onConversationUpdate?.(conversationId, result.data);
+          // Generate AI title in background using low-tier model
+          generateConversationTitle(conversationId, messageContent).then(
+            (result) => {
+              if (result.success && result.data) {
+                onConversationUpdate?.(conversationId, result.data);
+              }
             }
-          }
-        );
+          );
+        }
       }
     }
   }, [conversationId, messages, onConversationUpdate]);

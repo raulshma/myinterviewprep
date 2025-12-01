@@ -6,3 +6,4 @@ export * from './byok';
 export * from './learning-path';
 export * from './feedback';
 export * from './ai-conversation';
+export * from './chat-image';

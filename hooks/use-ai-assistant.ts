@@ -42,6 +42,7 @@ const contextRefs = {
   learningPathId: undefined as string | undefined,
   conversationId: undefined as string | undefined,
   selectedModelId: undefined as string | null | undefined,
+  onConversationCreated: undefined as ((id: string) => void) | undefined,
 };
 
 // Create transport singleton
@@ -57,6 +58,21 @@ function getOrCreateTransport(): DefaultChatTransport<UIMessage> {
         conversationId: contextRefs.conversationId,
         selectedModelId: contextRefs.selectedModelId,
       }),
+      fetch: async (url, init) => {
+        const response = await fetch(url, init);
+        
+        // Check for new conversation in headers
+        const newConversationId = response.headers.get("X-Conversation-Id");
+        const isNewConversation = response.headers.get("X-New-Conversation") === "true";
+
+        if (newConversationId && isNewConversation && contextRefs.onConversationCreated) {
+          // Update the context ref so subsequent messages use this conversation
+          contextRefs.conversationId = newConversationId;
+          contextRefs.onConversationCreated(newConversationId);
+        }
+
+        return response;
+      },
     });
   }
   return transportInstance;
@@ -76,6 +92,7 @@ export function useAIAssistant(
     selectedModelId,
     onToolStatus,
     onError,
+    onConversationCreated,
   } = options;
   const [activeTools, setActiveTools] = useState<AssistantToolStatus[]>([]);
   const [input, setInput] = useState("");
@@ -87,7 +104,8 @@ export function useAIAssistant(
     contextRefs.learningPathId = learningPathId;
     contextRefs.conversationId = conversationId;
     contextRefs.selectedModelId = selectedModelId;
-  }, [interviewId, learningPathId, conversationId, selectedModelId]);
+    contextRefs.onConversationCreated = onConversationCreated;
+  }, [interviewId, learningPathId, conversationId, selectedModelId, onConversationCreated]);
 
   // Get transport (created once at module level)
   const transport = getOrCreateTransport();
@@ -112,43 +130,6 @@ export function useAIAssistant(
       activeToolsRef.current = [];
     },
   });
-
-  // Handle tool status updates from the stream
-  const handleStreamData = useCallback(
-    (data: unknown) => {
-      if (!data || typeof data !== "object") return;
-
-      const streamData = data as Record<string, unknown>;
-
-      // Check for tool status updates
-      if (streamData.type === "tool-status" && streamData.data) {
-        const toolStatus = streamData.data as AssistantToolStatus;
-
-        // Update active tools
-        setActiveTools((prev) => {
-          const existing = prev.findIndex(
-            (t) => t.toolName === toolStatus.toolName
-          );
-          if (existing >= 0) {
-            const updated = [...prev];
-            updated[existing] = toolStatus;
-            return updated;
-          }
-          return [...prev, toolStatus];
-        });
-
-        activeToolsRef.current = [
-          ...activeToolsRef.current.filter(
-            (t) => t.toolName !== toolStatus.toolName
-          ),
-          toolStatus,
-        ];
-
-        onToolStatus?.(toolStatus);
-      }
-    },
-    [onToolStatus]
-  );
 
   // Convert File to base64 data URL
   const fileToDataUrl = async (file: File): Promise<string> => {

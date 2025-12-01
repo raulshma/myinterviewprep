@@ -1,8 +1,8 @@
 import { Suspense } from "react";
-import { Loader2 } from "lucide-react";
 import { getAuthUserId } from "@/lib/auth/get-user";
 import { redirect } from "next/navigation";
 import { AIChatPageContent } from "@/components/ai-chat";
+import { AIChatPageSkeleton } from "@/components/ai-chat/chat-skeleton";
 import { aiConversationRepository } from "@/lib/db/repositories/ai-conversation-repository";
 import { userRepository } from "@/lib/db/repositories/user-repository";
 
@@ -40,13 +40,7 @@ async function AIChatLoader() {
 
 export default function AIChatPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      }
-    >
+    <Suspense fallback={<AIChatPageSkeleton />}>
       <AIChatLoader />
     </Suspense>
   );

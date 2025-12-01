@@ -26,6 +26,8 @@ export const AIMessageSchema = z.object({
       })
     )
     .optional(),
+  // Image references (stored in separate collection)
+  imageIds: z.array(z.string()).optional(),
   createdAt: z.date(),
 });
 
