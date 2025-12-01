@@ -29,6 +29,10 @@ import {
   Trash2,
   Maximize,
   Thermometer,
+  Image as ImageIcon,
+  BrainCircuit,
+  Wrench,
+  Globe,
 } from "lucide-react";
 import {
   getTieredModelConfig,
@@ -150,7 +154,8 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
     type: "primary" | "fallback"
   ) => {
     const model = findModel(modelId);
-    const maxTokens = model?.top_provider?.max_completion_tokens;
+    // Use max_completion_tokens if available, otherwise fall back to context_length
+    const maxTokens = model?.top_provider?.max_completion_tokens || model?.context_length;
 
     setConfig((prev) => ({
       ...prev,
@@ -232,6 +237,20 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
     return `$${(num * 1000000).toFixed(2)}/M`;
   };
 
+  const modelSupportsImages = (model: OpenRouterModel): boolean => {
+    const modality = model.architecture?.modality?.toLowerCase() || "";
+    return (
+      modality.includes("image") ||
+      modality.includes("multimodal") ||
+      modality.includes("vision")
+    );
+  };
+
+  const getMaxTokens = (model: OpenRouterModel): number => {
+    // Use max_completion_tokens if available, otherwise fall back to context_length
+    return model.top_provider?.max_completion_tokens || model.context_length;
+  };
+
   const ModelCard = ({
     model,
     isSelected,
@@ -240,74 +259,114 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
     model: OpenRouterModel;
     isSelected: boolean;
     onSelect: () => void;
-  }) => (
-    <div
-      onClick={onSelect}
-      className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 border ${
-        isSelected
-          ? "border-primary bg-primary/5 shadow-md"
-          : "border-border/50 bg-card hover:border-border hover:shadow-sm"
-      }`}
-    >
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-semibold text-sm text-foreground truncate">
-              {model.name}
-            </p>
-            {isSelected && (
-              <div className="bg-primary/10 rounded-full p-0.5">
-                <Check className="w-3 h-3 text-primary shrink-0" />
-              </div>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">
-            {model.id}
-          </p>
-        </div>
-      </div>
+  }) => {
+    const supportsImages = modelSupportsImages(model);
+    const maxTokens = getMaxTokens(model);
 
-      <div className="flex flex-wrap gap-1.5 mt-3">
-        <Badge
-          variant="secondary"
-          className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50"
-        >
-          <Layers className="w-3 h-3 mr-1 opacity-70" />
-          {(model.context_length / 1000).toFixed(0)}K
-        </Badge>
-        <Badge
-          variant="secondary"
-          className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50"
-        >
-          <DollarSign className="w-3 h-3 mr-1 opacity-70" />
-          {formatPrice(model.pricing.prompt)}
-        </Badge>
-        {model.top_provider?.max_completion_tokens && (
+    return (
+      <div
+        onClick={onSelect}
+        className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 border ${
+          isSelected
+            ? "border-primary bg-primary/5 shadow-md"
+            : "border-border/50 bg-card hover:border-border hover:shadow-sm"
+        }`}
+      >
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-sm text-foreground truncate">
+                {model.name}
+              </p>
+              {isSelected && (
+                <div className="bg-primary/10 rounded-full p-0.5">
+                  <Check className="w-3 h-3 text-primary shrink-0" />
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">
+              {model.id}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          <Badge
+            variant="secondary"
+            className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50"
+          >
+            <Layers className="w-3 h-3 mr-1 opacity-70" />
+            {(model.context_length / 1000).toFixed(0)}K
+          </Badge>
+          <Badge
+            variant="secondary"
+            className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50"
+          >
+            <DollarSign className="w-3 h-3 mr-1 opacity-70" />
+            {formatPrice(model.pricing.prompt)}
+          </Badge>
           <Badge
             variant="secondary"
             className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50"
             title="Max Output Tokens"
           >
             <Maximize className="w-3 h-3 mr-1 opacity-70" />
-            {((model.top_provider?.max_completion_tokens || 0) / 1000).toFixed(
-              0
-            )}
-            K
+            {(maxTokens / 1000).toFixed(0)}K
           </Badge>
-        )}
-        {model.default_parameters?.temperature !== undefined && (
-          <Badge
-            variant="secondary"
-            className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50"
-            title="Default Temperature"
-          >
-            <Thermometer className="w-3 h-3 mr-1 opacity-70" />
-            {model.default_parameters.temperature}
-          </Badge>
-        )}
+          {model.default_parameters?.temperature !== undefined && (
+            <Badge
+              variant="secondary"
+              className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50"
+              title="Default Temperature"
+            >
+              <Thermometer className="w-3 h-3 mr-1 opacity-70" />
+              {model.default_parameters.temperature}
+            </Badge>
+          )}
+          {supportsImages && (
+            <Badge
+              variant="secondary"
+              className="text-[10px] h-5 px-1.5 font-normal bg-blue-500/10 text-blue-600"
+            >
+              <ImageIcon className="w-3 h-3 mr-1" />
+              Vision
+            </Badge>
+          )}
+          {model.supported_parameters?.some(
+            (p) => p === "reasoning" || p === "include_reasoning"
+          ) && (
+            <Badge
+              variant="secondary"
+              className="text-[10px] h-5 px-1.5 font-normal bg-purple-500/10 text-purple-600"
+            >
+              <BrainCircuit className="w-3 h-3 mr-1" />
+              Reasoning
+            </Badge>
+          )}
+          {model.supported_parameters?.some(
+            (p) => p === "tools" || p === "tool_choice"
+          ) && (
+            <Badge
+              variant="secondary"
+              className="text-[10px] h-5 px-1.5 font-normal bg-orange-500/10 text-orange-600"
+            >
+              <Wrench className="w-3 h-3 mr-1" />
+              Tools
+            </Badge>
+          )}
+          {model.supported_parameters?.includes("web_search_options") && (
+            <Badge
+              variant="secondary"
+              className="text-[10px] h-5 px-1.5 font-normal bg-green-500/10 text-green-600"
+            >
+              <Globe className="w-3 h-3 mr-1" />
+              Web
+            </Badge>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const TierBadge = ({ tier }: { tier: ModelTier }) => {
     const info = TIER_INFO[tier];
