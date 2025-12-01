@@ -116,13 +116,12 @@ function PlanChangeDialog({
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${
-              isCancel
+            className={`w-20 h-20 rounded-full flex items-center justify-center mb-6 ${isCancel
                 ? "bg-destructive/10"
                 : isUpgrade
                   ? "bg-primary/10"
                   : "bg-amber-500/10"
-            }`}
+              }`}
           >
             {getIcon()}
           </motion.div>
@@ -162,9 +161,8 @@ function PlanChangeDialog({
                 </p>
               </div>
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  priceChange.isIncrease ? "bg-primary/20" : "bg-amber-500/20"
-                }`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${priceChange.isIncrease ? "bg-primary/20" : "bg-amber-500/20"
+                  }`}
               >
                 {priceChange.isIncrease ? (
                   <ArrowUp className="w-4 h-4 text-primary" />
@@ -195,18 +193,15 @@ function PlanChangeDialog({
                 What you&apos;ll get
               </p>
               <div className="space-y-2">
-                {toPlan.features
-                  .slice(0, 4)
-                  .filter((f) => f.included)
-                  .map((feature, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center gap-2 text-sm text-foreground"
-                    >
-                      <Check className="w-4 h-4 text-primary shrink-0" />
-                      <span>{feature.name}</span>
-                    </div>
-                  ))}
+                {toPlan.previewFeatures.map((feature, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 text-sm text-foreground"
+                  >
+                    <Check className="w-4 h-4 text-primary shrink-0" />
+                    <span>{feature}</span>
+                  </div>
+                ))}
               </div>
             </motion.div>
           )}
@@ -258,13 +253,12 @@ function PlanChangeDialog({
             <button
               onClick={onConfirm}
               disabled={isLoading}
-              className={`flex-1 py-4 text-sm font-medium transition-colors disabled:opacity-50 ${
-                isCancel
+              className={`flex-1 py-4 text-sm font-medium transition-colors disabled:opacity-50 ${isCancel
                   ? "text-destructive hover:bg-destructive/10"
                   : isUpgrade
                     ? "text-primary hover:bg-primary/10"
                     : "text-amber-500 hover:bg-amber-500/10"
-              }`}
+                }`}
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin mx-auto" />
@@ -407,13 +401,12 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`relative rounded-[2.5rem] overflow-hidden flex flex-col h-full ${
-                isMax
+              className={`relative rounded-[2.5rem] overflow-hidden flex flex-col h-full ${isMax
                   ? "p-[4px] bg-gradient-to-b from-primary/50 to-purple-500/50 shadow-2xl shadow-primary/20"
                   : isPro
                     ? "p-8 border border-primary/50 bg-card/50 backdrop-blur-xl shadow-xl shadow-primary/10"
                     : "p-8 border border-white/10 bg-card/30 backdrop-blur-xl"
-              }`}
+                }`}
             >
               {isMax && (
                 <div className="absolute inset-0 bg-gradient-to-b from-primary/20 to-purple-500/20 blur-xl" />
@@ -459,13 +452,12 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
                   {tier.features.map((feature, i) => (
                     <div key={i} className="flex items-start gap-3">
                       <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                          feature.included
+                        className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${feature.included
                             ? isMax
                               ? "bg-primary/20"
                               : "bg-secondary/50"
                             : "bg-transparent"
-                        }`}
+                          }`}
                       >
                         {feature.included ? (
                           <Check
@@ -521,11 +513,10 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
                       onClick={() => openPlanChangeDialog(tier, "upgrade")}
                       disabled={isLoading}
                       variant={isMax ? "default" : "outline"}
-                      className={`w-full h-12 rounded-full transition-all ${
-                        isMax
+                      className={`w-full h-12 rounded-full transition-all ${isMax
                           ? "bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg shadow-primary/25 hover:scale-[1.02] active:scale-[0.98]"
                           : "border-primary/20 hover:bg-primary/10 hover:text-primary"
-                      }`}
+                        }`}
                     >
                       {isMax ? (
                         <Sparkles className="w-4 h-4 mr-2" />
