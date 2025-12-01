@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 
-const STORAGE_KEY = "syntaxstate-custom-theme";
+const STORAGE_KEY = "myinterviewprep-custom-theme";
 
 // External store for localStorage theme
 function subscribe(callback: () => void) {

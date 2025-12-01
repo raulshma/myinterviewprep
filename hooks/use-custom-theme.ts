@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useSyncExternalStore } from "react";
 
-const STORAGE_KEY = "syntaxstate-custom-theme";
+const STORAGE_KEY = "myinterviewprep-custom-theme";
 
 // External store for localStorage theme
 function subscribe(callback: () => void) {
@@ -34,7 +34,7 @@ export function useCustomTheme() {
   const customCSS = useSyncExternalStore(
     subscribe,
     getSnapshot,
-    getServerSnapshot
+    getServerSnapshot,
   );
   // isLoaded is always true on client since useSyncExternalStore handles hydration
   const isLoaded = typeof window !== "undefined";

@@ -1,6 +1,6 @@
-# SyntaxState
+# MyInterviewPrep
 
-SyntaxState is an AI-powered platform for coding interview preparation and practice. It provides interactive interview simulations, real-time code streaming, topic-based learning, and comprehensive dashboards for tracking progress.
+MyInterviewPrep is an AI-powered platform for coding interview preparation and practice. It provides interactive interview simulations, real-time code streaming, topic-based learning, and comprehensive dashboards for tracking progress.
 
 ## Features
 
@@ -44,7 +44,7 @@ SyntaxState is an AI-powered platform for coding interview preparation and pract
 1. Clone the repo:
    ```bash
    git clone <your-repo-url>
-   cd syntax_state
+   cd myinterviewprep
    ```
 
 2. Install dependencies:

@@ -139,7 +139,7 @@ async function getOrchestratorConfig(byokConfig?: BYOKTierConfig): Promise<{
 
   if (!config.primaryModel) {
     throw new Error(
-      `Model tier "${tier}" is not configured. Please configure it in admin settings.`
+      `Model tier "${tier}" is not configured. Please configure it in admin settings.`,
     );
   }
 
@@ -172,7 +172,7 @@ function getOpenRouterClient(apiKey?: string) {
  */
 function createOrchestratorTools(
   ctx: OrchestratorContext,
-  onToolStatus: (status: ToolStatus) => void
+  onToolStatus: (status: ToolStatus) => void,
 ): ToolSet {
   const tools: ToolSet = {};
 
@@ -223,7 +223,10 @@ function createOrchestratorTools(
       description:
         "Crawl and extract full content from web pages. Use this when you need the complete article/page content, not just search snippets. Returns markdown, metadata, links, and images.",
       inputSchema: z.object({
-        url: z.string().url().describe("The URL to crawl and extract content from"),
+        url: z
+          .string()
+          .url()
+          .describe("The URL to crawl and extract content from"),
         extractionType: z
           .enum(["full", "markdown-only", "metadata-only"])
           .optional()
@@ -235,10 +238,15 @@ function createOrchestratorTools(
           .default(false)
           .describe("Whether to include image information"),
       }),
-      execute: async ({ url, extractionType = "full", includeImages = false }) => {
+      execute: async ({
+        url,
+        extractionType = "full",
+        includeImages = false,
+      }) => {
         // Import crawl services
         const { crawlService } = await import("./crawl-service");
-        const { checkQuota, consumeQuota, logCrawlOperation } = await import("./crawl-quota");
+        const { checkQuota, consumeQuota, logCrawlOperation } =
+          await import("./crawl-quota");
 
         onToolStatus({
           toolName: "crawlWeb",
@@ -337,7 +345,8 @@ function createOrchestratorTools(
             error: result.error,
           };
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
 
           onToolStatus({
             toolName: "crawlWeb",
@@ -362,14 +371,18 @@ function createOrchestratorTools(
       description:
         "Search the web for information and optionally crawl top results for full content. This is the recommended tool for comprehensive research - it searches and can automatically crawl the most relevant results to get complete article content.",
       inputSchema: z.object({
-        query: z.string().describe("The search query to find relevant information"),
+        query: z
+          .string()
+          .describe("The search query to find relevant information"),
         crawlTopResults: z
           .number()
           .min(0)
           .max(3)
           .optional()
           .default(1)
-          .describe("Number of top search results to crawl for full content (0-3)"),
+          .describe(
+            "Number of top search results to crawl for full content (0-3)",
+          ),
       }),
       execute: async ({ query, crawlTopResults = 1 }) => {
         onToolStatus({
@@ -400,13 +413,17 @@ function createOrchestratorTools(
           }
 
           // If crawling is not requested or not enabled, return search results only
-          const { crawlService, isCrawlEnabled } = await import("./crawl-service");
+          const { crawlService, isCrawlEnabled } =
+            await import("./crawl-service");
           if (crawlTopResults === 0 || !isCrawlEnabled()) {
             onToolStatus({
               toolName: "searchAndCrawl",
               status: "complete",
               input: { query },
-              output: { searchResults: searchResponse.results.length, crawledPages: 0 },
+              output: {
+                searchResults: searchResponse.results.length,
+                crawledPages: 0,
+              },
               timestamp: new Date(),
             });
 
@@ -423,14 +440,22 @@ function createOrchestratorTools(
 
           // Check quota before crawling
           const { checkQuota, consumeQuota } = await import("./crawl-quota");
-          const quotaCheck = await checkQuota(ctx.userId, ctx.plan, crawlTopResults);
+          const quotaCheck = await checkQuota(
+            ctx.userId,
+            ctx.plan,
+            crawlTopResults,
+          );
 
           if (!quotaCheck.allowed) {
             onToolStatus({
               toolName: "searchAndCrawl",
               status: "complete",
               input: { query },
-              output: { searchResults: searchResponse.results.length, crawledPages: 0, quotaExceeded: true },
+              output: {
+                searchResults: searchResponse.results.length,
+                crawledPages: 0,
+                quotaExceeded: true,
+              },
               timestamp: new Date(),
             });
 
@@ -463,12 +488,15 @@ function createOrchestratorTools(
               timeout: 15000,
             });
 
-            const searchResult = searchResponse.results.find((r) => r.url === url);
+            const searchResult = searchResponse.results.find(
+              (r) => r.url === url,
+            );
 
             if (crawlResult.success && crawlResult.markdown) {
               crawledContent.push({
                 url,
-                title: searchResult?.title || crawlResult.metadata?.title || url,
+                title:
+                  searchResult?.title || crawlResult.metadata?.title || url,
                 markdown: crawlResult.markdown,
               });
             } else {
@@ -481,7 +509,9 @@ function createOrchestratorTools(
           }
 
           // Consume quota for successful crawls
-          const successfulCrawls = crawledContent.filter((c) => c.markdown).length;
+          const successfulCrawls = crawledContent.filter(
+            (c) => c.markdown,
+          ).length;
           if (successfulCrawls > 0) {
             await consumeQuota(ctx.userId, ctx.plan, successfulCrawls);
           }
@@ -507,7 +537,8 @@ function createOrchestratorTools(
             message: `Found ${searchResponse.results.length} results, crawled ${successfulCrawls} pages`,
           };
         } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
 
           onToolStatus({
             toolName: "searchAndCrawl",
@@ -531,13 +562,15 @@ function createOrchestratorTools(
   if (ctx.plan !== "FREE") {
     tools.analyzeTechTrends = tool({
       description:
-        "Analyze technology trends, job market demand, and career prospects for specific technologies. IMPORTANT: You MUST provide a 'technologies' array with 1-5 technology names. Example: { \"technologies\": [\"React\", \"TypeScript\"] }",
+        'Analyze technology trends, job market demand, and career prospects for specific technologies. IMPORTANT: You MUST provide a \'technologies\' array with 1-5 technology names. Example: { "technologies": ["React", "TypeScript"] }',
       inputSchema: z.object({
         technologies: z
           .array(z.string())
           .min(1)
           .max(5)
-          .describe("REQUIRED: Array of technology names to analyze (1-5 items). Example: [\"React\", \"Node.js\"]"),
+          .describe(
+            'REQUIRED: Array of technology names to analyze (1-5 items). Example: ["React", "Node.js"]',
+          ),
         focusArea: z
           .enum(["job-market", "skills", "salary", "growth", "all"])
           .optional()
@@ -556,7 +589,7 @@ function createOrchestratorTools(
         let searchData = "";
         if (isSearchEnabled()) {
           const query = `${technologies.join(
-            " "
+            " ",
           )} technology trends 2024 job market demand`;
           const results = await searchService.query(query, 5);
           searchData = results.results
@@ -671,7 +704,7 @@ function createOrchestratorTools(
         if (isSearchEnabled()) {
           const results = await searchService.query(
             `site:github.com ${repo} README technologies`,
-            5
+            5,
           );
           repoInfo = results.results
             .map((r) => `${r.title}: ${r.snippet}`)
@@ -704,7 +737,7 @@ function createOrchestratorTools(
         system: z
           .string()
           .describe(
-            "The system to design (e.g., 'URL shortener', 'Twitter feed')"
+            "The system to design (e.g., 'URL shortener', 'Twitter feed')",
           ),
         scale: z
           .enum(["startup", "medium", "large-scale"])
@@ -753,7 +786,7 @@ function createOrchestratorTools(
           .string()
           .optional()
           .describe(
-            "Type of behavioral question (e.g., 'leadership', 'conflict')"
+            "Type of behavioral question (e.g., 'leadership', 'conflict')",
           ),
       }),
       execute: async ({ situation, questionType }) => {
@@ -812,8 +845,9 @@ function createOrchestratorTools(
         // Search for resources
         let resourceInfo = "";
         if (isSearchEnabled()) {
-          const query = `${enrichedTopic} ${level} tutorial course documentation ${preferFree ? "free" : ""
-            } ${preferVideo ? "video" : ""}`;
+          const query = `${enrichedTopic} ${level} tutorial course documentation ${
+            preferFree ? "free" : ""
+          } ${preferVideo ? "video" : ""}`;
           const results = await searchService.query(query, 8);
           resourceInfo = results.results
             .map((r) => `${r.title} (${r.url}): ${r.snippet}`)
@@ -848,19 +882,19 @@ function createOrchestratorTools(
 function buildSystemPrompt(ctx: OrchestratorContext): string {
   // Get current date and time
   const now = new Date();
-  const formattedDate = now.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+  const formattedDate = now.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
-  const formattedTime = now.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZoneName: 'short'
+  const formattedTime = now.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
   });
 
-  let prompt = `You are SyntaxState's AI Interview Assistant, an expert at helping software engineers prepare for technical interviews.
+  let prompt = `You are MyInterviewPrep's AI Interview Assistant, an expert at helping software engineers prepare for technical interviews.
 
 Current Context:
 - Date: ${formattedDate}
@@ -889,10 +923,11 @@ Guidelines:
 Current Interview Context:
 - Job Title: ${ctx.interviewContext.jobTitle}
 - Company: ${ctx.interviewContext.company}
-${ctx.interviewContext.resumeText
-        ? "- Resume context is available for personalized advice"
-        : ""
-      }`;
+${
+  ctx.interviewContext.resumeText
+    ? "- Resume context is available for personalized advice"
+    : ""
+}`;
   }
 
   // Add learning context if available
@@ -924,7 +959,7 @@ export async function runOrchestrator(
     byokConfig?: BYOKTierConfig;
     onToolStatus?: (status: ToolStatus) => void;
     maxSteps?: number;
-  } = {}
+  } = {},
 ) {
   const { apiKey, byokConfig, onToolStatus, maxSteps = 5 } = options;
 
@@ -940,9 +975,10 @@ export async function runOrchestrator(
   const openrouter = getOpenRouterClient(apiKey);
 
   // For MAX plan users with a selected model, use their choice
-  const modelToUse = ctx.plan === "MAX" && ctx.selectedModelId
-    ? ctx.selectedModelId
-    : config.model;
+  const modelToUse =
+    ctx.plan === "MAX" && ctx.selectedModelId
+      ? ctx.selectedModelId
+      : config.model;
 
   // Create tools based on user's plan
   const tools = createOrchestratorTools(ctx, handleToolStatus);

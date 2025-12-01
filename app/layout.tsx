@@ -16,7 +16,7 @@ const _geistMono = Geist_Mono({
 
 // <CHANGE> Updated metadata for IT Interview Prep Platform
 export const metadata: Metadata = {
-  title: "SyntaxState | AI-Powered IT Interview Preparation",
+  title: "MyInterviewPrep | AI-Powered IT Interview Preparation",
   description:
     "Ace your next technical interview with personalized, AI-driven preparation tailored to your specific role and company.",
   generator: "Next.js",

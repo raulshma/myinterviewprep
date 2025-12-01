@@ -5,7 +5,7 @@ use_default_settings: true
 
 general:
   debug: false
-  instance_name: "SyntaxState Search"
+  instance_name: "MyInterviewPrep Search"
   privacypolicy_url: false
   donation_url: false
   contact_url: false
@@ -104,7 +104,7 @@ categories_as_tabs:
 
 # Plugins
 enabled_plugins:
-  - 'Hash plugin'
-  - 'Hostname replace'
-  - 'Open Access DOI rewrite'
-  - 'Tracker URL remover'
+  - "Hash plugin"
+  - "Hostname replace"
+  - "Open Access DOI rewrite"
+  - "Tracker URL remover"
