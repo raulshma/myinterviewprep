@@ -705,8 +705,8 @@ DO NOT stop early. DO NOT generate empty or placeholder content. Complete ALL ${
 
   // Calculate appropriate max tokens based on topic count
   // Each topic needs ~2000 tokens for comprehensive content (800-1200 words)
-  const minTokensNeeded = count * 2000;
-  const maxOutputTokensToUse = Math.max(minTokensNeeded, config.maxTokens ?? tierConfig.maxTokens);
+  // Cap at 16384 to stay within most model limits while allowing enough for 8 topics
+  const minTokensNeeded = Math.min(count * 2000, 16384);
 
   const stream = streamObject({
     model: openrouter(modelToUse),
@@ -714,7 +714,7 @@ DO NOT stop early. DO NOT generate empty or placeholder content. Complete ALL ${
     system: getSystemPrompt(),
     prompt,
     temperature: config.temperature ?? tierConfig.temperature,
-    maxOutputTokens: maxOutputTokensToUse,
+    maxOutputTokens: minTokensNeeded,
   });
 
   return Object.assign(stream, {
