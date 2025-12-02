@@ -315,6 +315,8 @@ function getTools(searchEnabled: boolean) {
 }
 
 // Schema for streaming topics array
+// Note: We don't enforce min() here because streamObject needs to build up the array incrementally
+// The count is enforced via the prompt - the AI is instructed to generate the requested number
 const TopicsArraySchema = z.object({
   topics: z.array(RevisionTopicSchema),
 });
@@ -684,11 +686,27 @@ Order topics by preparation priority:
 2. Core competencies second  
 3. Differentiators last
 
-This helps candidates focus limited prep time effectively.${
+This helps candidates focus limited prep time effectively.
+
+## CRITICAL REQUIREMENTS
+
+**YOU MUST GENERATE EXACTLY ${count} COMPLETE TOPICS.** Each topic MUST have:
+- A unique id (format: topic_<random_8chars>)
+- A clear title (not empty)
+- Comprehensive content (800-1200 words minimum per topic)
+- A reason explaining why this topic matters
+- A confidence level (low/medium/high)
+
+DO NOT stop early. DO NOT generate empty or placeholder content. Complete ALL ${count} topics with full, detailed content before finishing.${
     ctx.customInstructions
       ? `\n\n## ADDITIONAL USER INSTRUCTIONS\n${ctx.customInstructions}`
       : ""
   }`;
+
+  // Calculate appropriate max tokens based on topic count
+  // Each topic needs ~2000 tokens for comprehensive content (800-1200 words)
+  const minTokensNeeded = count * 2000;
+  const maxOutputTokensToUse = Math.max(minTokensNeeded, config.maxTokens ?? tierConfig.maxTokens);
 
   const stream = streamObject({
     model: openrouter(modelToUse),
@@ -696,6 +714,7 @@ This helps candidates focus limited prep time effectively.${
     system: getSystemPrompt(),
     prompt,
     temperature: config.temperature ?? tierConfig.temperature,
+    maxOutputTokens: maxOutputTokensToUse,
   });
 
   return Object.assign(stream, {

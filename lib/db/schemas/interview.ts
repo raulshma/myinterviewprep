@@ -21,10 +21,10 @@ export const SeniorityLevelSchema = z.enum(['junior', 'mid', 'senior', 'staff'])
 
 export const RevisionTopicSchema = z.object({
   id: z.string(),
-  title: z.string(),
-  content: z.string(),
+  title: z.string().min(1),
+  content: z.string().min(100), // Ensure topics have substantial content (at least 100 chars)
   style: z.enum(['professional', 'construction', 'simple']).default('professional'),
-  reason: z.string(),
+  reason: z.string().min(1),
   confidence: z.enum(['low', 'medium', 'high']),
   status: TopicStatusSchema.default('not_started'),
   styleCache: TopicStyleCacheSchema.optional(),
