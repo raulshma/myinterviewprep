@@ -4,6 +4,7 @@ import { isAdmin } from '@/lib/auth/get-user';
 import { AdminPageContent } from '@/components/admin/admin-page-content';
 import { AdminStatsGrid } from '@/components/admin/admin-stats-grid';
 import { AdminTabs } from '@/components/admin/admin-tabs';
+import type { AIProviderType } from '@/lib/ai';
 
 function isValidData<T>(data: T | { success: false; error: string }): data is T {
   return !data || typeof data !== 'object' || !('success' in data && data.success === false);
@@ -24,9 +25,9 @@ const defaultData = {
   modelUsage: [],
   concurrencyLimit: 3,
   tieredModelConfig: {
-    high: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096, fallbackMaxTokens: 4096, toolsEnabled: true },
-    medium: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096, fallbackMaxTokens: 4096, toolsEnabled: true },
-    low: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096, fallbackMaxTokens: 4096, toolsEnabled: true },
+    high: { provider: 'openrouter' as AIProviderType, primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096, fallbackMaxTokens: 4096, toolsEnabled: true },
+    medium: { provider: 'openrouter' as AIProviderType, primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096, fallbackMaxTokens: 4096, toolsEnabled: true },
+    low: { provider: 'openrouter' as AIProviderType, primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096, fallbackMaxTokens: 4096, toolsEnabled: true },
   },
   aiToolsConfig: [],
 };

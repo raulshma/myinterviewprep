@@ -13,6 +13,7 @@ export { ChatInput } from "./input/chat-input";
 export { ChatEmptyState } from "./empty-state/chat-empty-state";
 export { ThinkingIndicator } from "./thinking-indicator";
 export { ModelSelector } from "./model-selector";
+export { ProviderToolsSelector, useProviderTools } from "./provider-tools-selector";
 export { MessageMetadataDisplay } from "./message-metadata";
 
 // Utilities

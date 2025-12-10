@@ -28,7 +28,12 @@ export default async function SettingsPage() {
         <div className="space-y-6 min-w-0">
           <ProfileSection profile={profile} />
           <PlanFeaturesSection plan={profile.plan} />
-          <ApiKeysSection hasByokKey={profile.hasByokKey} plan={profile.plan} />
+          <ApiKeysSection 
+            hasByokKey={profile.hasByokKey} 
+            hasOpenRouterKey={profile.hasOpenRouterKey}
+            hasGoogleKey={profile.hasGoogleKey}
+            plan={profile.plan} 
+          />
           <BYOKTierConfigSection hasByokKey={profile.hasByokKey} />
         </div>
 

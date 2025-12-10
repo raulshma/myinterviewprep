@@ -26,6 +26,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { OpenRouterModel, GroupedModels } from "@/app/api/models/route";
+import { PROVIDER_INFO } from "@/lib/ai/types";
+import type { AIProviderType } from "@/lib/ai/types";
+
+const PROVIDER_STORAGE_KEY = "ai-chat-selected-provider";
 
 const STORAGE_KEY = "ai-chat-selected-model";
 
@@ -86,7 +90,7 @@ function VirtualizedModelList({
   };
 
   const ModelCard = ({ model }: { model: OpenRouterModel }) => {
-    const isSelected = selectedModelId === model.id;
+    const isSelected = selectedModelId === model.id || selectedModelId === `google:${model.id}`;
     const supportsImages = modelSupportsImages(model);
 
     return (
@@ -114,6 +118,12 @@ function VirtualizedModelList({
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5 mt-2">
+          <Badge
+            variant="secondary"
+            className="text-[10px] h-5 px-1.5 font-normal"
+          >
+            {model.provider === 'google' ? '🔷' : '🌐'} {model.provider === 'google' ? 'Google' : 'OpenRouter'}
+          </Badge>
           <Badge
             variant="secondary"
             className="text-[10px] h-5 px-1.5 font-normal"
@@ -219,7 +229,7 @@ function VirtualizedModelList({
 
 interface ModelSelectorProps {
   selectedModelId: string | null;
-  onModelSelect: (modelId: string, supportsImages: boolean) => void;
+  onModelSelect: (modelId: string, supportsImages: boolean, provider: AIProviderType) => void;
   disabled?: boolean;
 }
 
@@ -230,8 +240,10 @@ export function ModelSelector({
 }: ModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const [models, setModels] = useState<GroupedModels | null>(null);
+  const [allModelsCache, setAllModelsCache] = useState<{ openrouter: GroupedModels; google: GroupedModels } | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeProvider, setActiveProvider] = useState<AIProviderType | "all">("all");
 
   useEffect(() => {
     fetchModels();
@@ -241,24 +253,92 @@ export function ModelSelector({
   const fetchModels = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/models");
-      if (!response.ok) throw new Error("Failed to fetch models");
-      const data: GroupedModels = await response.json();
-      setModels(data);
+      
+      // Fetch from both providers in parallel
+      const [openRouterRes, googleRes] = await Promise.all([
+        fetch("/api/models?provider=openrouter"),
+        fetch("/api/models?provider=google")
+      ]);
+
+      const openRouterData: GroupedModels = openRouterRes.ok 
+        ? await openRouterRes.json() 
+        : { free: [], paid: [] };
+        
+      const googleData: GroupedModels = googleRes.ok 
+        ? await googleRes.json() 
+        : { free: [], paid: [] };
+      
+      // Cache both provider results
+      setAllModelsCache({ openrouter: openRouterData, google: googleData });
+      
+      // Restore saved provider preference
+      const savedProvider = localStorage.getItem(PROVIDER_STORAGE_KEY) as AIProviderType | "all" | null;
+      const providerToUse = savedProvider || "all";
+      setActiveProvider(providerToUse);
+      
+      // Set models based on provider
+      const modelsToShow = getModelsForProvider(providerToUse, openRouterData, googleData);
+      setModels(modelsToShow);
 
       // Try to restore previously selected model
       const savedModelId = localStorage.getItem(STORAGE_KEY);
       if (savedModelId && !selectedModelId) {
-        const allModels = [...data.paid, ...data.free];
-        const savedModel = allModels.find((m) => m.id === savedModelId);
+        // Search in all models for restoration
+        const merged: GroupedModels = {
+          free: [...openRouterData.free, ...googleData.free],
+          paid: [...openRouterData.paid, ...googleData.paid]
+        };
+        const allModels = [...merged.paid, ...merged.free];
+        // Check for exact match or prefixed match
+        const savedModel = allModels.find((m) => {
+          const mId = m.provider === 'google' ? `google:${m.id}` : m.id;
+          return mId === savedModelId || m.id === savedModelId;
+        });
+        
         if (savedModel) {
-          onModelSelect(savedModelId, modelSupportsImages(savedModel));
+          const idToUse = savedModel.provider === 'google' ? `google:${savedModel.id}` : savedModel.id;
+          const provider: AIProviderType = savedModel.provider === 'google' ? 'google' : 'openrouter';
+          onModelSelect(idToUse, modelSupportsImages(savedModel), provider);
         }
       }
     } catch (err) {
       console.error("Failed to load models:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getModelsForProvider = (
+    provider: AIProviderType | "all",
+    openRouterData: GroupedModels,
+    googleData: GroupedModels
+  ): GroupedModels => {
+    if (provider === "openrouter") {
+      return {
+        free: openRouterData.free.sort((a, b) => a.name.localeCompare(b.name)),
+        paid: openRouterData.paid.sort((a, b) => a.name.localeCompare(b.name))
+      };
+    }
+    if (provider === "google") {
+      return {
+        free: googleData.free.sort((a, b) => a.name.localeCompare(b.name)),
+        paid: googleData.paid.sort((a, b) => a.name.localeCompare(b.name))
+      };
+    }
+    // "all" - merge both
+    return {
+      free: [...openRouterData.free, ...googleData.free].sort((a, b) => a.name.localeCompare(b.name)),
+      paid: [...openRouterData.paid, ...googleData.paid].sort((a, b) => a.name.localeCompare(b.name))
+    };
+  };
+
+  const handleProviderChange = (provider: AIProviderType | "all") => {
+    setActiveProvider(provider);
+    localStorage.setItem(PROVIDER_STORAGE_KEY, provider);
+    
+    if (allModelsCache) {
+      const modelsToShow = getModelsForProvider(provider, allModelsCache.openrouter, allModelsCache.google);
+      setModels(modelsToShow);
     }
   };
 
@@ -279,7 +359,10 @@ export function ModelSelector({
 
   const selectedModel = useMemo(() => {
     if (!selectedModelId || !models) return null;
-    return allModels.find((m) => m.id === selectedModelId) || null;
+    return allModels.find((m) => {
+        const mId = m.provider === 'google' ? `google:${m.id}` : m.id;
+        return mId === selectedModelId || m.id === selectedModelId;
+    }) || null;
   }, [selectedModelId, allModels, models]);
 
   const filterModels = (modelList: OpenRouterModel[]) => {
@@ -293,8 +376,12 @@ export function ModelSelector({
   };
 
   const handleSelectModel = (model: OpenRouterModel) => {
-    localStorage.setItem(STORAGE_KEY, model.id);
-    onModelSelect(model.id, modelSupportsImages(model));
+    // Prefix ID with provider if it's Google, otherwise keep as is for OpenRouter (legacy compat)
+    const idToUse = model.provider === 'google' ? `google:${model.id}` : model.id;
+    const provider: AIProviderType = model.provider === 'google' ? 'google' : 'openrouter';
+    
+    localStorage.setItem(STORAGE_KEY, idToUse);
+    onModelSelect(idToUse, modelSupportsImages(model), provider);
     setOpen(false);
     setSearchQuery("");
   };
@@ -336,7 +423,40 @@ export function ModelSelector({
         className="w-[95vw] md:w-[600px] p-0 rounded-2xl"
         align="start"
       >
-        <div className="p-3 border-b border-border/50">
+        <div className="p-3 border-b border-border/50 space-y-3">
+          {/* Provider Selector */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Provider:</span>
+            <div className="flex gap-1.5">
+              <Button
+                variant={activeProvider === "all" ? "default" : "outline"}
+                size="sm"
+                className="h-7 rounded-full px-3 text-xs gap-1.5"
+                onClick={() => handleProviderChange("all")}
+              >
+                All
+              </Button>
+              <Button
+                variant={activeProvider === "openrouter" ? "default" : "outline"}
+                size="sm"
+                className="h-7 rounded-full px-3 text-xs gap-1.5"
+                onClick={() => handleProviderChange("openrouter")}
+              >
+                <span>{PROVIDER_INFO.openrouter.icon}</span>
+                <span>OpenRouter</span>
+              </Button>
+              <Button
+                variant={activeProvider === "google" ? "default" : "outline"}
+                size="sm"
+                className="h-7 rounded-full px-3 text-xs gap-1.5"
+                onClick={() => handleProviderChange("google")}
+              >
+                <span>{PROVIDER_INFO.google.icon}</span>
+                <span>Google</span>
+              </Button>
+            </div>
+          </div>
+          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input

@@ -1,12 +1,14 @@
 /**
  * AI Logger Service
  * Logs all AI generation requests with full metadata and observability
+ * Supports multiple AI providers: OpenRouter, Google Generative AI
  * Requirements: 9.2
  */
 
 import { aiLogRepository } from '@/lib/db/repositories/ai-log-repository';
 import { type AIAction, type AIStatus, type AIMetadata, type CreateAILog } from '@/lib/db/schemas/ai-log';
-import { estimateCost as getEstimatedCost } from './openrouter-pricing';
+import { estimateCost as getEstimatedCost, detectProvider } from './provider-pricing';
+import type { AIProviderType } from '@/lib/ai/types';
 
 export interface SearchResultEntry {
   query: string;
@@ -20,6 +22,7 @@ export interface AILogEntry {
   action: AIAction;
   status?: AIStatus;
   model: string;
+  provider?: AIProviderType; // Provider type for cost estimation
   prompt: string;
   systemPrompt?: string;
   response: string;
@@ -42,11 +45,15 @@ export interface AILogEntry {
  * Requirements: 9.2
  */
 export async function logAIRequest(entry: AILogEntry): Promise<string | null> {
-  // Get cost estimate from OpenRouter pricing (cached)
+  // Detect provider from model ID if not explicitly provided
+  const provider = entry.provider ?? detectProvider(entry.model);
+  
+  // Get cost estimate using multi-provider pricing
   const estimatedCost = await getEstimatedCost(
     entry.model,
     entry.tokenUsage.input,
-    entry.tokenUsage.output
+    entry.tokenUsage.output,
+    provider
   );
 
   const logData: CreateAILog = {
@@ -198,6 +205,9 @@ interface AIStreamResult {
     openrouter?: {
       model?: string;
     };
+    google?: {
+      model?: string;
+    };
   };
   // Some results have response with modelId
   response?: {
@@ -224,8 +234,12 @@ export function extractModelId(
   const typedResult = result as AIStreamResult;
   
   // Try experimental_providerMetadata (OpenRouter specific)
-  const providerModel = typedResult?.experimental_providerMetadata?.openrouter?.model;
-  if (providerModel) return providerModel;
+  const openrouterModel = typedResult?.experimental_providerMetadata?.openrouter?.model;
+  if (openrouterModel) return openrouterModel;
+  
+  // Try experimental_providerMetadata (Google specific)
+  const googleModel = typedResult?.experimental_providerMetadata?.google?.model;
+  if (googleModel) return googleModel;
   
   // Try response.modelId (Vercel AI SDK standard)
   const responseModelId = typedResult?.response?.modelId;

@@ -1,13 +1,17 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { cache } from "react";
 
+import type { AIProviderType } from "@/lib/ai/types";
+
 export interface AuthUser {
   clerkId: string;
   email: string | null;
   firstName: string | null;
   lastName: string | null;
   imageUrl: string | null;
-  byokApiKey: string | null;
+  byokApiKey: string | null; // Legacy accessor for OpenRouter
+  openRouterApiKey: string | null;
+  googleApiKey: string | null;
   isAdmin: boolean;
 }
 
@@ -39,11 +43,6 @@ export async function getAuthUserId(): Promise<string> {
   return userId;
 }
 
-/**
- * Get the current authenticated user with full details
- * Returns null if not authenticated
- * Uses React cache() to deduplicate calls within a request
- */
 export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   const user = await getCachedCurrentUser();
 
@@ -51,11 +50,12 @@ export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
     return null;
   }
 
-  // Get BYOK API key from user's private metadata
-  const byokApiKey = (user.privateMetadata?.openRouterApiKey as string) ?? null;
+  // Get API keys from user's private metadata
+  const openRouterApiKey = (user.privateMetadata?.openRouterApiKey as string) ?? null;
+  const googleApiKey = (user.privateMetadata?.googleApiKey as string) ?? null;
+  const byokApiKey = openRouterApiKey; // Legacy support
 
   // Get admin role from user's public metadata
-  // Role should be set in Clerk Dashboard under user's publicMetadata: { "role": "admin" }
   const isAdmin = (user.publicMetadata?.role as string) === "admin";
 
   return {
@@ -65,33 +65,45 @@ export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
     lastName: user.lastName,
     imageUrl: user.imageUrl,
     byokApiKey,
+    openRouterApiKey,
+    googleApiKey,
     isAdmin,
   };
 });
 
 /**
- * Check if the current user has a BYOK API key configured
+ * Check if the current user has any BYOK API key configured
  */
-export async function hasByokApiKey(): Promise<boolean> {
+export async function hasByokApiKey(provider?: AIProviderType): Promise<boolean> {
   const user = await getAuthUser();
-  return user?.byokApiKey !== null && user?.byokApiKey !== "";
+  if (!user) return false;
+  
+  if (provider === 'google') return !!user.googleApiKey;
+  if (provider === 'openrouter') return !!user.openRouterApiKey;
+  
+  // If no provider specified, check if ANY key exists (legacy behavior)
+  return !!user.openRouterApiKey || !!user.googleApiKey;
 }
 
 /**
- * Get the current user's BYOK API key if configured
+ * Get the current user's BYOK API key for a specific provider
+ * Defaults to OpenRouter for backward compatibility
  */
-export async function getByokApiKey(): Promise<string | null> {
+export async function getByokApiKey(provider: AIProviderType = 'openrouter'): Promise<string | null> {
   const user = await getAuthUser();
-  return user?.byokApiKey ?? null;
+  if (!user) return null;
+  
+  if (provider === 'google') return user.googleApiKey;
+  return user.openRouterApiKey;
 }
 
 /**
  * BYOK tier configuration type (matches BYOKUserConfig from schemas)
  */
 export interface BYOKTierConfigData {
-  high?: { model: string; fallback?: string; temperature?: number; maxTokens?: number };
-  medium?: { model: string; fallback?: string; temperature?: number; maxTokens?: number };
-  low?: { model: string; fallback?: string; temperature?: number; maxTokens?: number };
+  high?: { provider?: AIProviderType; model: string; fallback?: string; temperature?: number; maxTokens?: number };
+  medium?: { provider?: AIProviderType; model: string; fallback?: string; temperature?: number; maxTokens?: number };
+  low?: { provider?: AIProviderType; model: string; fallback?: string; temperature?: number; maxTokens?: number };
 }
 
 /**

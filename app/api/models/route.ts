@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import { rateLimit, getClientIp } from '@/lib/utils/rate-limit';
+import type { AIProviderType, AIModelMetadata, GroupedAIModels } from '@/lib/ai/types';
+import { isValidProvider } from '@/lib/ai/types';
+import { providerRegistry } from '@/lib/ai/provider-registry';
 
+/**
+ * OpenRouter model structure (for backwards compatibility export)
+ */
 export interface OpenRouterModel {
   id: string;
   name: string;
   description?: string;
+  provider?: string;
   pricing: {
     prompt: string;
     completion: string;
@@ -31,9 +38,50 @@ export interface OpenRouterModel {
   supported_parameters?: string[];
 }
 
+/**
+ * Grouped models structure (backwards compatible)
+ */
 export interface GroupedModels {
   free: OpenRouterModel[];
   paid: OpenRouterModel[];
+}
+
+/**
+ * Multi-provider response structure
+ */
+export interface MultiProviderModelsResponse {
+  provider: AIProviderType;
+  models: GroupedAIModels;
+}
+
+/**
+ * Convert AIModelMetadata to OpenRouterModel format for backwards compatibility
+ */
+function toOpenRouterFormat(model: AIModelMetadata): OpenRouterModel {
+  const supportedParams: string[] = [];
+  if (model.capabilities.vision) supportedParams.push('vision');
+  if (model.capabilities.tools) supportedParams.push('tools', 'tool_choice');
+  if (model.capabilities.reasoning) supportedParams.push('reasoning');
+  if (model.capabilities.structuredOutput) supportedParams.push('structured_outputs');
+  if (model.capabilities.webSearch) supportedParams.push('web_search_options');
+
+  return {
+    id: model.id,
+    name: model.name,
+    provider: model.provider,
+    pricing: {
+      prompt: String(model.pricing.promptPer1M / 1_000_000),
+      completion: String(model.pricing.completionPer1M / 1_000_000),
+    },
+    context_length: model.contextLength,
+    top_provider: {
+      max_completion_tokens: model.maxOutputTokens,
+    },
+    default_parameters: {
+      temperature: model.defaultTemperature,
+    },
+    supported_parameters: supportedParams,
+  };
 }
 
 export async function GET(request: Request) {
@@ -57,45 +105,48 @@ export async function GET(request: Request) {
       }
     );
   }
-  try {
-    const response = await fetch('https://openrouter.ai/api/v1/models', {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      next: { revalidate: 3600 }, // Cache for 1 hour
-    });
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.status}`);
+  try {
+    // Get provider from query parameter (default to openrouter for backwards compatibility)
+    const { searchParams } = new URL(request.url);
+    const providerParam = searchParams.get('provider') || 'openrouter';
+    const format = searchParams.get('format') || 'legacy'; // 'legacy' or 'v2'
+    
+    // Validate provider
+    if (!isValidProvider(providerParam)) {
+      return NextResponse.json(
+        { error: `Invalid provider: ${providerParam}. Valid providers: openrouter, google` },
+        { status: 400 }
+      );
     }
 
-    const data = await response.json();
-    const models: OpenRouterModel[] = data.data || [];
+    const provider = providerParam as AIProviderType;
 
-    // Group models by free/paid
-    const grouped: GroupedModels = {
-      free: [],
-      paid: [],
+    // Get grouped models from registry
+    const grouped = await providerRegistry.listGroupedModels(provider);
+
+    // Return in v2 format if requested
+    if (format === 'v2') {
+      const response: MultiProviderModelsResponse = {
+        provider,
+        models: grouped,
+      };
+      return NextResponse.json(response);
+    }
+
+    // Legacy format: convert to OpenRouterModel format for backwards compatibility
+    const legacyGrouped: GroupedModels = {
+      free: grouped.free.map(toOpenRouterFormat),
+      paid: grouped.paid.map(toOpenRouterFormat),
     };
 
-    models.forEach((model) => {
-      const promptPrice = parseFloat(model.pricing.prompt);
-      const completionPrice = parseFloat(model.pricing.completion);
-
-      if (promptPrice === 0 && completionPrice === 0) {
-        grouped.free.push(model);
-      } else {
-        grouped.paid.push(model);
-      }
-    });
-
     // Sort by name within each group
-    grouped.free.sort((a, b) => a.name.localeCompare(b.name));
-    grouped.paid.sort((a, b) => a.name.localeCompare(b.name));
+    legacyGrouped.free.sort((a, b) => a.name.localeCompare(b.name));
+    legacyGrouped.paid.sort((a, b) => a.name.localeCompare(b.name));
 
-    return NextResponse.json(grouped);
+    return NextResponse.json(legacyGrouped);
   } catch (error) {
-    console.error('Error fetching OpenRouter models:', error);
+    console.error('Error fetching models:', error);
     return NextResponse.json(
       { error: 'Failed to fetch models' },
       { status: 500 }

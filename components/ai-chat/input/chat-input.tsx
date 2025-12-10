@@ -11,7 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ModelSelector } from "../model-selector";
+import { ProviderToolsSelector } from "../provider-tools-selector";
 import { cn } from "@/lib/utils";
+import type { AIProviderType } from "@/lib/ai/types";
+import type { ProviderToolType } from "@/lib/ai/provider-tools";
 
 interface ChatInputProps {
   value: string;
@@ -25,8 +28,12 @@ interface ChatInputProps {
   // MAX plan features
   isMaxPlan?: boolean;
   selectedModelId?: string | null;
-  onModelSelect?: (modelId: string, supportsImages: boolean) => void;
+  selectedProvider?: AIProviderType | null;
+  onModelSelect?: (modelId: string, supportsImages: boolean, provider: AIProviderType) => void;
   modelSupportsImages?: boolean;
+  // Provider tools
+  enabledProviderTools?: ProviderToolType[];
+  onProviderToolsChange?: (tools: ProviderToolType[]) => void;
   // File attachments
   attachedFiles?: File[];
   filePreviews?: string[];
@@ -50,8 +57,11 @@ export function ChatInput({
   placeholder = "Ask me anything...",
   isMaxPlan = false,
   selectedModelId,
+  selectedProvider,
   onModelSelect,
   modelSupportsImages = false,
+  enabledProviderTools = [],
+  onProviderToolsChange,
   attachedFiles = [],
   filePreviews = [],
   onFileSelect,
@@ -206,6 +216,16 @@ export function ChatInput({
                 <ModelSelector
                   selectedModelId={selectedModelId ?? null}
                   onModelSelect={onModelSelect}
+                  disabled={isLoading}
+                />
+              )}
+              {/* Provider-specific tools selector (e.g., Google Search, URL Context) */}
+              {isMaxPlan && selectedProvider && selectedModelId && onProviderToolsChange && (
+                <ProviderToolsSelector
+                  provider={selectedProvider}
+                  modelId={selectedModelId.replace(/^google:/, '')}
+                  enabledTools={enabledProviderTools}
+                  onToolsChange={onProviderToolsChange}
                   disabled={isLoading}
                 />
               )}

@@ -12,6 +12,7 @@ import { userRepository } from "@/lib/db/repositories/user-repository";
 import { createAPIError, type APIError } from "@/lib/schemas/error";
 import type { User, UserPreferences, GenerationPreferences } from "@/lib/db/schemas/user";
 import { GENERATION_LIMITS } from "@/lib/db/schemas/user";
+import type { AIProviderType } from "@/lib/ai/types";
 
 /**
  * Result type for server actions
@@ -442,17 +443,23 @@ export async function getUserProfile(): Promise<
  * Save BYOK API key to Clerk user metadata
  */
 export async function saveByokApiKey(
-  apiKey: string
+  apiKey: string,
+  provider: AIProviderType = 'openrouter'
 ): Promise<ActionResult<{ saved: boolean }>> {
   try {
     const { clerkClient } = await import("@clerk/nextjs/server");
     const clerkId = await getAuthUserId();
     const client = await clerkClient();
 
+    const updateData: any = {};
+    if (provider === 'google') {
+      updateData.googleApiKey = apiKey || null;
+    } else {
+      updateData.openRouterApiKey = apiKey || null;
+    }
+
     await client.users.updateUserMetadata(clerkId, {
-      privateMetadata: {
-        openRouterApiKey: apiKey || null,
-      },
+      privateMetadata: updateData,
     });
 
     return { success: true, data: { saved: true } };
@@ -468,18 +475,23 @@ export async function saveByokApiKey(
 /**
  * Remove BYOK API key from Clerk user metadata
  */
-export async function removeByokApiKey(): Promise<
-  ActionResult<{ removed: boolean }>
-> {
+export async function removeByokApiKey(
+  provider: AIProviderType = 'openrouter'
+): Promise<ActionResult<{ removed: boolean }>> {
   try {
     const { clerkClient } = await import("@clerk/nextjs/server");
     const clerkId = await getAuthUserId();
     const client = await clerkClient();
 
+    const updateData: any = {};
+    if (provider === 'google') {
+      updateData.googleApiKey = null;
+    } else {
+      updateData.openRouterApiKey = null;
+    }
+
     await client.users.updateUserMetadata(clerkId, {
-      privateMetadata: {
-        openRouterApiKey: null,
-      },
+      privateMetadata: updateData,
     });
 
     return { success: true, data: { removed: true } };
@@ -508,6 +520,8 @@ export interface SettingsPageData {
     interviews: { count: number; limit: number; resetDate: Date };
     hasStripeSubscription: boolean;
     hasByokKey: boolean;
+    hasOpenRouterKey: boolean;
+    hasGoogleKey: boolean;
     subscriptionCancelAt?: string | null;
     generationPreferences?: {
       topicCount: number;
@@ -572,7 +586,9 @@ const getSettingsPageDataInternal = cache(
       iterations: dbUser?.iterations ?? defaultIterations,
       interviews: dbUser?.interviews ?? defaultInterviews,
       hasStripeSubscription: !!dbUser?.stripeCustomerId,
-      hasByokKey: !!authUser.byokApiKey,
+      hasByokKey: !!authUser.openRouterApiKey || !!authUser.googleApiKey,
+      hasOpenRouterKey: !!authUser.openRouterApiKey,
+      hasGoogleKey: !!authUser.googleApiKey,
       subscriptionCancelAt,
       generationPreferences: dbUser?.preferences?.generation ?? {
         topicCount: GENERATION_LIMITS.topics.default,

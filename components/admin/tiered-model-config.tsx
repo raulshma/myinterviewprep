@@ -56,6 +56,8 @@ import type {
   TierModelConfig,
   FullTieredModelConfig,
 } from "@/lib/db/schemas/settings";
+import type { AIProviderType } from "@/lib/ai/types";
+import { PROVIDER_INFO } from "@/lib/ai/types";
 
 interface TieredModelConfigProps {
   initialConfig: FullTieredModelConfig;
@@ -106,6 +108,9 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   const [selectingFor, setSelectingFor] = useState<"primary" | "fallback">(
     "primary"
   );
+  const [activeProvider, setActiveProvider] = useState<AIProviderType>(
+    initialConfig.high.provider || "openrouter"
+  );
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -125,18 +130,19 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   );
 
   useEffect(() => {
-    fetchModels();
+    fetchModels(activeProvider);
     getTaskTierMappings().then((result) => {
       if (Array.isArray(result)) {
         setTaskMappings(result);
       }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchModels = async () => {
+  const fetchModels = async (provider: AIProviderType = activeProvider) => {
     try {
       setLoading(true);
-      const response = await fetch("/api/models");
+      const response = await fetch(`/api/models?provider=${provider}`);
       if (!response.ok) throw new Error("Failed to fetch models");
       const data = await response.json();
       setModels(data);
@@ -252,6 +258,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
       ...prev,
       [tier]: {
         ...prev[tier],
+        provider: activeProvider, // Set provider when selecting model
         [type === "primary" ? "primaryModel" : "fallbackModel"]: modelId,
         // Auto-populate maxTokens from model data when selecting primary model
         ...(type === "primary" && maxTokens ? { maxTokens } : {}),
@@ -301,6 +308,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
       await clearTieredModelConfig();
       setConfig({
         high: {
+          provider: 'openrouter',
           primaryModel: null,
           fallbackModel: null,
           temperature: 0.7,
@@ -309,6 +317,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           toolsEnabled: true,
         },
         medium: {
+          provider: 'openrouter',
           primaryModel: null,
           fallbackModel: null,
           temperature: 0.7,
@@ -317,6 +326,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           toolsEnabled: true,
         },
         low: {
+          provider: 'openrouter',
           primaryModel: null,
           fallbackModel: null,
           temperature: 0.7,
@@ -589,7 +599,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           </p>
           <p className="text-muted-foreground text-sm mb-6">{error}</p>
           <Button
-            onClick={fetchModels}
+            onClick={() => fetchModels()}
             variant="outline"
             className="rounded-full"
           >
@@ -642,7 +652,12 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
                     ? "border-primary bg-primary/5 shadow-lg shadow-primary/5 scale-[1.02]"
                     : "border-transparent bg-secondary/50 hover:bg-secondary hover:scale-[1.01]"
                 }`}
-                onClick={() => setActiveTier(tier)}
+                onClick={() => {
+                  const savedProvider = config[tier].provider || "openrouter";
+                  setActiveTier(tier);
+                  setActiveProvider(savedProvider);
+                  fetchModels(savedProvider);
+                }}
               >
                 <div className="flex items-center justify-between mb-4">
                   <div
@@ -780,6 +795,28 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
               )}
             </TabsContent>
           </Tabs>
+
+          {/* Provider Selector */}
+          <div className="flex items-center justify-center gap-4 py-4">
+            <Label className="text-sm font-medium text-muted-foreground">Provider:</Label>
+            <div className="flex gap-2">
+              {(['openrouter', 'google'] as AIProviderType[]).map((provider) => (
+                <Button
+                  key={provider}
+                  variant={activeProvider === provider ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-full px-4 gap-2"
+                  onClick={() => {
+                    setActiveProvider(provider);
+                    fetchModels(provider);
+                  }}
+                >
+                  <span>{PROVIDER_INFO[provider].icon}</span>
+                  <span>{PROVIDER_INFO[provider].name}</span>
+                </Button>
+              ))}
+            </div>
+          </div>
 
           {/* Search & Filters */}
           <div className="space-y-3">

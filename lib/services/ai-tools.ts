@@ -12,7 +12,6 @@
  * Requirements: Premium features for enhanced AI capabilities
  */
 
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject, streamObject, tool } from "ai";
 import { z } from "zod";
 import { searchService, isSearchEnabled } from "./search-service";
@@ -27,6 +26,11 @@ import {
 } from "./ai-logger";
 import type { AIAction } from "@/lib/db/schemas/ai-log";
 import type { BYOKTierConfig } from "./ai-engine";
+import {
+  createProviderWithFallback,
+  type AIProviderType,
+  type AIProviderAdapter,
+} from "@/lib/ai";
 
 // ============================================================================
 // Types & Schemas
@@ -298,6 +302,7 @@ async function getEffectiveConfig(
   tier: ModelTier,
   byokConfig?: BYOKTierConfig
 ): Promise<{
+  provider: AIProviderType;
   model: string;
   temperature: number;
   maxTokens: number;
@@ -306,6 +311,7 @@ async function getEffectiveConfig(
   if (byokConfig?.[tier]?.model) {
     const byok = byokConfig[tier]!;
     return {
+      provider: byok.provider || 'openrouter',
       model: byok.model,
       temperature: byok.temperature ?? 0.7,
       maxTokens: byok.maxTokens ?? 4096,
@@ -322,6 +328,7 @@ async function getEffectiveConfig(
   }
 
   return {
+    provider: config.provider || 'openrouter',
     model: config.primaryModel,
     temperature: config.temperature,
     maxTokens: config.maxTokens,
@@ -329,12 +336,12 @@ async function getEffectiveConfig(
   };
 }
 
-function getOpenRouterClient(apiKey?: string) {
-  const key = apiKey || process.env.OPENROUTER_API_KEY;
-  if (!key) {
-    throw new Error("OpenRouter API key is required");
+function getProviderClient(provider: AIProviderType, apiKey?: string): AIProviderAdapter {
+  try {
+    return createProviderWithFallback(provider, apiKey);
+  } catch (error) {
+    throw new Error(`Failed to create ${provider} provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  return createOpenRouter({ apiKey: key });
 }
 
 // ============================================================================
@@ -671,7 +678,7 @@ export async function analyzeTechTrends(
   userId?: string
 ): Promise<TechTrendsResponse> {
   const tierConfig = await getEffectiveConfig("high", byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
   const modelId = formatModelId("high", tierConfig.model);
 
   // Create logger context
@@ -730,7 +737,7 @@ Also provide an overall summary and strategic recommendations for someone decidi
 
   try {
     const result = await generateObject({
-      model: openrouter(tierConfig.model),
+      model: provider.getModel(tierConfig.model),
       schema: TechTrendsResponseSchema,
       prompt,
       temperature: tierConfig.temperature,
@@ -801,7 +808,7 @@ export async function generateMockInterview(
   userId?: string
 ): Promise<MockInterviewSession> {
   const tierConfig = await getEffectiveConfig("high", byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
   const modelId = formatModelId("high", tierConfig.model);
 
   // Create logger context
@@ -839,7 +846,7 @@ Also include general tips for this type of interview and common mistakes to avoi
 
   try {
     const result = await generateObject({
-      model: openrouter(tierConfig.model),
+      model: provider.getModel(tierConfig.model),
       schema: MockInterviewSessionSchema,
       prompt,
       temperature: 0.8, // Slightly higher for variety
@@ -910,7 +917,7 @@ export async function analyzeGitHubRepo(
   userId?: string
 ): Promise<GitHubRepoAnalysis> {
   const tierConfig = await getEffectiveConfig("high", byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
   const modelId = formatModelId("high", tierConfig.model);
 
   // Create logger context
@@ -967,7 +974,7 @@ Focus your analysis on: ${focus}`;
 
   try {
     const result = await generateObject({
-      model: openrouter(tierConfig.model),
+      model: provider.getModel(tierConfig.model),
       schema: GitHubRepoAnalysisSchema,
       prompt,
       temperature: tierConfig.temperature,
@@ -1035,8 +1042,8 @@ export async function generateSystemDesignTemplate(
   userId?: string
 ): Promise<SystemDesignTemplate> {
   const tierConfig = await getEffectiveConfig("high", byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
-  const modelId = `openrouter/${tierConfig.model}`;
+  const provider = getProviderClient(tierConfig.provider, apiKey);
+  const modelId = formatModelId("high", tierConfig.model);
 
   const loggerCtx = createLoggerContext({
     byokUsed: !!apiKey,
@@ -1077,7 +1084,7 @@ Make the design practical and interview-ready at ${scale} scale.`;
 
   try {
     const result = await generateObject({
-      model: openrouter(tierConfig.model),
+      model: provider.getModel(tierConfig.model),
       schema: SystemDesignTemplateSchema,
       prompt,
       temperature: tierConfig.temperature,
@@ -1143,8 +1150,8 @@ export async function generateSTARFramework(
   userId?: string
 ): Promise<STARResponse> {
   const tierConfig = await getEffectiveConfig("medium", byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
-  const modelId = `openrouter/${tierConfig.model}`;
+  const provider = getProviderClient(tierConfig.provider, apiKey);
+  const modelId = formatModelId("medium", tierConfig.model);
 
   const loggerCtx = createLoggerContext({
     byokUsed: !!apiKey,
@@ -1179,7 +1186,7 @@ Make the response compelling and interview-ready.`;
 
   try {
     const result = await generateObject({
-      model: openrouter(tierConfig.model),
+      model: provider.getModel(tierConfig.model),
       schema: STARResponseSchema,
       prompt,
       temperature: 0.7,
@@ -1250,8 +1257,8 @@ export async function findLearningResources(
   userId?: string
 ): Promise<LearningResourcesResponse> {
   const tierConfig = await getEffectiveConfig("medium", byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
-  const modelId = `openrouter/${tierConfig.model}`;
+  const provider = getProviderClient(tierConfig.provider, apiKey);
+  const modelId = formatModelId("medium", tierConfig.model);
 
   const loggerCtx = createLoggerContext({
     byokUsed: !!apiKey,

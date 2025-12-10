@@ -29,6 +29,8 @@ export interface UseAIAssistantOptions {
   learningPathId?: string;
   conversationId?: string;
   selectedModelId?: string | null;
+  /** Provider-specific tools to enable (e.g., googleSearch, urlContext) */
+  providerTools?: string[];
   onToolStatus?: (status: AssistantToolStatus) => void;
   onError?: (error: Error) => void;
   onConversationCreated?: (id: string) => void;
@@ -57,6 +59,7 @@ const contextRefs = {
   learningPathId: undefined as string | undefined,
   conversationId: undefined as string | undefined,
   selectedModelId: undefined as string | null | undefined,
+  providerTools: undefined as string[] | undefined,
   onConversationCreated: undefined as ((id: string) => void) | undefined,
   onMessageMetadata: undefined as ((messageId: string, metadata: MessageMetadata) => void) | undefined,
   lastModelId: undefined as string | undefined,
@@ -74,6 +77,7 @@ function getOrCreateTransport(): DefaultChatTransport<UIMessage> {
         learningPathId: contextRefs.learningPathId,
         conversationId: contextRefs.conversationId,
         selectedModelId: contextRefs.selectedModelId,
+        providerTools: contextRefs.providerTools,
       }),
       fetch: async (url, init) => {
         const response = await fetch(url, init);
@@ -116,6 +120,7 @@ export function useAIAssistant(
     learningPathId,
     conversationId,
     selectedModelId,
+    providerTools,
     onToolStatus,
     onError,
     onConversationCreated,
@@ -132,15 +137,15 @@ export function useAIAssistant(
   // Track previous conversationId to detect changes
   const prevConversationIdRef = useRef<string | undefined>(undefined);
 
-  // Update module-level refs via effect
-  useEffect(() => {
-    contextRefs.interviewId = interviewId;
-    contextRefs.learningPathId = learningPathId;
-    contextRefs.conversationId = conversationId;
-    contextRefs.selectedModelId = selectedModelId;
-    contextRefs.onConversationCreated = onConversationCreated;
-    contextRefs.onMessageMetadata = onMessageMetadata;
-  }, [interviewId, learningPathId, conversationId, selectedModelId, onConversationCreated, onMessageMetadata]);
+  // Update module-level refs synchronously during render
+  // This ensures the refs are always up-to-date when sendMessage is called
+  contextRefs.interviewId = interviewId;
+  contextRefs.learningPathId = learningPathId;
+  contextRefs.conversationId = conversationId;
+  contextRefs.selectedModelId = selectedModelId;
+  contextRefs.providerTools = providerTools;
+  contextRefs.onConversationCreated = onConversationCreated;
+  contextRefs.onMessageMetadata = onMessageMetadata;
 
   // Get transport (created once at module level)
   const transport = getOrCreateTransport();

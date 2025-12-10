@@ -39,12 +39,14 @@ export async function POST(request: NextRequest) {
       learningPathId,
       conversationId,
       selectedModelId,
+      providerTools,
     }: {
       messages: UIMessage[];
       interviewId?: string;
       learningPathId?: string;
       conversationId?: string;
       selectedModelId?: string;
+      providerTools?: string[];
     } = body;
 
     if (!messages || messages.length === 0) {
@@ -154,6 +156,8 @@ export async function POST(request: NextRequest) {
       plan: user.plan,
       // Pass selected model for MAX plan users
       selectedModelId: user.plan === "MAX" ? selectedModelId : undefined,
+      // Pass provider-specific tools (e.g., googleSearch, urlContext)
+      providerTools: user.plan === "MAX" ? providerTools : undefined,
     };
 
     // Add interview context if provided
@@ -184,8 +188,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get BYOK config if available
-    const apiKey = await getByokApiKey();
+    // Determine provider from selected model ID (for MAX plan users)
+    let selectedProvider: import("@/lib/ai/types").AIProviderType = 'openrouter';
+    if (user.plan === "MAX" && selectedModelId) {
+      if (selectedModelId.startsWith('google:')) {
+        selectedProvider = 'google';
+      }
+    }
+
+    // Get BYOK config if available - use provider-specific key
+    const apiKey = await getByokApiKey(selectedProvider);
     const byokTierConfig = await getByokTierConfig();
 
     // Create logger context

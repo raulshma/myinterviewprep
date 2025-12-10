@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AIProviderType } from "@/lib/ai/types";
 
 /**
  * System Settings Schema
@@ -50,6 +51,7 @@ export type ModelTier = "high" | "medium" | "low";
  * Configuration for a single tier (stored as single document)
  */
 export interface TierModelConfig {
+  provider: AIProviderType;
   primaryModel: string | null;
   fallbackModel: string | null;
   temperature: number;
@@ -71,6 +73,7 @@ export interface FullTieredModelConfig {
  * Default tier config (unconfigured state)
  */
 export const DEFAULT_TIER_CONFIG: TierModelConfig = {
+  provider: 'openrouter', // Default for backwards compatibility
   primaryModel: null,
   fallbackModel: null,
   temperature: 0.7,

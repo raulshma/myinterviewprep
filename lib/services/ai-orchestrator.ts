@@ -11,7 +11,6 @@
  * - Streaming responses with tool status updates
  */
 
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import {
   streamText,
   tool,
@@ -27,6 +26,13 @@ import { getTierConfigFromDB } from "@/lib/db/tier-config";
 import { getEnabledToolIds } from "@/lib/actions/admin";
 import type { BYOKTierConfig } from "./ai-engine";
 import type { AIToolName, ToolInvocation } from "./ai-tools";
+import {
+  createProviderWithFallback,
+  type AIProviderType,
+  type AIProviderAdapter,
+  buildGoogleTools,
+  type ProviderToolType,
+} from "@/lib/ai";
 
 // ============================================================================
 // Types
@@ -37,6 +43,8 @@ export interface OrchestratorContext {
   plan: "FREE" | "PRO" | "MAX";
   // Selected model for MAX plan users
   selectedModelId?: string;
+  // Provider-specific tools to enable (e.g., googleSearch, urlContext)
+  providerTools?: string[];
   // Optional context for better responses
   interviewContext?: {
     jobTitle: string;
@@ -76,6 +84,7 @@ export type ToolStatus = {
  * Get effective config for orchestrator (uses high tier for multi-tool)
  */
 async function getOrchestratorConfig(byokConfig?: BYOKTierConfig): Promise<{
+  provider: AIProviderType;
   model: string;
   fallbackModel: string | null;
   temperature: number;
@@ -87,6 +96,7 @@ async function getOrchestratorConfig(byokConfig?: BYOKTierConfig): Promise<{
   if (byokConfig?.[tier]?.model) {
     const byok = byokConfig[tier]!;
     return {
+      provider: byok.provider || 'openrouter',
       model: byok.model,
       fallbackModel: byok.fallback || null,
       temperature: byok.temperature ?? 0.7,
@@ -104,6 +114,7 @@ async function getOrchestratorConfig(byokConfig?: BYOKTierConfig): Promise<{
   }
 
   return {
+    provider: config.provider || 'openrouter',
     model: config.primaryModel,
     fallbackModel: config.fallbackModel,
     temperature: config.temperature,
@@ -111,15 +122,12 @@ async function getOrchestratorConfig(byokConfig?: BYOKTierConfig): Promise<{
   };
 }
 
-/**
- * Get OpenRouter client
- */
-function getOpenRouterClient(apiKey?: string) {
-  const key = apiKey || process.env.OPENROUTER_API_KEY;
-  if (!key) {
-    throw new Error("OpenRouter API key is required");
+function getProviderClient(provider: AIProviderType, apiKey?: string): AIProviderAdapter {
+  try {
+    return createProviderWithFallback(provider, apiKey);
+  } catch (error) {
+    throw new Error(`Failed to create ${provider} provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  return createOpenRouter({ apiKey: key });
 }
 
 // ============================================================================
@@ -939,24 +947,67 @@ export async function runOrchestrator(
     getOrchestratorConfig(byokConfig),
     getEnabledToolIds(),
   ]);
-  const openrouter = getOpenRouterClient(apiKey);
+  // Determine effective provider and model
+  let providerType = config.provider;
+  let modelToUse = config.model;
 
-  // For MAX plan users with a selected model, use their choice
-  const modelToUse =
-    ctx.plan === "MAX" && ctx.selectedModelId
-      ? ctx.selectedModelId
-      : config.model;
+  // For MAX plan users with a selected model, use their choice and parse provider
+  if (ctx.plan === "MAX" && ctx.selectedModelId) {
+    if (ctx.selectedModelId.startsWith('google:')) {
+      providerType = 'google';
+      modelToUse = ctx.selectedModelId.substring(7);
+    } else {
+      // Default to OpenRouter for IDs without valid provider prefix
+      providerType = 'openrouter';
+      modelToUse = ctx.selectedModelId;
+    }
+  }
+
+  // Debug logging
+  console.log('[AI Orchestrator] Provider selection:', {
+    plan: ctx.plan,
+    selectedModelId: ctx.selectedModelId,
+    resolvedProvider: providerType,
+    resolvedModel: modelToUse,
+    hasApiKey: !!apiKey,
+  });
+
+  const provider = getProviderClient(providerType, apiKey);
 
   // Create tools based on user's plan and enabled tools
-  const tools = createOrchestratorTools(ctx, handleToolStatus, enabledTools);
+  let tools: ToolSet = createOrchestratorTools(ctx, handleToolStatus, enabledTools);
+
+  // Add Google-specific tools if provider is Google and tools are enabled
+  if (providerType === 'google' && ctx.providerTools && ctx.providerTools.length > 0) {
+    const googleTools = buildGoogleTools(ctx.providerTools as ProviderToolType[]);
+    // Merge Google tools with orchestrator tools
+    tools = { ...tools, ...googleTools } as ToolSet;
+  }
 
   // Build the system prompt with context
-  const systemPrompt = buildSystemPrompt(ctx);
+  let systemPrompt = buildSystemPrompt(ctx);
+
+  // Add provider tool hints to system prompt
+  if (ctx.providerTools && ctx.providerTools.length > 0) {
+    const toolHints: string[] = [];
+    if (ctx.providerTools.includes('googleSearch')) {
+      toolHints.push('- Google Search: You can search the web for real-time information using the google_search tool');
+    }
+    if (ctx.providerTools.includes('urlContext')) {
+      toolHints.push('- URL Context: You can analyze specific URLs mentioned by the user using the url_context tool');
+    }
+    if (ctx.providerTools.includes('codeExecution')) {
+      toolHints.push('- Code Execution: You can execute Python code for calculations using the code_execution tool');
+    }
+    if (toolHints.length > 0) {
+      systemPrompt += `\n\nEnabled Provider Tools:\n${toolHints.join('\n')}`;
+    }
+  }
 
   // Run streamText with multi-step tool calling
   // Disable retries for rate limit errors (429) - let the client handle them
   const result = streamText({
-    model: openrouter(modelToUse),
+    model: provider.getModel(modelToUse),
     system: systemPrompt,
     messages: convertToModelMessages(messages),
     tools,

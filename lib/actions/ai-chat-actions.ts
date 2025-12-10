@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText } from "ai";
 import { getAuthUserId } from "@/lib/auth/get-user";
 import { aiConversationRepository } from "@/lib/db/repositories/ai-conversation-repository";
@@ -9,6 +8,7 @@ import { aiLogRepository } from "@/lib/db/repositories/ai-log-repository";
 import { userRepository } from "@/lib/db/repositories/user-repository";
 import { getTierConfigFromDB } from "@/lib/db/tier-config";
 import type { AIMessage, AIConversation } from "@/lib/db/schemas/ai-conversation";
+import { createProviderWithFallback, type AIProviderType } from "@/lib/ai";
 
 /**
  * Helper to get the MongoDB user ID from Clerk ID
@@ -30,7 +30,11 @@ export type ActionResult<T = void> =
  * Get low tier model configuration
  */
 async function getLowTierConfig() {
-  return getTierConfigFromDB("low");
+  const config = await getTierConfigFromDB("low");
+  return {
+    ...config,
+    provider: (config.provider || 'openrouter') as AIProviderType,
+  };
 }
 
 /**
@@ -144,11 +148,11 @@ export async function generateConversationTitle(
     // Get low tier model config
     const tierConfig = await getLowTierConfig();
     const modelId = tierConfig.primaryModel ?? "meta-llama/llama-3.1-8b-instruct";
-    const openrouter = createOpenRouter({});
+    const provider = createProviderWithFallback(tierConfig.provider);
     
     // Generate title with AI
     const result = await generateText({
-      model: openrouter(modelId),
+      model: provider.getModel(modelId),
       temperature: 0.7,
       system: "You are a title generator. Generate a brief, descriptive title (3-6 words) for a conversation based on the user's first message. Respond with ONLY the title, no quotes or punctuation.",
       prompt: `Generate a title for this conversation: "${firstMessage.slice(0, 500)}"`,

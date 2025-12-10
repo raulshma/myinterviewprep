@@ -7,7 +7,6 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4
  */
 
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { streamObject, generateObject } from "ai";
 import { z } from "zod";
 import {
@@ -28,6 +27,11 @@ import {
 import { TASK_TIER_MAPPING, type ModelTier } from "@/lib/db/schemas/settings";
 import { getTierConfigFromDB } from "@/lib/db/tier-config";
 import type { BYOKTierConfig } from "./ai-engine";
+import {
+  createProviderWithFallback,
+  type AIProviderType,
+  type AIProviderAdapter,
+} from "@/lib/ai";
 
 // Activity generation context
 export interface ActivityGeneratorContext {
@@ -45,6 +49,7 @@ async function getEffectiveConfig(
   task: string,
   byokConfig?: BYOKTierConfig
 ): Promise<{
+  provider: AIProviderType;
   model: string;
   fallbackModel: string | null;
   temperature: number;
@@ -57,6 +62,7 @@ async function getEffectiveConfig(
   if (byokConfig?.[tier]?.model) {
     const byok = byokConfig[tier]!;
     return {
+      provider: byok.provider || 'openrouter',
       model: byok.model,
       fallbackModel: byok.fallback || null,
       temperature: byok.temperature ?? 0.7,
@@ -75,6 +81,7 @@ async function getEffectiveConfig(
   }
 
   return {
+    provider: config.provider || 'openrouter',
     model: config.primaryModel,
     fallbackModel: config.fallbackModel,
     temperature: config.temperature,
@@ -83,15 +90,12 @@ async function getEffectiveConfig(
   };
 }
 
-/**
- * Get OpenRouter client
- */
-function getOpenRouterClient(apiKey?: string) {
-  const key = apiKey || process.env.OPENROUTER_API_KEY;
-  if (!key) {
-    throw new Error("OpenRouter API key is required");
+function getProviderClient(provider: AIProviderType, apiKey?: string): AIProviderAdapter {
+  try {
+    return createProviderWithFallback(provider, apiKey);
+  } catch (error) {
+    throw new Error(`Failed to create ${provider} provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  return createOpenRouter({ apiKey: key });
 }
 
 /**
@@ -183,7 +187,7 @@ export async function generateMCQ(
   byokConfig?: BYOKTierConfig
 ): Promise<MCQActivity> {
   const tierConfig = await getEffectiveConfig("generate_mcq_activity", byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
 
   const topicContext = buildTopicContext(ctx.topic);
 
@@ -214,7 +218,7 @@ Generate a JSON object with:
 - explanation: detailed explanation of the correct answer`;
 
   const result = await generateObject({
-    model: openrouter(tierConfig.model),
+    model: provider.getModel(tierConfig.model),
     schema: MCQActivitySchema,
     system: getActivitySystemPrompt(),
     prompt,
@@ -236,7 +240,7 @@ export async function generateCodingChallenge(
   byokConfig?: BYOKTierConfig
 ): Promise<CodingChallenge> {
   const tierConfig = await getEffectiveConfig("generate_coding_challenge", byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
 
   const topicContext = buildTopicContext(ctx.topic);
 
@@ -271,7 +275,7 @@ Generate a JSON object with:
 - sampleOutput: expected output for the sample input`;
 
   const result = await generateObject({
-    model: openrouter(tierConfig.model),
+    model: provider.getModel(tierConfig.model),
     schema: CodingChallengeSchema,
     system: getActivitySystemPrompt(),
     prompt,
@@ -294,7 +298,7 @@ export async function generateDebuggingTask(
   byokConfig?: BYOKTierConfig
 ): Promise<DebuggingTask> {
   const tierConfig = await getEffectiveConfig("generate_debugging_task", byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
 
   const topicContext = buildTopicContext(ctx.topic);
   
@@ -331,7 +335,7 @@ Generate a JSON object with:
 - hints: array of hints to help find the bugs (adjust quantity based on difficulty)`;
 
   const result = await generateObject({
-    model: openrouter(tierConfig.model),
+    model: provider.getModel(tierConfig.model),
     schema: DebuggingTaskSchema,
     system: getActivitySystemPrompt(),
     prompt,
@@ -353,7 +357,7 @@ export async function generateConceptExplanation(
   byokConfig?: BYOKTierConfig
 ): Promise<ConceptExplanation> {
   const tierConfig = await getEffectiveConfig("generate_concept_explanation", byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
 
   const topicContext = buildTopicContext(ctx.topic);
 
@@ -386,7 +390,7 @@ Generate a JSON object with:
 - examples: array of 2-4 practical examples with code snippets where appropriate`;
 
   const result = await generateObject({
-    model: openrouter(tierConfig.model),
+    model: provider.getModel(tierConfig.model),
     schema: ConceptExplanationSchema,
     system: getActivitySystemPrompt(),
     prompt,
@@ -540,14 +544,14 @@ export async function streamActivity(
   const task = getTaskForActivityType(activityType);
   
   const tierConfig = await getEffectiveConfig(task, byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
 
   // Select the appropriate schema based on activity type
   const schema = getSchemaForActivityType(activityType);
   const prompt = getPromptForActivityType(ctx, activityType);
 
   const stream = streamObject({
-    model: openrouter(tierConfig.model),
+    model: provider.getModel(tierConfig.model),
     schema,
     system: getActivitySystemPrompt(),
     prompt,

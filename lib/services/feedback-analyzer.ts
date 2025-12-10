@@ -7,7 +7,6 @@
  * Requirements: 2.1, 2.2, 2.3, 2.5, 7.1, 7.2, 7.3, 9.1
  */
 
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject } from "ai";
 import { z } from "zod";
 import {
@@ -19,6 +18,11 @@ import { SkillClusterSchema, type SkillCluster } from "@/lib/db/schemas/learning
 import { TASK_TIER_MAPPING, type ModelTier } from "@/lib/db/schemas/settings";
 import { getTierConfigFromDB } from "@/lib/db/tier-config";
 import type { BYOKTierConfig } from "./ai-engine";
+import {
+  createProviderWithFallback,
+  type AIProviderType,
+  type AIProviderAdapter,
+} from "@/lib/ai";
 
 // ============================================================================
 // Types
@@ -68,6 +72,7 @@ export async function getEffectiveConfig(
   task: string,
   byokConfig?: BYOKTierConfig
 ): Promise<{
+  provider: AIProviderType;
   model: string;
   fallbackModel: string | null;
   temperature: number;
@@ -80,6 +85,7 @@ export async function getEffectiveConfig(
   if (byokConfig?.[tier]?.model) {
     const byok = byokConfig[tier]!;
     return {
+      provider: byok.provider || 'openrouter',
       model: byok.model,
       fallbackModel: byok.fallback || null,
       temperature: byok.temperature ?? 0.7,
@@ -98,6 +104,7 @@ export async function getEffectiveConfig(
   }
 
   return {
+    provider: config.provider || 'openrouter',
     model: config.primaryModel,
     fallbackModel: config.fallbackModel,
     temperature: config.temperature,
@@ -106,17 +113,12 @@ export async function getEffectiveConfig(
   };
 }
 
-/**
- * Get OpenRouter client
- * 
- * Requirements: 7.1
- */
-function getOpenRouterClient(apiKey?: string) {
-  const key = apiKey || process.env.OPENROUTER_API_KEY;
-  if (!key) {
-    throw new Error("OpenRouter API key is required");
+function getProviderClient(provider: AIProviderType, apiKey?: string): AIProviderAdapter {
+  try {
+    return createProviderWithFallback(provider, apiKey);
+  } catch (error) {
+    throw new Error(`Failed to create ${provider} provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  return createOpenRouter({ apiKey: key });
 }
 
 /**
@@ -174,7 +176,7 @@ export async function analyzeEntry(
   byokTierConfig?: BYOKTierConfig
 ): Promise<EntryAnalysis> {
   const tierConfig = await getEffectiveConfig("analyze_feedback_entry", byokTierConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
 
   const prompt = `Analyze this interview feedback to identify which skill clusters the user needs to improve.
 
@@ -213,7 +215,7 @@ Return a JSON object with:
 - reasoning: brief explanation of why these clusters were identified`;
 
   const result = await generateObject({
-    model: openrouter(tierConfig.model),
+    model: provider.getModel(tierConfig.model),
     schema: EntryAnalysisSchema,
     system: getAnalysisSystemPrompt(),
     prompt,
@@ -247,7 +249,7 @@ export async function aggregateAnalysis(
   }
 
   const tierConfig = await getEffectiveConfig("aggregate_feedback_analysis", byokTierConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
 
   // Build summary of all entries
   const entriesSummary = entries.map((entry, index) => {
@@ -292,7 +294,7 @@ For each skill cluster that appears in the feedback:
 Return skill gaps sorted by gapScore (highest first).`;
 
   const result = await generateObject({
-    model: openrouter(tierConfig.model),
+    model: provider.getModel(tierConfig.model),
     schema: AggregatedAnalysisSchema,
     system: getAnalysisSystemPrompt(),
     prompt,

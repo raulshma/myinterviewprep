@@ -1401,6 +1401,8 @@ export async function updateTierConfig(
 
     // Merge with new values
     const newConfig: TierModelConfig = {
+      provider:
+        config.provider !== undefined ? config.provider : existing.provider,
       primaryModel:
         config.primaryModel !== undefined
           ? config.primaryModel

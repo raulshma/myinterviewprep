@@ -60,6 +60,7 @@ const TIER_INFO: Record<
 };
 
 const DEFAULT_TIER: BYOKTierConfig = {
+  provider: 'openrouter',
   model: "",
   fallback: undefined,
   temperature: 0.7,
@@ -95,21 +96,38 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [configResult, modelsResponse] = await Promise.all([
+      const [configResult, openRouterResponse, googleResponse] = await Promise.all([
         getBYOKTierConfig(),
-        fetch("/api/models"),
+        fetch("/api/models?provider=openrouter"),
+        fetch("/api/models?provider=google"),
       ]);
 
       if (configResult.success && configResult.data) {
         setConfig(configResult.data);
       }
 
-      if (modelsResponse.ok) {
-        const modelsData = await modelsResponse.json();
-        setModels(modelsData);
+      const mergedModels: GroupedModels = { free: [], paid: [] };
+
+      if (openRouterResponse.ok) {
+        const data = await openRouterResponse.json();
+        if (data && !data.error) {
+           mergedModels.free.push(...(data.free || []));
+           mergedModels.paid.push(...(data.paid || []));
+        }
       }
+
+      if (googleResponse.ok) {
+        const data = await googleResponse.json();
+        if (data && !data.error) {
+           mergedModels.free.push(...(data.free || []));
+           mergedModels.paid.push(...(data.paid || []));
+        }
+      }
+
+      setModels(mergedModels);
     } catch (err) {
       setError("Failed to load configuration");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -147,11 +165,18 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
 
     setConfig((prev) => {
       const tierConfig = prev[tier] || { ...DEFAULT_TIER };
+      
+      // If setting primary model, update provider
+      const providerUpdate = type === "primary" && model?.provider 
+        ? { provider: model.provider as any } 
+        : {};
+
       return {
         ...prev,
         [tier]: {
           ...tierConfig,
           ...(type === "primary" ? { model: modelId } : { fallback: modelId }),
+          ...providerUpdate,
           ...(type === "primary" && maxTokens ? { maxTokens } : {}),
         },
       };

@@ -10,7 +10,6 @@
  * Requirements: 1.1, 1.2, 1.3, 1.4, 3.3, 6.1, 6.2, 6.3, 6.4
  */
 
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject, tool } from "ai";
 import { z } from "zod";
 import { ObjectId } from "mongodb";
@@ -42,6 +41,11 @@ import {
 import { TASK_TIER_MAPPING, type ModelTier } from "@/lib/db/schemas/settings";
 import { getTierConfigFromDB } from "@/lib/db/tier-config";
 import type { BYOKTierConfig } from "./ai-engine";
+import {
+  createProviderWithFallback,
+  type AIProviderType,
+  type AIProviderAdapter,
+} from "@/lib/ai";
 
 // Constants
 const MIN_GOAL_LENGTH = 10;
@@ -169,6 +173,7 @@ async function getEffectiveConfig(
   task: string,
   byokConfig?: BYOKTierConfig
 ): Promise<{
+  provider: AIProviderType;
   model: string;
   fallbackModel: string | null;
   temperature: number;
@@ -181,6 +186,7 @@ async function getEffectiveConfig(
   if (byokConfig?.[tier]?.model) {
     const byok = byokConfig[tier]!;
     return {
+      provider: byok.provider || 'openrouter',
       model: byok.model,
       fallbackModel: byok.fallback || null,
       temperature: byok.temperature ?? 0.7,
@@ -199,6 +205,7 @@ async function getEffectiveConfig(
   }
 
   return {
+    provider: config.provider || 'openrouter',
     model: config.primaryModel,
     fallbackModel: config.fallbackModel,
     temperature: config.temperature,
@@ -207,15 +214,12 @@ async function getEffectiveConfig(
   };
 }
 
-/**
- * Get OpenRouter client
- */
-function getOpenRouterClient(apiKey?: string) {
-  const key = apiKey || process.env.OPENROUTER_API_KEY;
-  if (!key) {
-    throw new Error("OpenRouter API key is required");
+function getProviderClient(provider: AIProviderType, apiKey?: string): AIProviderAdapter {
+  try {
+    return createProviderWithFallback(provider, apiKey);
+  } catch (error) {
+    throw new Error(`Failed to create ${provider} provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  return createOpenRouter({ apiKey: key });
 }
 
 // Schema for parsed learning goal - now generates comprehensive curriculum
@@ -330,7 +334,7 @@ export async function parseGoal(
   topics: LearningTopic[];
 }> {
   const tierConfig = await getEffectiveConfig("parse_learning_goal", byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
 
   // Gather search context for better curriculum generation
   const searchContext = await gatherLearningContext(goal);
@@ -400,7 +404,7 @@ For EACH topic, provide:
 - Include debugging and problem-solving topics where relevant`;
 
   const result = await generateObject({
-    model: openrouter(tierConfig.model),
+    model: provider.getModel(tierConfig.model),
     schema: ParsedGoalSchema,
     system: `You are a world-class technical educator and interview preparation specialist with deep expertise in software engineering education. Your role is to design comprehensive, structured learning paths that thoroughly prepare candidates for technical interviews.
 
@@ -498,7 +502,7 @@ export async function selectNextTopic(
   byokConfig?: BYOKTierConfig
 ): Promise<LearningTopic> {
   const tierConfig = await getEffectiveConfig("select_next_topic", byokConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
 
   // Get completed topic IDs from timeline
   const completedTopicIds = new Set(
@@ -593,7 +597,7 @@ Provide a DETAILED topic with:
   - description: Brief description of the resource`;
 
   const result = await generateObject({
-    model: openrouter(tierConfig.model),
+    model: provider.getModel(tierConfig.model),
     schema: GeneratedTopicSchema,
     system: `You are a world-class technical educator designing comprehensive learning content. Create detailed, interview-focused topics that thoroughly prepare candidates. Each topic should be substantial and include practical, actionable learning objectives.`,
     prompt,

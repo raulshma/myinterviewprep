@@ -7,7 +7,6 @@
  * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 7.1, 7.2, 7.3, 8.1, 8.2, 8.3, 9.2
  */
 
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateObject, streamObject } from "ai";
 import { z } from "zod";
 import {
@@ -36,6 +35,11 @@ import {
   extractTokenUsage,
   type LoggerContext,
 } from "./ai-logger";
+import {
+  createProviderWithFallback,
+  type AIProviderType,
+  type AIProviderAdapter,
+} from "@/lib/ai";
 
 // ============================================================================
 // Types
@@ -65,6 +69,7 @@ export async function getEffectiveConfig(
   task: string,
   byokConfig?: BYOKTierConfig
 ): Promise<{
+  provider: AIProviderType;
   model: string;
   fallbackModel: string | null;
   temperature: number;
@@ -77,6 +82,7 @@ export async function getEffectiveConfig(
   if (byokConfig?.[tier]?.model) {
     const byok = byokConfig[tier]!;
     return {
+      provider: byok.provider || 'openrouter',
       model: byok.model,
       fallbackModel: byok.fallback || null,
       temperature: byok.temperature ?? 0.7,
@@ -95,6 +101,7 @@ export async function getEffectiveConfig(
   }
 
   return {
+    provider: config.provider || 'openrouter',
     model: config.primaryModel,
     fallbackModel: config.fallbackModel,
     temperature: config.temperature,
@@ -103,17 +110,12 @@ export async function getEffectiveConfig(
   };
 }
 
-/**
- * Get OpenRouter client
- * 
- * Requirements: 7.1
- */
-function getOpenRouterClient(apiKey?: string) {
-  const key = apiKey || process.env.OPENROUTER_API_KEY;
-  if (!key) {
-    throw new Error("OpenRouter API key is required");
+function getProviderClient(provider: AIProviderType, apiKey?: string): AIProviderAdapter {
+  try {
+    return createProviderWithFallback(provider, apiKey);
+  } catch (error) {
+    throw new Error(`Failed to create ${provider} provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  return createOpenRouter({ apiKey: key });
 }
 
 /**
@@ -540,7 +542,7 @@ export async function streamActivity(
   loggerContext: LoggerContext;
 }> {
   const tierConfig = await getEffectiveConfig("stream_improvement_activity", byokTierConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
   
   // Create logger context with BYOK metadata (Requirement 8.3)
   const loggerContext = createLoggerContext({
@@ -552,7 +554,7 @@ export async function streamActivity(
   const prompt = buildActivityPrompt(gap, activityType, difficulty, programmingLanguage);
   
   const stream = streamObject({
-    model: openrouter(tierConfig.model),
+    model: provider.getModel(tierConfig.model),
     schema,
     system: getActivitySystemPrompt(),
     prompt,
@@ -579,13 +581,13 @@ export async function generateActivityContent(
   programmingLanguage?: string
 ): Promise<ActivityContent> {
   const tierConfig = await getEffectiveConfig("stream_improvement_activity", byokTierConfig);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
   
   const schema = getSchemaForActivityType(activityType);
   const prompt = buildActivityPrompt(gap, activityType, difficulty, programmingLanguage);
   
   const result = await generateObject({
-    model: openrouter(tierConfig.model),
+    model: provider.getModel(tierConfig.model),
     schema,
     system: getActivitySystemPrompt(),
     prompt,

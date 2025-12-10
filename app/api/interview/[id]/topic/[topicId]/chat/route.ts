@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { after } from "next/server";
 import { streamText } from "ai";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import {
   getAuthUserId,
   getByokApiKey,
@@ -14,6 +13,7 @@ import { chatRepository } from "@/lib/db/repositories/chat-repository";
 import { getTierConfigFromDB } from "@/lib/db/tier-config";
 import { logAIRequest, createLoggerContext } from "@/lib/services/ai-logger";
 import type { ChatMessage } from "@/lib/db/schemas/chat";
+import { createProviderWithFallback, type AIProviderType } from "@/lib/ai";
 
 // Chat costs 0.33 iterations per message
 const CHAT_ITERATION_COST = 0.33;
@@ -28,9 +28,11 @@ async function getChatModelConfig(
       fallback?: string;
       temperature?: number;
       maxTokens?: number;
+      provider?: AIProviderType;
     };
   } | null
 ): Promise<{
+  provider: AIProviderType;
   model: string;
   modelId: string; // Formatted as "tier - model" for logging
   temperature: number;
@@ -38,6 +40,7 @@ async function getChatModelConfig(
   // Check BYOK config first
   if (byokTierConfig?.low?.model) {
     return {
+      provider: byokTierConfig.low.provider || 'openrouter',
       model: byokTierConfig.low.model,
       modelId: `low - ${byokTierConfig.low.model}`,
       temperature: byokTierConfig.low.temperature ?? 0.7,
@@ -52,6 +55,7 @@ async function getChatModelConfig(
   }
 
   return {
+    provider: (tierConfig.provider || 'openrouter') as AIProviderType,
     model: tierConfig.primaryModel,
     modelId: `low - ${tierConfig.primaryModel}`,
     temperature: tierConfig.temperature,
@@ -203,7 +207,8 @@ export async function POST(
     // Get model configuration (LOW tier for chat)
     const modelConfig = await getChatModelConfig(byokTierConfig);
 
-    const openrouter = createOpenRouter({ apiKey });
+    // Get provider - use BYOK API key if available
+    const provider = createProviderWithFallback(modelConfig.provider, byokApiKey || undefined);
 
     // Create logger context
     const loggerCtx = createLoggerContext({
@@ -247,7 +252,7 @@ Be conversational but professional. Use markdown formatting for better readabili
 
     // Stream the response using Vercel AI SDK
     const result = streamText({
-      model: openrouter(modelConfig.model),
+      model: provider.getModel(modelConfig.model),
       system: systemPrompt,
       messages,
       temperature: modelConfig.temperature,

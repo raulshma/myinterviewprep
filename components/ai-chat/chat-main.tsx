@@ -47,9 +47,13 @@ export function AIChatMain({
   // Model selection state (MAX plan only)
   const isMaxPlan = userPlan === "MAX";
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<import("@/lib/ai/types").AIProviderType | null>(null);
   const [modelSupportsImages, setModelSupportsImages] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<string[]>([]);
+  
+  // Provider tools state (e.g., Google Search, URL Context)
+  const [enabledProviderTools, setEnabledProviderTools] = useState<import("@/lib/ai/provider-tools").ProviderToolType[]>([]);
 
   const {
     messages,
@@ -69,6 +73,7 @@ export function AIChatMain({
     learningPathId,
     conversationId,
     selectedModelId: isMaxPlan ? selectedModelId : undefined,
+    providerTools: isMaxPlan ? enabledProviderTools : undefined,
     onConversationCreated: (id) => {
       const tempTitle = "New Chat";
       onConversationCreated?.(id, tempTitle);
@@ -80,13 +85,16 @@ export function AIChatMain({
 
   // Handle model selection
   const handleModelSelect = useCallback(
-    (modelId: string, supportsImages: boolean) => {
+    (modelId: string, supportsImages: boolean, provider: import("@/lib/ai/types").AIProviderType) => {
       setSelectedModelId(modelId);
+      setSelectedProvider(provider);
       setModelSupportsImages(supportsImages);
       if (!supportsImages) {
         setAttachedFiles([]);
         setFilePreviews([]);
       }
+      // Reset provider tools when model changes (they'll be restored from localStorage by the selector)
+      setEnabledProviderTools([]);
     },
     []
   );
@@ -370,8 +378,11 @@ export function AIChatMain({
         placeholder="Ask me anything about interviews..."
         isMaxPlan={isMaxPlan}
         selectedModelId={selectedModelId}
+        selectedProvider={selectedProvider}
         onModelSelect={handleModelSelect}
         modelSupportsImages={modelSupportsImages}
+        enabledProviderTools={enabledProviderTools}
+        onProviderToolsChange={setEnabledProviderTools}
         attachedFiles={attachedFiles}
         filePreviews={filePreviews}
         onFileSelect={handleFileSelect}

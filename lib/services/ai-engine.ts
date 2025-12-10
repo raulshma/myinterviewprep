@@ -1,10 +1,10 @@
 /**
  * AI Engine Core
- * Configures OpenRouter provider with tiered model selection
+ * Multi-provider AI configuration with tiered model selection
+ * Supports OpenRouter and Google Generative AI providers
  * Requirements: 4.1, 4.2, 4.5
  */
 
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { streamObject, generateObject, tool } from "ai";
 import { z } from "zod";
 import {
@@ -25,6 +25,11 @@ import {
   type AITask,
 } from "@/lib/db/schemas/settings";
 import { getTierConfigFromDB } from "@/lib/db/tier-config";
+import { 
+  createProviderWithFallback,
+  type AIProviderType,
+  type AIProviderAdapter,
+} from "@/lib/ai";
 
 // AI Engine Configuration
 export interface AIEngineConfig {
@@ -68,6 +73,7 @@ export class TierNotConfiguredError extends Error {
  * Throws TierNotConfiguredError if the tier's primary model is not set
  */
 async function getConfigForTask(task: AITask): Promise<{
+  provider: AIProviderType;
   model: string;
   fallbackModel: string | null;
   temperature: number;
@@ -82,6 +88,7 @@ async function getConfigForTask(task: AITask): Promise<{
   }
 
   return {
+    provider: config.provider || 'openrouter', // Default for backwards compatibility
     model: config.primaryModel,
     fallbackModel: config.fallbackModel,
     temperature: config.temperature,
@@ -115,14 +122,15 @@ export async function checkTiersConfigured(): Promise<{
 }
 
 /**
- * Get OpenRouter client
+ * Get provider client for the specified provider and optional API key
+ * Supports both OpenRouter and Google Generative AI
  */
-function getOpenRouterClient(apiKey?: string) {
-  const key = apiKey || process.env.OPENROUTER_API_KEY;
-  if (!key) {
-    throw new Error("OpenRouter API key is required");
+function getProviderClient(provider: AIProviderType, apiKey?: string): AIProviderAdapter {
+  try {
+    return createProviderWithFallback(provider, apiKey);
+  } catch (error) {
+    throw new Error(`Failed to create ${provider} provider: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
-  return createOpenRouter({ apiKey: key });
 }
 
 /**
@@ -376,18 +384,21 @@ CONTENT QUALITY:
  */
 export interface BYOKTierConfig {
   high?: {
+    provider?: AIProviderType;
     model: string;
     fallback?: string;
     temperature?: number;
     maxTokens?: number;
   };
   medium?: {
+    provider?: AIProviderType;
     model: string;
     fallback?: string;
     temperature?: number;
     maxTokens?: number;
   };
   low?: {
+    provider?: AIProviderType;
     model: string;
     fallback?: string;
     temperature?: number;
@@ -414,6 +425,7 @@ async function getEffectiveConfig(
   byokConfig?: BYOKTierConfig,
   planContext?: PlanContext
 ): Promise<{
+  provider: AIProviderType;
   model: string;
   fallbackModel: string | null;
   temperature: number;
@@ -431,6 +443,7 @@ async function getEffectiveConfig(
   if (byokConfig?.[tier]?.model) {
     const byok = byokConfig[tier]!;
     return {
+      provider: byok.provider || 'openrouter',
       model: byok.model,
       fallbackModel: byok.fallback || null,
       temperature: byok.temperature ?? 0.7,
@@ -466,7 +479,7 @@ export async function generateOpeningBrief(
     byokTierConfig,
     ctx.planContext
   );
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
   const modelToUse = config.model || tierConfig.model;
 
   const prompt = `Generate a comprehensive and detailed opening brief for an interview preparation plan.
@@ -517,7 +530,7 @@ Format your response as a structured brief with clear markdown sections and bull
     }`;
 
   const stream = streamObject({
-    model: openrouter(modelToUse),
+    model: provider.getModel(modelToUse),
     schema: OpeningBriefSchema,
     system: getSystemPrompt(),
     prompt,
@@ -563,7 +576,7 @@ export async function generateTopics(
     byokTierConfig,
     ctx.planContext
   );
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
   const modelToUse = config.model || tierConfig.model;
 
   const existingTopicsNote = ctx.existingContent?.length
@@ -660,7 +673,7 @@ IMPORTANT RULES:
     }`;
 
   const stream = streamObject({
-    model: openrouter(modelToUse),
+    model: provider.getModel(modelToUse),
     schema: TopicsArraySchema,
     system: getSystemPrompt(),
     prompt,
@@ -685,7 +698,7 @@ export async function generateMCQs(
   byokTierConfig?: BYOKTierConfig
 ) {
   const tierConfig = await getEffectiveConfig("generate_mcqs", byokTierConfig, ctx.planContext);
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
   const modelToUse = config.model || tierConfig.model;
 
   const existingQuestionsNote = ctx.existingContent?.length
@@ -787,7 +800,7 @@ Before finalizing each question, verify:
     }`;
 
   const stream = streamObject({
-    model: openrouter(modelToUse),
+    model: provider.getModel(modelToUse),
     schema: MCQsArraySchema,
     system: getSystemPrompt(),
     prompt,
@@ -816,7 +829,7 @@ export async function generateRapidFire(
     byokTierConfig,
     ctx.planContext
   );
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
   const modelToUse = config.model || tierConfig.model;
 
   const existingQuestionsNote = ctx.existingContent?.length
@@ -916,7 +929,7 @@ This mirrors how real interviewers structure rapid-fire rounds.
     }`;
 
   const stream = streamObject({
-    model: openrouter(modelToUse),
+    model: provider.getModel(modelToUse),
     schema: RapidFireArraySchema,
     system: getSystemPrompt(),
     prompt,
@@ -945,7 +958,7 @@ export async function parseInterviewPrompt(
     byokTierConfig,
     planContext
   );
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
   const modelToUse = config.model || tierConfig.model;
 
   const systemPrompt = `You are an expert at understanding interview preparation requests. Your job is to extract structured information from a user's natural language prompt about their interview preparation needs.
@@ -969,7 +982,7 @@ Extract:
 4. Resume Context - any background, experience, or skills they mentioned about themselves (optional)`;
 
   const result = await generateObject({
-    model: openrouter(modelToUse),
+    model: provider.getModel(modelToUse),
     schema: ParsedInterviewDetailsSchema,
     system: systemPrompt,
     prompt: userPrompt,
@@ -1000,7 +1013,7 @@ export async function regenerateTopicAnalogy(
     byokTierConfig,
     _ctx.planContext
   );
-  const openrouter = getOpenRouterClient(apiKey);
+  const provider = getProviderClient(tierConfig.provider, apiKey);
   const modelToUse = config.model || tierConfig.model;
 
   const seniorityLevel = topic.difficulty || inferSeniorityLevel(_ctx.jobTitle);
@@ -1070,7 +1083,7 @@ CRITICAL RULES:
     }`;
 
   const stream = streamObject({
-    model: openrouter(modelToUse),
+    model: provider.getModel(modelToUse),
     schema: RevisionTopicSchema,
     system: getSystemPrompt(),
     prompt,
