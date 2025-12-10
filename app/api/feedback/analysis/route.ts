@@ -185,6 +185,25 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(analysis);
   } catch (error) {
     console.error("Get analysis error:", error);
+    
+    // Check for rate limit errors (AI_RetryError with 429 status)
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isRateLimitError = 
+      errorMessage.includes("quota") || 
+      errorMessage.includes("rate limit") ||
+      errorMessage.includes("429") ||
+      errorMessage.includes("RESOURCE_EXHAUSTED");
+    
+    if (isRateLimitError) {
+      return NextResponse.json(
+        { 
+          error: "Rate limit exceeded. Please try again in a few moments.",
+          code: "RATE_LIMIT_EXCEEDED"
+        },
+        { status: 429 }
+      );
+    }
+    
     return NextResponse.json(
       { error: "Failed to get weakness analysis" },
       { status: 500 }

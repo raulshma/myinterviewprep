@@ -30,6 +30,7 @@ import {
   getImprovementPlan,
   getProgressHistory,
 } from "@/lib/actions/feedback";
+import { toast } from "sonner";
 import type {
   FeedbackEntry,
   WeaknessAnalysis,
@@ -148,9 +149,17 @@ export function FeedbackSection({ interviewId }: FeedbackSectionProps) {
         const data = await response.json();
         // API returns the analysis directly, not wrapped in an object
         setAnalysis(data);
+      } else if (response.status === 429) {
+        // Rate limit error
+        const data = await response.json();
+        toast.error(data.error || "Rate limit exceeded. Please try again in a few moments.");
+      } else {
+        const data = await response.json();
+        toast.error(data.error || "Failed to refresh analysis");
       }
     } catch (error) {
       console.error("Failed to refresh analysis:", error);
+      toast.error("Failed to refresh analysis. Please try again.");
     } finally {
       setIsRefreshingAnalysis(false);
     }

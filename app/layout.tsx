@@ -7,6 +7,7 @@ import "./globals.css";
 
 import { Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 
 // Initialize fonts
 const _geistMono = Geist_Mono({
@@ -59,6 +60,7 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             {children}
+            <Toaster />
           </ThemeProvider>
           <Analytics />
         </body>
