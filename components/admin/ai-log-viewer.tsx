@@ -150,6 +150,7 @@ export function AILogViewer({ logs, totalCount, currentPage, pageSize, onPageCha
                 <TableHead className="h-12 text-xs font-medium text-muted-foreground uppercase tracking-wider">Timestamp</TableHead>
                 <TableHead className="h-12 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</TableHead>
                 <TableHead className="h-12 text-xs font-medium text-muted-foreground uppercase tracking-wider">Action</TableHead>
+                <TableHead className="h-12 text-xs font-medium text-muted-foreground uppercase tracking-wider">Provider</TableHead>
                 <TableHead className="h-12 text-xs font-medium text-muted-foreground uppercase tracking-wider">Model</TableHead>
                 <TableHead className="h-12 text-xs font-medium text-muted-foreground uppercase tracking-wider">Tokens</TableHead>
                 <TableHead className="h-12 text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost</TableHead>
@@ -166,6 +167,7 @@ export function AILogViewer({ logs, totalCount, currentPage, pageSize, onPageCha
                     <TableCell><Skeleton className="h-4 w-32 rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-24 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-32 rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-16 rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-12 rounded-full" /></TableCell>
@@ -266,6 +268,19 @@ function LogTableRows({ log, isExpanded, expandedData, isLoadingExpanded, onTogg
             {formatAction(log.action)}
           </Badge>
         </TableCell>
+        <TableCell>
+          {log.provider ? (
+            <Badge variant="outline" className={`text-xs rounded-lg px-2 py-0.5 ${
+              log.provider === 'google' 
+                ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' 
+                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+            }`}>
+              {log.provider === 'google' ? '🔷 Google' : '🌐 OpenRouter'}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground text-xs">-</span>
+          )}
+        </TableCell>
         <TableCell className="font-mono text-xs text-muted-foreground">{log.model}</TableCell>
         <TableCell className="font-mono text-xs">
           <span className="text-cyan-600 dark:text-cyan-400 font-medium">{log.tokenUsage.input}</span>
@@ -302,7 +317,7 @@ function LogTableRows({ log, isExpanded, expandedData, isLoadingExpanded, onTogg
       </TableRow>
       {isExpanded && (
         <TableRow className="hover:bg-transparent border-border/50">
-          <TableCell colSpan={10} className="p-0 bg-secondary/10">
+          <TableCell colSpan={11} className="p-0 bg-secondary/10">
             <div className="p-6">
               {isLoadingExpanded ? (
                 <ExpandedLogSkeleton />
@@ -367,6 +382,10 @@ function ExpandedLogContent({ log }: { log: AILogWithDetails }) {
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">User ID</span>
                 <span className="font-mono font-medium truncate max-w-[120px]" title={log.userId}>{log.userId}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Provider</span>
+                <span className="font-medium">{log.provider === 'google' ? '🔷 Google' : log.provider === 'openrouter' ? '🌐 OpenRouter' : '-'}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Model</span>
@@ -571,6 +590,10 @@ function LogDetailContent({ log, formattedTimestamp }: { log: AILog; formattedTi
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Timestamp</p>
           <p className="font-mono text-sm">{formattedTimestamp}</p>
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Provider</p>
+          <p className="font-mono text-sm">{log.provider === 'google' ? '🔷 Google' : log.provider === 'openrouter' ? '🌐 OpenRouter' : '-'}</p>
         </div>
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Model</p>

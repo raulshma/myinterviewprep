@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+export const AIProviderSchema = z.enum([
+  "openrouter",
+  "google",
+]);
+
 export const AIActionSchema = z.enum([
   "GENERATE_BRIEF",
   "GENERATE_TOPICS",
@@ -67,6 +72,7 @@ export const AILogSchema = z.object({
   action: AIActionSchema,
   status: AIStatusSchema.default("success"),
   model: z.string(),
+  provider: AIProviderSchema.optional(),
   prompt: z.string(),
   systemPrompt: z.string().optional(),
   response: z.string(),
@@ -93,6 +99,7 @@ export const AILogSchema = z.object({
 
 export const CreateAILogSchema = AILogSchema.omit({ _id: true });
 
+export type AIProvider = z.infer<typeof AIProviderSchema>;
 export type AIAction = z.infer<typeof AIActionSchema>;
 export type AIStatus = z.infer<typeof AIStatusSchema>;
 export type TokenUsage = z.infer<typeof TokenUsageSchema>;

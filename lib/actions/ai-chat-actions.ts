@@ -175,6 +175,7 @@ export async function generateConversationTitle(
       userId,
       interviewId: conversationId, // Use conversationId as interviewId for tracking
       model: modelId,
+      provider: tierConfig.provider,
       status: "success",
       prompt: `Generate a title for this conversation: "${firstMessage.slice(0, 500)}"`,
       response: generatedTitle,

@@ -71,6 +71,7 @@ export interface AILogFilters {
   action?: AIAction;
   status?: AIStatus;
   model?: string;
+  provider?: 'openrouter' | 'google';
   startDate?: string;
   endDate?: string;
   hasError?: boolean;
@@ -138,6 +139,7 @@ export async function getAILogs(
       action: filters.action,
       status: filters.status,
       model: filters.model,
+      provider: filters.provider,
       hasError: filters.hasError,
       startDate: filters.startDate ? new Date(filters.startDate) : undefined,
       endDate: filters.endDate ? new Date(filters.endDate) : undefined,
@@ -1186,6 +1188,54 @@ export async function getUniqueModels(): Promise<
     const aiLogsCollection = await getAILogsCollection();
     const models = await aiLogsCollection.distinct("model");
     return models as string[];
+  });
+}
+
+/**
+ * Get unique providers used in logs
+ */
+export async function getUniqueProviders(): Promise<
+  string[] | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const aiLogsCollection = await getAILogsCollection();
+    const providers = await aiLogsCollection.distinct("provider");
+    // Filter out null/undefined values
+    return (providers as (string | null)[]).filter((p): p is string => p != null);
+  });
+}
+
+/**
+ * Get provider usage distribution
+ */
+export async function getProviderUsageDistribution(): Promise<
+  | Array<{ provider: string; count: number; percentage: number; totalCost: number }>
+  | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const aiLogsCollection = await getAILogsCollection();
+
+    const pipeline = [
+      {
+        $group: {
+          _id: "$provider",
+          count: { $sum: 1 },
+          totalCost: { $sum: { $ifNull: ["$estimatedCost", 0] } },
+        },
+      },
+      { $sort: { count: -1 as const } },
+    ];
+
+    const results = await aiLogsCollection.aggregate(pipeline).toArray();
+    const total = results.reduce((sum, r) => sum + (r.count as number), 0);
+
+    return results.map((r) => ({
+      provider: (r._id as string) || "unknown",
+      count: r.count as number,
+      percentage:
+        total > 0 ? Math.round(((r.count as number) / total) * 100) : 0,
+      totalCost: Math.round((r.totalCost as number) * 1000000) / 1000000,
+    }));
   });
 }
 

@@ -66,6 +66,8 @@ export {
   getTokenUsageTrends,
   getTopCompanies,
   getModelUsageDistribution,
+  getUniqueProviders,
+  getProviderUsageDistribution,
   getAIToolsConfig,
   updateAIToolStatus,
   getEnabledToolIds,

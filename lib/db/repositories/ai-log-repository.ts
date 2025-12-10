@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
 import { getAILogsCollection } from '../collections';
-import { AILog, CreateAILog, AIAction, AIStatus } from '../schemas/ai-log';
+import { AILog, CreateAILog, AIAction, AIStatus, AIProvider } from '../schemas/ai-log';
 
 export interface AILogQueryOptions {
   userId?: string;
@@ -8,6 +8,7 @@ export interface AILogQueryOptions {
   action?: AIAction;
   status?: AIStatus;
   model?: string;
+  provider?: AIProvider;
   startDate?: Date;
   endDate?: Date;
   minLatency?: number;
@@ -59,6 +60,7 @@ export const aiLogRepository: AILogRepository = {
       action: data.action,
       status: data.status ?? 'success',
       model: data.model,
+      provider: data.provider,
       prompt: data.prompt,
       systemPrompt: data.systemPrompt,
       response: data.response,
@@ -120,6 +122,7 @@ export const aiLogRepository: AILogRepository = {
     if (options.action) filter.action = options.action;
     if (options.status) filter.status = options.status;
     if (options.model) filter.model = options.model;
+    if (options.provider) filter.provider = options.provider;
     if (options.hasError === true) filter.status = 'error';
     if (options.hasError === false) filter.status = { $ne: 'error' };
     

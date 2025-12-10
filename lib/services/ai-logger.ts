@@ -6,7 +6,7 @@
  */
 
 import { aiLogRepository } from '@/lib/db/repositories/ai-log-repository';
-import { type AIAction, type AIStatus, type AIMetadata, type CreateAILog } from '@/lib/db/schemas/ai-log';
+import { type AIAction, type AIStatus, type AIMetadata, type CreateAILog, type AIProvider } from '@/lib/db/schemas/ai-log';
 import { estimateCost as getEstimatedCost, detectProvider } from './provider-pricing';
 import type { AIProviderType } from '@/lib/ai/types';
 
@@ -62,6 +62,7 @@ export async function logAIRequest(entry: AILogEntry): Promise<string | null> {
     action: entry.action,
     status: entry.status ?? 'success',
     model: entry.model,
+    provider: provider as AIProvider,
     prompt: entry.prompt,
     systemPrompt: entry.systemPrompt,
     response: entry.response,

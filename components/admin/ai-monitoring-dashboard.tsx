@@ -50,6 +50,8 @@ import {
   getRecentErrors,
   getSlowRequests,
   getUniqueModels,
+  getUniqueProviders,
+  getProviderUsageDistribution,
   getPricingCacheStatus,
   forceRefreshPricingCache,
 } from "@/lib/actions/admin";
@@ -89,6 +91,7 @@ export function AIMonitoringDashboard({
     action: "all",
     status: "all",
     model: "all",
+    provider: "all",
   });
   const [errorStats, setErrorStats] = useState<ErrorStatsData[]>([]);
   const [latencyPercentiles, setLatencyPercentiles] =
@@ -98,6 +101,8 @@ export function AIMonitoringDashboard({
   const [recentErrors, setRecentErrors] = useState<AILogWithDetails[]>([]);
   const [slowRequests, setSlowRequests] = useState<AILogWithDetails[]>([]);
   const [models, setModels] = useState<string[]>([]);
+  const [providers, setProviders] = useState<string[]>([]);
+  const [providerUsage, setProviderUsage] = useState<Array<{ provider: string; count: number; percentage: number; totalCost: number }>>([]);
   const [pricingCache, setPricingCache] = useState<PricingCacheStatus | null>(
     null
   );
@@ -126,6 +131,8 @@ export function AIMonitoringDashboard({
         errLogs,
         slow,
         uniqueModels,
+        uniqueProvidersList,
+        providerUsageData,
         pricing,
       ] = await Promise.all([
         getErrorStats(7),
@@ -135,6 +142,8 @@ export function AIMonitoringDashboard({
         getRecentErrors(5),
         getSlowRequests(5000, 5),
         getUniqueModels(),
+        getUniqueProviders(),
+        getProviderUsageDistribution(),
         getPricingCacheStatus(),
       ]);
       if (!isUnauthorized(errors)) setErrorStats(errors);
@@ -144,6 +153,8 @@ export function AIMonitoringDashboard({
       if (!isUnauthorized(errLogs)) setRecentErrors(errLogs);
       if (!isUnauthorized(slow)) setSlowRequests(slow);
       if (!isUnauthorized(uniqueModels)) setModels(uniqueModels);
+      if (!isUnauthorized(uniqueProvidersList)) setProviders(uniqueProvidersList);
+      if (!isUnauthorized(providerUsageData)) setProviderUsage(providerUsageData);
       if (!isUnauthorized(pricing)) setPricingCache(pricing);
     }
     loadData();
@@ -171,6 +182,10 @@ export function AIMonitoringDashboard({
           ? (currentFilters.status as any)
           : undefined,
       model: currentFilters.model !== "all" ? currentFilters.model : undefined,
+      provider:
+        currentFilters.provider !== "all"
+          ? (currentFilters.provider as "openrouter" | "google")
+          : undefined,
       limit: PAGE_SIZE,
       skip: (page - 1) * PAGE_SIZE,
     };
@@ -332,6 +347,19 @@ export function AIMonitoringDashboard({
                       <SelectItem value="error">Error</SelectItem>
                       <SelectItem value="timeout">Timeout</SelectItem>
                       <SelectItem value="rate_limited">Rate Limited</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={filters.provider}
+                    onValueChange={(v) => handleFilterChange("provider", v)}
+                  >
+                    <SelectTrigger className="w-full sm:w-36 h-10 rounded-xl bg-secondary/50 border-transparent focus:bg-background">
+                      <SelectValue placeholder="Provider" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Providers</SelectItem>
+                      <SelectItem value="openrouter">🌐 OpenRouter</SelectItem>
+                      <SelectItem value="google">🔷 Google</SelectItem>
                     </SelectContent>
                   </Select>
                   {models.length > 0 && (
@@ -683,6 +711,51 @@ export function AIMonitoringDashboard({
         {/* Costs Tab */}
         <TabsContent value="costs" className="mt-0 focus-visible:outline-none">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Provider Usage */}
+            <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
+              <CardHeader className="p-6 pb-2">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Cpu className="w-5 h-5 text-violet-500" />
+                  Usage by Provider
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 pt-4">
+                {providerUsage.length > 0 ? (
+                  <div className="space-y-3">
+                    {providerUsage.map((item) => (
+                      <div
+                        key={item.provider}
+                        className="flex items-center justify-between p-3 bg-secondary/30 rounded-2xl"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`text-lg ${item.provider === 'google' ? '' : ''}`}>
+                            {item.provider === 'google' ? '🔷' : '🌐'}
+                          </span>
+                          <div>
+                            <p className="font-medium text-sm capitalize">
+                              {item.provider === 'google' ? 'Google AI' : item.provider === 'openrouter' ? 'OpenRouter' : item.provider}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {item.count} requests ({item.percentage}%)
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-mono text-sm font-bold text-green-600 dark:text-green-400">
+                            {formatCost(item.totalCost)}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-12">
+                    No provider data
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Cost by Model */}
             <Card className="border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
               <CardHeader className="p-6 pb-2">

@@ -421,6 +421,7 @@ async function fetchAllAdminData() {
     action: log.action as AILogWithDetails["action"],
     status: log.status as AILogWithDetails["status"],
     model: log.model as string,
+    provider: log.provider as AILogWithDetails["provider"],
     prompt: log.prompt as string,
     systemPrompt: log.systemPrompt as string | undefined,
     response: log.response as string,
