@@ -33,6 +33,7 @@ export interface AIActionBreakdown {
 
 export interface AIModelUsage {
   model: string;
+  provider?: string;
   count: number;
   percentage: number;
   totalTokens: number;
@@ -40,6 +41,15 @@ export interface AIModelUsage {
   avgCostPerToken: number;
   avgLatency: number;
   successRate: number;
+}
+
+export interface AIProviderBreakdown {
+  provider: string;
+  count: number;
+  percentage: number;
+  totalTokens: number;
+  totalCost: number;
+  avgLatency: number;
 }
 
 export interface AIStatusBreakdown {
@@ -91,6 +101,7 @@ export interface AILogEntry {
   action: AIAction;
   status: AIStatus;
   model: string;
+  provider?: string;
   tokenUsage: { input: number; output: number };
   estimatedCost?: number;
   latencyMs: number;
@@ -104,6 +115,7 @@ export interface AIUsageDashboardData {
   tokenTrends: AITokenTrend[];
   actionBreakdown: AIActionBreakdown[];
   modelUsage: AIModelUsage[];
+  providerBreakdown: AIProviderBreakdown[];
   statusBreakdown: AIStatusBreakdown[];
   hourlyPatterns: AIHourlyPattern[];
   latencyDistribution: AILatencyBucket[];
@@ -352,7 +364,7 @@ export async function getAIModelUsage(filter?: DateRangeFilter): Promise<AIModel
     { $match: matchStage },
     {
       $group: {
-        _id: "$model",
+        _id: { model: "$model", provider: "$provider" },
         count: { $sum: 1 },
         totalTokens: { $sum: { $add: [{ $ifNull: ["$tokenUsage.input", 0] }, { $ifNull: ["$tokenUsage.output", 0] }] } },
         totalCost: { $sum: { $ifNull: ["$estimatedCost", 0] } },
@@ -367,19 +379,84 @@ export async function getAIModelUsage(filter?: DateRangeFilter): Promise<AIModel
   const results = await collection.aggregate(pipeline).toArray();
   const total = results.reduce((sum, r) => sum + (r.count as number), 0);
 
+  return results.map((r) => {
+    const id = r._id as { model: string; provider?: string };
+    return {
+      model: id.model || "Unknown",
+      provider: id.provider,
+      count: r.count as number,
+      percentage: total > 0 ? Math.round(((r.count as number) / total) * 100) : 0,
+      totalTokens: r.totalTokens as number,
+      totalCost: Math.round((r.totalCost as number) * 1000000) / 1000000,
+      avgCostPerToken: (r.totalTokens as number) > 0
+        ? Math.round(((r.totalCost as number) / (r.totalTokens as number)) * 1000000000) / 1000000000
+        : 0,
+      avgLatency: Math.round(r.avgLatency as number),
+      successRate: (r.count as number) > 0
+        ? Math.round(((r.successCount as number) / (r.count as number)) * 100)
+        : 100,
+    };
+  });
+}
+
+/**
+ * Get provider breakdown
+ */
+export async function getAIProviderBreakdown(filter?: DateRangeFilter): Promise<AIProviderBreakdown[] | null> {
+  const auth = await requireMaxPlan();
+  if (!auth) return null;
+
+  const collection = await getAILogsCollection();
+  
+  // Calculate date range
+  let startDate: Date | undefined;
+  let endDate: Date | undefined;
+  
+  if (filter?.startDate && filter?.endDate) {
+    startDate = filter.startDate;
+    endDate = filter.endDate;
+  } else if (filter?.days) {
+    const now = new Date();
+    startDate = new Date(now.getTime() - filter.days * 24 * 60 * 60 * 1000);
+    startDate.setUTCHours(0, 0, 0, 0);
+    endDate = now;
+  }
+  
+  const matchStage: Record<string, unknown> = { userId: auth.userId };
+  if (startDate && endDate) {
+    matchStage.timestamp = { $gte: startDate, $lte: endDate };
+  }
+
+  const pipeline = [
+    { $match: matchStage },
+    {
+      $group: {
+        _id: { $ifNull: ["$provider", "unknown"] },
+        count: { $sum: 1 },
+        totalTokens: { $sum: { $add: [{ $ifNull: ["$tokenUsage.input", 0] }, { $ifNull: ["$tokenUsage.output", 0] }] } },
+        totalCost: { $sum: { $ifNull: ["$estimatedCost", 0] } },
+        avgLatency: { $avg: { $ifNull: ["$latencyMs", 0] } },
+      },
+    },
+    { $sort: { count: -1 as const } },
+  ];
+
+  const results = await collection.aggregate(pipeline).toArray();
+  const total = results.reduce((sum, r) => sum + (r.count as number), 0);
+
+  const providerLabels: Record<string, string> = {
+    openrouter: "OpenRouter",
+    google: "Google",
+    unknown: "Unknown",
+  };
+
   return results.map((r) => ({
-    model: (r._id as string) || "Unknown",
+    provider: providerLabels[r._id as string] || (r._id as string),
     count: r.count as number,
     percentage: total > 0 ? Math.round(((r.count as number) / total) * 100) : 0,
     totalTokens: r.totalTokens as number,
     totalCost: Math.round((r.totalCost as number) * 1000000) / 1000000,
-    avgCostPerToken: (r.totalTokens as number) > 0
-      ? Math.round(((r.totalCost as number) / (r.totalTokens as number)) * 1000000000) / 1000000000
-      : 0,
     avgLatency: Math.round(r.avgLatency as number),
-    successRate: (r.count as number) > 0
-      ? Math.round(((r.successCount as number) / (r.count as number)) * 100)
-      : 100,
   }));
 }
 
@@ -468,6 +545,7 @@ export async function getRecentAILogs(limit: number = 20, filter?: DateRangeFilt
     action: log.action,
     status: log.status,
     model: log.model,
+    provider: log.provider,
     tokenUsage: log.tokenUsage,
     estimatedCost: log.estimatedCost,
     latencyMs: log.latencyMs,
@@ -736,6 +814,7 @@ export async function getAIUsageDashboardData(filter?: DateRangeFilter): Promise
     tokenTrends,
     actionBreakdown,
     modelUsage,
+    providerBreakdown,
     statusBreakdown,
     hourlyPatterns,
     latencyDistribution,
@@ -747,6 +826,7 @@ export async function getAIUsageDashboardData(filter?: DateRangeFilter): Promise
     getAITokenTrends(effectiveFilter.days ?? 30),
     getAIActionBreakdown(effectiveFilter),
     getAIModelUsage(effectiveFilter),
+    getAIProviderBreakdown(effectiveFilter),
     getAIStatusBreakdown(effectiveFilter),
     getAIHourlyPatterns(effectiveFilter),
     getAILatencyDistribution(effectiveFilter),
@@ -768,6 +848,7 @@ export async function getAIUsageDashboardData(filter?: DateRangeFilter): Promise
     tokenTrends: tokenTrends ?? [],
     actionBreakdown: actionBreakdown ?? [],
     modelUsage: modelUsage ?? [],
+    providerBreakdown: providerBreakdown ?? [],
     statusBreakdown: statusBreakdown ?? [],
     hourlyPatterns: hourlyPatterns ?? [],
     latencyDistribution: latencyDistribution ?? [],

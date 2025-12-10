@@ -216,6 +216,9 @@ function RecentLogsTable({ logs }: { logs: AILogEntry[] }) {
                     Model
                   </th>
                   <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Provider
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Status
                   </th>
                   <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -245,6 +248,16 @@ function RecentLogsTable({ logs }: { logs: AILogEntry[] }) {
                     </td>
                     <td className="py-4 px-4 text-sm text-muted-foreground font-mono">
                       {log.model.split("/").pop()}
+                    </td>
+                    <td className="py-4 px-4">
+                      {log.provider && (
+                        <Badge
+                          variant="outline"
+                          className="text-xs font-medium"
+                        >
+                          {log.provider}
+                        </Badge>
+                      )}
                     </td>
                     <td className="py-4 px-4">
                       <Badge
@@ -347,6 +360,7 @@ export function AIUsageDashboard({ data: initialData }: AIUsageDashboardProps) {
     tokenTrends,
     actionBreakdown,
     modelUsage,
+    providerBreakdown,
     statusBreakdown,
     hourlyPatterns,
     latencyDistribution,
@@ -648,6 +662,65 @@ export function AIUsageDashboard({ data: initialData }: AIUsageDashboardProps) {
           </Card>
         </motion.div>
 
+        {/* Provider Breakdown - Wide Block */}
+        <motion.div
+          className="col-span-1 md:col-span-2"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <Card className="h-full border-0 shadow-sm bg-card/50 backdrop-blur-xl rounded-3xl overflow-hidden">
+            <CardHeader className="p-6 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-full bg-indigo-500/10 text-indigo-500">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <CardTitle className="text-lg font-semibold tracking-tight">
+                  Providers
+                </CardTitle>
+              </div>
+              <CardDescription>Usage by AI provider</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              <div className="space-y-4">
+                {providerBreakdown.map((provider, i) => (
+                  <div key={provider.provider} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{
+                            backgroundColor: i === 0 ? "#8b5cf6" : i === 1 ? "#3b82f6" : "#10b981",
+                          }}
+                        />
+                        <span className="font-medium text-sm">
+                          {provider.provider}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span>{provider.count} requests</span>
+                        <span>{formatCost(provider.totalCost)}</span>
+                        <span className="font-medium text-foreground">
+                          {provider.percentage}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full h-2 bg-secondary/30 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
+                          width: `${provider.percentage}%`,
+                          backgroundColor: i === 0 ? "#8b5cf6" : i === 1 ? "#3b82f6" : "#10b981",
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* Action Breakdown - Wide Block */}
         <motion.div
           className="col-span-1 md:col-span-2"
@@ -941,6 +1014,9 @@ export function AIUsageDashboard({ data: initialData }: AIUsageDashboardProps) {
                       <th className="text-left py-3 px-6 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Model
                       </th>
+                      <th className="text-left py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Provider
+                      </th>
                       <th className="text-right py-3 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Requests
                       </th>
@@ -970,6 +1046,16 @@ export function AIUsageDashboard({ data: initialData }: AIUsageDashboardProps) {
                               {formatCost(model.totalCost)} total
                             </span>
                           </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          {model.provider && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs font-medium"
+                            >
+                              {model.provider}
+                            </Badge>
+                          )}
                         </td>
                         <td className="py-4 px-4 text-sm text-right font-mono text-muted-foreground">
                           {model.count}
