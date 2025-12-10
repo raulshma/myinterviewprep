@@ -91,8 +91,8 @@ export function AdminTabs({
       className="space-y-8"
     >
       <Tabs defaultValue="users" className="space-y-8">
-        <div className="flex justify-center">
-          <div className="bg-secondary/50 backdrop-blur-xl p-1.5 rounded-full inline-flex">
+        <div className="flex w-full overflow-x-auto pb-2 justify-start md:justify-center">
+          <div className="bg-secondary/50 backdrop-blur-xl p-1.5 rounded-full inline-flex min-w-max">
             <TabsList className="bg-transparent gap-1 h-auto p-0">
               <TabsTrigger
                 value="users"
