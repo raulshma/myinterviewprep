@@ -79,6 +79,7 @@ export function CheckoutSuccessDialog({ plan }: CheckoutSuccessDialogProps) {
 
   const [open, setOpen] = useState(false);
   const [isUpgrade, setIsUpgrade] = useState(false);
+  const [displayPlan, setDisplayPlan] = useState(plan);
 
   // Use effect for state updates and URL cleanup
   React.useEffect(() => {
@@ -86,16 +87,23 @@ export function CheckoutSuccessDialog({ plan }: CheckoutSuccessDialogProps) {
 
     const checkout = searchParams.get("checkout");
     const upgraded = searchParams.get("upgraded");
+    const urlPlan = searchParams.get("plan");
 
     if (checkout === "success") {
       processedRef.current = true;
       setOpen(true);
       setIsUpgrade(upgraded === "true");
+      // Use plan from URL params (set during Stripe redirect) if available,
+      // otherwise fall back to the prop (which may be stale before webhook processes)
+      if (urlPlan && (urlPlan === "PRO" || urlPlan === "MAX")) {
+        setDisplayPlan(urlPlan);
+      }
 
       // Clean up URL without triggering navigation
       const url = new URL(window.location.href);
       url.searchParams.delete("checkout");
       url.searchParams.delete("upgraded");
+      url.searchParams.delete("plan");
       window.history.replaceState({}, "", url.pathname);
     }
   }, [searchParams]);
@@ -104,8 +112,8 @@ export function CheckoutSuccessDialog({ plan }: CheckoutSuccessDialogProps) {
     setOpen(false);
   };
 
-  const isPro = plan === "PRO";
-  const isMax = plan === "MAX";
+  const isPro = displayPlan === "PRO";
+  const isMax = displayPlan === "MAX";
   const features = isMax ? [...PRO_FEATURES, ...MAX_FEATURES] : PRO_FEATURES;
 
   return (
@@ -121,12 +129,12 @@ export function CheckoutSuccessDialog({ plan }: CheckoutSuccessDialogProps) {
             <PartyPopper className="w-8 h-8 text-white" />
           </motion.div>
           <DialogTitle className="text-2xl font-bold">
-            {isUpgrade ? "Upgrade Complete!" : "Welcome to " + plan + "!"}
+            {isUpgrade ? "Upgrade Complete!" : "Welcome to " + displayPlan + "!"}
           </DialogTitle>
           <DialogDescription className="text-base">
             {isUpgrade
-              ? `You've successfully upgraded to the ${plan} plan.`
-              : `Thank you for subscribing to the ${plan} plan!`}
+              ? `You've successfully upgraded to the ${displayPlan} plan.`
+              : `Thank you for subscribing to the ${displayPlan} plan!`}
           </DialogDescription>
         </DialogHeader>
 

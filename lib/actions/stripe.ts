@@ -15,8 +15,10 @@ import { getAuthUserId } from "@/lib/auth/get-user";
 import {
   MAX_ITERATION_LIMIT,
   MAX_INTERVIEW_LIMIT,
+  MAX_CHAT_MESSAGE_LIMIT,
   PRO_ITERATION_LIMIT,
   PRO_INTERVIEW_LIMIT,
+  PRO_CHAT_MESSAGE_LIMIT,
 } from "@/lib/pricing-data";
 
 export type SubscriptionPlan = "PRO" | "MAX";
@@ -77,7 +79,8 @@ export async function createCheckout(
           clerkId,
           "MAX",
           MAX_ITERATION_LIMIT,
-          MAX_INTERVIEW_LIMIT
+          MAX_INTERVIEW_LIMIT,
+          MAX_CHAT_MESSAGE_LIMIT
         );
 
         return { success: true, upgraded: true };
@@ -96,7 +99,7 @@ export async function createCheckout(
       clerkId,
       email,
       plan,
-      successUrl: `${appUrl}/dashboard?checkout=success`,
+      successUrl: `${appUrl}/dashboard?checkout=success&plan=${plan}`,
       cancelUrl: `${appUrl}/pricing?checkout=cancelled`,
     });
 
@@ -225,7 +228,8 @@ export async function downgradeSubscription(
         clerkId,
         "PRO",
         PRO_ITERATION_LIMIT,
-        PRO_INTERVIEW_LIMIT
+        PRO_INTERVIEW_LIMIT,
+        PRO_CHAT_MESSAGE_LIMIT
       );
     }
 
