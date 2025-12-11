@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useEffect } from "react";
+import { useRef, useCallback, useEffect, memo } from "react";
 import {
   Square,
   ArrowUp,
@@ -45,8 +45,9 @@ interface ChatInputProps {
 
 /**
  * Reusable chat input component with model selection and file attachments
+ * Memoized to prevent unnecessary re-renders
  */
-export function ChatInput({
+export const ChatInput = memo(function ChatInput({
   value,
   onChange,
   onSend,
@@ -264,4 +265,4 @@ export function ChatInput({
       </div>
     </div>
   );
-}
+});

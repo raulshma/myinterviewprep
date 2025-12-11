@@ -33,9 +33,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get authenticated user
+    // Get authenticated user and check BYOK status in parallel
     const clerkId = await getAuthUserId();
-    const user = await userRepository.findByClerkId(clerkId);
+    const [user, isByok, apiKey] = await Promise.all([
+      userRepository.findByClerkId(clerkId),
+      hasByokApiKey(),
+      getByokApiKey(provider),
+    ]);
 
     if (!user) {
       return new Response(JSON.stringify({ error: "User not found" }), {
@@ -62,7 +66,6 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    const isByok = await hasByokApiKey();
     const chatMessages = user.chatMessages ?? {
       count: 0,
       limit: getChatLimit(user.plan),
@@ -82,12 +85,12 @@ export async function POST(request: NextRequest) {
 
     // Increment chat message count only if this is the first model in the comparison
     // This ensures multi-model comparisons count as a single user interaction
+    // Don't await - do it in the background to not block parallel requests
     if (!isByok && shouldIncrementCount !== false) {
-      await userRepository.incrementChatMessage(clerkId);
+      userRepository.incrementChatMessage(clerkId).catch((err) => {
+        console.error("Failed to increment chat message count:", err);
+      });
     }
-
-    // Get API key for the provider
-    const apiKey = await getByokApiKey(provider);
     
     // Create provider client
     const providerClient = createProviderWithFallback(provider, apiKey ?? undefined);

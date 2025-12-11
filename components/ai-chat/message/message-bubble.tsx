@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Bot, User, AlertCircle, Copy, Pencil, RefreshCw, Download, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -41,8 +41,9 @@ interface MessageBubbleProps {
 
 /**
  * Renders a single chat message with all its parts
+ * Memoized to prevent unnecessary re-renders
  */
-export function MessageBubble({
+export const MessageBubble = memo(function MessageBubble({
   message,
   isLastMessage = false,
   isLoading = false,
@@ -58,10 +59,12 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const isCompact = variant === "compact";
-  const textContent = getMessageTextContent(message);
-  const reasoning = getMessageReasoning(message);
-  const toolParts = getToolParts(message);
-  const fileParts = getFileParts(message);
+  
+  // Memoize expensive computations
+  const textContent = useMemo(() => getMessageTextContent(message), [message]);
+  const reasoning = useMemo(() => getMessageReasoning(message), [message]);
+  const toolParts = useMemo(() => getToolParts(message), [message]);
+  const fileParts = useMemo(() => getFileParts(message), [message]);
 
   const handleEditClick = () => {
     setIsEditing(true);
@@ -350,4 +353,4 @@ export function MessageBubble({
       </div>
     </motion.div>
   );
-}
+});

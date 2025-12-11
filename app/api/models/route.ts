@@ -1,8 +1,27 @@
 import { NextResponse } from 'next/server';
+import { unstable_cache } from 'next/cache';
 import { rateLimit, getClientIp } from '@/lib/utils/rate-limit';
 import type { AIProviderType, AIModelMetadata, GroupedAIModels } from '@/lib/ai/types';
 import { isValidProvider } from '@/lib/ai/types';
 import { providerRegistry } from '@/lib/ai/provider-registry';
+
+// Cache duration: 15 minutes
+const CACHE_DURATION_SECONDS = 15 * 60;
+
+/**
+ * Get cached models using Next.js unstable_cache
+ * Cache is keyed by provider and revalidates every 15 minutes
+ */
+const getCachedModels = unstable_cache(
+  async (provider: AIProviderType): Promise<GroupedAIModels> => {
+    return providerRegistry.listGroupedModels(provider);
+  },
+  ['ai-models'],
+  {
+    revalidate: CACHE_DURATION_SECONDS,
+    tags: ['ai-models'],
+  }
+);
 
 /**
  * OpenRouter model structure (for backwards compatibility export)
@@ -122,8 +141,8 @@ export async function GET(request: Request) {
 
     const provider = providerParam as AIProviderType;
 
-    // Get grouped models from registry
-    const grouped = await providerRegistry.listGroupedModels(provider);
+    // Get grouped models from registry (with 15-minute cache)
+    const grouped = await getCachedModels(provider);
 
     // Return in v2 format if requested
     if (format === 'v2') {
@@ -144,7 +163,12 @@ export async function GET(request: Request) {
     legacyGrouped.free.sort((a, b) => a.name.localeCompare(b.name));
     legacyGrouped.paid.sort((a, b) => a.name.localeCompare(b.name));
 
-    return NextResponse.json(legacyGrouped);
+    // Add cache headers for client-side caching
+    return NextResponse.json(legacyGrouped, {
+      headers: {
+        'Cache-Control': `public, max-age=${CACHE_DURATION_SECONDS}, stale-while-revalidate=${CACHE_DURATION_SECONDS * 2}`,
+      },
+    });
   } catch (error) {
     console.error('Error fetching models:', error);
     return NextResponse.json(

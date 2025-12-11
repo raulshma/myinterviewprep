@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef, useEffect, memo, useMemo, useCallback } from "react";
+import { motion } from "framer-motion";
 import {
   Plus,
   Search,
@@ -44,7 +44,44 @@ interface ChatHistorySidebarProps {
   onOpenArchived?: () => void;
 }
 
-export function ChatHistorySidebar({
+// Helper to group conversations by date - moved outside component
+function groupByDate(convs: AIConversation[]) {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const lastWeek = new Date(today);
+  lastWeek.setDate(lastWeek.getDate() - 7);
+
+  const groups: { label: string; items: AIConversation[] }[] = [];
+
+  const todayItems = convs.filter(
+    (c) => new Date(c.lastMessageAt).toDateString() === today.toDateString()
+  );
+  const yesterdayItems = convs.filter(
+    (c) =>
+      new Date(c.lastMessageAt).toDateString() === yesterday.toDateString()
+  );
+  const lastWeekItems = convs.filter((c) => {
+    const date = new Date(c.lastMessageAt);
+    return (
+      date > lastWeek &&
+      date.toDateString() !== today.toDateString() &&
+      date.toDateString() !== yesterday.toDateString()
+    );
+  });
+  const olderItems = convs.filter((c) => new Date(c.lastMessageAt) <= lastWeek);
+
+  if (todayItems.length) groups.push({ label: "Today", items: todayItems });
+  if (yesterdayItems.length)
+    groups.push({ label: "Yesterday", items: yesterdayItems });
+  if (lastWeekItems.length)
+    groups.push({ label: "Last 7 days", items: lastWeekItems });
+  if (olderItems.length) groups.push({ label: "Older", items: olderItems });
+
+  return groups;
+}
+
+export const ChatHistorySidebar = memo(function ChatHistorySidebar({
   conversations,
   activeConversationId,
   onSelectConversation,
@@ -58,51 +95,21 @@ export function ChatHistorySidebar({
 }: ChatHistorySidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredConversations = conversations.filter((c) =>
-    c.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const pinnedConversations = filteredConversations.filter((c) => c.isPinned);
-  const recentConversations = filteredConversations.filter((c) => !c.isPinned);
-
-  // Group by date
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const lastWeek = new Date(today);
-  lastWeek.setDate(lastWeek.getDate() - 7);
-
-  const groupByDate = (convs: AIConversation[]) => {
-    const groups: { label: string; items: AIConversation[] }[] = [];
-
-    const todayItems = convs.filter(
-      (c) => new Date(c.lastMessageAt).toDateString() === today.toDateString()
+  // Memoize filtered and grouped conversations
+  const { pinnedConversations, groupedRecent } = useMemo(() => {
+    const filtered = conversations.filter((c) =>
+      c.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
-    const yesterdayItems = convs.filter(
-      (c) =>
-        new Date(c.lastMessageAt).toDateString() === yesterday.toDateString()
-    );
-    const lastWeekItems = convs.filter((c) => {
-      const date = new Date(c.lastMessageAt);
-      return (
-        date > lastWeek &&
-        date.toDateString() !== today.toDateString() &&
-        date.toDateString() !== yesterday.toDateString()
-      );
-    });
-    const olderItems = convs.filter((c) => new Date(c.lastMessageAt) <= lastWeek);
+    const pinned = filtered.filter((c) => c.isPinned);
+    const recent = filtered.filter((c) => !c.isPinned);
+    return {
+      pinnedConversations: pinned,
+      groupedRecent: groupByDate(recent),
+      filteredCount: filtered.length,
+    };
+  }, [conversations, searchQuery]);
 
-    if (todayItems.length) groups.push({ label: "Today", items: todayItems });
-    if (yesterdayItems.length)
-      groups.push({ label: "Yesterday", items: yesterdayItems });
-    if (lastWeekItems.length)
-      groups.push({ label: "Last 7 days", items: lastWeekItems });
-    if (olderItems.length) groups.push({ label: "Older", items: olderItems });
-
-    return groups;
-  };
-
-  const groupedRecent = groupByDate(recentConversations);
+  const filteredCount = pinnedConversations.length + groupedRecent.reduce((acc, g) => acc + g.items.length, 0);
 
   return (
     <div className="flex flex-col h-full bg-transparent w-full">
@@ -190,7 +197,7 @@ export function ChatHistorySidebar({
           ))}
 
           {/* Empty state */}
-          {filteredConversations.length === 0 && (
+          {filteredCount === 0 && (
             <div className="text-center py-12 px-4">
               <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
                 <MessageSquare className="h-6 w-6 text-muted-foreground/50" />
@@ -222,7 +229,7 @@ export function ChatHistorySidebar({
       </ScrollArea>
     </div>
   );
-}
+});
 
 interface ConversationItemProps {
   conversation: AIConversation;
@@ -234,7 +241,7 @@ interface ConversationItemProps {
   onRename: (newTitle: string) => void;
 }
 
-function ConversationItem({
+const ConversationItem = memo(function ConversationItem({
   conversation,
   isActive,
   onSelect,
@@ -402,4 +409,4 @@ function ConversationItem({
       </DropdownMenu>
     </motion.div>
   );
-}
+});

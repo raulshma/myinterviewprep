@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, memo, useCallback } from "react";
 import {
   Popover,
   PopoverContent,
@@ -39,7 +39,7 @@ interface VirtualizedModelListProps {
   onSelectModel: (model: OpenRouterModel) => void;
 }
 
-function VirtualizedModelList({
+const VirtualizedModelList = memo(function VirtualizedModelList({
   models,
   selectedModelId,
   onSelectModel,
@@ -225,7 +225,7 @@ function VirtualizedModelList({
       </div>
     </div>
   );
-}
+});
 
 interface ModelSelectorProps {
   selectedModelId: string | null;
@@ -233,7 +233,7 @@ interface ModelSelectorProps {
   disabled?: boolean;
 }
 
-export function ModelSelector({
+export const ModelSelector = memo(function ModelSelector({
   selectedModelId,
   onModelSelect,
   disabled,
@@ -280,9 +280,9 @@ export function ModelSelector({
       const modelsToShow = getModelsForProvider(providerToUse, openRouterData, googleData);
       setModels(modelsToShow);
 
-      // Try to restore previously selected model
+      // Try to restore previously selected model (always sync with parent for modelSupportsImages)
       const savedModelId = localStorage.getItem(STORAGE_KEY);
-      if (savedModelId && !selectedModelId) {
+      if (savedModelId) {
         // Search in all models for restoration
         const merged: GroupedModels = {
           free: [...openRouterData.free, ...googleData.free],
@@ -298,6 +298,7 @@ export function ModelSelector({
         if (savedModel) {
           const idToUse = savedModel.provider === 'google' ? `google:${savedModel.id}` : savedModel.id;
           const provider: AIProviderType = savedModel.provider === 'google' ? 'google' : 'openrouter';
+          // Always call onModelSelect to sync modelSupportsImages with parent
           onModelSelect(idToUse, modelSupportsImages(savedModel), provider);
         }
       }
@@ -502,4 +503,4 @@ export function ModelSelector({
       </PopoverContent>
     </Popover>
   );
-}
+});

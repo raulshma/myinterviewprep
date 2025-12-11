@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { Loader2, Bot, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { MessageBubble } from "./message/message-bubble";
@@ -29,7 +29,7 @@ interface AIChatMainProps {
   userPlan?: UserPlan;
 }
 
-export function AIChatMain({
+export const AIChatMain = memo(function AIChatMain({
   conversationId,
   interviewId,
   learningPathId,
@@ -49,9 +49,22 @@ export function AIChatMain({
   const shownErrorToastsRef = useRef<Set<string>>(new Set());
 
   // Model selection state (MAX plan only)
+  // Initialize from localStorage to persist across mode switches and new conversations
   const isMaxPlan = userPlan === "MAX";
-  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<import("@/lib/ai/types").AIProviderType | null>(null);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(() => {
+    if (typeof window !== "undefined" && isMaxPlan) {
+      return localStorage.getItem("ai-chat-selected-model");
+    }
+    return null;
+  });
+  const [selectedProvider, setSelectedProvider] = useState<import("@/lib/ai/types").AIProviderType | null>(() => {
+    if (typeof window !== "undefined" && isMaxPlan) {
+      const savedModel = localStorage.getItem("ai-chat-selected-model");
+      if (savedModel?.startsWith("google:")) return "google";
+      if (savedModel) return "openrouter";
+    }
+    return null;
+  });
   const [modelSupportsImages, setModelSupportsImages] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<string[]>([]);
@@ -273,13 +286,15 @@ export function AIChatMain({
     prevMessageCountRef.current = messages.length;
   }, [messages]);
 
-  const suggestionCategory: SuggestionCategory = learningPathId
-    ? "learning"
-    : interviewId
-    ? "interview"
-    : "general";
-
-  const suggestions = ASSISTANT_SUGGESTIONS[suggestionCategory];
+  // Memoize suggestions to prevent recreation
+  const suggestions = useMemo(() => {
+    const category: SuggestionCategory = learningPathId
+      ? "learning"
+      : interviewId
+      ? "interview"
+      : "general";
+    return ASSISTANT_SUGGESTIONS[category];
+  }, [learningPathId, interviewId]);
 
   // Scroll to bottom helper
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
@@ -333,19 +348,19 @@ export function AIChatMain({
     await sendMessage(content, filesToSend);
   };
 
-  const handleSuggestionClick = async (suggestion: string) => {
+  const handleSuggestionClick = useCallback(async (suggestion: string) => {
     if (isLoading) return;
     if (isMaxPlan && !selectedModelId) return;
     await sendMessage(suggestion, undefined);
-  };
+  }, [isLoading, isMaxPlan, selectedModelId, sendMessage]);
 
-  const handleCopy = async (content: string) => {
+  const handleCopy = useCallback(async (content: string) => {
     try {
       await navigator.clipboard.writeText(content);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
-  };
+  }, []);
 
   const handleEdit = useCallback(
     async (index: number, content: string) => {
@@ -514,4 +529,4 @@ export function AIChatMain({
       />
     </div>
   );
-}
+});

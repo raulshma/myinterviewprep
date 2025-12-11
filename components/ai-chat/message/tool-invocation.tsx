@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo, useCallback } from "react";
 import {
   Loader2,
   Wrench,
@@ -156,8 +156,9 @@ interface ToolInvocationProps {
 
 /**
  * Displays a tool invocation with expandable output
+ * Memoized to prevent unnecessary re-renders
  */
-export function ToolInvocation({ part, variant = "default" }: ToolInvocationProps) {
+export const ToolInvocation = memo(function ToolInvocation({ part, variant = "default" }: ToolInvocationProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const toolName = part.type.replace("tool-", "");
   const isComplete = part.state === "output-available";
@@ -245,4 +246,4 @@ export function ToolInvocation({ part, variant = "default" }: ToolInvocationProp
       )}
     </div>
   );
-}
+});

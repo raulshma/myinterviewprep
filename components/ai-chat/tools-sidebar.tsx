@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -27,6 +28,7 @@ interface Tool {
   prompt: string;
 }
 
+// Static tools array - defined outside component to prevent recreation
 const tools: Tool[] = [
   {
     id: "tech-trends",
@@ -99,7 +101,55 @@ interface ToolsSidebarProps {
   onToggleCollapse?: () => void;
 }
 
-export function ToolsSidebar({
+// Memoized tool button to prevent re-renders
+const ToolButton = memo(function ToolButton({
+  tool,
+  index,
+  onSelect,
+}: {
+  tool: Tool;
+  index: number;
+  onSelect: (prompt: string) => void;
+}) {
+  const Icon = tool.icon;
+  const handleClick = useCallback(() => onSelect(tool.prompt), [onSelect, tool.prompt]);
+  
+  return (
+    <motion.button
+      initial={{ opacity: 0, x: 20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.05 }}
+      onClick={handleClick}
+      className={cn(
+        "group w-full p-3 rounded-xl border border-border/50 bg-card/40 hover:bg-card/80 hover:border-primary/30 transition-all duration-300 text-left shadow-sm hover:shadow-md"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            "p-2 rounded-lg bg-linear-to-br transition-transform duration-300 group-hover:scale-110 shadow-sm",
+            tool.gradient
+          )}
+        >
+          <Icon className={cn("h-4 w-4", tool.color)} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-sm group-hover:text-primary transition-colors">
+              {tool.name}
+            </span>
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+            {tool.description}
+          </p>
+        </div>
+      </div>
+    </motion.button>
+  );
+});
+
+export const ToolsSidebar = memo(function ToolsSidebar({
   onToolSelect,
   isCollapsed = false,
   onToggleCollapse,
@@ -156,43 +206,14 @@ export function ToolsSidebar({
       {/* Tools List */}
       <div className="flex-1 overflow-y-auto">
         <div className="p-3 space-y-2">
-          {tools.map((tool, index) => {
-            const Icon = tool.icon;
-            return (
-              <motion.button
-                key={tool.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => onToolSelect(tool.prompt)}
-                className={cn(
-                  "group w-full p-3 rounded-xl border border-border/50 bg-card/40 hover:bg-card/80 hover:border-primary/30 transition-all duration-300 text-left shadow-sm hover:shadow-md"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  <div
-                    className={cn(
-                      "p-2 rounded-lg bg-linear-to-br transition-transform duration-300 group-hover:scale-110 shadow-sm",
-                      tool.gradient
-                    )}
-                  >
-                    <Icon className={cn("h-4 w-4", tool.color)} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm group-hover:text-primary transition-colors">
-                        {tool.name}
-                      </span>
-                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                      {tool.description}
-                    </p>
-                  </div>
-                </div>
-              </motion.button>
-            );
-          })}
+          {tools.map((tool, index) => (
+            <ToolButton
+              key={tool.id}
+              tool={tool}
+              index={index}
+              onSelect={onToolSelect}
+            />
+          ))}
         </div>
       </div>
 
@@ -214,4 +235,4 @@ export function ToolsSidebar({
       </div>
     </div>
   );
-}
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, memo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Brain, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ interface ThinkingIndicatorProps {
   className?: string;
 }
 
-export function ThinkingIndicator({
+export const ThinkingIndicator = memo(function ThinkingIndicator({
   reasoning,
   isStreaming,
   className,
@@ -48,6 +48,8 @@ export function ThinkingIndicator({
     };
   }, [isStreaming, reasoning.length]);
 
+  const toggleExpanded = useCallback(() => setIsExpanded(prev => !prev), []);
+
   if (!reasoning) return null;
 
   return (
@@ -55,7 +57,7 @@ export function ThinkingIndicator({
       <Button
         variant="ghost"
         size="sm"
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={toggleExpanded}
         className={cn(
           "h-auto py-1.5 px-3 gap-2 text-xs font-medium rounded-full",
           "bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-400",
@@ -109,4 +111,4 @@ export function ThinkingIndicator({
       </AnimatePresence>
     </div>
   );
-}
+});
