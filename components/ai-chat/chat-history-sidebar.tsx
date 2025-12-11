@@ -350,7 +350,7 @@ const ConversationItem = memo(function ConversationItem({
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       className={cn(
-        "group flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all duration-200",
+        "group flex items-center gap-3 px-1 py-1 rounded-xl cursor-pointer transition-all duration-200",
         isActive
           ? "bg-primary/10 text-primary shadow-sm"
           : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
