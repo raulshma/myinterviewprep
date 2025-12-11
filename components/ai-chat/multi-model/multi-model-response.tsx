@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Copy,
@@ -22,6 +22,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+// Memoize remarkPlugins array to prevent ReactMarkdown re-renders
+const remarkPlugins = [remarkGfm];
 
 /**
  * Format token count with K suffix for large numbers
@@ -45,7 +48,7 @@ interface ResponseColumnProps {
   response: ModelResponse;
 }
 
-function ResponseColumn({ response }: ResponseColumnProps) {
+const ResponseColumn = memo(function ResponseColumn({ response }: ResponseColumnProps) {
   const [copied, setCopied] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
@@ -149,7 +152,7 @@ function ResponseColumn({ response }: ResponseColumnProps) {
           </div>
         ) : (
           <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-headings:my-1.5 prose-pre:my-1.5 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            <ReactMarkdown remarkPlugins={remarkPlugins}>
               {response.content || (response.isStreaming ? "..." : "")}
             </ReactMarkdown>
           </div>
@@ -217,15 +220,16 @@ function ResponseColumn({ response }: ResponseColumnProps) {
       )}
     </motion.div>
   );
-}
+});
 
 interface MultiModelResponseProps {
   responses: Map<string, ModelResponse>;
   isLoading: boolean;
 }
 
-export function MultiModelResponse({ responses, isLoading }: MultiModelResponseProps) {
-  const responsesArray = Array.from(responses.values());
+export const MultiModelResponse = memo(function MultiModelResponse({ responses, isLoading }: MultiModelResponseProps) {
+  // Memoize array conversion to prevent unnecessary re-renders
+  const responsesArray = useMemo(() => Array.from(responses.values()), [responses]);
 
   if (responsesArray.length === 0 && !isLoading) {
     return null;
@@ -249,4 +253,4 @@ export function MultiModelResponse({ responses, isLoading }: MultiModelResponseP
       ))}
     </div>
   );
-}
+});

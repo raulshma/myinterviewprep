@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
 import { User, Square, ArrowUp } from "lucide-react";
 import { ChatEmptyState } from "../empty-state/chat-empty-state";
 import { MultiModelSelector } from "./multi-model-selector";
@@ -15,7 +15,7 @@ interface MultiModelChatMainProps {
   onConversationCreated?: (id: string, title: string) => void;
 }
 
-export function MultiModelChatMain({ 
+export const MultiModelChatMain = memo(function MultiModelChatMain({ 
   conversationId: externalConversationId,
   onConversationCreated,
 }: MultiModelChatMainProps) {
@@ -115,14 +115,29 @@ export function MultiModelChatMain({
     onResponseComplete: handleResponseComplete,
   });
 
+  // Track previous conversationId to detect actual changes vs initial mount
+  const prevConversationIdRef = useRef<string | undefined>(externalConversationId);
+
   // Load existing conversation when externalConversationId changes
   useEffect(() => {
+    const prevId = prevConversationIdRef.current;
+    prevConversationIdRef.current = externalConversationId;
+
+    // Only reset if we're explicitly clearing the conversation (user clicked new chat)
+    // Don't reset if conversationId is just undefined on mount or mode switch
     if (!externalConversationId) {
-      // Reset state when no conversation selected
-      reset();
-      setHasSubmitted(false);
-      setLastUserMessage("");
-      setSelectedModels([]);
+      // Only reset if we had a conversation before and now we don't
+      if (prevId) {
+        reset();
+        setHasSubmitted(false);
+        setLastUserMessage("");
+        setSelectedModels([]);
+      }
+      return;
+    }
+    
+    // Skip if conversationId hasn't actually changed
+    if (prevId === externalConversationId) {
       return;
     }
 
@@ -239,7 +254,8 @@ export function MultiModelChatMain({
     [handleSend]
   );
 
-  const suggestions = ASSISTANT_SUGGESTIONS.general;
+  // Memoize suggestions to prevent recreation
+  const suggestions = useMemo(() => ASSISTANT_SUGGESTIONS.general, []);
   const needsModelSelection = selectedModels.length === 0;
   const canSend = input.trim() && !needsModelSelection;
 
@@ -326,4 +342,4 @@ export function MultiModelChatMain({
       </div>
     </div>
   );
-}
+});

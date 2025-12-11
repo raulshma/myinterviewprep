@@ -23,6 +23,9 @@ import { useSharedHeader } from "@/components/dashboard/shared-header-context";
 
 type ChatMode = "single" | "multi";
 
+// Faster animation config for snappier transitions
+const sidebarTransition = { type: "tween" as const, duration: 0.15, ease: [0.4, 0, 0.2, 1] as const };
+
 interface AIChatPageContentProps {
   initialConversations: AIConversation[];
   userPlan: UserPlan;
@@ -256,6 +259,7 @@ export function AIChatPageContent({
   }, []);
 
   const handleChatModeChange = useCallback((mode: ChatMode) => {
+    // Direct state update - startTransition was causing issues with mode not updating
     setChatMode(mode);
     localStorage.setItem("ai-chat-mode", mode);
   }, []);
@@ -293,13 +297,13 @@ export function AIChatPageContent({
       </AnimatePresence>
 
       {/* Left Sidebar - Chat History */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="popLayout">
         {leftSidebarOpen && (
           <motion.div
-            initial={{ width: 0, opacity: 0, x: -20 }}
+            initial={{ width: 0, opacity: 0, x: -10 }}
             animate={{ width: 320, opacity: 1, x: 0 }}
-            exit={{ width: 0, opacity: 0, x: -20 }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            exit={{ width: 0, opacity: 0, x: -10 }}
+            transition={sidebarTransition}
             className={cn(
               "shrink-0 h-full py-4 pl-4",
               isMobile && "fixed left-0 top-16 bottom-0 z-50 w-72 py-0 pl-0"
@@ -383,22 +387,27 @@ export function AIChatPageContent({
             </div>
           )}
 
-          {chatMode === "multi" && userPlan === "MAX" ? (
-            <MultiModelChatMain
-              conversationId={activeConversationId}
-              onConversationCreated={(id, title) => handleConversationCreated(id, title, "multi")}
-            />
-          ) : (
+          {/* Keep both components mounted but hidden to avoid remount lag */}
+          {/* Don't conditionally pass conversationId - it triggers reset effects */}
+          <div className={cn("h-full", chatMode !== "single" && "hidden")}>
             <AIChatMain
               conversationId={activeConversationId}
-              initialPrompt={pendingPrompt}
-              shouldEditLastMessage={shouldEditLastMessage}
+              initialPrompt={chatMode === "single" ? pendingPrompt : null}
+              shouldEditLastMessage={chatMode === "single" && shouldEditLastMessage}
               onPromptUsed={() => setPendingPrompt(null)}
               onNewConversation={handleNewConversation}
               onConversationCreated={handleConversationCreated}
               onConversationUpdate={handleConversationUpdate}
               userPlan={userPlan}
             />
+          </div>
+          {userPlan === "MAX" && (
+            <div className={cn("h-full", chatMode !== "multi" && "hidden")}>
+              <MultiModelChatMain
+                conversationId={activeConversationId}
+                onConversationCreated={(id, title) => handleConversationCreated(id, title, "multi")}
+              />
+            </div>
           )}
 
           {/* Collapsed Left Sidebar Toggle (Desktop only) */}
@@ -434,13 +443,13 @@ export function AIChatPageContent({
       </div>
 
       {/* Right Sidebar - Tools */}
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="popLayout">
         {rightSidebarOpen && (
           <motion.div
-            initial={{ width: 0, opacity: 0, x: 20 }}
+            initial={{ width: 0, opacity: 0, x: 10 }}
             animate={{ width: 320, opacity: 1, x: 0 }}
-            exit={{ width: 0, opacity: 0, x: 20 }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            exit={{ width: 0, opacity: 0, x: 10 }}
+            transition={sidebarTransition}
             className={cn(
               "shrink-0 h-full py-4 pr-4",
               isMobile && "fixed right-0 top-16 bottom-0 z-50 w-72 py-0 pr-0"

@@ -112,7 +112,11 @@ export function useMultiModelAssistant(
               
               if (parsed.type === "text") {
                 accumulatedContent += parsed.content;
+                // Batch updates - only update state, don't create new Map each time
                 setResponses((prev) => {
+                  // Reuse existing map reference if possible for better perf
+                  const existing = prev.get(modelKey);
+                  if (existing && existing.content === accumulatedContent) return prev;
                   const next = new Map(prev);
                   next.set(modelKey, {
                     modelId: model.id,
@@ -129,6 +133,8 @@ export function useMultiModelAssistant(
               } else if (parsed.type === "reasoning") {
                 reasoning += parsed.content;
                 setResponses((prev) => {
+                  const existing = prev.get(modelKey);
+                  if (existing && existing.reasoning === reasoning) return prev;
                   const next = new Map(prev);
                   next.set(modelKey, {
                     modelId: model.id,

@@ -116,6 +116,7 @@ export const AIChatMain = memo(function AIChatMain({
   // Handle model selection
   const handleModelSelect = useCallback(
     (modelId: string, supportsImages: boolean, provider: import("@/lib/ai/types").AIProviderType) => {
+      // Batch state updates to reduce re-renders
       setSelectedModelId(modelId);
       setSelectedProvider(provider);
       setModelSupportsImages(supportsImages);
@@ -125,6 +126,10 @@ export const AIChatMain = memo(function AIChatMain({
       }
       // Reset provider tools when model changes (they'll be restored from localStorage by the selector)
       setEnabledProviderTools([]);
+      // Persist to localStorage asynchronously
+      queueMicrotask(() => {
+        localStorage.setItem("ai-chat-selected-model", modelId);
+      });
     },
     []
   );
