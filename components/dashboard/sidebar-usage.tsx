@@ -50,7 +50,7 @@ function UsageBar({
                 : "text-foreground"
             }`}
           >
-            {count}
+            {Number.isInteger(count) ? count : count.toFixed(2)}
             <span className="text-muted-foreground">/{limit}</span>
           </span>
         )}
