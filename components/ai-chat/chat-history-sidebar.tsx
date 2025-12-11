@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus,
@@ -14,6 +14,9 @@ import {
   Sparkles,
   Clock,
   PanelLeftClose,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +39,7 @@ interface ChatHistorySidebarProps {
   onPinConversation: (id: string) => void;
   onArchiveConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
+  onRenameConversation: (id: string, newTitle: string) => void;
   onToggleCollapse?: () => void;
   onOpenArchived?: () => void;
 }
@@ -48,6 +52,7 @@ export function ChatHistorySidebar({
   onPinConversation,
   onArchiveConversation,
   onDeleteConversation,
+  onRenameConversation,
   onToggleCollapse,
   onOpenArchived,
 }: ChatHistorySidebarProps) {
@@ -156,6 +161,7 @@ export function ChatHistorySidebar({
                   onPin={() => onPinConversation(conversation._id)}
                   onArchive={() => onArchiveConversation(conversation._id)}
                   onDelete={() => onDeleteConversation(conversation._id)}
+                  onRename={(newTitle) => onRenameConversation(conversation._id, newTitle)}
                 />
               ))}
             </div>
@@ -177,6 +183,7 @@ export function ChatHistorySidebar({
                   onPin={() => onPinConversation(conversation._id)}
                   onArchive={() => onArchiveConversation(conversation._id)}
                   onDelete={() => onDeleteConversation(conversation._id)}
+                  onRename={(newTitle) => onRenameConversation(conversation._id, newTitle)}
                 />
               ))}
             </div>
@@ -224,6 +231,7 @@ interface ConversationItemProps {
   onPin: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  onRename: (newTitle: string) => void;
 }
 
 function ConversationItem({
@@ -233,7 +241,71 @@ function ConversationItem({
   onPin,
   onArchive,
   onDelete,
+  onRename,
 }: ConversationItemProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(conversation.title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
+  const handleRename = () => {
+    const trimmedTitle = editTitle.trim();
+    if (trimmedTitle && trimmedTitle !== conversation.title) {
+      onRename(trimmedTitle);
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setEditTitle(conversation.title);
+    setIsEditing(false);
+  };
+
+  if (isEditing) {
+    return (
+      <motion.div
+        layout
+        className={cn(
+          "flex items-center gap-2 px-3 py-3 rounded-xl bg-muted/50 border border-border"
+        )}
+      >
+        <Input
+          ref={inputRef}
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleRename();
+            if (e.key === "Escape") handleCancel();
+          }}
+          className="h-8 text-sm"
+          maxLength={60}
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={handleRename}
+        >
+          <Check className="h-4 w-4 text-green-600" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={handleCancel}
+        >
+          <X className="h-4 w-4 text-destructive" />
+        </Button>
+      </motion.div>
+    );
+  }
+
   return (
     <motion.div
       layout
@@ -294,6 +366,16 @@ function ConversationItem({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48 rounded-xl p-1">
+          <DropdownMenuItem 
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsEditing(true);
+            }} 
+            className="rounded-lg"
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            Rename
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={onPin} className="rounded-lg">
             {conversation.isPinned ? (
               <>

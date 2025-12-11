@@ -30,7 +30,23 @@ export function AIChatPageContent({
   userPlan,
 }: AIChatPageContentProps) {
   const [conversations, setConversations] = useState(initialConversations);
-  const [activeConversationId, setActiveConversationId] = useState<string | undefined>();
+  const [activeConversationId, setActiveConversationId] = useState<string | undefined>(() => {
+    // Check URL params first
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const conversationParam = params.get("conversation");
+      if (conversationParam) {
+        return conversationParam;
+      }
+      // Fall back to last conversation from localStorage
+      const lastConversationId = localStorage.getItem("lastAIChatConversationId");
+      if (lastConversationId && initialConversations.some(c => c._id === lastConversationId)) {
+        return lastConversationId;
+      }
+    }
+    return undefined;
+  });
+  const [shouldEditLastMessage, setShouldEditLastMessage] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
   const [archivedModalOpen, setArchivedModalOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -92,10 +108,57 @@ export function AIChatPageContent({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Handle branch conversation callback
+  useEffect(() => {
+    const handleBranchConversation = async (branchedConversationId: string) => {
+      // Fetch the branched conversation
+      const { getConversation } = await import("@/lib/actions/ai-chat-actions");
+      const result = await getConversation(branchedConversationId);
+      
+      if (result.success) {
+        // Add to conversations list if not already there
+        setConversations((prev) => {
+          const exists = prev.some(c => c._id === branchedConversationId);
+          if (exists) return prev;
+          return [result.data, ...prev];
+        });
+        
+        // Switch to the branched conversation with edit mode
+        setActiveConversationId(branchedConversationId);
+        setShouldEditLastMessage(true);
+        
+        // Save to localStorage
+        localStorage.setItem("lastAIChatConversationId", branchedConversationId);
+        
+        // Update URL
+        const url = new URL(window.location.href);
+        url.searchParams.set("conversation", branchedConversationId);
+        window.history.replaceState({}, "", url);
+      }
+    };
+
+    // Attach to window for child components to call
+    (window as any).onBranchConversation = handleBranchConversation;
+
+    return () => {
+      delete (window as any).onBranchConversation;
+    };
+  }, []);
+
+  // Reset edit mode when conversation changes
+  useEffect(() => {
+    setShouldEditLastMessage(false);
+  }, [activeConversationId]);
+
   // Handle new conversation - now just clears active conversation
   // Actual conversation is created on first message via API
   const handleNewConversation = useCallback(() => {
     setActiveConversationId(undefined);
+    // Clear from localStorage and URL
+    localStorage.removeItem("lastAIChatConversationId");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("conversation");
+    window.history.replaceState({}, "", url);
     if (isMobile) setLeftSidebarOpen(false);
   }, [isMobile]);
 
@@ -114,6 +177,12 @@ export function AIChatPageContent({
     };
     setConversations((prev) => [newConversation, ...prev]);
     setActiveConversationId(id);
+    // Save to localStorage
+    localStorage.setItem("lastAIChatConversationId", id);
+    // Update URL
+    const url = new URL(window.location.href);
+    url.searchParams.set("conversation", id);
+    window.history.replaceState({}, "", url);
   }, []);
 
   // Handle restored conversation from archive
@@ -123,6 +192,12 @@ export function AIChatPageContent({
 
   const handleSelectConversation = useCallback((id: string) => {
     setActiveConversationId(id);
+    // Save to localStorage
+    localStorage.setItem("lastAIChatConversationId", id);
+    // Update URL without reload
+    const url = new URL(window.location.href);
+    url.searchParams.set("conversation", id);
+    window.history.replaceState({}, "", url);
     if (isMobile) setLeftSidebarOpen(false);
   }, [isMobile]);
 
@@ -146,8 +221,20 @@ export function AIChatPageContent({
     setConversations((prev) => prev.filter((c) => c._id !== id));
     if (activeConversationId === id) {
       setActiveConversationId(undefined);
+      // Clear last conversation from localStorage
+      localStorage.removeItem("lastAIChatConversationId");
     }
   }, [activeConversationId]);
+
+  const handleRenameConversation = useCallback(async (id: string, newTitle: string) => {
+    const { updateConversationTitle } = await import("@/lib/actions/ai-chat-actions");
+    const result = await updateConversationTitle(id, newTitle);
+    if (result.success) {
+      setConversations((prev) =>
+        prev.map((c) => (c._id === id ? { ...c, title: newTitle } : c))
+      );
+    }
+  }, []);
 
   const handleToolSelect = useCallback((prompt: string) => {
     setPendingPrompt(prompt);
@@ -203,6 +290,7 @@ export function AIChatPageContent({
                 onPinConversation={handlePinConversation}
                 onArchiveConversation={handleArchiveConversation}
                 onDeleteConversation={handleDeleteConversation}
+                onRenameConversation={handleRenameConversation}
                 onToggleCollapse={!isMobile ? () => setLeftSidebarOpen(false) : undefined}
                 onOpenArchived={() => setArchivedModalOpen(true)}
               />
@@ -246,6 +334,7 @@ export function AIChatPageContent({
           <AIChatMain
             conversationId={activeConversationId}
             initialPrompt={pendingPrompt}
+            shouldEditLastMessage={shouldEditLastMessage}
             onPromptUsed={() => setPendingPrompt(null)}
             onNewConversation={handleNewConversation}
             onConversationCreated={handleConversationCreated}

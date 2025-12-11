@@ -22,6 +22,7 @@ export interface AIConversationRepository {
     messageId: string,
     updates: Partial<AIMessage>
   ): Promise<void>;
+  deleteMessagesFrom(conversationId: string, messageIndex: number): Promise<void>;
   togglePin(id: string): Promise<void>;
   archive(id: string): Promise<void>;
   restore(id: string): Promise<void>;
@@ -31,6 +32,14 @@ export interface AIConversationRepository {
     userId: string,
     limit?: number
   ): Promise<AIConversation[]>;
+  createBranch(
+    sourceConversationId: string,
+    branchedFromMessageId: string,
+    userId: string,
+    title: string,
+    messages: AIMessage[],
+    context?: AIConversation["context"]
+  ): Promise<AIConversation>;
 }
 
 export const aiConversationRepository: AIConversationRepository = {
@@ -185,4 +194,49 @@ export const aiConversationRepository: AIConversationRepository = {
 
     return conversations as AIConversation[];
   }),
+
+  async deleteMessagesFrom(conversationId, messageIndex) {
+    const collection = await getAIConversationsCollection();
+    const conversation = await collection.findOne({ _id: conversationId });
+    
+    if (conversation && conversation.messages) {
+      const messages = conversation.messages as AIMessage[];
+      const newMessages = messages.slice(0, messageIndex);
+      
+      await collection.updateOne(
+        { _id: conversationId },
+        { $set: { messages: newMessages, updatedAt: new Date() } }
+      );
+    }
+  },
+
+  async createBranch(
+    sourceConversationId,
+    branchedFromMessageId,
+    userId,
+    title,
+    messages,
+    context
+  ) {
+    const collection = await getAIConversationsCollection();
+    const now = new Date();
+
+    const conversation: AIConversation = {
+      _id: new ObjectId().toString(),
+      userId,
+      title,
+      messages,
+      context,
+      parentConversationId: sourceConversationId,
+      branchedFromMessageId,
+      isPinned: false,
+      isArchived: false,
+      lastMessageAt: now,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await collection.insertOne(conversation);
+    return conversation;
+  },
 };

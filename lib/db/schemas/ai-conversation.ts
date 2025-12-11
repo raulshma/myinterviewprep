@@ -74,6 +74,9 @@ export const AIConversationSchema = z.object({
       toolsUsed: z.array(z.string()).default([]),
     })
     .optional(),
+  // Parent conversation ID for branched conversations
+  parentConversationId: z.string().optional(),
+  branchedFromMessageId: z.string().optional(),
   // Metadata
   isPinned: z.boolean().default(false),
   isArchived: z.boolean().default(false),

@@ -1,12 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Bot, User, AlertCircle, Copy, Pencil, RefreshCw, Download } from "lucide-react";
+import { Bot, User, AlertCircle, Copy, Pencil, RefreshCw, Download, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MarkdownRenderer } from "@/components/streaming/markdown-renderer";
 import { ThinkingIndicator } from "../thinking-indicator";
 import { MessageMetadataDisplay } from "../message-metadata";
 import { ToolInvocation } from "./tool-invocation";
+import { MessageEditor } from "./message-editor";
 import {
   getMessageTextContent,
   getMessageReasoning,
@@ -18,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { UIMessage } from "ai";
 import type { MessageMetadata } from "@/hooks/use-ai-assistant";
+import type { AIProviderType } from "@/lib/ai/types";
 
 interface MessageBubbleProps {
   message: UIMessage;
@@ -25,9 +28,15 @@ interface MessageBubbleProps {
   isLoading?: boolean;
   metadata?: MessageMetadata;
   variant?: "default" | "compact";
+  // MAX plan features for editing
+  isMaxPlan?: boolean;
+  selectedModelId?: string | null;
+  onModelSelect?: (modelId: string, supportsImages: boolean, provider: AIProviderType) => void;
+  // Actions
   onCopy?: (content: string) => void;
   onEdit?: (content: string) => void;
   onRegenerate?: () => void;
+  onBranch?: () => void;
 }
 
 /**
@@ -39,15 +48,35 @@ export function MessageBubble({
   isLoading = false,
   metadata,
   variant = "default",
+  isMaxPlan,
+  selectedModelId,
+  onModelSelect,
   onCopy,
   onEdit,
   onRegenerate,
+  onBranch,
 }: MessageBubbleProps) {
+  const [isEditing, setIsEditing] = useState(false);
   const isCompact = variant === "compact";
   const textContent = getMessageTextContent(message);
   const reasoning = getMessageReasoning(message);
   const toolParts = getToolParts(message);
   const fileParts = getFileParts(message);
+
+  const handleEditClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleEditSave = (newContent: string) => {
+    setIsEditing(false);
+    if (onEdit) {
+      onEdit(newContent);
+    }
+  };
+
+  const handleEditCancel = () => {
+    setIsEditing(false);
+  };
 
   // Handle persisted error messages
   if (isErrorMessage(message)) {
@@ -91,6 +120,40 @@ export function MessageBubble({
   const isUser = message.role === "user";
   const avatarSize = isCompact ? "h-7 w-7" : "h-10 w-10";
   const iconSize = isCompact ? "h-3.5 w-3.5" : "h-5 w-5";
+
+  // Show editor for user messages when editing
+  if (isUser && isEditing) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex gap-4 flex-row-reverse"
+      >
+        {/* Avatar */}
+        <div
+          className={cn(
+            "shrink-0 rounded-full flex items-center justify-center shadow-sm",
+            avatarSize,
+            "bg-primary text-primary-foreground"
+          )}
+        >
+          <User className={iconSize} />
+        </div>
+
+        {/* Editor */}
+        <div className="flex-1 max-w-[85%]">
+          <MessageEditor
+            initialContent={textContent}
+            isMaxPlan={isMaxPlan}
+            selectedModelId={selectedModelId}
+            onModelSelect={onModelSelect}
+            onSave={handleEditSave}
+            onCancel={handleEditCancel}
+          />
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -228,7 +291,7 @@ export function MessageBubble({
         )}
 
         {/* Message Actions */}
-        {(onCopy || onEdit || onRegenerate) && (
+        {(onCopy || onEdit || onRegenerate || onBranch) && (
           <div
             className={cn(
               "flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity",
@@ -252,7 +315,7 @@ export function MessageBubble({
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground"
-                onClick={() => onEdit(textContent)}
+                onClick={handleEditClick}
                 title="Edit message"
               >
                 <Pencil className="h-3 w-3" />
@@ -268,6 +331,18 @@ export function MessageBubble({
                 title="Regenerate response"
               >
                 <RefreshCw className="h-3 w-3" />
+              </Button>
+            )}
+
+            {onBranch && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground"
+                onClick={onBranch}
+                title="Branch from here"
+              >
+                <GitBranch className="h-3 w-3" />
               </Button>
             )}
           </div>

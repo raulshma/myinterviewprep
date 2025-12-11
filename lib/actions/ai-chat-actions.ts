@@ -343,3 +343,72 @@ export async function deleteConversation(id: string): Promise<ActionResult> {
     return { success: false, error: "Failed to delete" };
   }
 }
+
+/**
+ * Branch a conversation from a specific message
+ */
+export async function branchConversation(
+  sourceConversationId: string,
+  branchedFromMessageId: string
+): Promise<ActionResult<AIConversation>> {
+  try {
+    const userId = await getMongoUserId();
+    const sourceConversation = await aiConversationRepository.findById(sourceConversationId);
+
+    if (!sourceConversation || sourceConversation.userId !== userId) {
+      return { success: false, error: "Conversation not found" };
+    }
+
+    // Find the message index to branch from
+    const messageIndex = sourceConversation.messages.findIndex(
+      (m) => m.id === branchedFromMessageId
+    );
+
+    if (messageIndex === -1) {
+      return { success: false, error: "Message not found" };
+    }
+
+    // Get messages up to and including the branched message
+    const branchedMessages = sourceConversation.messages.slice(0, messageIndex + 1);
+
+    // Create new conversation with branched messages
+    const branchedConversation = await aiConversationRepository.createBranch(
+      sourceConversationId,
+      branchedFromMessageId,
+      userId,
+      `${sourceConversation.title} (Branch)`,
+      branchedMessages,
+      sourceConversation.context
+    );
+
+    revalidatePath("/ai-chat");
+    return { success: true, data: branchedConversation };
+  } catch (error) {
+    console.error("Failed to branch conversation:", error);
+    return { success: false, error: "Failed to branch conversation" };
+  }
+}
+
+/**
+ * Delete messages from a specific index onwards (for regeneration)
+ */
+export async function deleteMessagesFrom(
+  conversationId: string,
+  messageIndex: number
+): Promise<ActionResult> {
+  try {
+    const userId = await getMongoUserId();
+    const conversation = await aiConversationRepository.findById(conversationId);
+
+    if (!conversation || conversation.userId !== userId) {
+      return { success: false, error: "Conversation not found" };
+    }
+
+    await aiConversationRepository.deleteMessagesFrom(conversationId, messageIndex);
+    revalidatePath("/ai-chat");
+    return { success: true, data: undefined };
+  } catch (error) {
+    console.error("Failed to delete messages:", error);
+    return { success: false, error: "Failed to delete messages" };
+  }
+}

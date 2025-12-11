@@ -17,4 +17,8 @@ declare global {
       role?: 'admin' | 'user';
     };
   }
+
+  interface Window {
+    onBranchConversation?: (branchedConversationId: string) => void;
+  }
 }

@@ -21,6 +21,7 @@ interface AIChatMainProps {
   interviewId?: string;
   learningPathId?: string;
   initialPrompt?: string | null;
+  shouldEditLastMessage?: boolean;
   onPromptUsed?: () => void;
   onNewConversation?: () => void;
   onConversationCreated?: (id: string, title: string) => void;
@@ -33,6 +34,7 @@ export function AIChatMain({
   interviewId,
   learningPathId,
   initialPrompt,
+  shouldEditLastMessage,
   onPromptUsed,
   onNewConversation,
   onConversationCreated,
@@ -154,6 +156,21 @@ export function AIChatMain({
       promptUsedRef.current = false;
     }
   }, [initialPrompt]);
+
+  // Handle edit last message when branching
+  useEffect(() => {
+    if (shouldEditLastMessage && messages.length > 0 && !isLoading) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === "user") {
+        const content = getMessageTextContent(lastMessage);
+        if (content) {
+          setInput(content);
+          // Remove the last message so user can edit and resend
+          setMessages(messages.slice(0, -1));
+        }
+      }
+    }
+  }, [shouldEditLastMessage, messages, isLoading, setInput, setMessages]);
 
   // Generate AI-powered title after first assistant response
   useEffect(() => {
@@ -330,12 +347,38 @@ export function AIChatMain({
     }
   };
 
-  const handleEdit = (index: number, content: string) => {
-    if (isLoading) return;
-    setInput(content);
-    const newMessages = messages.slice(0, index);
-    setMessages(newMessages);
-  };
+  const handleEdit = useCallback(
+    async (index: number, content: string) => {
+      if (isLoading) return;
+      if (isMaxPlan && !selectedModelId) return;
+      
+      // Remove messages from the edited message onwards
+      const newMessages = messages.slice(0, index);
+      setMessages(newMessages);
+      
+      // Send the edited message immediately
+      await sendMessage(content, undefined);
+    },
+    [isLoading, isMaxPlan, selectedModelId, messages, setMessages, sendMessage]
+  );
+
+  const handleBranch = useCallback(
+    async (messageId: string) => {
+      if (!conversationId) return;
+      
+      const { branchConversation } = await import("@/lib/actions/ai-chat-actions");
+      const result = await branchConversation(conversationId, messageId);
+      
+      if (result.success) {
+        // Notify parent to switch to branched conversation with edit mode
+        const callback = (window as any).onBranchConversation;
+        if (callback) {
+          callback(result.data._id);
+        }
+      }
+    },
+    [conversationId]
+  );
 
   const handleNewChat = useCallback(() => {
     reset();
@@ -368,6 +411,9 @@ export function AIChatMain({
                       ? messageMetadata.get(message.id)
                       : undefined
                   }
+                  isMaxPlan={isMaxPlan}
+                  selectedModelId={selectedModelId}
+                  onModelSelect={handleModelSelect}
                   onCopy={handleCopy}
                   onEdit={
                     message.role === "user"
@@ -379,6 +425,11 @@ export function AIChatMain({
                     index === messages.length - 1 &&
                     !isLoading
                       ? reload
+                      : undefined
+                  }
+                  onBranch={
+                    conversationId && index < messages.length - 1
+                      ? () => handleBranch(message.id)
                       : undefined
                   }
                 />
