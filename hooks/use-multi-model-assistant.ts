@@ -241,13 +241,18 @@ export function useMultiModelAssistant(
       });
       abortControllersRef.current = controllers;
 
-      // Start all streams in parallel (don't await - let them run independently)
+      // Start all streams truly in parallel using Promise.all
       // Only the first model should increment the chat count
-      models.forEach((model, index) => {
+      const streamPromises = models.map((model, index) => {
         const key = `${model.provider}:${model.id}`;
         const controller = controllers.get(key)!;
         const shouldIncrementCount = index === 0; // Only first model increments
-        streamModelResponse(content, model, controller, shouldIncrementCount);
+        return streamModelResponse(content, model, controller, shouldIncrementCount);
+      });
+
+      // Don't await - let them run independently, but Promise.all ensures they all start
+      Promise.all(streamPromises).catch(() => {
+        // Individual errors are handled in streamModelResponse
       });
     },
     [stop, streamModelResponse]
