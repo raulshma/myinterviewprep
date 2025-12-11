@@ -22,6 +22,7 @@ const GOOGLE_PRICING: Record<string, AIModelPricing> = {
   'gemini-2.5-flash': { promptPer1M: 0.30, completionPer1M: 2.50 },
   'gemini-2.5-flash-lite': { promptPer1M: 0.075, completionPer1M: 0.30 },
   'gemini-2.5-flash-tts': { promptPer1M: 0.10, completionPer1M: 0.40 },
+  'gemini-2.5-flash-image': { promptPer1M: 0.30, completionPer1M: 2.50 }, // Image generation model
   // Gemini 2.0 models
   'gemini-2.0-flash': { promptPer1M: 0.10, completionPer1M: 0.40 },
   'gemini-2.0-flash-lite': { promptPer1M: 0.075, completionPer1M: 0.30 },
@@ -144,6 +145,23 @@ const GOOGLE_MODELS: AIModelMetadata[] = [
       structuredOutput: true,
     },
   },
+  // Gemini 2.5 Flash Preview Image - Image Generation
+  {
+    id: 'gemini-2.5-flash-image',
+    name: 'Gemini 2.5 Flash (Image Gen)',
+    provider: 'google',
+    pricing: GOOGLE_PRICING['gemini-2.5-flash-image'],
+    contextLength: 1048576,
+    maxOutputTokens: 8192,
+    defaultTemperature: 1.0,
+    capabilities: { 
+      vision: true, 
+      tools: false,  // Image gen models don't support function calling tools
+      reasoning: false, 
+      structuredOutput: false,
+      imageGeneration: true,
+    },
+  },
 ];
 
 /**
@@ -175,6 +193,20 @@ export function hasGoogleTools(enabledTools: ProviderToolType[]): boolean {
   const googleToolTypes: ProviderToolType[] = ['googleSearch', 'urlContext', 'codeExecution'];
   return enabledTools.some(t => googleToolTypes.includes(t));
 }
+
+/**
+ * Check if image generation is enabled
+ */
+export function hasImageGeneration(enabledTools: ProviderToolType[]): boolean {
+  return enabledTools.includes('imageGeneration');
+}
+
+/**
+ * Models that support image generation output
+ */
+export const IMAGE_GENERATION_MODELS = [
+  'gemini-2.5-flash-image',
+];
 
 export class GoogleAdapter implements AIProviderAdapter {
   readonly type = 'google' as const;

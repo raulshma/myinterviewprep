@@ -31,6 +31,8 @@ import {
   type AIProviderType,
   type AIProviderAdapter,
   buildGoogleTools,
+  hasImageGeneration,
+  IMAGE_GENERATION_MODELS,
   type ProviderToolType,
 } from "@/lib/ai";
 
@@ -1004,17 +1006,35 @@ export async function runOrchestrator(
     }
   }
 
+  // Check if image generation is enabled for this request
+  const imageGenerationEnabled = ctx.providerTools && 
+    hasImageGeneration(ctx.providerTools as ProviderToolType[]) &&
+    IMAGE_GENERATION_MODELS.includes(modelToUse);
+
+  // Debug logging for image generation
+  if (imageGenerationEnabled) {
+    console.log('[AI Orchestrator] Image generation enabled for model:', modelToUse);
+  }
+
   // Run streamText with multi-step tool calling
   // Disable retries for rate limit errors (429) - let the client handle them
   const result = streamText({
     model: provider.getModel(modelToUse),
     system: systemPrompt,
     messages: convertToModelMessages(messages),
-    tools,
-    stopWhen: stepCountIs(maxSteps),
+    tools: imageGenerationEnabled ? undefined : tools, // Image gen models don't support tools
+    stopWhen: imageGenerationEnabled ? undefined : stepCountIs(maxSteps),
     temperature: config.temperature,
     maxOutputTokens: config.maxTokens,
     maxRetries: 0, // Don't retry - rate limits should be shown to user immediately
+    // Enable image generation for supported models
+    ...(imageGenerationEnabled && {
+      providerOptions: {
+        google: {
+          responseModalities: ['TEXT', 'IMAGE'],
+        },
+      },
+    }),
   });
 
   return {

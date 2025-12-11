@@ -28,6 +28,7 @@ export interface AIModelCapabilities {
   reasoning?: boolean;
   structuredOutput?: boolean;
   webSearch?: boolean;
+  imageGeneration?: boolean;
 }
 
 // Model metadata interface

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Loader2, Bot, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 import { MessageBubble } from "./message/message-bubble";
 import { ChatInput } from "./input/chat-input";
 import { ChatEmptyState } from "./empty-state/chat-empty-state";
@@ -12,7 +13,7 @@ import {
   type SuggestionCategory,
 } from "@/hooks/use-ai-assistant";
 import { generateConversationTitle } from "@/lib/actions/ai-chat-actions";
-import { getMessageTextContent } from "./utils/message-helpers";
+import { getMessageTextContent, isErrorMessage, getErrorContent } from "./utils/message-helpers";
 import type { UserPlan } from "@/lib/db/schemas/user";
 
 interface AIChatMainProps {
@@ -80,6 +81,19 @@ export function AIChatMain({
     },
     onError: (error) => {
       console.error("Assistant error:", error);
+      // Check for rate limit errors (429) and show toast
+      const errorMessage = error.message?.toLowerCase() || "";
+      if (
+        errorMessage.includes("rate limit") ||
+        errorMessage.includes("quota") ||
+        errorMessage.includes("429") ||
+        errorMessage.includes("resource_exhausted")
+      ) {
+        toast.error("Rate Limit Exceeded", {
+          description: "The AI model is temporarily unavailable due to quota limits. Please try again in a few moments or select a different model.",
+          duration: 8000,
+        });
+      }
     },
   });
 
@@ -182,6 +196,34 @@ export function AIChatMain({
       titleGeneratedRef.current = false;
     }
   }, [conversationId]);
+
+  // Detect error messages and show toast for rate limit errors
+  useEffect(() => {
+    if (messages.length === 0) return;
+    
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.role === "assistant" && isErrorMessage(lastMessage)) {
+      const errorContent = getErrorContent(lastMessage);
+      if (errorContent) {
+        const errorText = errorContent.error.toLowerCase();
+        const errorCode = errorContent.errorDetails?.code?.toLowerCase() || "";
+        
+        if (
+          errorText.includes("rate limit") ||
+          errorText.includes("quota") ||
+          errorText.includes("429") ||
+          errorText.includes("temporarily unavailable") ||
+          errorCode === "rate_limit" ||
+          errorCode === "resource_exhausted"
+        ) {
+          toast.error("Rate Limit Exceeded", {
+            description: "The AI model is temporarily unavailable due to quota limits. Please try again in a few moments or select a different model.",
+            duration: 8000,
+          });
+        }
+      }
+    }
+  }, [messages]);
 
   const suggestionCategory: SuggestionCategory = learningPathId
     ? "learning"

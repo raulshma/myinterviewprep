@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Bot, User, AlertCircle, Copy, Pencil, RefreshCw } from "lucide-react";
+import { Bot, User, AlertCircle, Copy, Pencil, RefreshCw, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MarkdownRenderer } from "@/components/streaming/markdown-renderer";
 import { ThinkingIndicator } from "../thinking-indicator";
@@ -185,6 +185,40 @@ export function MessageBubble({
                 variant={isCompact ? "compact" : "default"}
               />
             ))}
+          </div>
+        )}
+
+        {/* Generated images for assistant messages */}
+        {!isUser && fileParts.length > 0 && (
+          <div className="flex flex-wrap gap-3 justify-start">
+            {fileParts.map(
+              (part, index) =>
+                part.mediaType?.startsWith("image/") && (
+                  <div key={index} className="relative group/image">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={part.url}
+                      alt={part.filename || `Generated image ${index + 1}`}
+                      className="max-w-[400px] max-h-[400px] rounded-xl border-2 border-primary/20 object-contain shadow-lg hover:border-primary/40 transition-colors"
+                    />
+                    <div className="absolute bottom-2 right-2 opacity-0 group-hover/image:opacity-100 transition-opacity">
+                      <a
+                        href={part.url}
+                        download={part.filename || `generated-image-${index + 1}.png`}
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-background/90 backdrop-blur-sm border border-border rounded-lg shadow-sm hover:bg-background transition-colors"
+                      >
+                        <Download className="h-3 w-3" />
+                        Download
+                      </a>
+                    </div>
+                    <div className="absolute top-2 left-2">
+                      <span className="inline-flex items-center px-2 py-0.5 text-[10px] font-medium bg-primary/90 text-primary-foreground rounded-full shadow-sm">
+                        AI Generated
+                      </span>
+                    </div>
+                  </div>
+                )
+            )}
           </div>
         )}
 

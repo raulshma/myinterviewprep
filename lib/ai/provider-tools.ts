@@ -107,7 +107,7 @@ export const PROVIDER_TOOLS: Record<AIProviderType, ProviderToolDefinition[]> = 
       defaultEnabled: false,
       // Only specific image-capable models
       supportedModels: [
-        'gemini-2.5-flash-image-preview',
+        'gemini-2.5-flash-image',
       ],
     },
   ],

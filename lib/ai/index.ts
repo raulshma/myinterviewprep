@@ -46,6 +46,8 @@ export {
   GOOGLE_PRICING,
   buildGoogleTools,
   hasGoogleTools,
+  hasImageGeneration,
+  IMAGE_GENERATION_MODELS,
   googleProvider,
 } from './providers/google';
 
