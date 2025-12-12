@@ -265,7 +265,7 @@ export function HostingTypeSelector({
                       {selectedInfo.icon}
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold">{selectedInfo.name}</h3>
+                      <h3 className="text-xl font-semibold mt-0">{selectedInfo.name}</h3>
                       <p className="text-sm text-muted-foreground italic mt-1">
                         &ldquo;{selectedInfo.analogy}&rdquo;
                       </p>

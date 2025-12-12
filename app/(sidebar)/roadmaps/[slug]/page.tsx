@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getRoadmapWithProgress } from '@/lib/actions/roadmap';
-import { RoadmapClient } from './roadmap-client';
+import { RoadmapPageClient } from './roadmap-page-client';
 
 interface RoadmapPageProps {
   params: Promise<{ slug: string }>;
@@ -15,13 +15,11 @@ export default async function RoadmapPage({ params }: RoadmapPageProps) {
   }
   
   return (
-    <div className="h-[calc(100vh-4rem)]">
-      <RoadmapClient 
-        initialRoadmap={roadmap} 
-        initialProgress={progress} 
-        initialLessonAvailability={lessonAvailability}
-      />
-    </div>
+    <RoadmapPageClient 
+      initialRoadmap={roadmap} 
+      initialProgress={progress} 
+      initialLessonAvailability={lessonAvailability}
+    />
   );
 }
 
