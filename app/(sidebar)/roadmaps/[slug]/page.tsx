@@ -9,7 +9,7 @@ interface RoadmapPageProps {
 
 export default async function RoadmapPage({ params }: RoadmapPageProps) {
   const { slug } = await params;
-  const [{ roadmap, progress, lessonAvailability }, gamification] = await Promise.all([
+  const [{ roadmap, progress, lessonAvailability, parentRoadmap, subRoadmapProgressMap }, gamification] = await Promise.all([
     getRoadmapWithProgress(slug),
     getUserGamificationAction(),
   ]);
@@ -24,6 +24,8 @@ export default async function RoadmapPage({ params }: RoadmapPageProps) {
       initialProgress={progress} 
       initialLessonAvailability={lessonAvailability}
       initialGamification={gamification}
+      parentRoadmap={parentRoadmap}
+      subRoadmapProgressMap={subRoadmapProgressMap}
     />
   );
 }

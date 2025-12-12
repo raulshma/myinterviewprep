@@ -82,6 +82,8 @@ export const RoadmapSchema = z.object({
   // Parent roadmap (for nested roadmaps)
   parentRoadmapSlug: z.string().optional(),
   parentNodeId: z.string().optional(),
+  // Visibility control - allows sub-roadmaps to appear in main listing
+  showInListing: z.boolean().optional(),
   // Visual data
   nodes: z.array(RoadmapNodeSchema).min(1),
   edges: z.array(RoadmapEdgeSchema).default([]),

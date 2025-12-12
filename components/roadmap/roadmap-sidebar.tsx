@@ -19,6 +19,7 @@ import {
   CircleDashed,
   Sparkles,
   Loader2,
+  Home,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -35,6 +36,48 @@ interface RoadmapSidebarProps {
   selectedNodeId: string | null;
   onNodeSelect: (nodeId: string) => void;
   initialLessonAvailability: Record<string, ObjectiveLessonInfo[]>;
+  parentRoadmap?: Roadmap | null;
+}
+
+// Breadcrumb component for roadmap hierarchy navigation
+interface RoadmapBreadcrumbProps {
+  roadmap: Roadmap;
+  parentRoadmap?: Roadmap | null;
+}
+
+export function RoadmapBreadcrumb({ roadmap, parentRoadmap }: RoadmapBreadcrumbProps) {
+  return (
+    <nav 
+      aria-label="Roadmap breadcrumb" 
+      className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap"
+    >
+      <Link
+        href="/roadmaps"
+        className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+      >
+        <Home className="w-3.5 h-3.5" />
+        <span>All Roadmaps</span>
+      </Link>
+      
+      {parentRoadmap && (
+        <>
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+          <Link
+            href={`/roadmaps/${parentRoadmap.slug}`}
+            className="hover:text-foreground transition-colors truncate max-w-[150px]"
+            title={parentRoadmap.title}
+          >
+            {parentRoadmap.title}
+          </Link>
+        </>
+      )}
+      
+      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+      <span className="text-foreground font-medium truncate max-w-[150px]" title={roadmap.title}>
+        {roadmap.title}
+      </span>
+    </nav>
+  );
 }
 
 const statusIcons: Record<NodeProgressStatus, typeof Circle> = {
@@ -298,6 +341,7 @@ export function RoadmapSidebar({
   selectedNodeId,
   onNodeSelect,
   initialLessonAvailability = {},
+  parentRoadmap,
 }: RoadmapSidebarProps) {
   const nodesCompleted = progress?.nodesCompleted || 0;
   const totalNodes = roadmap.nodes.length;
@@ -388,13 +432,9 @@ export function RoadmapSidebar({
     <aside className="w-full flex flex-col bg-sidebar border border-border rounded-2xl">
       {/* Header */}
       <div className="p-6 border-b border-border">
-        <Link
-          href="/roadmaps"
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          All Roadmaps
-        </Link>
+        <div className="mb-4">
+          <RoadmapBreadcrumb roadmap={roadmap} parentRoadmap={parentRoadmap} />
+        </div>
         
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-primary/10">

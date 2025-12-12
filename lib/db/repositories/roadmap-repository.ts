@@ -8,13 +8,16 @@ import type { Roadmap, CreateRoadmap } from '../schemas/roadmap';
  * CRUD operations for predefined roadmaps
  */
 
-// Find all active roadmaps (top-level only, not sub-roadmaps)
+// Find all active roadmaps (top-level + sub-roadmaps with showInListing: true)
 export const findAllRoadmaps = cache(async (): Promise<Roadmap[]> => {
   const collection = await getRoadmapsCollection();
   const docs = await collection
     .find({ 
       isActive: true,
-      parentRoadmapSlug: { $exists: false } 
+      $or: [
+        { parentRoadmapSlug: { $exists: false } },
+        { showInListing: true }
+      ]
     })
     .sort({ category: 1, title: 1 })
     .toArray();

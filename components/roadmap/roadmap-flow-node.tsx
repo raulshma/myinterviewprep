@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { RoadmapNode as RoadmapNodeType } from '@/lib/db/schemas/roadmap';
 import type { NodeProgressStatus } from '@/lib/db/schemas/user-roadmap-progress';
+import type { SubRoadmapProgressInfo } from '@/lib/actions/roadmap';
 
 // Node data type for React Flow
 export type RoadmapFlowNodeData = {
@@ -20,6 +21,7 @@ export type RoadmapFlowNodeData = {
   status: NodeProgressStatus;
   isActive: boolean;
   onNodeClick: (nodeId: string) => void;
+  subRoadmapProgress?: SubRoadmapProgressInfo;
 };
 
 export type RoadmapFlowNode = Node<RoadmapFlowNodeData, 'roadmapNode'>;
@@ -94,10 +96,14 @@ function StatusIcon({ status }: { status: NodeProgressStatus }) {
 }
 
 function RoadmapFlowNodeComponent({ data, selected }: NodeProps<RoadmapFlowNode>) {
-  const { node, status, isActive, onNodeClick } = data;
+  const { node, status, isActive, onNodeClick, subRoadmapProgress } = data;
   const colors = statusColors[status];
   const typeStyle = typeStyles[node.type];
   const isClickable = status !== 'locked';
+  
+  // Calculate sub-roadmap progress percentage for display (Requirements: 4.2, 4.3)
+  const hasSubRoadmapProgress = subRoadmapProgress?.exists && subRoadmapProgress.overallProgress > 0;
+  const subProgressPercent = subRoadmapProgress?.overallProgress ?? 0;
   
   const handleClick = () => {
     if (isClickable) {
@@ -154,14 +160,42 @@ function RoadmapFlowNodeComponent({ data, selected }: NodeProps<RoadmapFlowNode>
           {node.title}
         </span>
         
-        {/* Sub-roadmap indicator */}
+        {/* Sub-roadmap indicator with progress (Requirements: 4.2, 4.3, 6.1, 6.3) */}
         {node.subRoadmapSlug && (
-          <Star className="w-3 h-3 text-amber-500 ml-auto" fill="currentColor" />
+          <div className="flex items-center gap-1 ml-auto">
+            {subRoadmapProgress?.exists === false ? (
+              // Coming Soon badge for non-existent sub-roadmaps (Requirements: 6.3)
+              <span className="text-[9px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                Coming Soon
+              </span>
+            ) : (
+              // Star icon for existing sub-roadmaps (Requirements: 6.1)
+              <>
+                {hasSubRoadmapProgress && (
+                  <span className="text-[10px] font-medium text-amber-500">
+                    {subProgressPercent}%
+                  </span>
+                )}
+                <Star className="w-3 h-3 text-amber-500" fill="currentColor" />
+              </>
+            )}
+          </div>
         )}
         
         {/* Progress/Activity indicator for in-progress */}
         {status === 'in-progress' && (
           <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
+        )}
+        
+        {/* Sub-roadmap progress ring indicator (Requirements: 4.2) */}
+        {hasSubRoadmapProgress && status !== 'completed' && (
+          <div 
+            className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-background"
+            style={{
+              background: `conic-gradient(#f59e0b ${subProgressPercent * 3.6}deg, #374151 0deg)`,
+            }}
+            title={`${subProgressPercent}% complete`}
+          />
         )}
         
         {/* Hover tooltip */}

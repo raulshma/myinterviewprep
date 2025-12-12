@@ -18,23 +18,21 @@ import {
   CircleDashed,
   Loader2,
   X,
-  ArrowUp,
-  ArrowDown,
-  Keyboard,
+  Map,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getObjectivesWithLessons, type ObjectiveLessonInfo } from '@/lib/actions/lessons';
-import { getObjectiveTitle } from '@/lib/utils/lesson-utils';
+import { getSubRoadmapInfo, type SubRoadmapInfo } from '@/lib/actions/roadmap';
 import { 
   getObjectiveProgressKey, 
   syncGamificationToLocalStorage,
   type ObjectiveProgressData 
 } from '@/lib/hooks/use-objective-progress';
-import type { RoadmapNode, LearningObjective } from '@/lib/db/schemas/roadmap';
-import type { NodeProgress, NodeProgressStatus } from '@/lib/db/schemas/user-roadmap-progress';
+import type { RoadmapNode } from '@/lib/db/schemas/roadmap';
+import type { NodeProgress } from '@/lib/db/schemas/user-roadmap-progress';
 import type { UserGamification } from '@/lib/db/schemas/user';
 
 interface RoadmapTopicDetailProps {
@@ -186,6 +184,10 @@ export function RoadmapTopicDetail({
   const [objectiveProgress, setObjectiveProgress] = useState<Record<string, ObjectiveProgressData>>({});
   const [isLoadingObjectives, setIsLoadingObjectives] = useState(false);
   
+  // State for sub-roadmap info (Requirements: 7.1, 7.2, 7.3)
+  const [subRoadmapInfo, setSubRoadmapInfo] = useState<SubRoadmapInfo | null>(null);
+  const [isLoadingSubRoadmap, setIsLoadingSubRoadmap] = useState(false);
+  
   // Calculate progress percentage for in-progress nodes
   const progressPercent = nodeProgress && nodeProgress.totalQuestions > 0
     ? Math.round((nodeProgress.correctAnswers / nodeProgress.totalQuestions) * 100)
@@ -232,6 +234,29 @@ export function RoadmapTopicDetail({
     
     fetchObjectives();
   }, [node.id, node.learningObjectives]);
+  
+  // Fetch sub-roadmap info when node has subRoadmapSlug (Requirements: 7.1, 7.2, 7.3)
+  useEffect(() => {
+    async function fetchSubRoadmapInfo() {
+      if (!node.subRoadmapSlug) {
+        setSubRoadmapInfo(null);
+        return;
+      }
+      
+      setIsLoadingSubRoadmap(true);
+      try {
+        const info = await getSubRoadmapInfo(node.subRoadmapSlug);
+        setSubRoadmapInfo(info);
+      } catch (error) {
+        console.error('Failed to fetch sub-roadmap info:', error);
+        setSubRoadmapInfo(null);
+      } finally {
+        setIsLoadingSubRoadmap(false);
+      }
+    }
+    
+    fetchSubRoadmapInfo();
+  }, [node.subRoadmapSlug]);
   
   // Count available lessons
   const availableLessons = objectivesInfo.filter(o => o.hasLesson).length;
@@ -436,16 +461,80 @@ export function RoadmapTopicDetail({
           </div>
         )}
         
-        {/* Sub-roadmap indicator */}
+        {/* Sub-roadmap info section (Requirements: 7.1, 7.2, 7.3) */}
         {node.subRoadmapSlug && (
           <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
-            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-              <Star className="w-4 h-4" fill="currentColor" />
-              <span className="text-sm font-medium">This topic has a detailed sub-roadmap</span>
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-2">
+              <Map className="w-4 h-4" />
+              <span className="text-sm font-medium">Detailed Roadmap Available</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Click &quot;Start Learning&quot; to explore the in-depth learning path for this topic.
-            </p>
+            
+            {isLoadingSubRoadmap ? (
+              <div className="space-y-2">
+                <div className="h-4 w-3/4 rounded bg-amber-500/20 animate-pulse" />
+                <div className="h-3 w-full rounded bg-amber-500/20 animate-pulse" />
+                <div className="h-3 w-2/3 rounded bg-amber-500/20 animate-pulse" />
+              </div>
+            ) : subRoadmapInfo?.exists && subRoadmapInfo.roadmap ? (
+              <div className="space-y-3">
+                {/* Sub-roadmap title and description (Requirements: 7.1) */}
+                <div>
+                  <h4 className="text-sm font-semibold text-foreground">
+                    {subRoadmapInfo.roadmap.title}
+                  </h4>
+                  {subRoadmapInfo.roadmap.description && (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {subRoadmapInfo.roadmap.description}
+                    </p>
+                  )}
+                </div>
+                
+                {/* Node count and estimated time (Requirements: 7.2) */}
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Target className="w-3 h-3" />
+                    <span>{subRoadmapInfo.roadmap.nodes.length} topics</span>
+                  </div>
+                  {subRoadmapInfo.roadmap.estimatedHours && (
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span>{subRoadmapInfo.roadmap.estimatedHours} hours</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Progress percentage if user has progress (Requirements: 7.3) */}
+                {subRoadmapInfo.progress && (
+                  <div className="pt-2 border-t border-amber-500/20">
+                    <div className="flex justify-between text-xs mb-1.5">
+                      <span className="text-muted-foreground">Your Progress</span>
+                      <span className="text-amber-600 dark:text-amber-400 font-medium">
+                        {Math.round(subRoadmapInfo.progress.overallProgress)}%
+                      </span>
+                    </div>
+                    <Progress 
+                      value={subRoadmapInfo.progress.overallProgress} 
+                      className="h-1.5 bg-amber-500/20" 
+                    />
+                    <div className="flex items-center gap-1 mt-1.5 text-xs text-muted-foreground">
+                      <CheckCircle2 className="w-3 h-3 text-green-500" />
+                      <span>
+                        {subRoadmapInfo.progress.nodesCompleted} of {subRoadmapInfo.progress.totalNodes} completed
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  This topic has a detailed learning path that will be available soon.
+                </p>
+                <Badge variant="outline" className="mt-2 text-xs border-amber-500/30 text-amber-600 dark:text-amber-400">
+                  Coming Soon
+                </Badge>
+              </div>
+            )}
           </div>
         )}
         
@@ -471,10 +560,19 @@ export function RoadmapTopicDetail({
                 size="default"
                 className="flex-1"
               >
-                <Play className="w-4 h-4 shrink-0" />
-                <span className="ml-2">{isInProgress ? 'Continue' : 'Start'}</span>
+                {node.subRoadmapSlug ? (
+                  <>
+                    <Map className="w-4 h-4 shrink-0" />
+                    <span className="ml-2">Explore Roadmap</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 shrink-0" />
+                    <span className="ml-2">{isInProgress ? 'Continue' : 'Start'}</span>
+                  </>
+                )}
               </Button>
-              {isInProgress && (
+              {isInProgress && !node.subRoadmapSlug && (
                 <Button
                   onClick={onMarkComplete}
                   variant="outline"
@@ -493,8 +591,17 @@ export function RoadmapTopicDetail({
               size="default"
               className="flex-1"
             >
-              <Play className="w-4 h-4 shrink-0" />
-              <span className="ml-2">Review</span>
+              {node.subRoadmapSlug ? (
+                <>
+                  <Map className="w-4 h-4 shrink-0" />
+                  <span className="ml-2">Explore Roadmap</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 shrink-0" />
+                  <span className="ml-2">Review</span>
+                </>
+              )}
             </Button>
           )}
         </div>

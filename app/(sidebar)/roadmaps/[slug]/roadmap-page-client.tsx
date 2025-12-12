@@ -7,12 +7,15 @@ import type { Roadmap } from '@/lib/db/schemas/roadmap';
 import type { UserRoadmapProgress } from '@/lib/db/schemas/user-roadmap-progress';
 import type { ObjectiveLessonInfo } from '@/lib/actions/lessons';
 import type { UserGamification } from '@/lib/db/schemas/user';
+import type { SubRoadmapProgressInfo } from '@/lib/actions/roadmap';
 
 interface RoadmapPageClientProps {
   initialRoadmap: Roadmap;
   initialProgress: UserRoadmapProgress | null;
   initialLessonAvailability: Record<string, ObjectiveLessonInfo[]>;
   initialGamification: UserGamification | null;
+  parentRoadmap?: Roadmap | null;
+  subRoadmapProgressMap?: Record<string, SubRoadmapProgressInfo>;
 }
 
 export function RoadmapPageClient({ 
@@ -20,6 +23,8 @@ export function RoadmapPageClient({
   initialProgress, 
   initialLessonAvailability,
   initialGamification,
+  parentRoadmap,
+  subRoadmapProgressMap = {},
 }: RoadmapPageClientProps) {
   const { hideHeader } = useSharedHeader();
 
@@ -34,6 +39,8 @@ export function RoadmapPageClient({
         initialProgress={initialProgress} 
         initialLessonAvailability={initialLessonAvailability}
         initialGamification={initialGamification}
+        parentRoadmap={parentRoadmap}
+        subRoadmapProgressMap={subRoadmapProgressMap}
       />
     </div>
   );

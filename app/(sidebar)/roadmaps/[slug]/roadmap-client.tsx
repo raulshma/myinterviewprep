@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useCallback, useTransition, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RoadmapViewer, RoadmapSidebar, RoadmapTopicDetail } from '@/components/roadmap';
-import { startNode, completeNode, startRoadmap } from '@/lib/actions/roadmap';
+import { startNode, completeNode, startRoadmap, getSubRoadmapInfo } from '@/lib/actions/roadmap';
+import type { SubRoadmapProgressInfo } from '@/lib/actions/roadmap';
 import { toast } from 'sonner';
 import type { Roadmap } from '@/lib/db/schemas/roadmap';
 import type { UserRoadmapProgress, NodeProgress } from '@/lib/db/schemas/user-roadmap-progress';
@@ -15,6 +17,8 @@ interface RoadmapClientProps {
   initialProgress: UserRoadmapProgress | null;
   initialLessonAvailability: Record<string, ObjectiveLessonInfo[]>;
   initialGamification: UserGamification | null;
+  parentRoadmap?: Roadmap | null;
+  subRoadmapProgressMap?: Record<string, SubRoadmapProgressInfo>;
 }
 
 export function RoadmapClient({ 
@@ -22,7 +26,10 @@ export function RoadmapClient({
   initialProgress,
   initialLessonAvailability = {},
   initialGamification,
+  parentRoadmap,
+  subRoadmapProgressMap = {},
 }: RoadmapClientProps) {
+  const router = useRouter();
   const [roadmap] = useState(initialRoadmap);
   const [progress, setProgress] = useState(initialProgress);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -98,10 +105,28 @@ export function RoadmapClient({
   }, [selectedNodeId, handleCloseDetail, handleNavigateNode]);
   
   const handleStartLearning = useCallback(async () => {
-    if (!selectedNodeId) return;
+    if (!selectedNodeId || !selectedNode) return;
     
     startTransition(async () => {
       try {
+        // Check if node has a sub-roadmap (Requirements: 1.1, 1.2, 1.3)
+        if (selectedNode.subRoadmapSlug) {
+          const subRoadmapInfo = await getSubRoadmapInfo(selectedNode.subRoadmapSlug);
+          
+          if (subRoadmapInfo.exists) {
+            // Navigate to sub-roadmap page (Requirements: 1.1)
+            router.push(`/roadmaps/${selectedNode.subRoadmapSlug}`);
+            return;
+          } else {
+            // Show "Coming Soon" message if sub-roadmap doesn't exist (Requirements: 1.3)
+            toast.info('Coming Soon', {
+              description: 'This detailed roadmap is not yet available.',
+            });
+            return;
+          }
+        }
+        
+        // Existing behavior for nodes without sub-roadmaps (Requirements: 1.2)
         // Ensure roadmap is started
         if (!progress) {
           const newProgress = await startRoadmap(roadmap.slug);
@@ -153,7 +178,7 @@ export function RoadmapClient({
         });
       }
     });
-  }, [selectedNodeId, roadmap.slug, progress, selectedNode]);
+  }, [selectedNodeId, selectedNode, roadmap.slug, progress, router]);
   
   const handleMarkComplete = useCallback(async () => {
     if (!selectedNodeId) return;
@@ -209,6 +234,7 @@ export function RoadmapClient({
           selectedNodeId={selectedNodeId}
           onNodeSelect={handleNodeClick}
           initialLessonAvailability={initialLessonAvailability}
+          parentRoadmap={parentRoadmap}
         />
       </div>
       
@@ -221,6 +247,7 @@ export function RoadmapClient({
             progress={progress}
             selectedNodeId={selectedNodeId}
             onNodeClick={handleNodeClick}
+            subRoadmapProgressMap={subRoadmapProgressMap}
           />
         </div>
         

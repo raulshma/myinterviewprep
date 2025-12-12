@@ -24,6 +24,7 @@ import { RoadmapFlowNodeMemo, type RoadmapFlowNodeData, type RoadmapFlowNode } f
 import { computeElkLayout, type ElkLayoutType, type LayoutResult } from './elk-layout';
 import type { Roadmap } from '@/lib/db/schemas/roadmap';
 import type { UserRoadmapProgress, NodeProgressStatus } from '@/lib/db/schemas/user-roadmap-progress';
+import type { SubRoadmapProgressInfo } from '@/lib/actions/roadmap';
 
 interface RoadmapViewerProps {
   roadmap: Roadmap;
@@ -31,6 +32,7 @@ interface RoadmapViewerProps {
   selectedNodeId: string | null;
   onNodeClick: (nodeId: string) => void;
   onNodeHover?: (nodeId: string | null) => void;
+  subRoadmapProgressMap?: Record<string, SubRoadmapProgressInfo>;
 }
 
 // Storage keys for persisting viewer state
@@ -71,6 +73,7 @@ interface RoadmapViewerInnerProps extends RoadmapViewerProps {
   layoutResult: LayoutResult | null;
   savedViewport: SavedViewportState | null;
   onViewportChange: (viewport: Viewport) => void;
+  subRoadmapProgressMap: Record<string, SubRoadmapProgressInfo>;
 }
 
 function RoadmapViewerInner({
@@ -82,6 +85,7 @@ function RoadmapViewerInner({
   layoutResult,
   savedViewport,
   onViewportChange,
+  subRoadmapProgressMap,
 }: RoadmapViewerInnerProps) {
   const { fitView, setViewport, getViewport } = useReactFlow();
   const hasRestoredViewport = useRef(false);
@@ -100,6 +104,11 @@ function RoadmapViewerInner({
     
     return roadmap.nodes.map((node) => {
       const layoutNode = layoutResult.nodes.find(n => n.id === node.id);
+      // Get sub-roadmap progress if this node has a sub-roadmap (Requirements: 4.2, 4.3)
+      const subRoadmapProgress = node.subRoadmapSlug 
+        ? subRoadmapProgressMap[node.subRoadmapSlug] 
+        : undefined;
+      
       return {
         id: node.id,
         type: 'roadmapNode',
@@ -112,10 +121,11 @@ function RoadmapViewerInner({
           status: getNodeStatus(node.id),
           isActive: selectedNodeId === node.id,
           onNodeClick,
+          subRoadmapProgress,
         } satisfies RoadmapFlowNodeData,
       };
     });
-  }, [roadmap.nodes, getNodeStatus, selectedNodeId, onNodeClick, layoutResult]);
+  }, [roadmap.nodes, getNodeStatus, selectedNodeId, onNodeClick, layoutResult, subRoadmapProgressMap]);
 
   // Convert roadmap edges to React Flow format
   const initialEdges = useMemo((): Edge[] => {
@@ -229,7 +239,7 @@ function RoadmapViewerInner({
   );
 }
 
-export function RoadmapViewer(props: RoadmapViewerProps) {
+export function RoadmapViewer({ subRoadmapProgressMap = {}, ...props }: RoadmapViewerProps) {
   const [layoutType, setLayoutType] = useState<ElkLayoutType>('layered');
   const [layoutResult, setLayoutResult] = useState<LayoutResult | null>(null);
   const [isLayouting, setIsLayouting] = useState(false);
@@ -373,6 +383,7 @@ export function RoadmapViewer(props: RoadmapViewerProps) {
           layoutResult={layoutResult}
           savedViewport={savedViewport}
           onViewportChange={handleViewportChange}
+          subRoadmapProgressMap={subRoadmapProgressMap}
         />
         
         {/* Layout selector panel */}
