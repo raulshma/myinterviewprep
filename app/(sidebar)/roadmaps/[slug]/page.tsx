@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getRoadmapWithProgress } from '@/lib/actions/roadmap';
+import { getUserGamificationAction } from '@/lib/actions/gamification';
 import { RoadmapPageClient } from './roadmap-page-client';
 
 interface RoadmapPageProps {
@@ -8,7 +9,10 @@ interface RoadmapPageProps {
 
 export default async function RoadmapPage({ params }: RoadmapPageProps) {
   const { slug } = await params;
-  const { roadmap, progress, lessonAvailability } = await getRoadmapWithProgress(slug);
+  const [{ roadmap, progress, lessonAvailability }, gamification] = await Promise.all([
+    getRoadmapWithProgress(slug),
+    getUserGamificationAction(),
+  ]);
   
   if (!roadmap) {
     notFound();
@@ -19,6 +23,7 @@ export default async function RoadmapPage({ params }: RoadmapPageProps) {
       initialRoadmap={roadmap} 
       initialProgress={progress} 
       initialLessonAvailability={lessonAvailability}
+      initialGamification={gamification}
     />
   );
 }

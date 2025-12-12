@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { ExperienceSelector } from '@/components/learn/experience-selector';
 import { ProgressTracker } from '@/components/learn/progress-tracker';
 import { XPDisplay } from '@/components/learn/xp-display';
+import { XPAwardAnimation } from '@/components/learn/xp-award-animation';
 import { useMDXComponents } from '@/mdx-components';
 import { 
   ProgressProvider, 
@@ -22,6 +23,7 @@ import { toast } from 'sonner';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
 import { RefreshCw } from 'lucide-react'; // Import Icon
 import { ProgressCheckpoint } from '@/components/learn/mdx-components/progress-checkpoint';
+import { saveObjectiveProgress, clearObjectiveProgress } from '@/lib/hooks/use-objective-progress';
 
 import type { UserGamification } from '@/lib/db/schemas/user';
 
@@ -60,6 +62,7 @@ function LessonContent({
   const [isLoading, setIsLoading] = useState(false);
   const [gamification, setGamification] = useState<UserGamification | null>(initialGamification);
   const [hasClaimedReward, setHasClaimedReward] = useState(isLessonCompleted);
+  const [xpAwarded, setXpAwarded] = useState<number | null>(null);
   
   // Get progress from context
   const { 
@@ -175,7 +178,13 @@ function LessonContent({
           setGamification(result.data.gamification);
         }
         setHasClaimedReward(true);
-        toast.success(`You earned ${totalEarnedXp} XP!`);
+        
+        // Save objective progress to localStorage for roadmap UI sync
+        // lessonId format is "milestoneId/lessonSlug", milestoneId is the nodeId
+        saveObjectiveProgress(milestoneId, lessonId, level, totalEarnedXp);
+        
+        // Show XP animation
+        setXpAwarded(totalEarnedXp);
       } else {
         toast.error('Failed to save progress');
       }
@@ -183,7 +192,7 @@ function LessonContent({
       console.error('Failed to claim rewards:', error);
       toast.error('Something went wrong');
     }
-  }, [level, lessonId, completedSectionIds, progress, hasClaimedReward]);
+  }, [level, lessonId, milestoneId, completedSectionIds, progress, hasClaimedReward]);
 
   // Handle lesson reset
   const handleResetLesson = useCallback(async () => {
@@ -197,6 +206,10 @@ function LessonContent({
           setGamification(result.data);
         }
         setHasClaimedReward(false);
+        
+        // Clear objective progress from localStorage
+        clearObjectiveProgress(milestoneId, lessonId);
+        
         toast.success('Lesson progress reset and XP removed');
       } else {
         toast.error('Failed to reset lesson');
@@ -205,10 +218,16 @@ function LessonContent({
       console.error('Failed to reset lesson:', error);
       toast.error('Something went wrong');
     }
-  }, [lessonId, resetProgress]);
+  }, [lessonId, milestoneId, resetProgress]);
 
   return (
     <div className="max-w-4xl mx-auto">
+      {/* XP Award Animation */}
+      <XPAwardAnimation
+        amount={xpAwarded}
+        onComplete={() => setXpAwarded(null)}
+      />
+      
       {/* Header */}
       <div className="mb-8">
         {/* Breadcrumb */}

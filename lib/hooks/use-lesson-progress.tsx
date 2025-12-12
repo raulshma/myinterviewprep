@@ -31,7 +31,7 @@ export interface LessonProgressState {
 }
 
 interface ProgressContextValue {
-  progress: LessonProgressState | null;
+  progress: LessonProgressState;
   completedSectionIds: string[];
   currentSection: string | null;
   isComplete: boolean;
@@ -72,7 +72,7 @@ export function ProgressProvider({
   persistToStorage = true,
   initialState,
 }: ProgressProviderProps) {
-  const [progress, setProgress] = useState<LessonProgressState | null>(() => {
+  const [progress, setProgress] = useState<LessonProgressState>(() => {
     // 1. Try to load from local storage first if enabled
     if (persistToStorage) {
       try {
@@ -97,7 +97,7 @@ export function ProgressProvider({
       }
     }
 
-    // 2. If no local storage (or failed), check if we have initialState from server
+    // 2. If we have initialState from server with completed sections
     if (initialState && initialState.completedSections.length > 0) {
       return {
         lessonId,
@@ -114,8 +114,15 @@ export function ProgressProvider({
       };
     }
 
-    // 3. Default to null
-    return null;
+    // 3. Default to empty progress (not null) so sections can be marked complete
+    return {
+      lessonId,
+      level,
+      completedSections: [],
+      startedAt: new Date(),
+      lastActivityAt: new Date(),
+      isComplete: false,
+    };
   });
 
   const sectionStartTimeRef = useRef<Record<string, number>>({});
@@ -130,7 +137,7 @@ export function ProgressProvider({
     }
   }, [progress, lessonId, level, persistToStorage]);
 
-  const completedSectionIds = progress?.completedSections.map(s => s.sectionId) ?? [];
+  const completedSectionIds = progress.completedSections.map(s => s.sectionId);
   
   const currentSection = sections.find(s => !completedSectionIds.includes(s)) ?? null;
   
@@ -139,8 +146,6 @@ export function ProgressProvider({
 
   const markSectionComplete = useCallback((sectionId: string) => {
     setProgress(prev => {
-      if (!prev) return prev;
-      
       // Don't mark if already complete
       if (prev.completedSections.some(s => s.sectionId === sectionId)) {
         return prev;
@@ -336,7 +341,7 @@ export function TrackedSection({
 /**
  * Utility to get total time spent on completed sections
  */
-export function getTotalTimeSpent(progress: LessonProgressState | null): number {
+export function getTotalTimeSpent(progress: LessonProgressState | null | undefined): number {
   if (!progress) return 0;
   return progress.completedSections.reduce((acc, s) => acc + s.timeSpentSeconds, 0);
 }

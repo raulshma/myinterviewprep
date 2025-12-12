@@ -22,8 +22,14 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { getObjectivesWithLessons, type ObjectiveLessonInfo } from '@/lib/actions/lessons';
 import { getObjectiveTitle } from '@/lib/utils/lesson-utils';
+import { 
+  getObjectiveProgressKey, 
+  syncGamificationToLocalStorage,
+  type ObjectiveProgressData 
+} from '@/lib/hooks/use-objective-progress';
 import type { RoadmapNode, LearningObjective } from '@/lib/db/schemas/roadmap';
 import type { NodeProgress, NodeProgressStatus } from '@/lib/db/schemas/user-roadmap-progress';
+import type { UserGamification } from '@/lib/db/schemas/user';
 
 interface RoadmapTopicDetailProps {
   node: RoadmapNode;
@@ -32,6 +38,7 @@ interface RoadmapTopicDetailProps {
   onStartLearning: () => void;
   onMarkComplete: () => void;
   onClose: () => void;
+  gamification?: UserGamification | null;
 }
 
 const difficultyLabels: Record<number, { label: string; color: string }> = {
@@ -55,16 +62,6 @@ const resourceIcons: Record<string, typeof BookOpen> = {
   book: BookOpen,
 };
 
-// Storage key for objective progress
-const getObjectiveProgressKey = (nodeId: string, lessonId: string) => 
-  `objective_progress_${nodeId}_${lessonId}`;
-
-interface ObjectiveProgress {
-  completedAt?: string;
-  lastLevel?: string;
-  xpEarned?: number;
-}
-
 export function RoadmapTopicDetail({
   node,
   nodeProgress,
@@ -72,6 +69,7 @@ export function RoadmapTopicDetail({
   onStartLearning,
   onMarkComplete,
   onClose,
+  gamification,
 }: RoadmapTopicDetailProps) {
   const status = nodeProgress?.status || 'available';
   const isCompleted = status === 'completed';
@@ -80,13 +78,20 @@ export function RoadmapTopicDetail({
   
   // State for objective lesson info
   const [objectivesInfo, setObjectivesInfo] = useState<ObjectiveLessonInfo[]>([]);
-  const [objectiveProgress, setObjectiveProgress] = useState<Record<string, ObjectiveProgress>>({});
+  const [objectiveProgress, setObjectiveProgress] = useState<Record<string, ObjectiveProgressData>>({});
   const [isLoadingObjectives, setIsLoadingObjectives] = useState(false);
   
   // Calculate progress percentage for in-progress nodes
   const progressPercent = nodeProgress && nodeProgress.totalQuestions > 0
     ? Math.round((nodeProgress.correctAnswers / nodeProgress.totalQuestions) * 100)
     : 0;
+  
+  // Sync gamification data to localStorage when it changes
+  useEffect(() => {
+    if (gamification) {
+      syncGamificationToLocalStorage(gamification, node.id);
+    }
+  }, [gamification, node.id]);
   
   // Fetch objective lesson info when node changes
   useEffect(() => {
@@ -99,7 +104,8 @@ export function RoadmapTopicDetail({
         setObjectivesInfo(info);
         
         // Load progress from localStorage using lessonId from info
-        const progress: Record<string, ObjectiveProgress> = {};
+        // This now includes synced gamification data
+        const progress: Record<string, ObjectiveProgressData> = {};
         for (const objInfo of info) {
           const key = getObjectiveProgressKey(node.id, objInfo.lessonId);
           const stored = localStorage.getItem(key);

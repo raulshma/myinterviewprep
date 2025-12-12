@@ -8,22 +8,26 @@ import { toast } from 'sonner';
 import type { Roadmap } from '@/lib/db/schemas/roadmap';
 import type { UserRoadmapProgress, NodeProgress } from '@/lib/db/schemas/user-roadmap-progress';
 import type { ObjectiveLessonInfo } from '@/lib/actions/lessons';
+import type { UserGamification } from '@/lib/db/schemas/user';
 
 interface RoadmapClientProps {
   initialRoadmap: Roadmap;
   initialProgress: UserRoadmapProgress | null;
   initialLessonAvailability: Record<string, ObjectiveLessonInfo[]>;
+  initialGamification: UserGamification | null;
 }
 
 export function RoadmapClient({ 
   initialRoadmap, 
   initialProgress,
-  initialLessonAvailability = {}
+  initialLessonAvailability = {},
+  initialGamification,
 }: RoadmapClientProps) {
   const [roadmap] = useState(initialRoadmap);
   const [progress, setProgress] = useState(initialProgress);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [gamification] = useState(initialGamification);
   
   const selectedNode = selectedNodeId 
     ? roadmap.nodes.find(n => n.id === selectedNodeId) 
@@ -184,6 +188,7 @@ export function RoadmapClient({
                 onStartLearning={handleStartLearning}
                 onMarkComplete={handleMarkComplete}
                 onClose={handleCloseDetail}
+                gamification={gamification}
               />
             </motion.div>
           )}

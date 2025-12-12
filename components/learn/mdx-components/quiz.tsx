@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, createContext, useContext } from 'react';
+import { useState, createContext, useContext, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, XCircle, HelpCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -206,14 +206,16 @@ export function Answer({ children, correct }: AnswerProps) {
   const showIncorrectAnimation = isSubmitted && isSelected && !correct;
   const showCorrectHighlight = isSubmitted && !isSelected && correct;
   
-  // Register correct answer
-  if (correct) {
-    // Use effect-like pattern with ref to avoid re-renders
-    if (setCorrectAnswer) {
-      // This is a bit hacky but works for MDX context
-      setTimeout(() => setCorrectAnswer(answerText), 0);
+  // Track if we've registered this answer
+  const hasRegisteredRef = useRef(false);
+  
+  // Register correct answer using useEffect to avoid setState during render
+  useEffect(() => {
+    if (correct && setCorrectAnswer && !hasRegisteredRef.current) {
+      hasRegisteredRef.current = true;
+      setCorrectAnswer(answerText);
     }
-  }
+  }, [correct, setCorrectAnswer, answerText]);
 
   return (
     <motion.button
