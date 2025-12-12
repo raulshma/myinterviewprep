@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, createContext, useContext, useEffect, useRef } from 'react';
+import React, { useState, createContext, useContext, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, XCircle, HelpCircle, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -191,16 +191,28 @@ interface AnswerProps {
   correct?: boolean;
 }
 
+// Helper to extract text content from React children
+function getTextContent(children: React.ReactNode): string {
+  if (typeof children === 'string') return children;
+  if (typeof children === 'number') return String(children);
+  if (Array.isArray(children)) return children.map(getTextContent).join('');
+  if (React.isValidElement(children)) {
+    const props = children.props as { children?: React.ReactNode };
+    return getTextContent(props.children);
+  }
+  return '';
+}
+
 export function Answer({ children, correct }: AnswerProps) {
   const { 
     selectedAnswer, 
     isSubmitted, 
-    isCorrect,
     selectAnswer, 
     setCorrectAnswer 
   } = useQuiz();
   
-  const answerText = typeof children === 'string' ? children : String(children);
+  // Extract text content from children (handles React nodes)
+  const answerText = getTextContent(children);
   const isSelected = selectedAnswer === answerText;
   const showCorrectAnimation = isSubmitted && isSelected && correct;
   const showIncorrectAnimation = isSubmitted && isSelected && !correct;

@@ -1,7 +1,6 @@
-import { ObjectId } from 'mongodb';
 import { cache } from 'react';
-import { getUsersCollection, type UserDocument } from '../collections';
-import { calculateLevel, checkInternetMilestoneBadge, checkNewBadges, TOTAL_INTERNET_LESSONS } from '@/lib/gamification';
+import { getUsersCollection } from '../collections';
+import { calculateLevel, checkNewBadges, TOTAL_INTERNET_LESSONS } from '@/lib/gamification';
 import { UserGamification } from '@/lib/db/schemas/user';
 
 /**
@@ -220,6 +219,28 @@ export async function recordQuizAnswer(
   );
   
   if (lessonIndex >= 0) {
+    // Check if this question was already answered - prevent duplicates
+    const existingLesson = gamification.completedLessons[lessonIndex];
+    const existingAnswerIndex = existingLesson.quizAnswers?.findIndex(
+      (a: { questionId: string }) => a.questionId === questionId
+    ) ?? -1;
+    
+    if (existingAnswerIndex >= 0) {
+      // Update existing answer instead of adding duplicate
+      await collection.updateOne(
+        { _id: userId },
+        {
+          $set: {
+            [`gamification.completedLessons.${lessonIndex}.quizAnswers.${existingAnswerIndex}`]: quizAnswer,
+            'gamification.lastActivityDate': now,
+            updatedAt: now,
+          },
+        }
+      );
+      // Don't award XP again for re-answering
+      return;
+    }
+    
     // Add quiz answer to existing lesson progress
     await collection.updateOne(
       { _id: userId },

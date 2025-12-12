@@ -18,11 +18,12 @@ import {
   formatTimeSpent,
   SectionProgress, // Added import
 } from '@/lib/hooks/use-lesson-progress';
-import { completeLessonAction, resetLessonAction } from '@/lib/actions/gamification';
+import { completeLessonAction, resetLessonAction, recordQuizAnswerAction } from '@/lib/actions/gamification';
 import { toast } from 'sonner';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
 import { RefreshCw } from 'lucide-react'; // Import Icon
 import { ProgressCheckpoint } from '@/components/learn/mdx-components/progress-checkpoint';
+import { Quiz, Question, Answer } from '@/components/learn/mdx-components/quiz';
 import { saveObjectiveProgress, clearObjectiveProgress } from '@/lib/hooks/use-objective-progress';
 
 import type { UserGamification } from '@/lib/db/schemas/user';
@@ -82,6 +83,20 @@ function LessonContent({
   // Get base MDX components and enhance with progress tracking
   const baseMdxComponents = useMDXComponents({});
   
+  // Handle quiz answer recording
+  const handleQuizAnswerRecorded = useCallback(async (answer: { questionId: string; selectedAnswer: string; isCorrect: boolean }) => {
+    try {
+      await recordQuizAnswerAction(
+        lessonId,
+        answer.questionId,
+        answer.selectedAnswer,
+        answer.isCorrect
+      );
+    } catch (error) {
+      console.error('Failed to record quiz answer:', error);
+    }
+  }, [lessonId]);
+
   const mdxComponents = useMemo(() => ({
     ...baseMdxComponents,
     // Override ProgressCheckpoint to integrate with our progress system
@@ -99,7 +114,20 @@ function LessonContent({
         />
       );
     },
-  }), [baseMdxComponents, completedSectionIds, markSectionComplete]);
+    // Override Quiz to integrate with answer recording
+    Quiz: ({ id, children }: { id: string; children: React.ReactNode }) => {
+      return (
+        <Quiz
+          id={id}
+          onAnswerRecorded={handleQuizAnswerRecorded}
+        >
+          {children}
+        </Quiz>
+      );
+    },
+    Question,
+    Answer,
+  }), [baseMdxComponents, completedSectionIds, markSectionComplete, handleQuizAnswerRecorded]);
 
   // Handle level change - fetch new content via API
   const handleLevelChange = useCallback(async (newLevel: ExperienceLevel) => {
