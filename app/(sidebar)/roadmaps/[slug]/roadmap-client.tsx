@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useTransition } from 'react';
+import { useState, useCallback, useTransition, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RoadmapViewer, RoadmapSidebar, RoadmapTopicDetail } from '@/components/roadmap';
 import { startNode, completeNode, startRoadmap } from '@/lib/actions/roadmap';
@@ -44,6 +44,58 @@ export function RoadmapClient({
   const handleCloseDetail = useCallback(() => {
     setSelectedNodeId(null);
   }, []);
+  
+  // Navigate to next/previous node
+  const handleNavigateNode = useCallback((direction: 'next' | 'prev') => {
+    if (!selectedNodeId) return;
+    
+    const currentIndex = roadmap.nodes.findIndex(n => n.id === selectedNodeId);
+    if (currentIndex === -1) return;
+    
+    const newIndex = direction === 'next' 
+      ? Math.min(currentIndex + 1, roadmap.nodes.length - 1)
+      : Math.max(currentIndex - 1, 0);
+    
+    if (newIndex !== currentIndex) {
+      setSelectedNodeId(roadmap.nodes[newIndex].id);
+    }
+  }, [selectedNodeId, roadmap.nodes]);
+  
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      switch (e.key) {
+        case 'Escape':
+          if (selectedNodeId) {
+            e.preventDefault();
+            handleCloseDetail();
+          }
+          break;
+        case 'ArrowDown':
+        case 'j':
+          if (selectedNodeId) {
+            e.preventDefault();
+            handleNavigateNode('next');
+          }
+          break;
+        case 'ArrowUp':
+        case 'k':
+          if (selectedNodeId) {
+            e.preventDefault();
+            handleNavigateNode('prev');
+          }
+          break;
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNodeId, handleCloseDetail, handleNavigateNode]);
   
   const handleStartLearning = useCallback(async () => {
     if (!selectedNodeId) return;

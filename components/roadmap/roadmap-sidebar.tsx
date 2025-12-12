@@ -1,19 +1,24 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { 
   Map, 
   Clock,
   CheckCircle2,
   Circle,
   ChevronRight,
+  ChevronsUpDown,
+  ChevronDown,
+  ChevronUp,
   Star,
   ArrowLeft,
   Target,
   BookOpen,
   CircleDashed,
   Sparkles,
+  Loader2,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -61,6 +66,8 @@ interface NodeItemProps {
   roadmapSlug: string;
   lessonAvailability?: LessonAvailability;
   objectivesInfo?: ObjectiveLessonInfo[];
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 function LessonAvailabilityBadge({ availability }: { availability: LessonAvailability }) {
@@ -89,6 +96,54 @@ function LessonAvailabilityBadge({ availability }: { availability: LessonAvailab
   return null;
 }
 
+// Objective link with loading state
+interface ObjectiveLinkProps {
+  href: string;
+  objectiveTitle: string;
+  xpRewards?: ObjectiveLessonInfo['xpRewards'];
+}
+
+function ObjectiveLink({ href, objectiveTitle, xpRewards }: ObjectiveLinkProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    startTransition(() => {
+      router.push(href);
+    });
+  };
+  
+  return (
+    <Link
+      href={href}
+      onClick={handleClick}
+      className={cn(
+        "flex items-center gap-2 py-1.5 px-2 rounded-lg text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors group",
+        isPending && "bg-primary/10 text-primary"
+      )}
+    >
+      {isPending ? (
+        <Loader2 className="w-3 h-3 text-primary animate-spin shrink-0" />
+      ) : (
+        <BookOpen className="w-3 h-3 text-green-500 shrink-0" />
+      )}
+      <span className="flex-1 line-clamp-2">{objectiveTitle}</span>
+      {xpRewards && !isPending && (
+        <span className="text-[10px] text-yellow-500 flex items-center gap-0.5">
+          <Sparkles className="w-2.5 h-2.5" />
+          {xpRewards.beginner}
+        </span>
+      )}
+      {isPending ? (
+        <span className="text-[10px] text-primary">Loading...</span>
+      ) : (
+        <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+      )}
+    </Link>
+  );
+}
+
 function NodeItem({ 
   node, 
   status, 
@@ -99,17 +154,26 @@ function NodeItem({
   roadmapSlug,
   lessonAvailability = 'loading',
   objectivesInfo = [],
+  isExpanded: controlledExpanded,
+  onToggleExpand: controlledToggle,
 }: NodeItemProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  // Use controlled state if provided, otherwise use local state
+  const [localExpanded, setLocalExpanded] = useState(false);
+  const isExpanded = controlledExpanded !== undefined ? controlledExpanded : localExpanded;
+  
   const Icon = statusIcons[status];
   const hasObjectives = node.learningObjectives && node.learningObjectives.length > 0;
   
   const handleToggleExpand = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (hasObjectives) {
-      setIsExpanded(prev => !prev);
+      if (controlledToggle) {
+        controlledToggle();
+      } else {
+        setLocalExpanded(prev => !prev);
+      }
     }
-  }, [hasObjectives]);
+  }, [hasObjectives, controlledToggle]);
   
   // Count available lessons
   const availableLessonsCount = objectivesInfo.filter(o => o.hasLesson).length;
@@ -131,7 +195,7 @@ function NodeItem({
         {hasObjectives ? (
           <button
             onClick={handleToggleExpand}
-            className="p-0.5 -ml-1 hover:bg-secondary/50 rounded transition-colors"
+            className="p-0.5 -ml-1 hover:bg-secondary/50 rounded transition-colors cursor-pointer"
           >
             <motion.div
               animate={{ rotate: isExpanded ? 90 : 0 }}
@@ -206,20 +270,11 @@ function NodeItem({
                     transition={{ delay: index * 0.05 }}
                   >
                     {hasLesson ? (
-                      <Link
+                      <ObjectiveLink
                         href={`/roadmaps/${roadmapSlug}/learn/${node.id}/${objectiveSlug}`}
-                        className="flex items-center gap-2 py-1.5 px-2 rounded-lg text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors group"
-                      >
-                        <BookOpen className="w-3 h-3 text-green-500 shrink-0" />
-                        <span className="flex-1 line-clamp-2">{objectiveTitle}</span>
-                        {info.xpRewards && (
-                          <span className="text-[10px] text-yellow-500 flex items-center gap-0.5">
-                            <Sparkles className="w-2.5 h-2.5" />
-                            {info.xpRewards.beginner}
-                          </span>
-                        )}
-                        <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                      </Link>
+                        objectiveTitle={objectiveTitle}
+                        xpRewards={info.xpRewards}
+                      />
                     ) : (
                       <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg text-xs text-muted-foreground/60">
                         <CircleDashed className="w-3 h-3 shrink-0" />
@@ -281,6 +336,38 @@ export function RoadmapSidebar({
   const milestones = roadmap.nodes.filter(n => n.type === 'milestone');
   const topics = roadmap.nodes.filter(n => n.type === 'topic');
   const optional = roadmap.nodes.filter(n => n.type === 'optional');
+  
+  // Track which nodes are expanded (for expand/collapse all)
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  
+  // Check if any milestones have objectives (expandable)
+  const expandableMilestones = milestones.filter(m => m.learningObjectives && m.learningObjectives.length > 0);
+  const hasExpandableItems = expandableMilestones.length > 0;
+  const allExpanded = hasExpandableItems && expandableMilestones.every(m => expandedNodes.has(m.id));
+  const someExpanded = expandableMilestones.some(m => expandedNodes.has(m.id));
+  
+  const handleExpandAll = useCallback(() => {
+    const allExpandableIds = roadmap.nodes
+      .filter(m => m.type === 'milestone' && m.learningObjectives && m.learningObjectives.length > 0)
+      .map(m => m.id);
+    setExpandedNodes(new Set(allExpandableIds));
+  }, [roadmap.nodes]);
+  
+  const handleCollapseAll = useCallback(() => {
+    setExpandedNodes(new Set());
+  }, []);
+  
+  const handleToggleNode = useCallback((nodeId: string) => {
+    setExpandedNodes(prev => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  }, []);
   
   // Calculate overall lesson statistics
   const lessonStats = useMemo(() => {
@@ -399,9 +486,32 @@ export function RoadmapSidebar({
         {/* Milestones */}
         {milestones.length > 0 && (
           <div className="mb-6">
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">
-              Milestones
-            </h3>
+            <div className="flex items-center justify-between mb-3 px-2">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Milestones
+              </h3>
+              {hasExpandableItems && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={allExpanded ? handleCollapseAll : handleExpandAll}
+                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer px-1.5 py-0.5 rounded hover:bg-secondary/50"
+                    title={allExpanded ? 'Collapse all' : 'Expand all'}
+                  >
+                    {allExpanded ? (
+                      <>
+                        <ChevronUp className="w-3 h-3" />
+                        <span className="hidden sm:inline">Collapse</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-3 h-3" />
+                        <span className="hidden sm:inline">Expand</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
             <ul className="space-y-1">
               {milestones.map((node) => (
                 <NodeItem
@@ -415,6 +525,8 @@ export function RoadmapSidebar({
                   roadmapSlug={roadmap.slug}
                   lessonAvailability={getLessonAvailability(node.id)}
                   objectivesInfo={nodeObjectivesInfo[node.id] || []}
+                  isExpanded={expandedNodes.has(node.id)}
+                  onToggleExpand={() => handleToggleNode(node.id)}
                 />
               ))}
             </ul>

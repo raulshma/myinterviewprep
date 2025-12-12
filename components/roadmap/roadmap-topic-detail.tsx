@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   Clock, 
   Target, 
@@ -15,6 +16,11 @@ import {
   Sparkles,
   Lock,
   CircleDashed,
+  Loader2,
+  X,
+  ArrowUp,
+  ArrowDown,
+  Keyboard,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -61,6 +67,105 @@ const resourceIcons: Record<string, typeof BookOpen> = {
   practice: Target,
   book: BookOpen,
 };
+
+// Objective link with loading state for topic detail
+interface DetailObjectiveLinkProps {
+  href: string;
+  objectiveTitle: string;
+  isObjectiveComplete: boolean;
+  xpRewards?: ObjectiveLessonInfo['xpRewards'];
+  estimatedMinutes?: ObjectiveLessonInfo['estimatedMinutes'];
+  xpEarned?: number;
+}
+
+function DetailObjectiveLink({ 
+  href, 
+  objectiveTitle, 
+  isObjectiveComplete,
+  xpRewards,
+  estimatedMinutes,
+  xpEarned,
+}: DetailObjectiveLinkProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    startTransition(() => {
+      router.push(href);
+    });
+  };
+  
+  return (
+    <Link
+      href={href}
+      onClick={handleClick}
+      className={cn(
+        "block p-3 transition-opacity",
+        isPending && "opacity-75"
+      )}
+    >
+      <div className="flex items-start gap-3">
+        {/* Status icon */}
+        <div className={cn(
+          "p-1.5 rounded-lg shrink-0 mt-0.5",
+          isPending
+            ? "bg-primary/10"
+            : isObjectiveComplete 
+              ? "bg-green-500/10" 
+              : "bg-primary/10"
+        )}>
+          {isPending ? (
+            <Loader2 className="w-4 h-4 text-primary animate-spin" />
+          ) : isObjectiveComplete ? (
+            <CheckCircle2 className="w-4 h-4 text-green-500" />
+          ) : (
+            <Play className="w-4 h-4 text-primary" />
+          )}
+        </div>
+        
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              "text-sm font-medium",
+              isObjectiveComplete ? "text-muted-foreground" : "text-foreground"
+            )}>
+              {objectiveTitle}
+            </span>
+            {isPending ? (
+              <span className="text-xs text-primary">Loading...</span>
+            ) : (
+              <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+            )}
+          </div>
+          
+          {/* XP and time info */}
+          <div className="flex items-center gap-3 mt-1">
+            {xpRewards && (
+              <div className="flex items-center gap-1 text-xs text-yellow-500">
+                <Sparkles className="w-3 h-3" />
+                <span>{xpRewards.beginner}-{xpRewards.advanced} XP</span>
+              </div>
+            )}
+            {estimatedMinutes && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="w-3 h-3" />
+                <span>{estimatedMinutes.beginner}-{estimatedMinutes.advanced} min</span>
+              </div>
+            )}
+            {isObjectiveComplete && xpEarned && (
+              <Badge variant="outline" className="text-xs text-green-500 border-green-500/30">
+                +{xpEarned} XP earned
+              </Badge>
+            )}
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 
 export function RoadmapTopicDetail({
   node,
@@ -169,6 +274,15 @@ export function RoadmapTopicDetail({
               <CheckCircle2 className="w-6 h-6 text-green-500" />
             </div>
           )}
+          
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-secondary/50 transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+            title="Close (Esc)"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
         
         {/* Meta info */}
@@ -253,60 +367,14 @@ export function RoadmapTopicDetail({
                       )}
                     >
                       {hasLesson ? (
-                        <Link
+                        <DetailObjectiveLink
                           href={`/roadmaps/${roadmapSlug}/learn/${node.id}/${slug}`}
-                          className="block p-3"
-                        >
-                          <div className="flex items-start gap-3">
-                            {/* Status icon */}
-                            <div className={cn(
-                              "p-1.5 rounded-lg shrink-0 mt-0.5",
-                              isObjectiveComplete 
-                                ? "bg-green-500/10" 
-                                : "bg-primary/10"
-                            )}>
-                              {isObjectiveComplete ? (
-                                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                              ) : (
-                                <Play className="w-4 h-4 text-primary" />
-                              )}
-                            </div>
-                            
-                            {/* Content */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className={cn(
-                                  "text-sm font-medium",
-                                  isObjectiveComplete ? "text-muted-foreground" : "text-foreground"
-                                )}>
-                                  {objectiveTitle}
-                                </span>
-                                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                              </div>
-                              
-                              {/* XP and time info */}
-                              <div className="flex items-center gap-3 mt-1">
-                                {info.xpRewards && (
-                                  <div className="flex items-center gap-1 text-xs text-yellow-500">
-                                    <Sparkles className="w-3 h-3" />
-                                    <span>{info.xpRewards.beginner}-{info.xpRewards.advanced} XP</span>
-                                  </div>
-                                )}
-                                {info.estimatedMinutes && (
-                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    <Clock className="w-3 h-3" />
-                                    <span>{info.estimatedMinutes.beginner}-{info.estimatedMinutes.advanced} min</span>
-                                  </div>
-                                )}
-                                {isObjectiveComplete && progress?.xpEarned && (
-                                  <Badge variant="outline" className="text-xs text-green-500 border-green-500/30">
-                                    +{progress.xpEarned} XP earned
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </Link>
+                          objectiveTitle={objectiveTitle}
+                          isObjectiveComplete={isObjectiveComplete}
+                          xpRewards={info.xpRewards}
+                          estimatedMinutes={info.estimatedMinutes}
+                          xpEarned={progress?.xpEarned}
+                        />
                       ) : (
                         <div className="p-3 flex items-start gap-3">
                           <div className="p-1.5 rounded-lg bg-muted/50 shrink-0 mt-0.5">
@@ -429,6 +497,19 @@ export function RoadmapTopicDetail({
               <span className="ml-2">Review</span>
             </Button>
           )}
+        </div>
+        
+        {/* Keyboard shortcuts hint */}
+        <div className="flex items-center justify-center gap-4 mt-3 text-[10px] text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 rounded bg-secondary text-foreground font-mono">Esc</kbd>
+            <span>Close</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <kbd className="px-1 py-0.5 rounded bg-secondary text-foreground font-mono">↑</kbd>
+            <kbd className="px-1 py-0.5 rounded bg-secondary text-foreground font-mono">↓</kbd>
+            <span>Navigate</span>
+          </div>
         </div>
       </div>
     </motion.div>

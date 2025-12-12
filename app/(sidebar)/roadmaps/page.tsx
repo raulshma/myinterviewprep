@@ -1,12 +1,9 @@
 
-import { Map, Clock, TrendingUp, ArrowRight } from 'lucide-react';
-import Link from 'next/link';
+import { Map } from 'lucide-react';
 import { getRoadmaps } from '@/lib/actions/roadmap';
 import { checkAndSeedRoadmaps } from '@/lib/actions/seed-roadmaps';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
 import { RoadmapsPageClient } from '@/components/roadmap/roadmaps-page-client';
+import { RoadmapCard } from '@/components/roadmap/roadmap-card';
 
 async function RoadmapsPageContent() {
   // Auto-seed roadmaps if none exist
@@ -34,65 +31,12 @@ async function RoadmapsPageContent() {
               const isStarted = !!progress;
               
               return (
-                <Link
+                <RoadmapCard
                   key={roadmap._id}
-                  href={`/roadmaps/${roadmap.slug}`}
-                  className="group block"
-                >
-                  <article className="h-full p-6 rounded-2xl border border-border bg-card hover:border-primary/30 hover:shadow-lg transition-all duration-200">
-                    {/* Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="p-3 rounded-xl bg-primary/10 text-primary">
-                        <Map className="w-6 h-6" />
-                      </div>
-                      <Badge variant="secondary">
-                        {roadmap.category}
-                      </Badge>
-                    </div>
-                    
-                    {/* Title */}
-                    <h3 className="text-xl font-bold text-foreground mb-2 group-hover:text-primary transition-colors">
-                      {roadmap.title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                      {roadmap.description}
-                    </p>
-                    
-                    {/* Stats */}
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                      <div className="flex items-center gap-1.5">
-                        <TrendingUp className="w-4 h-4" />
-                        <span>{roadmap.nodes.length} topics</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Clock className="w-4 h-4" />
-                        <span>{roadmap.estimatedHours}h</span>
-                      </div>
-                    </div>
-                    
-                    {/* Progress */}
-                    {isStarted ? (
-                      <div className="mb-4">
-                        <div className="flex justify-between text-xs text-muted-foreground mb-1.5">
-                          <span>Progress</span>
-                          <span className="font-medium text-primary">{progressPercent}%</span>
-                        </div>
-                        <Progress value={progressPercent} className="h-2" />
-                      </div>
-                    ) : (
-                      <div className="h-[30px] mb-4" />
-                    )}
-                    
-                    {/* Action */}
-                    <Button 
-                      variant={isStarted ? 'default' : 'outline'} 
-                      className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                    >
-                      {isStarted ? 'Continue Learning' : 'Start Learning'}
-                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </article>
-                </Link>
+                  roadmap={roadmap}
+                  progressPercent={progressPercent}
+                  isStarted={isStarted}
+                />
               );
             })}
           </div>
