@@ -15,3 +15,6 @@ export {
 
 // Re-export MDX components
 export * from './mdx-components';
+
+// Re-export Zen Mode components
+export * from './zen-mode';

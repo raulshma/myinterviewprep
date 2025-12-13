@@ -271,6 +271,61 @@ export interface NextLessonSuggestion {
  * Get next lesson suggestion based on prerequisites
  * Suggests lessons where all prerequisites are completed
  */
+export interface AdjacentLesson {
+  lessonPath: string;
+  title: string;
+  milestone: string;
+}
+
+export interface AdjacentLessons {
+  previous: AdjacentLesson | null;
+  next: AdjacentLesson | null;
+}
+
+/**
+ * Get adjacent lessons (previous and next) for zen mode navigation
+ */
+export async function getAdjacentLessons(
+  currentLessonPath: string
+): Promise<AdjacentLessons> {
+  try {
+    const currentMetadata = await getLessonMetadata(currentLessonPath);
+    if (!currentMetadata) {
+      return { previous: null, next: null };
+    }
+
+    const [currentMilestone] = currentLessonPath.split('/');
+    const milestoneLessons = await getLessonsForMilestone(currentMilestone);
+    
+    // Sort by order
+    const sortedLessons = milestoneLessons.sort((a, b) => a.order - b.order);
+    const currentIndex = sortedLessons.findIndex(l => l.path === currentLessonPath);
+    
+    if (currentIndex === -1) {
+      return { previous: null, next: null };
+    }
+
+    const previousLesson = currentIndex > 0 ? sortedLessons[currentIndex - 1] : null;
+    const nextLesson = currentIndex < sortedLessons.length - 1 ? sortedLessons[currentIndex + 1] : null;
+
+    return {
+      previous: previousLesson ? {
+        lessonPath: previousLesson.path,
+        title: previousLesson.title,
+        milestone: currentMilestone,
+      } : null,
+      next: nextLesson ? {
+        lessonPath: nextLesson.path,
+        title: nextLesson.title,
+        milestone: currentMilestone,
+      } : null,
+    };
+  } catch (error) {
+    console.error('Failed to get adjacent lessons:', error);
+    return { previous: null, next: null };
+  }
+}
+
 export async function getNextLessonSuggestion(
   currentLessonPath: string,
   currentLevel: ExperienceLevel,

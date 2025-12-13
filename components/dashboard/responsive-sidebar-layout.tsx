@@ -33,6 +33,7 @@ function ResponsiveSidebarLayoutContent({
 
       {/* Desktop sidebar - hidden on mobile via CSS */}
       <div
+        data-desktop-sidebar
         className={cn(
           "hidden md:block flex-shrink-0 relative z-20 transition-all duration-300",
           isCollapsed ? "w-20" : "w-72"

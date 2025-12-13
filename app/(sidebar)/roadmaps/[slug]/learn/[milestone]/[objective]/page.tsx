@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
-import { getLessonMetadata, getLessonContent, getNextLessonSuggestion } from '@/lib/actions/lessons';
+import { getLessonMetadata, getLessonContent, getNextLessonSuggestion, getAdjacentLessons } from '@/lib/actions/lessons';
 import { LessonPageClient } from './lesson-page-client';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
 import { getUserGamificationAction } from '@/lib/actions/gamification';
@@ -81,6 +81,9 @@ export default async function LearnObjectivePage({
     userGamification?.completedLessons || []
   );
 
+  // Get adjacent lessons for zen mode navigation
+  const adjacentLessons = await getAdjacentLessons(lessonPath);
+
   return (
     <div className="container py-8">
       <LessonPageClient
@@ -97,6 +100,7 @@ export default async function LearnObjectivePage({
         isLessonCompleted={isLessonCompleted}
         initialGamification={userGamification}
         nextLessonSuggestion={nextLessonSuggestion}
+        adjacentLessons={adjacentLessons}
       />
     </div>
   );

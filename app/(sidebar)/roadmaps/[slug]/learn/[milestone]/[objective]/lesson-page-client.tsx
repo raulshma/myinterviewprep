@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, BookOpen, Loader2, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, BookOpen, Loader2, CheckCircle2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { MDXRemote, MDXRemoteSerializeResult } from 'next-mdx-remote';
 import { Button } from '@/components/ui/button';
@@ -16,20 +17,20 @@ import {
   useProgress,
   getTotalTimeSpent,
   formatTimeSpent,
-  SectionProgress, // Added import
+  SectionProgress,
 } from '@/lib/hooks/use-lesson-progress';
 import { completeLessonAction, resetLessonAction, recordQuizAnswerAction } from '@/lib/actions/gamification';
 import { toast } from 'sonner';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
-import { RefreshCw } from 'lucide-react'; // Import Icon
 import { ProgressCheckpoint } from '@/components/learn/mdx-components/progress-checkpoint';
 import { Quiz, Question, Answer } from '@/components/learn/mdx-components/quiz';
 import { saveObjectiveProgress, clearObjectiveProgress } from '@/lib/hooks/use-objective-progress';
 
 import type { UserGamification } from '@/lib/db/schemas/user';
-import type { NextLessonSuggestion as NextLessonSuggestionType } from '@/lib/actions/lessons';
+import type { NextLessonSuggestion as NextLessonSuggestionType, AdjacentLessons } from '@/lib/actions/lessons';
 import { NextLessonSuggestion } from '@/components/learn/next-lesson-suggestion';
 import { SectionSidebar } from '@/components/learn/section-sidebar';
+import { ZenModeProvider, ZenModeOverlay, ZenModeToggle, useZenMode } from '@/components/learn/zen-mode';
 
 interface LessonPageClientProps {
   lessonId: string;
@@ -45,6 +46,7 @@ interface LessonPageClientProps {
   isLessonCompleted?: boolean;
   initialGamification?: UserGamification | null;
   nextLessonSuggestion?: NextLessonSuggestionType | null;
+  adjacentLessons?: AdjacentLessons | null;
 }
 
 // Inner component that uses the progress context
@@ -62,7 +64,24 @@ function LessonContent({
   isLessonCompleted = false,
   initialGamification = null,
   nextLessonSuggestion = null,
+  adjacentLessons = null,
 }: LessonPageClientProps) {
+  const searchParams = useSearchParams();
+  const { setAdjacentLessons, enterZenMode, isZenMode } = useZenMode();
+
+  // Set adjacent lessons for zen mode navigation
+  useEffect(() => {
+    if (adjacentLessons) {
+      setAdjacentLessons(adjacentLessons.previous, adjacentLessons.next);
+    }
+  }, [adjacentLessons, setAdjacentLessons]);
+
+  // Auto-enter zen mode if URL has zen=true
+  useEffect(() => {
+    if (searchParams.get('zen') === 'true' && !isZenMode) {
+      enterZenMode();
+    }
+  }, [searchParams, enterZenMode, isZenMode]);
   const [level, setLevel] = useState<ExperienceLevel>(initialLevel);
   const [mdxSource, setMdxSource] = useState<MDXRemoteSerializeResult>(initialMdxSource);
   const [isLoading, setIsLoading] = useState(false);
@@ -289,8 +308,11 @@ function LessonContent({
                   </h1>
                 </div>
 
-                {/* XP Display */}
-                <XPDisplay totalXp={totalXp} currentStreak={currentStreak} compact />
+                {/* Actions */}
+                <div className="flex items-center gap-3">
+                  <ZenModeToggle />
+                  <XPDisplay totalXp={totalXp} currentStreak={currentStreak} compact />
+                </div>
               </div>
             </div>
 
@@ -417,6 +439,55 @@ function LessonContent({
   );
 }
 
+// Zen mode content wrapper that renders the overlay
+function ZenModeContentWrapper({ 
+  children, 
+  lessonTitle, 
+  milestoneTitle, 
+  roadmapSlug,
+  mdxContent,
+}: { 
+  children: ReactNode;
+  lessonTitle: string;
+  milestoneTitle: string;
+  roadmapSlug: string;
+  mdxContent: MDXRemoteSerializeResult;
+}) {
+  const { isZenMode } = useZenMode();
+  const baseMdxComponents = useMDXComponents({});
+
+  return (
+    <>
+      {children}
+      {isZenMode && (
+        <ZenModeOverlay
+          lessonTitle={lessonTitle}
+          milestoneTitle={milestoneTitle}
+          roadmapSlug={roadmapSlug}
+        >
+          <article className="prose prose-lg dark:prose-invert max-w-none">
+            <MDXRemote {...mdxContent} components={baseMdxComponents} />
+          </article>
+        </ZenModeOverlay>
+      )}
+    </>
+  );
+}
+
+// Inner content that needs zen mode context
+function LessonContentWithZen(props: LessonPageClientProps) {
+  return (
+    <ZenModeContentWrapper
+      lessonTitle={props.lessonTitle}
+      milestoneTitle={props.milestoneTitle}
+      roadmapSlug={props.roadmapSlug}
+      mdxContent={props.initialMdxSource}
+    >
+      <LessonContent {...props} />
+    </ZenModeContentWrapper>
+  );
+}
+
 // Wrapper component that provides the progress context
 export function LessonPageClient(props: LessonPageClientProps) {
   const handleSectionComplete = useCallback((sectionId: string) => {
@@ -444,20 +515,22 @@ export function LessonPageClient(props: LessonPageClientProps) {
     ?? [];
 
   return (
-    <ProgressProvider
-      lessonId={props.lessonId}
-      level={props.initialLevel}
-      sections={props.sections}
-      onSectionComplete={handleSectionComplete}
-      onLessonComplete={handleLessonComplete}
-      persistToStorage={true}
-      initialState={{
-        completedSections: initialCompletedSections,
-        timeSpent: completedLessonData?.timeSpentSeconds ?? props.initialTimeSpent ?? 0,
-        isCompleted: isInitialLevelCompleted
-      }}
-    >
-      <LessonContent {...props} />
-    </ProgressProvider>
+    <ZenModeProvider>
+      <ProgressProvider
+        lessonId={props.lessonId}
+        level={props.initialLevel}
+        sections={props.sections}
+        onSectionComplete={handleSectionComplete}
+        onLessonComplete={handleLessonComplete}
+        persistToStorage={true}
+        initialState={{
+          completedSections: initialCompletedSections,
+          timeSpent: completedLessonData?.timeSpentSeconds ?? props.initialTimeSpent ?? 0,
+          isCompleted: isInitialLevelCompleted
+        }}
+      >
+        <LessonContentWithZen {...props} />
+      </ProgressProvider>
+    </ZenModeProvider>
   );
 }

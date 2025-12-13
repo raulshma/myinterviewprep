@@ -757,3 +757,13 @@ html.cyberpunk [data-rehype-pretty-code-figure] pre,
 .animate-marquee:hover {
   animation-play-state: paused;
 }
+
+
+/* Zen Mode - Hide sidebar and other UI elements for distraction-free reading */
+body.zen-mode-active [data-desktop-sidebar] {
+  display: none !important;
+}
+
+body.zen-mode-active [data-mobile-header] {
+  display: none !important;
+}
