@@ -1,35 +1,35 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { FileText, Brain, Sparkles, Target } from "lucide-react";
+import { Map, BookOpen, MessageSquare, Trophy } from "lucide-react";
 
 const steps = [
   {
-    icon: FileText,
+    icon: Map,
     step: "01",
-    title: "Share Details",
-    description: "Paste your job description and resume.",
+    title: "Pick a goal",
+    description: "Choose a roadmap or create a plan for what you want to learn.",
     color: "bg-blue-500/10 text-blue-500",
   },
   {
-    icon: Brain,
+    icon: BookOpen,
     step: "02",
-    title: "AI Analysis",
-    description: "We create a personalized prep plan.",
+    title: "Learn",
+    description: "Follow structured lessons with interactive demos and exercises.",
     color: "bg-purple-500/10 text-purple-500",
   },
   {
-    icon: Sparkles,
+    icon: MessageSquare,
     step: "03",
-    title: "Practice",
-    description: "Study with AI-generated content.",
+    title: "Ask AI",
+    description: "Use AI chat to get explanations, examples, and personalized help.",
     color: "bg-orange-500/10 text-orange-500",
   },
   {
-    icon: Target,
+    icon: Trophy,
     step: "04",
-    title: "Succeed",
-    description: "Walk into your interview confident.",
+    title: "Practice + track",
+    description: "Run mock interviews and drills, and track your progress over time.",
     color: "bg-green-500/10 text-green-500",
   },
 ];
@@ -48,7 +48,7 @@ export function HowItWorks() {
             How it works.
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            From job posting to interview success in four simple steps.
+            From goals to progress in four simple steps.
           </p>
         </motion.div>
 

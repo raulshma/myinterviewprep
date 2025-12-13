@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 const testimonials = [
   {
     quote:
-      "The analogy engine is incredible. It explained system design concepts in a way that finally clicked for me.",
+      "The roadmaps made it obvious what to learn next. I finally stopped guessing and started progressing.",
     author: "Sarah K.",
     role: "Senior Frontend Engineer",
     company: "Hired at FAANG",
@@ -15,7 +15,7 @@ const testimonials = [
   },
   {
     quote:
-      "I prepped for 3 days using MyLearningPrep and got an offer. The personalized content was exactly what I needed.",
+      "I used the lessons + AI chat to close gaps fast. The explanations were clear and the practice felt realistic.",
     author: "Marcus T.",
     role: "Full Stack Developer",
     company: "Hired at Series B Startup",
@@ -23,7 +23,7 @@ const testimonials = [
   },
   {
     quote:
-      "The rapid-fire questions helped me practice thinking on my feet. Game changer for behavioral rounds.",
+      "The practice modes helped me build confidence quickly. Rapid-fire drills are a game changer.",
     author: "Priya M.",
     role: "Backend Engineer",
     company: "Hired at Fintech",
@@ -39,7 +39,7 @@ const testimonials = [
   },
   {
     quote:
-      "The AI coaching feature is like having a senior engineer mentor you 24/7. Highly recommended.",
+      "The AI chat feels like a senior engineer on demand — perfect for getting unstuck and going deeper.",
     author: "Elena R.",
     role: "Product Engineer",
     company: "Hired at Unicorn",
@@ -83,7 +83,7 @@ export function Testimonials() {
           Loved by engineers
         </h2>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Join thousands of developers who&apos;ve landed their dream jobs.
+          Join thousands of developers leveling up with roadmaps, lessons, and practice.
         </p>
       </div>
 

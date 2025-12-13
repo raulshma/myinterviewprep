@@ -2,46 +2,46 @@
 
 import { motion } from "framer-motion";
 import {
-  Brain,
-  Clock,
+  Map,
   MessageSquare,
-  Layers,
+  BookOpen,
+  Target,
   ArrowUpRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const features = [
   {
-    icon: Brain,
-    title: "Analogy Engine",
-    description: "Complex concepts explained through familiar analogies.",
+    icon: Map,
+    title: "Interactive Roadmaps",
+    description: "Visual, guided paths that turn big goals into daily progress.",
     className: "md:col-span-2 md:row-span-2",
     gradient: "from-purple-500/20 via-blue-500/5 to-transparent",
     iconColor: "text-purple-500",
     iconBg: "bg-purple-500/10",
   },
   {
-    icon: Clock,
-    title: "Smart Scheduling",
-    description: "Timeline-based prep that adapts to your interview date.",
+    icon: MessageSquare,
+    title: "AI Chat Assistant",
+    description: "Ask anything. Get explanations, examples, and next steps on demand.",
     className: "md:col-span-1 md:row-span-1",
     gradient: "from-green-500/20 via-emerald-500/5 to-transparent",
     iconColor: "text-green-500",
     iconBg: "bg-green-500/10",
   },
   {
-    icon: MessageSquare,
-    title: "AI Coaching",
-    description: "Chat with AI to drill deeper into any topic instantly.",
+    icon: BookOpen,
+    title: "Lessons + Demos",
+    description: "Learn with structured content and interactive exercises that stick.",
     className: "md:col-span-1 md:row-span-1",
     gradient: "from-orange-500/20 via-red-500/5 to-transparent",
     iconColor: "text-orange-500",
     iconBg: "bg-orange-500/10",
   },
   {
-    icon: Layers,
-    title: "Multi-Mode Learning",
-    description: "Rapid Fire, MCQ, and Deep Dive modes.",
+    icon: Target,
+    title: "Practice Modes",
+    description: "Mock interviews, rapid-fire drills, and deep dives to build confidence.",
     className: "md:col-span-2 md:row-span-1",
     gradient: "from-blue-500/20 via-cyan-500/5 to-transparent",
     iconColor: "text-blue-500",
@@ -58,8 +58,7 @@ export function FeaturesGrid() {
             Everything you need.
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            A comprehensive system designed to help you understand, not just
-            memorize.
+            A complete platform for learning, planning, and practice — not just interview drills.
           </p>
         </div>
 

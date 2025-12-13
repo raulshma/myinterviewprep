@@ -17,10 +17,10 @@ export function Hero() {
   }, []);
 
   const analysisSteps = [
-    { text: "Parsing Resume...", color: "text-blue-500" },
-    { text: "Identifying Skills...", color: "text-purple-500" },
-    { text: "Detecting Gaps...", color: "text-orange-500" },
-    { text: "Generating Plan...", color: "text-green-500" },
+    { text: "Understanding Goals...", color: "text-blue-500" },
+    { text: "Mapping Your Roadmap...", color: "text-purple-500" },
+    { text: "Recommending Lessons...", color: "text-orange-500" },
+    { text: "Generating Practice...", color: "text-green-500" },
   ];
 
   return (
@@ -36,12 +36,12 @@ export function Hero() {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/50 border border-border/50 text-sm text-muted-foreground mb-8 backdrop-blur-sm">
             <Sparkles className="w-3 h-3" />
-            <span>AI-Powered Interview Prep</span>
+            <span>AI-Powered Learning, Roadmaps, and Practice</span>
           </div>
           <h1 className="text-5xl sm:text-7xl md:text-8xl font-semibold tracking-tight text-foreground mb-8 leading-[1.05]">
-            Master your <br className="hidden md:block" />
+            Master the <br className="hidden md:block" />
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70">
-              technical interview.
+              skills for your next role.
             </span>
           </h1>
         </motion.div>
@@ -52,9 +52,9 @@ export function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
-          Personalized preparation tailored to your role.
+          Roadmaps, lessons, and AI chat tailored to you.
           <br className="hidden sm:block" />
-          AI-driven insights that stick.
+          Practice with mock interviews when you&apos;re ready.
         </motion.p>
 
         <motion.div
@@ -68,7 +68,7 @@ export function Hero() {
               size="lg"
               className="rounded-full px-8 h-14 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 transition-all hover:scale-105 shadow-xl shadow-primary/5"
             >
-              Start Preparing
+              Get Started Free
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </Link>
@@ -120,7 +120,7 @@ export function Hero() {
                         <Scan className="w-5 h-5 text-primary" />
                       </div>
                       <div className="text-left">
-                        <div className="font-semibold text-sm">Profile Analysis</div>
+                          <div className="font-semibold text-sm">Personalized Plan</div>
                         <div className="text-xs text-muted-foreground">AI Engine v2.0</div>
                       </div>
                     </div>

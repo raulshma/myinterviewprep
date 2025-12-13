@@ -9,32 +9,32 @@ import Link from "next/link";
 
 const communityPreps = [
   {
-    role: "Senior Frontend Engineer",
-    company: "Tech Startup",
+    role: "Frontend Roadmap",
+    company: "React • TypeScript • Performance",
     topics: ["React", "System Design", "TypeScript"],
     views: 1240,
     daysAgo: 2,
     color: "bg-blue-500/10 text-blue-500",
   },
   {
-    role: "Backend Developer",
-    company: "Enterprise",
+    role: "Backend Foundations",
+    company: "Node.js • Databases • APIs",
     topics: ["Node.js", "PostgreSQL", "Microservices"],
     views: 890,
     daysAgo: 5,
     color: "bg-green-500/10 text-green-500",
   },
   {
-    role: "Full Stack Engineer",
-    company: "Fintech",
+    role: "Full Stack Path",
+    company: "Next.js • GraphQL • Cloud",
     topics: ["Next.js", "GraphQL", "AWS"],
     views: 2100,
     daysAgo: 1,
     color: "bg-purple-500/10 text-purple-500",
   },
   {
-    role: "DevOps Engineer",
-    company: "SaaS Company",
+    role: "DevOps Roadmap",
+    company: "Infrastructure • Delivery • Observability",
     topics: ["Kubernetes", "CI/CD", "Terraform"],
     views: 650,
     daysAgo: 7,
@@ -54,11 +54,10 @@ export function CommunityFeed() {
         >
           <div>
             <h2 className="text-3xl md:text-5xl font-semibold tracking-tight mb-6">
-              Community Preps.
+              Community Paths.
             </h2>
             <p className="text-xl text-muted-foreground max-w-xl">
-              See what others are preparing for. Clone and customize for your
-              own interviews.
+              See what others are learning right now. Clone a roadmap and make it yours.
             </p>
           </div>
           <Link href="/community">

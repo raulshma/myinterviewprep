@@ -33,7 +33,7 @@ export function CTASection() {
             >
               <Sparkles className="w-4 h-4 text-primary" />
               <span className="text-sm font-medium text-background/90">
-                Join the top 1% of engineers
+                Learn like the top 1% of engineers
               </span>
             </motion.div>
 
@@ -44,7 +44,7 @@ export function CTASection() {
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
             >
-              Ready to ace your next interview
+              Ready to level up your skills
             </motion.h2>
 
             <motion.p
@@ -54,8 +54,7 @@ export function CTASection() {
               viewport={{ once: true }}
               transition={{ delay: 0.4 }}
             >
-              Join thousands of engineers who&apos;ve transformed their career
-              trajectory with our comprehensive prep platform.
+              Build real competency with roadmaps, lessons, AI chat, and practice.
             </motion.p>
 
             <motion.div
@@ -70,7 +69,7 @@ export function CTASection() {
                   size="lg"
                   className="w-full sm:w-auto rounded-full h-16 px-10 text-lg font-semibold bg-background text-foreground hover:bg-background/90 hover:scale-105 transition-all shadow-xl shadow-background/10"
                 >
-                  Start Preparing Free
+                  Start Learning Free
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowRight, Layers, Code2, Users, LayoutTemplate } from "lucide-react";
+import { ArrowRight, Route, Braces, Network, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -9,47 +9,47 @@ import { cn } from "@/lib/utils";
 const items = [
     {
         id: 1,
-        title: "System Design",
-        subtitle: "Architect Scalable Systems",
+        title: "Frontend Roadmap",
+        subtitle: "Build Modern UIs",
         description:
-            "Master the art of designing large-scale distributed systems. From load balancers to database sharding.",
+            "A guided path through React, TypeScript, performance, accessibility, and real-world patterns.",
         color: "text-blue-500",
         bg: "bg-blue-500/10",
         gradient: "from-blue-600 to-blue-900",
-        icon: Layers,
+        icon: Route,
     },
     {
         id: 2,
-        title: "Data Structures",
-        subtitle: "Optimize Your Code",
+        title: "JavaScript Foundations",
+        subtitle: "Write Confident Code",
         description:
-            "Deep dive into trees, graphs, and dynamic programming. Write efficient, production-ready code.",
+            "Go from fundamentals to advanced concepts with explanations, examples, and practice.",
         color: "text-green-500",
         bg: "bg-green-500/10",
         gradient: "from-emerald-600 to-emerald-900",
-        icon: Code2,
+        icon: Braces,
     },
     {
         id: 3,
-        title: "Behavioral",
-        subtitle: "Lead with Confidence",
+        title: "System Design",
+        subtitle: "Architect Scalable Systems",
         description:
-            "Learn to articulate your impact and leadership style using the STAR method.",
+            "Learn core concepts and patterns with a roadmap you can actually follow week to week.",
         color: "text-purple-500",
         bg: "bg-purple-500/10",
         gradient: "from-purple-600 to-purple-900",
-        icon: Users,
+        icon: Network,
     },
     {
         id: 4,
-        title: "Frontend Mastery",
-        subtitle: "Build Modern UIs",
+        title: "AI Chat",
+        subtitle: "Get Unblocked Fast",
         description:
-            "Expert-level React, performance optimization, and accessibility patterns.",
+            "Ask questions in context: get explanations, refactors, and study help tailored to your progress.",
         color: "text-orange-500",
         bg: "bg-orange-500/10",
         gradient: "from-orange-600 to-orange-900",
-        icon: LayoutTemplate,
+        icon: MessageSquare,
     },
 ];
 
@@ -87,11 +87,10 @@ export function ShowcaseScroll() {
             <div className="max-w-7xl mx-auto px-6 mb-16 flex items-end justify-between">
                 <div>
                     <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-foreground">
-                        Comprehensive Modules.
+                        Roadmaps that actually guide you.
                     </h2>
                     <p className="text-xl text-muted-foreground max-w-xl leading-relaxed">
-                        Everything you need to crack the interview, broken down into
-                        digestible paths.
+                        Learning paths, lessons, and practice tools built to help you make consistent progress.
                     </p>
                 </div>
             </div>

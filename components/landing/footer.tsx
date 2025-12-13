@@ -10,8 +10,7 @@ export function Footer() {
           <div className="col-span-2 md:col-span-4">
             <Logo className="mb-6 scale-90 origin-left" />
             <p className="text-sm text-muted-foreground max-w-xs leading-relaxed mb-6">
-              Master technical interviews with AI-driven insights and
-              personalized learning paths.
+              Learn faster with roadmaps, lessons, and AI help — plus practice modes when you want interview-ready confidence.
             </p>
             <div className="flex gap-4">
               <a
@@ -54,48 +53,10 @@ export function Footer() {
                   Pricing
                 </Link>
               </li>
-              <li>
-                <Link
-                  href="/changelog"
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Changelog
-                </Link>
-              </li>
             </ul>
           </div>
 
-          <div className="col-span-1 md:col-span-2">
-            <h4 className="font-medium text-sm text-foreground mb-6">
-              Resources
-            </h4>
-            <ul className="space-y-4">
-              <li>
-                <Link
-                  href="/blog"
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/community"
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Community
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/help"
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Help Center
-                </Link>
-              </li>
-            </ul>
-          </div>
+
 
           <div className="col-span-1 md:col-span-2">
             <h4 className="font-medium text-sm text-foreground mb-6">Legal</h4>
