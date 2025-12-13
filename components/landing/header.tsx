@@ -13,10 +13,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ViewTransitionLink } from "@/components/transitions";
-import { LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, X, Github } from "lucide-react";
 import { useTransition, useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { motion, AnimatePresence } from "framer-motion";
+import { APP_STAGE } from "@/lib/constants/version";
 
 export function Header() {
   const { user, isSignedIn, isLoaded } = useUser();
@@ -119,9 +120,14 @@ export function Header() {
       }`}
     >
       <div className="max-w-[1200px] mx-auto px-6 h-20 flex items-center justify-between">
-        <ViewTransitionLink href="/" viewTransitionName="logo">
-          <Logo />
-        </ViewTransitionLink>
+        <div className="flex items-center gap-3">
+          <ViewTransitionLink href="/" viewTransitionName="logo">
+            <Logo />
+          </ViewTransitionLink>
+          <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-full">
+            {APP_STAGE}
+          </span>
+        </div>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-10">
@@ -144,6 +150,15 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-4">
+          <a
+            href="https://github.com/raulshma/mylearningprep"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="View on GitHub"
+          >
+            <Github className="h-5 w-5" />
+          </a>
           <ThemeToggle />
           <AnimatePresence mode="wait">
             {!isLoaded ? (

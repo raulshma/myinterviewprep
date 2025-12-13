@@ -9,6 +9,7 @@ import { Sparkles, ChevronLeft, ChevronRight } from "lucide-react";
 import { useSidebar } from "./sidebar-context";
 import { cn } from "@/lib/utils";
 import type { SidebarData } from "./sidebar";
+import { APP_VERSION, APP_STAGE } from "@/lib/constants/version";
 
 interface SidebarUiProps {
   data: SidebarData;
@@ -105,6 +106,15 @@ export function SidebarUi({ data }: SidebarUiProps) {
                 </ViewTransitionLink>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Beta Version Badge */}
+        {!isCollapsed && (
+          <div className="px-2 flex items-center justify-center gap-2">
+            <span className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider bg-gradient-to-r from-amber-500/10 to-orange-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-full">
+              {APP_STAGE} v{APP_VERSION}
+            </span>
           </div>
         )}
 
