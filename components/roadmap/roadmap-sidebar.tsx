@@ -39,6 +39,9 @@ interface RoadmapSidebarProps {
   parentRoadmap?: Roadmap | null;
 }
 
+// Storage key for persisting expanded nodes
+const getExpandedNodesStorageKey = (roadmapSlug: string) => `roadmap-expanded-nodes-${roadmapSlug}`;
+
 // Breadcrumb component for roadmap hierarchy navigation
 interface RoadmapBreadcrumbProps {
   roadmap: Roadmap;
@@ -382,13 +385,45 @@ export function RoadmapSidebar({
   const optional = roadmap.nodes.filter(n => n.type === 'optional');
   
   // Track which nodes are expanded (for expand/collapse all)
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  // Use a lazy initializer to load from localStorage on first render
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    
+    const storageKey = getExpandedNodesStorageKey(roadmap.slug);
+    const saved = localStorage.getItem(storageKey);
+    let initialSet = new Set<string>();
+    
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as string[];
+        initialSet = new Set(parsed);
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    
+    // Also expand the initially selected node if it has objectives
+    if (selectedNodeId) {
+      const selectedNode = roadmap.nodes.find(n => n.id === selectedNodeId);
+      if (selectedNode?.learningObjectives && selectedNode.learningObjectives.length > 0) {
+        initialSet.add(selectedNodeId);
+      }
+    }
+    
+    return initialSet;
+  });
   
   // Check if any milestones have objectives (expandable)
   const expandableMilestones = milestones.filter(m => m.learningObjectives && m.learningObjectives.length > 0);
   const hasExpandableItems = expandableMilestones.length > 0;
   const allExpanded = hasExpandableItems && expandableMilestones.every(m => expandedNodes.has(m.id));
   const someExpanded = expandableMilestones.some(m => expandedNodes.has(m.id));
+  
+  // Persist expanded nodes to localStorage
+  useEffect(() => {
+    const storageKey = getExpandedNodesStorageKey(roadmap.slug);
+    localStorage.setItem(storageKey, JSON.stringify(Array.from(expandedNodes)));
+  }, [expandedNodes, roadmap.slug]);
   
   const handleExpandAll = useCallback(() => {
     const allExpandableIds = roadmap.nodes
@@ -412,6 +447,20 @@ export function RoadmapSidebar({
       return next;
     });
   }, []);
+  
+  // Wrapper for onNodeSelect that also expands the node if it has objectives
+  const handleNodeSelectWithExpand = useCallback((nodeId: string) => {
+    const node = roadmap.nodes.find(n => n.id === nodeId);
+    if (node?.learningObjectives && node.learningObjectives.length > 0) {
+      setExpandedNodes(prev => {
+        if (prev.has(nodeId)) return prev;
+        const next = new Set(prev);
+        next.add(nodeId);
+        return next;
+      });
+    }
+    onNodeSelect(nodeId);
+  }, [roadmap.nodes, onNodeSelect]);
   
   // Calculate overall lesson statistics
   const lessonStats = useMemo(() => {
@@ -559,7 +608,7 @@ export function RoadmapSidebar({
                   node={node}
                   status={getNodeStatus(node.id)}
                   isSelected={selectedNodeId === node.id}
-                  onSelect={() => onNodeSelect(node.id)}
+                  onSelect={() => handleNodeSelectWithExpand(node.id)}
                   showSubRoadmap
                   isMilestone
                   roadmapSlug={roadmap.slug}
@@ -586,7 +635,7 @@ export function RoadmapSidebar({
                   node={node}
                   status={getNodeStatus(node.id)}
                   isSelected={selectedNodeId === node.id}
-                  onSelect={() => onNodeSelect(node.id)}
+                  onSelect={() => handleNodeSelectWithExpand(node.id)}
                   roadmapSlug={roadmap.slug}
                   lessonAvailability={getLessonAvailability(node.id)}
                   objectivesInfo={nodeObjectivesInfo[node.id] || []}
@@ -609,7 +658,7 @@ export function RoadmapSidebar({
                   node={node}
                   status={getNodeStatus(node.id)}
                   isSelected={selectedNodeId === node.id}
-                  onSelect={() => onNodeSelect(node.id)}
+                  onSelect={() => handleNodeSelectWithExpand(node.id)}
                   roadmapSlug={roadmap.slug}
                   lessonAvailability={getLessonAvailability(node.id)}
                   objectivesInfo={nodeObjectivesInfo[node.id] || []}
