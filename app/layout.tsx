@@ -8,6 +8,7 @@ import "./globals.css";
 import { Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import Script from "next/script";
 
 // Initialize fonts
 const _geistMono = Geist_Mono({
@@ -52,6 +53,22 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className="dark" suppressHydrationWarning>
+        <head>
+          {process.env.NODE_ENV === "development" && (
+            <>
+              <Script
+                src="//unpkg.com/react-grab/dist/index.global.js"
+                crossOrigin="anonymous"
+                strategy="beforeInteractive"
+              />
+              <Script
+                src="//unpkg.com/react-scan/dist/auto.global.js"
+                strategy="lazyOnload"
+                async
+              />
+            </>
+          )}
+        </head>
         <body className={`font-sans antialiased`}>
           <ThemeProvider
             attribute="class"

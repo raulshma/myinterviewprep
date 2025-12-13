@@ -131,10 +131,13 @@ export function LessonViewer({
 
   const components = useMDXComponents({
     // Override ProgressCheckpoint to track completion
-    ProgressCheckpoint: ({ section }: { section: string }) => {
+    ProgressCheckpoint: ({ section, xpReward }: { section: string; xpReward?: number }) => {
+      const isCompleted = completedSections.includes(section);
       return (
         <ProgressCheckpoint 
-          section={section} 
+          section={section}
+          xpReward={xpReward}
+          isCompleted={isCompleted}
           onComplete={handleSectionComplete}
         />
       );

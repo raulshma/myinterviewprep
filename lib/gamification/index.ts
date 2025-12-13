@@ -194,6 +194,15 @@ export const BADGES = {
     icon: '🎨',
     category: 'mastery',
   },
+  
+  // Build Tools milestone badge
+  BUILD_MASTER: {
+    id: 'build-master',
+    name: 'Build Master',
+    description: 'Complete the Build Tools lesson at all three levels',
+    icon: '🔧',
+    category: 'mastery',
+  },
 } as const;
 
 export type BadgeId = keyof typeof BADGES;
@@ -446,6 +455,9 @@ export const CSS_LESSON_IDS = [
   'css/transforms',
 ];
 
+// Build Tools lesson ID for badge tracking
+export const BUILD_TOOLS_LESSON_ID = 'javascript/build-tools';
+
 /**
  * Check if user has completed all Internet lessons at a specific level
  */
@@ -596,6 +608,28 @@ export function checkCssMasterBadge(
   
   if (completedCssLessonIds.size >= TOTAL_CSS_LESSONS) {
     return 'css-master';
+  }
+  
+  return null;
+}
+
+/**
+ * Check if user has completed Build Tools lesson at all three levels
+ * Returns 'build-master' badge ID if completed at all levels
+ */
+export function checkBuildToolsMilestoneBadge(
+  completedLessons: Array<{ lessonId: string; experienceLevel: string }>
+): string | null {
+  const levels = ['beginner', 'intermediate', 'advanced'];
+  
+  const completedLevels = levels.filter(level =>
+    completedLessons.some(
+      lesson => lesson.lessonId === BUILD_TOOLS_LESSON_ID && lesson.experienceLevel === level
+    )
+  );
+  
+  if (completedLevels.length === 3) {
+    return 'build-master';
   }
   
   return null;

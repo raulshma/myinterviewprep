@@ -1,0 +1,32 @@
+{
+  "id": "build-tools",
+  "title": "Build Tools",
+  "description": "Learn about package managers, bundlers, transpilers, and the complete build pipeline for modern web development",
+  "milestone": "javascript",
+  "order": 11,
+  "sections": [
+    "introduction",
+    "package-managers",
+    "bundlers",
+    "dependency-graphs",
+    "transpilation",
+    "build-pipeline",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 35,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 45,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["es6-and-modular-javascript"],
+  "tags": ["javascript", "build-tools", "npm", "webpack", "vite", "babel", "bundlers", "transpilers"]
+}

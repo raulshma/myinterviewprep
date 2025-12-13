@@ -1,0 +1,1299 @@
+# Build Tools: Advanced
+
+Welcome to the advanced level! You've mastered the fundamentals and practical configurations. Now we'll dive into optimization techniques, custom tooling, and advanced bundler features that separate good builds from great ones.
+
+<InfoBox type="tip" title="What You'll Master">
+This lesson covers production optimization: tree shaking, dead code elimination, advanced code splitting strategies, custom Babel plugins, source maps, debugging techniques, and performance monitoring.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={20} />
+
+## Tree Shaking and Dead Code Elimination
+
+**Tree shaking** is one of the most powerful optimization techniques. It removes unused code from your bundles, dramatically reducing file sizes.
+
+### Understanding Tree Shaking
+
+Think of your codebase as a tree. Tree shaking "shakes" the tree and removes dead branches (unused code):
+
+```javascript
+// math.js - A utility library
+export function add(a, b) {
+  return a + b;
+}
+
+export function subtract(a, b) {
+  return a - b;
+}
+
+export function multiply(a, b) {
+  return a * b;
+}
+
+export function divide(a, b) {
+  return a / b;
+}
+
+// app.js - Your application
+import { add } from './math.js';
+
+console.log(add(2, 3));
+```
+
+**Without tree shaking:** All four functions are bundled (even though you only use `add`)
+
+**With tree shaking:** Only `add` is bundled, saving ~75% of the code!
+
+
+<KeyConcept title="Tree Shaking Requirements">
+Tree shaking only works with:
+- **ES modules** (import/export) — NOT CommonJS (require/module.exports)
+- **Static imports** — NOT dynamic imports
+- **Side-effect-free code** — Code that doesn't modify global state
+</KeyConcept>
+
+### How Tree Shaking Works
+
+Tree shaking relies on **static analysis** — analyzing code without running it:
+
+1. **Build dependency graph** — Map all imports/exports
+2. **Mark used exports** — Start from entry point, mark everything reachable
+3. **Remove unmarked code** — Delete exports that were never marked
+4. **Minify** — Remove the actual code
+
+```javascript
+// Before tree shaking
+export function used() { return 'I am used'; }
+export function unused() { return 'I am not used'; }
+
+// After tree shaking (simplified)
+export function used() { return 'I am used'; }
+// unused() is completely removed!
+```
+
+### Side Effects and package.json
+
+Some code has **side effects** — it does something when imported:
+
+```javascript
+// has-side-effect.js
+console.log('This runs when imported!');  // Side effect!
+window.myGlobal = 'value';                // Side effect!
+
+export function myFunction() {
+  return 'hello';
+}
+```
+
+Tell bundlers about side effects in package.json:
+
+```json
+{
+  "name": "my-library",
+  "sideEffects": false  // No side effects, safe to tree shake
+}
+
+// Or specify files with side effects
+{
+  "sideEffects": [
+    "*.css",
+    "src/polyfills.js"
+  ]
+}
+```
+
+<InfoBox type="warning" title="CSS and Side Effects">
+CSS imports are side effects! Always include them in the sideEffects array, or they might be removed during tree shaking.
+</InfoBox>
+
+
+### Writing Tree-Shakeable Code
+
+**❌ Not tree-shakeable (CommonJS):**
+```javascript
+// utils.js
+module.exports = {
+  add: (a, b) => a + b,
+  subtract: (a, b) => a - b
+};
+
+// app.js
+const utils = require('./utils');
+console.log(utils.add(2, 3));
+```
+
+**✅ Tree-shakeable (ES modules):**
+```javascript
+// utils.js
+export const add = (a, b) => a + b;
+export const subtract = (a, b) => a - b;
+
+// app.js
+import { add } from './utils';
+console.log(add(2, 3));
+```
+
+**❌ Not tree-shakeable (default export object):**
+```javascript
+export default {
+  add: (a, b) => a + b,
+  subtract: (a, b) => a - b
+};
+```
+
+**✅ Tree-shakeable (named exports):**
+```javascript
+export const add = (a, b) => a + b;
+export const subtract = (a, b) => a - b;
+```
+
+<KeyConcept title="Tree Shaking Best Practices">
+- Use ES modules (import/export)
+- Prefer named exports over default exports
+- Avoid side effects in modules
+- Mark side-effect-free packages in package.json
+- Use production mode (enables tree shaking)
+</KeyConcept>
+
+### Dead Code Elimination
+
+**Dead code elimination** goes beyond tree shaking — it removes code that can never execute:
+
+```javascript
+// Unreachable code
+function example() {
+  return 'done';
+  console.log('This never runs');  // Removed!
+}
+
+// Constant conditions
+if (false) {
+  console.log('This never runs');  // Removed!
+}
+
+if (true) {
+  console.log('This always runs');
+} else {
+  console.log('This never runs');  // Removed!
+}
+
+// Development-only code
+if (process.env.NODE_ENV === 'development') {
+  console.log('Debug info');  // Removed in production!
+}
+```
+
+Minifiers like **Terser** (Webpack) and **esbuild** (Vite) automatically remove dead code during production builds.
+
+<ProgressCheckpoint section="tree-shaking" xpReward={25} />
+
+
+## Advanced Code Splitting Strategies
+
+You learned basic code splitting in the intermediate lesson. Now let's explore advanced strategies for optimal performance.
+
+### Route-Based Splitting
+
+Split code by routes — the most common and effective strategy:
+
+```javascript
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+// Lazy load route components
+const Home = lazy(() => import('./pages/Home'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Admin = lazy(() => import('./pages/Admin'));
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Suspense fallback={<LoadingSpinner />}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/admin" element={<Admin />} />
+        </Routes>
+      </Suspense>
+    </BrowserRouter>
+  );
+}
+```
+
+**Result:** Each route loads only when visited, reducing initial bundle size by 60-80%!
+
+### Component-Based Splitting
+
+Split heavy components that aren't always needed:
+
+```javascript
+import { lazy, Suspense, useState } from 'react';
+
+// Heavy components loaded on demand
+const VideoPlayer = lazy(() => import('./VideoPlayer'));
+const ChartDashboard = lazy(() => import('./ChartDashboard'));
+const RichTextEditor = lazy(() => import('./RichTextEditor'));
+
+function App() {
+  const [showVideo, setShowVideo] = useState(false);
+  
+  return (
+    <div>
+      <button onClick={() => setShowVideo(true)}>
+        Load Video Player
+      </button>
+      
+      {showVideo && (
+        <Suspense fallback={<div>Loading player...</div>}>
+          <VideoPlayer src="/video.mp4" />
+        </Suspense>
+      )}
+    </div>
+  );
+}
+```
+
+**When to split components:**
+- Large third-party libraries (charts, editors, video players)
+- Modal dialogs and overlays
+- Admin-only features
+- Rarely used features
+
+
+### Library Splitting
+
+Separate large libraries into their own chunks:
+
+```javascript
+// Webpack
+optimization: {
+  splitChunks: {
+    cacheGroups: {
+      // React and React DOM
+      react: {
+        test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+        name: 'react',
+        chunks: 'all',
+        priority: 20
+      },
+      // UI libraries
+      ui: {
+        test: /[\\/]node_modules[\\/](@radix-ui|@headlessui)[\\/]/,
+        name: 'ui',
+        chunks: 'all',
+        priority: 15
+      },
+      // Utility libraries
+      utils: {
+        test: /[\\/]node_modules[\\/](lodash|date-fns|axios)[\\/]/,
+        name: 'utils',
+        chunks: 'all',
+        priority: 10
+      },
+      // Everything else from node_modules
+      vendor: {
+        test: /[\\/]node_modules[\\/]/,
+        name: 'vendor',
+        chunks: 'all',
+        priority: 5
+      }
+    }
+  }
+}
+
+// Vite
+build: {
+  rollupOptions: {
+    output: {
+      manualChunks(id) {
+        if (id.includes('node_modules')) {
+          if (id.includes('react') || id.includes('react-dom')) {
+            return 'react';
+          }
+          if (id.includes('@radix-ui') || id.includes('@headlessui')) {
+            return 'ui';
+          }
+          if (id.includes('lodash') || id.includes('date-fns')) {
+            return 'utils';
+          }
+          return 'vendor';
+        }
+      }
+    }
+  }
+}
+```
+
+**Benefits:**
+- Better caching (libraries change less than your code)
+- Parallel downloads (browser can fetch multiple chunks simultaneously)
+- Smaller individual chunks (faster parsing and execution)
+
+### Prefetching and Preloading
+
+Load chunks before they're needed:
+
+```javascript
+// Prefetch: Load during idle time
+const Dashboard = lazy(() => import(
+  /* webpackPrefetch: true */
+  './Dashboard'
+));
+
+// Preload: Load immediately (high priority)
+const CriticalComponent = lazy(() => import(
+  /* webpackPreload: true */
+  './CriticalComponent'
+));
+```
+
+**Difference:**
+- **Prefetch** — Low priority, loads when browser is idle
+- **Preload** — High priority, loads immediately in parallel
+
+
+### Analyzing Bundle Size
+
+Use bundle analyzers to visualize what's in your bundles:
+
+```bash
+# Webpack Bundle Analyzer
+npm install --save-dev webpack-bundle-analyzer
+
+# Add to webpack.config.js
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+
+module.exports = {
+  plugins: [
+    new BundleAnalyzerPlugin()
+  ]
+};
+
+# Vite Bundle Analyzer
+npm install --save-dev rollup-plugin-visualizer
+
+# Add to vite.config.js
+import { visualizer } from 'rollup-plugin-visualizer';
+
+export default defineConfig({
+  plugins: [
+    visualizer({ open: true })
+  ]
+});
+```
+
+This generates an interactive treemap showing:
+- Which libraries are largest
+- What's in each chunk
+- Opportunities for optimization
+
+<InfoBox type="tip" title="Bundle Size Goals">
+Target bundle sizes for good performance:
+- **Initial bundle:** < 200 KB (gzipped)
+- **Route chunks:** < 100 KB each
+- **Vendor chunks:** < 150 KB
+
+Larger bundles = slower page loads!
+</InfoBox>
+
+### Exploring Advanced Dependency Scenarios
+
+Let's visualize complex dependency graphs with circular dependencies and optimization opportunities:
+
+<DependencyGraphExplorer 
+  initialModules={[
+    {
+      id: 'app',
+      name: 'app.js',
+      imports: ['router', 'store', 'analytics'],
+      exports: [],
+      size: 3200
+    },
+    {
+      id: 'router',
+      name: 'router.js',
+      imports: ['react', 'react-router-dom', 'store'],
+      exports: ['Router'],
+      size: 2400
+    },
+    {
+      id: 'store',
+      name: 'store.js',
+      imports: ['zustand', 'analytics', 'router'],
+      exports: ['useStore'],
+      size: 1800
+    },
+    {
+      id: 'analytics',
+      name: 'analytics.js',
+      imports: ['store'],
+      exports: ['trackEvent'],
+      size: 1200
+    },
+    {
+      id: 'react',
+      name: 'react',
+      imports: [],
+      exports: ['useState', 'useEffect'],
+      size: 6500
+    },
+    {
+      id: 'react-router-dom',
+      name: 'react-router-dom',
+      imports: ['react'],
+      exports: ['BrowserRouter'],
+      size: 4200
+    },
+    {
+      id: 'zustand',
+      name: 'zustand',
+      imports: ['react'],
+      exports: ['create'],
+      size: 1500
+    }
+  ]}
+  editable={true}
+/>
+
+<InfoBox type="warning" title="Circular Dependencies Detected!">
+Notice the cycle: `router` → `store` → `analytics` → `store`
+
+This can cause initialization issues. **Solution:** Extract shared code into a separate module, or use dependency injection to break the cycle.
+</InfoBox>
+
+<KeyConcept title="Code Splitting Strategies">
+- **Route-based** — Split by page/route (most effective)
+- **Component-based** — Split heavy components
+- **Library-based** — Separate large dependencies
+- **Prefetch/Preload** — Load chunks proactively
+- **Analyze** — Use bundle analyzers to find opportunities
+</KeyConcept>
+
+<ProgressCheckpoint section="code-splitting" xpReward={25} />
+
+
+## Custom Babel Plugins and Presets
+
+Babel's power comes from its plugin system. You can create custom transformations to fit your exact needs.
+
+### Understanding Babel's AST
+
+Babel works by:
+1. **Parse** — Convert code to Abstract Syntax Tree (AST)
+2. **Transform** — Modify the AST using plugins
+3. **Generate** — Convert AST back to code
+
+```javascript
+// Original code
+const add = (a, b) => a + b;
+
+// AST (simplified)
+{
+  type: "VariableDeclaration",
+  declarations: [{
+    id: { type: "Identifier", name: "add" },
+    init: {
+      type: "ArrowFunctionExpression",
+      params: [
+        { type: "Identifier", name: "a" },
+        { type: "Identifier", name: "b" }
+      ],
+      body: {
+        type: "BinaryExpression",
+        operator: "+",
+        left: { type: "Identifier", name: "a" },
+        right: { type: "Identifier", name: "b" }
+      }
+    }
+  }]
+}
+```
+
+### Creating a Custom Babel Plugin
+
+Let's create a plugin that removes all `console.log` statements in production:
+
+```javascript
+// babel-plugin-remove-console.js
+module.exports = function() {
+  return {
+    name: "remove-console",
+    visitor: {
+      CallExpression(path) {
+        // Check if it's console.log
+        if (
+          path.node.callee.type === 'MemberExpression' &&
+          path.node.callee.object.name === 'console' &&
+          path.node.callee.property.name === 'log'
+        ) {
+          // Remove the statement
+          path.remove();
+        }
+      }
+    }
+  };
+};
+
+// Use in babel.config.js
+module.exports = {
+  plugins: [
+    './babel-plugin-remove-console'
+  ]
+};
+```
+
+
+### Popular Custom Transformations
+
+**1. Auto-import optimization:**
+```javascript
+// Before
+import { Button, Input, Select } from 'my-ui-library';
+
+// After (tree-shakeable)
+import Button from 'my-ui-library/Button';
+import Input from 'my-ui-library/Input';
+import Select from 'my-ui-library/Select';
+```
+
+**2. Environment variable inlining:**
+```javascript
+// Before
+if (process.env.FEATURE_FLAG === 'true') {
+  enableFeature();
+}
+
+// After (at build time)
+if (true) {  // Dead code elimination will remove the if
+  enableFeature();
+}
+```
+
+**3. React optimization:**
+```javascript
+// babel-plugin-react-optimize
+module.exports = {
+  plugins: [
+    ['babel-plugin-transform-react-remove-prop-types', {
+      removeImport: true  // Remove prop-types in production
+    }],
+    ['babel-plugin-transform-react-inline-elements'],  // Inline JSX
+    ['babel-plugin-transform-react-constant-elements']  // Hoist static elements
+  ]
+};
+```
+
+### Custom Presets
+
+A preset is a collection of plugins. Create your own:
+
+```javascript
+// babel-preset-my-company.js
+module.exports = function(api, options) {
+  return {
+    presets: [
+      ['@babel/preset-env', {
+        targets: options.targets || '> 0.5%, not dead',
+        useBuiltIns: 'usage',
+        corejs: 3
+      }],
+      '@babel/preset-react',
+      '@babel/preset-typescript'
+    ],
+    plugins: [
+      '@babel/plugin-proposal-class-properties',
+      '@babel/plugin-proposal-optional-chaining',
+      './babel-plugin-remove-console',
+      options.optimize && 'babel-plugin-transform-react-inline-elements'
+    ].filter(Boolean)
+  };
+};
+
+// Use it
+module.exports = {
+  presets: [
+    ['./babel-preset-my-company', {
+      targets: '> 1%, not dead',
+      optimize: true
+    }]
+  ]
+};
+```
+
+<InfoBox type="tip" title="When to Create Custom Plugins">
+Create custom Babel plugins when you need to:
+- Remove debugging code in production
+- Transform proprietary syntax
+- Optimize imports for tree shaking
+- Add automatic instrumentation
+- Enforce code standards
+</InfoBox>
+
+<ProgressCheckpoint section="custom-babel" xpReward={25} />
+
+
+## Source Maps and Debugging
+
+Source maps connect your bundled/minified code back to the original source, making debugging possible in production.
+
+### Understanding Source Maps
+
+When you bundle and minify code, it becomes unreadable:
+
+```javascript
+// Original
+function calculateTotal(items) {
+  return items.reduce((sum, item) => sum + item.price, 0);
+}
+
+// Minified
+function c(i){return i.reduce((s,t)=>s+t.price,0)}
+```
+
+**Problem:** When an error occurs, the stack trace points to minified code!
+
+**Solution:** Source maps create a mapping between minified and original code.
+
+### Source Map Types
+
+Different source map types offer different trade-offs:
+
+```javascript
+// webpack.config.js
+module.exports = {
+  devtool: 'source-map'  // Choose your source map type
+};
+```
+
+**Development:**
+- `eval` — Fastest, no source map (just eval)
+- `eval-source-map` — Fast, full source maps
+- `cheap-module-source-map` — Fast, column mappings only
+
+**Production:**
+- `source-map` — Full source maps, separate file
+- `hidden-source-map` — Source maps without reference (for error reporting)
+- `nosources-source-map` — Maps without original source (for stack traces only)
+- `false` — No source maps (smallest bundle)
+
+<KeyConcept title="Source Map Trade-offs">
+- **Build speed** — More detailed = slower builds
+- **Bundle size** — Inline maps increase bundle size
+- **Privacy** — Source maps expose your code
+- **Debugging** — Better maps = easier debugging
+</KeyConcept>
+
+### Production Source Map Strategy
+
+**Recommended approach:**
+```javascript
+// webpack.config.js
+module.exports = {
+  mode: 'production',
+  devtool: 'hidden-source-map',  // Generate maps but don't reference them
+  
+  plugins: [
+    // Upload source maps to error tracking service
+    new SentryWebpackPlugin({
+      include: './dist',
+      ignore: ['node_modules'],
+      urlPrefix: '~/dist/'
+    })
+  ]
+};
+```
+
+This approach:
+- ✅ Generates source maps for error tracking
+- ✅ Doesn't expose source maps to users
+- ✅ Allows debugging production errors
+- ✅ Keeps bundle size small
+
+
+### Debugging with Source Maps
+
+**In the browser:**
+1. Open DevTools
+2. Source maps automatically load (if referenced)
+3. Set breakpoints in original source
+4. Step through unminified code
+
+**Reading stack traces:**
+```javascript
+// Without source maps
+Error: Cannot read property 'price' of undefined
+    at c (bundle.js:1:2847)
+    at Array.reduce (<anonymous>)
+    at Object.d (bundle.js:1:2901)
+
+// With source maps
+Error: Cannot read property 'price' of undefined
+    at calculateTotal (src/utils/cart.js:15:42)
+    at Array.reduce (<anonymous>)
+    at getTotalPrice (src/components/Cart.jsx:28:10)
+```
+
+Much better! You can see the actual file, function, and line number.
+
+### Advanced Debugging Techniques
+
+**1. Conditional breakpoints:**
+```javascript
+// Only break when total > 100
+function calculateTotal(items) {
+  const total = items.reduce((sum, item) => sum + item.price, 0);
+  debugger;  // Or set conditional breakpoint in DevTools
+  return total;
+}
+```
+
+**2. Source map validation:**
+```bash
+# Verify source maps are working
+npm install -g source-map-explorer
+
+# Analyze bundle
+source-map-explorer dist/bundle.js
+```
+
+**3. Debug production builds locally:**
+```javascript
+// vite.config.js
+export default defineConfig({
+  build: {
+    sourcemap: true,  // Enable for local testing
+    minify: true      // Still minify to match production
+  }
+});
+```
+
+<InfoBox type="warning" title="Source Map Security">
+Never deploy source maps to production unless:
+- They're uploaded to a private error tracking service
+- You use `hidden-source-map` (no reference in bundle)
+- You're okay with exposing your source code
+
+Source maps can reveal business logic, API keys, and implementation details!
+</InfoBox>
+
+<ProgressCheckpoint section="source-maps" xpReward={20} />
+
+
+## Advanced Transpilation Techniques
+
+Let's explore advanced transpilation scenarios with custom presets and browser-specific optimizations.
+
+### Interactive Advanced Transpilation
+
+Experiment with different browser targets and see how transpilation changes:
+
+<TranspilerDemo 
+  initialCode={`// Advanced JavaScript features
+class DataStore {
+  // Private fields
+  #data = new Map();
+  #listeners = new Set();
+  
+  // Public class fields
+  version = '1.0.0';
+  
+  // Static fields
+  static instances = [];
+  
+  constructor(name) {
+    this.name = name;
+    DataStore.instances.push(this);
+  }
+  
+  // Private methods
+  #notify() {
+    this.#listeners.forEach(fn => fn(this.#data));
+  }
+  
+  // Public methods with optional chaining
+  set(key, value) {
+    this.#data.set(key, value);
+    this.#notify();
+    return this;
+  }
+  
+  get(key) {
+    return this.#data.get(key) ?? null;
+  }
+  
+  // Async methods
+  async fetchAndStore(url) {
+    try {
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      // Nullish coalescing and optional chaining
+      const items = data?.items ?? [];
+      
+      // For-of with destructuring
+      for (const { id, value } of items) {
+        this.set(id, value);
+      }
+      
+      return items.length;
+    } catch (error) {
+      console.error(\`Failed to fetch: \${error.message}\`);
+      return 0;
+    }
+  }
+  
+  // Getters
+  get size() {
+    return this.#data.size;
+  }
+  
+  // Static methods
+  static clearAll() {
+    DataStore.instances.forEach(store => store.#data.clear());
+  }
+}
+
+// Top-level await (ES2022)
+const store = new DataStore('main');
+await store.fetchAndStore('/api/data');
+
+// Logical assignment operators
+store.config ??= { timeout: 5000 };
+store.retries ||= 3;
+store.cache &&= store.cache.filter(x => x.valid);`}
+  targets={{
+    chrome: 90,
+    firefox: 88,
+    safari: 14,
+    edge: 90,
+    ie: 11
+  }}
+  showHighlights={true}
+/>
+
+<InfoBox type="tip" title="Experiment!">
+Try changing the browser targets:
+- **Modern browsers** (Chrome 90+) — Minimal transpilation
+- **Older browsers** (IE 11) — Heavy transpilation
+- **Safari** — Often needs more polyfills than Chrome
+
+Notice how private fields, optional chaining, and async/await transform differently!
+</InfoBox>
+
+
+### Differential Serving
+
+Serve modern code to modern browsers, legacy code to old browsers:
+
+```javascript
+// vite.config.js
+export default defineConfig({
+  build: {
+    target: ['es2020', 'edge88', 'firefox78', 'chrome87', 'safari14']
+  }
+});
+
+// Or with Webpack + babel-preset-env
+module.exports = {
+  presets: [
+    ['@babel/preset-env', {
+      targets: {
+        esmodules: true  // Only transpile for browsers supporting ES modules
+      }
+    }]
+  ]
+};
+```
+
+**HTML with differential serving:**
+```html
+<!-- Modern browsers (ES modules) -->
+<script type="module" src="/dist/app.modern.js"></script>
+
+<!-- Legacy browsers (fallback) -->
+<script nomodule src="/dist/app.legacy.js"></script>
+```
+
+**Benefits:**
+- Modern browsers get smaller, faster code
+- Old browsers still work with polyfills
+- Automatic browser detection
+
+### Polyfill Strategies
+
+**1. Automatic polyfills (recommended):**
+```javascript
+// babel.config.js
+module.exports = {
+  presets: [
+    ['@babel/preset-env', {
+      useBuiltIns: 'usage',  // Only include polyfills you use
+      corejs: 3
+    }]
+  ]
+};
+```
+
+**2. Manual polyfills:**
+```javascript
+// polyfills.js
+import 'core-js/stable';
+import 'regenerator-runtime/runtime';
+
+// Or selective
+import 'core-js/features/promise';
+import 'core-js/features/array/includes';
+```
+
+**3. Polyfill service (dynamic):**
+```html
+<!-- Loads only needed polyfills based on User-Agent -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es2015,es2016,es2017"></script>
+```
+
+<KeyConcept title="Polyfill Best Practices">
+- Use `useBuiltIns: 'usage'` to minimize bundle size
+- Test on actual target browsers
+- Consider polyfill.io for dynamic loading
+- Monitor polyfill size (can be 50+ KB!)
+</KeyConcept>
+
+
+### TypeScript + Babel Optimization
+
+Use TypeScript for type checking, Babel for transpilation:
+
+```javascript
+// tsconfig.json
+{
+  "compilerOptions": {
+    "target": "esnext",        // Don't transpile, let Babel handle it
+    "module": "esnext",
+    "jsx": "preserve",         // Let Babel handle JSX
+    "noEmit": true,            // Don't output files, just type check
+    "isolatedModules": true,   // Required for Babel
+    "strict": true
+  }
+}
+
+// babel.config.js
+module.exports = {
+  presets: [
+    '@babel/preset-env',
+    '@babel/preset-react',
+    '@babel/preset-typescript'  // Strip types only
+  ]
+};
+
+// package.json scripts
+{
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "build": "babel src -d dist"
+  }
+}
+```
+
+**Why this approach?**
+- TypeScript compiler is slow for transpilation
+- Babel is much faster
+- You still get full type checking
+- Best of both worlds!
+
+<ProgressCheckpoint section="advanced-transpilation" xpReward={25} />
+
+## Performance Monitoring and Optimization
+
+### Build Performance
+
+**Measure build time:**
+```javascript
+// webpack.config.js
+const SpeedMeasurePlugin = require('speed-measure-webpack-plugin');
+const smp = new SpeedMeasurePlugin();
+
+module.exports = smp.wrap({
+  // Your config
+});
+
+// Vite
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  build: {
+    reportCompressedSize: true  // Show gzip sizes
+  }
+});
+```
+
+**Optimization techniques:**
+
+1. **Parallel processing:**
+```javascript
+// Webpack
+const TerserPlugin = require('terser-webpack-plugin');
+
+module.exports = {
+  optimization: {
+    minimizer: [
+      new TerserPlugin({
+        parallel: true  // Use multiple CPUs
+      })
+    ]
+  }
+};
+```
+
+2. **Caching:**
+```javascript
+// Webpack
+module.exports = {
+  cache: {
+    type: 'filesystem',  // Cache to disk
+    buildDependencies: {
+      config: [__filename]  // Invalidate on config change
+    }
+  }
+};
+```
+
+3. **Exclude unnecessary files:**
+```javascript
+module.exports = {
+  module: {
+    rules: [
+      {
+        test: /\.js$/,
+        exclude: /node_modules/,  // Don't transpile dependencies
+        use: 'babel-loader'
+      }
+    ]
+  }
+};
+```
+
+
+### Runtime Performance
+
+**Measure bundle impact:**
+```javascript
+// Lighthouse CI
+npm install -g @lhci/cli
+
+// lighthouse.config.js
+module.exports = {
+  ci: {
+    collect: {
+      url: ['http://localhost:3000'],
+      numberOfRuns: 3
+    },
+    assert: {
+      assertions: {
+        'first-contentful-paint': ['error', { maxNumericValue: 2000 }],
+        'interactive': ['error', { maxNumericValue: 3500 }],
+        'total-byte-weight': ['error', { maxNumericValue: 300000 }]
+      }
+    }
+  }
+};
+```
+
+**Bundle size budgets:**
+```javascript
+// webpack.config.js
+module.exports = {
+  performance: {
+    maxEntrypointSize: 250000,  // 250 KB
+    maxAssetSize: 100000,       // 100 KB
+    hints: 'error'              // Fail build if exceeded
+  }
+};
+
+// Vite (via rollup)
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Keep chunks under 100 KB
+        }
+      }
+    }
+  }
+});
+```
+
+<KeyConcept title="Performance Metrics">
+- **FCP** (First Contentful Paint) — < 1.8s
+- **LCP** (Largest Contentful Paint) — < 2.5s
+- **TTI** (Time to Interactive) — < 3.8s
+- **TBT** (Total Blocking Time) — < 200ms
+- **CLS** (Cumulative Layout Shift) — < 0.1
+</KeyConcept>
+
+### Advanced Optimization Checklist
+
+✅ **Code Splitting**
+- Route-based splitting implemented
+- Heavy components lazy loaded
+- Vendor chunks separated
+
+✅ **Tree Shaking**
+- ES modules used throughout
+- `sideEffects: false` in package.json
+- Named exports preferred
+
+✅ **Minification**
+- Terser/esbuild configured
+- Dead code eliminated
+- Console logs removed in production
+
+✅ **Compression**
+- Gzip/Brotli enabled
+- Assets compressed
+- Text files optimized
+
+✅ **Caching**
+- Content hashing enabled
+- Long cache headers set
+- Service worker implemented
+
+✅ **Images**
+- Modern formats (WebP, AVIF)
+- Lazy loading
+- Responsive images
+
+✅ **Fonts**
+- Subset fonts
+- Preload critical fonts
+- Font-display: swap
+
+<ProgressCheckpoint section="performance" xpReward={20} />
+
+
+## Advanced Quiz
+
+<Quiz>
+  <Question text="What is tree shaking?">
+    <Answer>Removing console.log statements</Answer>
+    <Answer correct>Removing unused exports from bundles</Answer>
+    <Answer>Minifying JavaScript code</Answer>
+    <Answer>Splitting code into chunks</Answer>
+  </Question>
+  
+  <Question text="Which module system is required for tree shaking to work?">
+    <Answer>CommonJS (require/module.exports)</Answer>
+    <Answer correct>ES modules (import/export)</Answer>
+    <Answer>AMD modules</Answer>
+    <Answer>UMD modules</Answer>
+  </Question>
+  
+  <Question text="What does the sideEffects field in package.json do?">
+    <Answer>Lists files that have bugs</Answer>
+    <Answer correct>Tells bundlers which files can be safely tree-shaken</Answer>
+    <Answer>Specifies development dependencies</Answer>
+    <Answer>Defines entry points</Answer>
+  </Question>
+  
+  <Question text="What's the difference between prefetch and preload?">
+    <Answer>Prefetch is faster than preload</Answer>
+    <Answer correct>Prefetch loads during idle time (low priority), preload loads immediately (high priority)</Answer>
+    <Answer>Preload is for CSS, prefetch is for JavaScript</Answer>
+    <Answer>There is no difference</Answer>
+  </Question>
+  
+  <Question text="What is differential serving?">
+    <Answer>Serving different content to different users</Answer>
+    <Answer correct>Serving modern code to modern browsers and legacy code to old browsers</Answer>
+    <Answer>Using multiple CDNs</Answer>
+    <Answer>A/B testing different bundles</Answer>
+  </Question>
+  
+  <Question text="Why use hidden-source-map in production?">
+    <Answer>To make bundles smaller</Answer>
+    <Answer>To speed up builds</Answer>
+    <Answer correct>To generate source maps for error tracking without exposing them to users</Answer>
+    <Answer>To improve runtime performance</Answer>
+  </Question>
+  
+  <Question text="What does a Babel plugin operate on?">
+    <Answer>The original source code string</Answer>
+    <Answer correct>The Abstract Syntax Tree (AST)</Answer>
+    <Answer>The compiled bytecode</Answer>
+    <Answer>The minified output</Answer>
+  </Question>
+  
+  <Question text="What's the benefit of using TypeScript for type checking and Babel for transpilation?">
+    <Answer>TypeScript is more accurate</Answer>
+    <Answer correct>Babel is much faster at transpilation while TypeScript provides type safety</Answer>
+    <Answer>It reduces bundle size</Answer>
+    <Answer>It's required for React</Answer>
+  </Question>
+  
+  <Question text="What's the recommended maximum size for an initial bundle (gzipped)?">
+    <Answer>50 KB</Answer>
+    <Answer>100 KB</Answer>
+    <Answer correct>200 KB</Answer>
+    <Answer>500 KB</Answer>
+  </Question>
+  
+  <Question text="What does useBuiltIns: 'usage' do in @babel/preset-env?">
+    <Answer>Disables all polyfills</Answer>
+    <Answer>Includes all possible polyfills</Answer>
+    <Answer correct>Only includes polyfills for features you actually use</Answer>
+    <Answer>Uses native browser features only</Answer>
+  </Question>
+  
+  <Question text="Why separate vendor code into its own chunk?">
+    <Answer>To make debugging easier</Answer>
+    <Answer correct>Vendor code changes less frequently, so it stays cached longer</Answer>
+    <Answer>To reduce bundle size</Answer>
+    <Answer>To improve tree shaking</Answer>
+  </Question>
+  
+  <Question text="What's the purpose of content hashing in filenames?">
+    <Answer>To encrypt the bundle</Answer>
+    <Answer>To make filenames shorter</Answer>
+    <Answer correct>To enable long-term caching while forcing updates when content changes</Answer>
+    <Answer>To improve SEO</Answer>
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Summary
+
+Congratulations! You've mastered advanced build tools concepts:
+
+<KeyConcept title="Key Takeaways">
+**Optimization:**
+- Tree shaking removes unused code (ES modules required)
+- Dead code elimination removes unreachable code
+- Code splitting reduces initial bundle size
+- Differential serving optimizes for modern browsers
+
+**Custom Tooling:**
+- Babel plugins transform AST for custom needs
+- Custom presets package common configurations
+- TypeScript + Babel = type safety + speed
+
+**Debugging:**
+- Source maps connect minified code to original
+- Hidden source maps for production error tracking
+- Different source map types for different needs
+
+**Performance:**
+- Monitor bundle sizes with analyzers
+- Set performance budgets
+- Optimize for Core Web Vitals
+- Use caching strategies
+</KeyConcept>
+
+---
+
+**Exceptional work!** 🎉 You now have expert-level knowledge of build tools. You understand optimization techniques, can create custom Babel plugins, debug production issues with source maps, and implement advanced code splitting strategies. You're ready to build and optimize production applications!
+

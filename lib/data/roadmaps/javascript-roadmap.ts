@@ -517,6 +517,30 @@ export const javascriptRoadmap: CreateRoadmap = {
       tags: ['javascript', 'modules', 'es6'],
     },
 
+    // === ROW 14.5: BUILD TOOLS ===
+    {
+      id: 'javascript',
+      title: 'Build Tools',
+      description:
+        'Learn about package managers, bundlers, transpilers, and the complete build pipeline for modern web development.',
+      type: 'milestone',
+      position: { x: 400, y: 1740 },
+      learningObjectives: [
+        { title: 'Build Tools', lessonId: 'build-tools' },
+      ],
+      resources: [
+        {
+          title: 'Modern JavaScript Tooling',
+          type: 'article',
+          description: 'Overview of build tools ecosystem',
+        },
+      ],
+      estimatedMinutes: 105,
+      difficulty: 4,
+      skillCluster: 'frontend',
+      tags: ['javascript', 'build-tools', 'npm', 'webpack', 'vite'],
+    },
+
     // === ROW 15: MEMORY MANAGEMENT ===
     {
       id: 'memory-management',
@@ -600,9 +624,12 @@ export const javascriptRoadmap: CreateRoadmap = {
     { id: 'e16', source: 'classes', target: 'iterators-generators', type: 'recommended' },
     { id: 'e17', source: 'classes', target: 'modules', type: 'sequential' },
 
+    // Modules to build tools
+    { id: 'e17b', source: 'modules', target: 'javascript', type: 'sequential' },
+
     // Final topics
     { id: 'e18', source: 'iterators-generators', target: 'memory-management', type: 'recommended' },
-    { id: 'e19', source: 'modules', target: 'browser-devtools', type: 'sequential' },
+    { id: 'e19', source: 'javascript', target: 'browser-devtools', type: 'sequential' },
 
     // Cross connections for recommended paths
     { id: 'e20', source: 'memory-management', target: 'browser-devtools', type: 'recommended' },

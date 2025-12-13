@@ -108,6 +108,15 @@ import {
   CssComparison,
 } from '@/components/learn/interactive/css';
 
+// Build Tools Lesson Components
+import {
+  BuildPipelineVisualizer,
+  PackageManagerSimulator,
+  DependencyGraphExplorer,
+  BundlerComparison,
+  TranspilerDemo,
+} from '@/components/learn/interactive/build-tools';
+
 /**
  * MDX Components Configuration
  * This file provides custom components for MDX content rendering.
@@ -228,6 +237,13 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     AnimationTimeline,
     BrowserCompatibility,
     CssComparison,
+
+    // Build Tools Lesson Components
+    BuildPipelineVisualizer,
+    PackageManagerSimulator,
+    DependencyGraphExplorer,
+    BundlerComparison,
+    TranspilerDemo,
 
     // Enhanced HTML elements with proper styling
     h1: ({ children, ...props }) => (

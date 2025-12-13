@@ -1,0 +1,911 @@
+# Build Tools: Intermediate
+
+Welcome back! Now that you understand the basics of build tools, it's time to get practical. In this lesson, we'll dive into real-world configurations, explore how dependency resolution actually works, and learn to configure bundlers for production projects.
+
+<InfoBox type="tip" title="What You'll Learn">
+This lesson covers practical skills you'll use daily: configuring package.json, understanding dependency resolution, setting up webpack and Vite, and mastering transpilation for different browser targets.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={10} />
+
+## Real-World package.json Configuration
+
+In the beginner lesson, we saw a simple package.json. Real projects are more complex. Let's explore a production-ready configuration:
+
+```json
+{
+  "name": "my-production-app",
+  "version": "2.1.3",
+  "description": "A production-ready React application",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,md}\""
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.14.0",
+    "zustand": "^4.3.9"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@vitejs/plugin-react": "^4.0.3",
+    "eslint": "^8.45.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.1.6",
+    "vite": "^4.4.5",
+    "vitest": "^0.34.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "browserslist": [
+    "> 0.5%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
+```
+
+### Understanding Key Fields
+
+<KeyConcept title="Important package.json Fields">
+- **scripts** — Custom commands you can run with `npm run <script>`
+- **main** — Entry point for your package (if publishing to npm)
+- **type** — "module" enables ES modules, "commonjs" uses require()
+- **engines** — Specifies required Node.js and npm versions
+- **browserslist** — Tells transpilers which browsers to support
+</KeyConcept>
+
+### Semantic Versioning (SemVer)
+
+Notice the version numbers like `^18.2.0`? That's **semantic versioning**:
+
+```
+^18.2.0  →  MAJOR.MINOR.PATCH
+```
+
+- **MAJOR** (18) — Breaking changes, not backward compatible
+- **MINOR** (2) — New features, backward compatible
+- **PATCH** (0) — Bug fixes, backward compatible
+
+The `^` symbol means "compatible with version 18.2.0":
+- ✅ `18.2.1` — Patch updates allowed
+- ✅ `18.3.0` — Minor updates allowed
+- ❌ `19.0.0` — Major updates NOT allowed
+
+<InfoBox type="info" title="Version Symbols">
+- `^1.2.3` — Compatible with 1.x.x (most common)
+- `~1.2.3` — Compatible with 1.2.x (more restrictive)
+- `1.2.3` — Exact version only (most restrictive)
+- `*` or `latest` — Any version (dangerous!)
+</InfoBox>
+
+### Scripts: Your Custom Commands
+
+The `scripts` section is powerful. These are shortcuts for common tasks:
+
+```json
+{
+  "scripts": {
+    "dev": "vite",                    // Start dev server
+    "build": "vite build",            // Build for production
+    "preview": "vite preview",        // Preview production build
+    "test": "vitest",                 // Run tests
+    "test:coverage": "vitest --coverage",  // Run tests with coverage
+    "lint": "eslint src",             // Check code quality
+    "lint:fix": "eslint src --fix",   // Auto-fix issues
+    "format": "prettier --write src", // Format code
+    "type-check": "tsc --noEmit",     // Check TypeScript types
+    "prepare": "husky install"        // Runs automatically after install
+  }
+}
+```
+
+Run any script with: `npm run <script-name>`
+
+<InfoBox type="tip" title="Special Scripts">
+Some scripts run automatically:
+- `prepare` — After `npm install`
+- `prepublish` — Before publishing to npm
+- `pretest` / `posttest` — Before/after test script
+</InfoBox>
+
+<ProgressCheckpoint section="package-managers" xpReward={12} />
+
+## Dependency Resolution Deep Dive
+
+When you run `npm install`, a lot happens behind the scenes. Let's understand how package managers resolve dependencies.
+
+### The Dependency Tree
+
+Every package can have its own dependencies, creating a tree structure:
+
+```
+your-app
+├── react@18.2.0
+│   └── loose-envify@1.4.0
+│       └── js-tokens@4.0.0
+├── react-dom@18.2.0
+│   ├── react@18.2.0 (shared!)
+│   ├── loose-envify@1.4.0 (shared!)
+│   └── scheduler@0.23.0
+└── axios@1.4.0
+    ├── follow-redirects@1.15.2
+    └── form-data@4.0.0
+```
+
+Notice how `react` and `loose-envify` are shared? Package managers are smart about deduplication!
+
+### node_modules Structure
+
+When you install packages, they go into `node_modules`:
+
+```
+node_modules/
+├── react/
+├── react-dom/
+├── axios/
+├── loose-envify/
+├── js-tokens/
+└── ... (hundreds more!)
+```
+
+<InfoBox type="warning" title="The node_modules Black Hole">
+`node_modules` can get HUGE (hundreds of MB). That's why:
+- Never commit it to git (use .gitignore)
+- Always run `npm install` after cloning a project
+- Use `npm ci` in CI/CD for faster, reproducible installs
+</InfoBox>
+
+### Package Lock Files
+
+When you install packages, a lock file is created:
+- **npm** → `package-lock.json`
+- **yarn** → `yarn.lock`
+- **pnpm** → `pnpm-lock.yaml`
+
+
+**Why lock files matter:**
+
+1. **Reproducibility** — Everyone gets the exact same versions
+2. **Security** — Prevents unexpected updates that might break things
+3. **Speed** — Package manager knows exactly what to install
+
+<KeyConcept title="Lock Files">
+Lock files freeze your dependency tree. Always commit them to git!
+- `package.json` — What you want
+- Lock file — What you actually got
+</KeyConcept>
+
+### Dependency Conflicts
+
+Sometimes two packages need different versions of the same dependency:
+
+```
+your-app
+├── package-a@1.0.0
+│   └── lodash@4.17.0
+└── package-b@2.0.0
+    └── lodash@3.10.0
+```
+
+Package managers handle this by installing multiple versions:
+
+```
+node_modules/
+├── package-a/
+│   └── node_modules/
+│       └── lodash@4.17.0
+├── package-b/
+│   └── node_modules/
+│       └── lodash@3.10.0
+└── lodash@4.17.0 (hoisted to top level)
+```
+
+<InfoBox type="info" title="pnpm's Advantage">
+pnpm uses a different strategy with symlinks, saving disk space by storing packages once in a global store and linking them. This makes it faster and more efficient!
+</InfoBox>
+
+### Exploring Dependencies Visually
+
+Let's visualize how dependencies connect in a real project:
+
+<DependencyGraphExplorer 
+  initialModules={[
+    {
+      id: 'app',
+      name: 'app.js',
+      imports: ['router', 'store', 'utils'],
+      exports: [],
+      size: 2500
+    },
+    {
+      id: 'router',
+      name: 'router.js',
+      imports: ['react', 'react-router-dom'],
+      exports: ['Router', 'routes'],
+      size: 1800
+    },
+    {
+      id: 'store',
+      name: 'store.js',
+      imports: ['zustand', 'utils'],
+      exports: ['useStore'],
+      size: 1200
+    },
+    {
+      id: 'utils',
+      name: 'utils.js',
+      imports: ['lodash'],
+      exports: ['formatDate', 'debounce'],
+      size: 800
+    },
+    {
+      id: 'react',
+      name: 'react',
+      imports: [],
+      exports: ['useState', 'useEffect'],
+      size: 6500
+    },
+    {
+      id: 'react-router-dom',
+      name: 'react-router-dom',
+      imports: ['react'],
+      exports: ['BrowserRouter', 'Route'],
+      size: 4200
+    },
+    {
+      id: 'zustand',
+      name: 'zustand',
+      imports: ['react'],
+      exports: ['create'],
+      size: 1500
+    },
+    {
+      id: 'lodash',
+      name: 'lodash',
+      imports: [],
+      exports: ['debounce', 'throttle'],
+      size: 24000
+    }
+  ]}
+  editable={true}
+/>
+
+<InfoBox type="tip" title="Try It!">
+Click on any module to see what it imports and what imports it. Try adding a new import to see how the graph updates. Notice how `react` is imported by multiple modules — that's why deduplication matters!
+</InfoBox>
+
+### Circular Dependencies
+
+One problem to watch for is **circular dependencies** — when modules import each other in a cycle:
+
+```javascript
+// userService.js
+import { logActivity } from './logger.js';
+
+export function createUser(name) {
+  logActivity('User created: ' + name);
+  return { name };
+}
+
+// logger.js
+import { createUser } from './userService.js';  // ⚠️ Circular!
+
+export function logActivity(message) {
+  const admin = createUser('admin');  // This creates a cycle!
+  console.log(`[${admin.name}] ${message}`);
+}
+```
+
+This creates: `userService` → `logger` → `userService` (cycle!)
+
+<InfoBox type="warning" title="Avoiding Circular Dependencies">
+Circular dependencies can cause:
+- Initialization errors
+- Undefined values
+- Hard-to-debug issues
+
+**Solution:** Extract shared code into a third module, or restructure your imports.
+</InfoBox>
+
+<ProgressCheckpoint section="dependency-graphs" xpReward={12} />
+
+## Webpack Configuration Basics
+
+Webpack is the most powerful bundler, but it requires configuration. Let's build a basic `webpack.config.js`:
+
+```javascript
+// webpack.config.js
+const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+
+module.exports = {
+  // Entry point: where webpack starts bundling
+  entry: './src/index.js',
+  
+  // Output: where the bundle goes
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'bundle.[contenthash].js',
+    clean: true  // Clean dist folder before each build
+  },
+  
+  // Module rules: how to handle different file types
+  module: {
+    rules: [
+      {
+        test: /\.jsx?$/,  // Match .js and .jsx files
+        exclude: /node_modules/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['@babel/preset-react']
+          }
+        }
+      },
+      {
+        test: /\.css$/,  // Match .css files
+        use: ['style-loader', 'css-loader']
+      },
+      {
+        test: /\.(png|svg|jpg|jpeg|gif)$/i,  // Match images
+        type: 'asset/resource'
+      }
+    ]
+  },
+  
+  // Plugins: extend webpack's functionality
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: './src/index.html'
+    })
+  ],
+  
+  // Dev server configuration
+  devServer: {
+    static: './dist',
+    port: 3000,
+    hot: true  // Enable hot module replacement
+  },
+  
+  // Source maps for debugging
+  devtool: 'source-map',
+  
+  // Optimization
+  optimization: {
+    splitChunks: {
+      chunks: 'all'  // Split vendor code into separate bundle
+    }
+  }
+};
+```
+
+### Understanding Webpack Concepts
+
+<KeyConcept title="Webpack Core Concepts">
+- **Entry** — Starting point for bundling
+- **Output** — Where bundles are saved
+- **Loaders** — Transform files (Babel, CSS, images)
+- **Plugins** — Extend functionality (HTML generation, minification)
+- **Mode** — 'development' or 'production'
+</KeyConcept>
+
+### Loaders vs Plugins
+
+**Loaders** transform individual files:
+```javascript
+{
+  test: /\.scss$/,
+  use: ['style-loader', 'css-loader', 'sass-loader']
+}
+```
+
+**Plugins** operate on the entire bundle:
+```javascript
+plugins: [
+  new HtmlWebpackPlugin(),
+  new MiniCssExtractPlugin(),
+  new CompressionPlugin()
+]
+```
+
+<InfoBox type="info" title="Loader Chain">
+Loaders run right-to-left (or bottom-to-top):
+`sass-loader` → `css-loader` → `style-loader`
+
+Each loader transforms the output of the previous one!
+</InfoBox>
+
+### Content Hashing
+
+Notice `bundle.[contenthash].js`? This creates unique filenames based on content:
+
+```
+bundle.a3f2b1c.js  // Version 1
+bundle.d7e9f4a.js  // Version 2 (after changes)
+```
+
+**Why?** Browser caching! When content changes, the filename changes, forcing browsers to download the new version.
+
+<ProgressCheckpoint section="bundlers" xpReward={15} />
+
+## Vite: The Modern Alternative
+
+Vite takes a different approach — it's faster and simpler. Here's a basic `vite.config.js`:
+
+```javascript
+// vite.config.js
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig({
+  // Plugins
+  plugins: [react()],
+  
+  // Path aliases
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@components': path.resolve(__dirname, './src/components')
+    }
+  },
+  
+  // Dev server
+  server: {
+    port: 3000,
+    open: true,  // Open browser automatically
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      }
+    }
+  },
+  
+  // Build options
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'router': ['react-router-dom']
+        }
+      }
+    }
+  },
+  
+  // Environment variables
+  define: {
+    __APP_VERSION__: JSON.stringify('1.0.0')
+  }
+});
+```
+
+### Why Vite is Faster
+
+Vite uses **native ES modules** during development:
+
+**Traditional bundlers (Webpack):**
+```
+Source files → Bundle everything → Dev server → Browser
+(slow startup, rebuild on every change)
+```
+
+**Vite:**
+```
+Source files → Dev server → Browser (native ESM)
+(instant startup, only rebuild changed files)
+```
+
+<KeyConcept title="Vite's Speed Secret">
+Vite doesn't bundle during development! It serves files as native ES modules, making startup instant and updates lightning-fast.
+</KeyConcept>
+
+### Vite vs Webpack: When to Use Each
+
+<BundlerComparison 
+  bundlers={['webpack', 'vite']}
+  scenario={{
+    id: 'intermediate-spa',
+    name: 'Production SPA',
+    description: 'Building a single-page application for production',
+    requirements: ['Fast development', 'Code splitting', 'Legacy browser support', 'Custom loaders'],
+    recommendedBundler: 'vite',
+    reasoning: 'Vite provides excellent development speed and handles most production needs. Use Webpack only if you need specific loaders or have complex custom requirements.'
+  }}
+/>
+
+<InfoBox type="tip" title="Migration Tip">
+Migrating from Webpack to Vite? Most projects can switch with minimal changes:
+1. Replace webpack.config.js with vite.config.js
+2. Update scripts in package.json
+3. Convert CommonJS to ES modules
+4. Replace webpack-specific plugins with Vite equivalents
+</InfoBox>
+
+<ProgressCheckpoint section="bundler-configuration" xpReward={15} />
+
+## Transpilation in Practice
+
+Let's explore how transpilation works with different browser targets. Modern JavaScript has features that older browsers don't support, so we need to transpile.
+
+### Babel Configuration
+
+Babel is configured via `.babelrc` or `babel.config.js`:
+
+```javascript
+// babel.config.js
+module.exports = {
+  presets: [
+    ['@babel/preset-env', {
+      targets: {
+        browsers: ['> 0.5%', 'last 2 versions', 'not dead']
+      },
+      useBuiltIns: 'usage',  // Only include polyfills you use
+      corejs: 3
+    }],
+    '@babel/preset-react',
+    '@babel/preset-typescript'
+  ],
+  plugins: [
+    '@babel/plugin-proposal-class-properties',
+    '@babel/plugin-transform-runtime'
+  ]
+};
+```
+
+### Understanding Browser Targets
+
+The `targets` field tells Babel which browsers to support:
+
+```javascript
+targets: {
+  // Support browsers with > 0.5% market share
+  browsers: ['> 0.5%'],
+  
+  // Support last 2 versions of each browser
+  browsers: ['last 2 versions'],
+  
+  // Don't support dead browsers (no updates in 24 months)
+  browsers: ['not dead'],
+  
+  // Specific versions
+  chrome: '90',
+  firefox: '88',
+  safari: '14',
+  edge: '90'
+}
+```
+
+### Interactive Transpilation Demo
+
+See how code transforms based on browser targets:
+
+<TranspilerDemo 
+  initialCode={`// Modern JavaScript features
+const greet = (name) => \`Hello, \${name}!\`;
+
+class User {
+  #privateField = 'secret';
+  
+  constructor(name) {
+    this.name = name;
+  }
+  
+  async fetchData() {
+    const response = await fetch('/api/user');
+    const data = await response.json();
+    return data;
+  }
+  
+  get info() {
+    return { name: this.name };
+  }
+}
+
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(n => n * 2);
+const evens = numbers.filter(n => n % 2 === 0);
+const sum = numbers.reduce((acc, n) => acc + n, 0);
+
+// Optional chaining and nullish coalescing
+const userName = user?.profile?.name ?? 'Anonymous';
+
+// Spread operator
+const merged = { ...obj1, ...obj2 };
+const combined = [...arr1, ...arr2];`}
+  targets={{
+    chrome: 90,
+    firefox: 88,
+    safari: 14,
+    edge: 90
+  }}
+  showHighlights={true}
+/>
+
+<InfoBox type="tip" title="Try Different Targets!">
+Change the browser targets to see how the output changes. Older browsers require more transformations!
+</InfoBox>
+
+### Common Transformations
+
+Here are the most common transformations Babel applies:
+
+**Arrow Functions:**
+```javascript
+// Modern
+const add = (a, b) => a + b;
+
+// Transpiled
+var add = function(a, b) { return a + b; };
+```
+
+**Template Literals:**
+```javascript
+// Modern
+const message = `Hello, ${name}!`;
+
+// Transpiled
+var message = "Hello, " + name + "!";
+```
+
+**Async/Await:**
+```javascript
+// Modern
+async function fetchUser() {
+  const response = await fetch('/api/user');
+  return response.json();
+}
+
+// Transpiled (simplified)
+function fetchUser() {
+  return regeneratorRuntime.async(function(context) {
+    while (1) {
+      switch (context.prev = context.next) {
+        case 0:
+          context.next = 2;
+          return regeneratorRuntime.awrap(fetch('/api/user'));
+        // ... more generated code
+      }
+    }
+  });
+}
+```
+
+**Class Fields:**
+```javascript
+// Modern
+class Counter {
+  count = 0;
+  increment = () => this.count++;
+}
+
+// Transpiled
+class Counter {
+  constructor() {
+    this.count = 0;
+    this.increment = () => this.count++;
+  }
+}
+```
+
+<KeyConcept title="Polyfills vs Transforms">
+- **Transforms** — Syntax changes (arrow functions → regular functions)
+- **Polyfills** — Add missing features (Promise, Array.includes)
+
+Babel handles transforms. For polyfills, use `core-js` with `useBuiltIns: 'usage'`
+</KeyConcept>
+
+### TypeScript Transpilation
+
+TypeScript also transpiles, but it removes types rather than transforming syntax:
+
+```typescript
+// TypeScript
+interface User {
+  name: string;
+  age: number;
+}
+
+function greet(user: User): string {
+  return `Hello, ${user.name}!`;
+}
+
+// Transpiled JavaScript
+function greet(user) {
+  return `Hello, ${user.name}!`;
+}
+```
+
+<InfoBox type="info" title="TypeScript + Babel">
+Modern setups often use both:
+1. **TypeScript** — Type checking only (`tsc --noEmit`)
+2. **Babel** or **esbuild** — Actual transpilation (faster!)
+
+This gives you type safety without slow compilation.
+</InfoBox>
+
+<ProgressCheckpoint section="transpilation" xpReward={15} />
+
+## Code Splitting and Optimization
+
+One of the most important bundler features is **code splitting** — breaking your bundle into smaller chunks that load on demand.
+
+### Why Code Splitting?
+
+Imagine your app has:
+- Homepage (10 KB)
+- Dashboard (50 KB)
+- Admin panel (30 KB)
+
+Without code splitting: Users download 90 KB even if they only visit the homepage!
+
+With code splitting: Users download only what they need:
+- Visit homepage → 10 KB
+- Visit dashboard → 10 KB + 50 KB
+- Visit admin → 10 KB + 30 KB
+
+### Dynamic Imports
+
+Use dynamic `import()` to split code:
+
+```javascript
+// Static import (bundled together)
+import Dashboard from './Dashboard';
+
+// Dynamic import (separate chunk)
+const Dashboard = lazy(() => import('./Dashboard'));
+
+// Or with async/await
+async function loadDashboard() {
+  const { Dashboard } = await import('./Dashboard');
+  return Dashboard;
+}
+```
+
+### React Code Splitting
+
+React has built-in support with `React.lazy`:
+
+```javascript
+import { lazy, Suspense } from 'react';
+
+// Lazy load components
+const Dashboard = lazy(() => import('./Dashboard'));
+const AdminPanel = lazy(() => import('./AdminPanel'));
+
+function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/admin" element={<AdminPanel />} />
+      </Routes>
+    </Suspense>
+  );
+}
+```
+
+<KeyConcept title="Code Splitting Benefits">
+- **Faster initial load** — Download less code upfront
+- **Better caching** — Unchanged chunks stay cached
+- **Improved performance** — Parse and execute less JavaScript
+</KeyConcept>
+
+### Vendor Splitting
+
+Separate your code from third-party libraries:
+
+```javascript
+// Webpack
+optimization: {
+  splitChunks: {
+    cacheGroups: {
+      vendor: {
+        test: /[\\/]node_modules[\\/]/,
+        name: 'vendors',
+        chunks: 'all'
+      }
+    }
+  }
+}
+
+// Vite
+build: {
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        'react-vendor': ['react', 'react-dom'],
+        'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu']
+      }
+    }
+  }
+}
+```
+
+This creates separate bundles:
+- `main.js` — Your application code
+- `react-vendor.js` — React libraries
+- `ui-vendor.js` — UI libraries
+
+**Why?** Libraries change less frequently, so they stay cached longer!
+
+<ProgressCheckpoint section="optimization" xpReward={12} />
+
+## Intermediate Quiz
+
+<Quiz>
+  <Question text="What does the ^ symbol mean in package.json versions like ^18.2.0?">
+    <Answer>Exact version only</Answer>
+    <Answer correct>Compatible with 18.x.x (allows minor and patch updates)</Answer>
+    <Answer>Any version is acceptable</Answer>
+    <Answer>Only patch updates allowed</Answer>
+  </Question>
+  
+  <Question text="Why do we need lock files (package-lock.json, yarn.lock)?">
+    <Answer>To make npm install faster</Answer>
+    <Answer correct>To ensure everyone gets the exact same dependency versions</Answer>
+    <Answer>To reduce the size of node_modules</Answer>
+    <Answer>To prevent installing devDependencies</Answer>
+  </Question>
+  
+  <Question text="What's the main advantage of Vite over Webpack during development?">
+    <Answer>Vite produces smaller bundles</Answer>
+    <Answer>Vite has more plugins available</Answer>
+    <Answer correct>Vite uses native ES modules for instant startup and fast updates</Answer>
+    <Answer>Vite works better with TypeScript</Answer>
+  </Question>
+  
+  <Question text="What's the difference between a loader and a plugin in Webpack?">
+    <Answer>Loaders are faster than plugins</Answer>
+    <Answer correct>Loaders transform individual files, plugins operate on the entire bundle</Answer>
+    <Answer>Plugins are deprecated, use loaders instead</Answer>
+    <Answer>There is no difference</Answer>
+  </Question>
+  
+  <Question text="What does code splitting accomplish?">
+    <Answer>Makes your code easier to read</Answer>
+    <Answer>Removes unused code from bundles</Answer>
+    <Answer correct>Breaks bundles into smaller chunks that load on demand</Answer>
+    <Answer>Converts modern JavaScript to older syntax</Answer>
+  </Question>
+  
+  <Question text="What's the purpose of content hashing in filenames like bundle.[contenthash].js?">
+    <Answer>To make filenames unique for each developer</Answer>
+    <Answer correct>To enable browser caching while forcing updates when content changes</Answer>
+    <Answer>To compress the bundle size</Answer>
+    <Answer>To improve security</Answer>
+  </Question>
+  
+  <Question text="What's a circular dependency?">
+    <Answer>A dependency that's listed twice in package.json</Answer>
+    <Answer correct>When modules import each other in a cycle (A imports B, B imports A)</Answer>
+    <Answer>A dependency that depends on itself</Answer>
+    <Answer>A dependency with a circular version number</Answer>
+  </Question>
+  
+  <Question text="What's the difference between transforms and polyfills in transpilation?">
+    <Answer>Transforms are faster than polyfills</Answer>
+    <Answer correct>Transforms change syntax, polyfills add missing features</Answer>
+    <Answer>Polyfills are only for Internet Explorer</Answer>
+    <Answer>There is no difference</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Great progress!** 🎉 You now understand real-world build tool configuration, dependency resolution, webpack and Vite setup, and transpilation strategies. In the advanced lesson, we'll explore optimization techniques, custom plugins, and advanced bundler features!
