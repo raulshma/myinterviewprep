@@ -39,7 +39,7 @@ export function RoadmapHero({ gamification, progressMap, firstName }: RoadmapHer
   const xpProgress = Math.min((stats.totalXp % xpForNextLevel) / xpForNextLevel * 100, 100);
 
   return (
-    <div className="relative w-full mb-10 overflow-hidden rounded-3xl bg-gradient-to-br from-primary/5 via-background to-secondary/20 border border-border/40">
+    <div className="relative w-full mb-10 overflow-hidden rounded-3xl bg-linear-to-br from-primary/5 via-background to-secondary/20 border border-border/40">
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
       <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
@@ -67,8 +67,8 @@ export function RoadmapHero({ gamification, progressMap, firstName }: RoadmapHer
               Welcome back{firstName ? `, ${firstName}` : ''}!
             </h1>
             <p className="text-lg text-muted-foreground leading-relaxed">
-              Ready to continue your journey? You've earned <span className="text-primary font-semibold">{stats.totalXp.toLocaleString()} XP</span> so far. 
-              Let's reach the next milestone together.
+              Ready to continue your journey? You&apos;ve earned <span className="text-primary font-semibold">{stats.totalXp.toLocaleString()} XP</span> so far. 
+              Let&apos;s reach the next milestone together.
             </p>
           </motion.div>
 
@@ -93,7 +93,7 @@ export function RoadmapHero({ gamification, progressMap, firstName }: RoadmapHer
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
-            className="flex-shrink-0 grid grid-cols-2 gap-4 w-full md:w-auto"
+            className="shrink-0 grid grid-cols-2 gap-4 w-full md:w-auto"
         >
           <div className="p-4 rounded-2xl bg-background/50 border border-border/50 backdrop-blur-sm shadow-sm hover:bg-background/80 transition-colors">
             <div className="flex items-center gap-3 mb-1">

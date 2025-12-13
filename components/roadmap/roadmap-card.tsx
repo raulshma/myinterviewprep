@@ -36,7 +36,7 @@ export function RoadmapCard({ roadmap, progressPercent, isStarted }: RoadmapCard
     <article 
       onClick={handleClick}
       className={cn(
-        "group relative flex flex-col h-full bg-card hover:bg-gradient-to-br hover:from-card hover:to-accent/5 rounded-3xl border border-border/60 hover:border-primary/20 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1",
+        "group relative flex flex-col h-full bg-card hover:bg-linear-to-br hover:from-card hover:to-accent/5 rounded-3xl border border-border/60 hover:border-primary/20 overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1",
         isPending && "opacity-75 pointer-events-none"
       )}
     >
