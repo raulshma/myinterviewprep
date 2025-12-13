@@ -48,12 +48,12 @@ export const DEFAULT_LIMITS: CharacterLimits = {
 };
 
 export const DEFAULT_META_TAGS: SeoMetaTags = {
-  title: 'Learn Web Development | SyntaxState',
+  title: 'Learn Web Development | MyLearningPrep',
   description: 'Master web development with interactive lessons, hands-on projects, and AI-powered learning paths. Start your coding journey today.',
-  url: 'https://syntaxstate.com/learn',
-  ogTitle: 'Learn Web Development | SyntaxState',
+  url: 'https://learn.raulshma.xyz/learn',
+  ogTitle: 'Learn Web Development | MyLearningPrep',
   ogDescription: 'Master web development with interactive lessons and AI-powered learning.',
-  ogImage: 'https://syntaxstate.com/og-image.png',
+  ogImage: 'https://learn.raulshma.xyz/og-image.png',
   twitterCard: 'summary_large_image',
 };
 

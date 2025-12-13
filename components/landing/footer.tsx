@@ -105,7 +105,7 @@ export function Footer() {
                   href="/privacy"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Privacy
+                  Privacy Policy
                 </Link>
               </li>
               <li>
@@ -113,7 +113,7 @@ export function Footer() {
                   href="/terms"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  Terms
+                  Terms of Service
                 </Link>
               </li>
             </ul>

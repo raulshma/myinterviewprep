@@ -721,7 +721,7 @@ function historyReducer(state: HistoryState, action: HistoryAction): HistoryStat
 // Local Storage for Saved Themes
 // ============================================================================
 
-const SAVED_THEMES_KEY = "syntaxstate-saved-themes";
+const SAVED_THEMES_KEY = "mylearningprep-saved-themes";
 
 function getSavedThemes(): SavedTheme[] {
   if (typeof window === "undefined") return [];

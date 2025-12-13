@@ -52,7 +52,7 @@ interface SavedTheme {
   createdAt: number;
 }
 
-const SAVED_THEMES_KEY = "syntaxstate-saved-themes";
+const SAVED_THEMES_KEY = "mylearningprep-saved-themes";
 
 // Get saved themes from localStorage
 function getSavedThemes(): SavedTheme[] {
