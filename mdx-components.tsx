@@ -166,6 +166,15 @@ import { ControlFlowVisualizer } from '@/components/learn/interactive/dotnet/Con
 import { OopConceptVisualizer } from '@/components/learn/interactive/dotnet/OopConceptVisualizer';
 import { CollectionExplorer } from '@/components/learn/interactive/dotnet/CollectionExplorer';
 import { LinqQueryBuilder } from '@/components/learn/interactive/dotnet/LinqQueryBuilder';
+import { WebApiControllerVisualizer } from '@/components/learn/interactive/dotnet/WebApiControllerVisualizer';
+import { RoutingAttributeExplorer } from '@/components/learn/interactive/dotnet/RoutingAttributeExplorer';
+import { ModelBindingVisualizer } from '@/components/learn/interactive/dotnet/ModelBindingVisualizer';
+import { ResponseFormattingDemo } from '@/components/learn/interactive/dotnet/ResponseFormattingDemo';
+import { MinimalApiBuilder } from '@/components/learn/interactive/dotnet/MinimalApiBuilder';
+import { ServiceLifetimeDemo } from '@/components/learn/interactive/dotnet/ServiceLifetimeDemo';
+import { DIContainerExplorer } from '@/components/learn/interactive/dotnet/DIContainerExplorer';
+import { DIPatternShowcase } from '@/components/learn/interactive/dotnet/DIPatternShowcase';
+
 
 /**
  * MDX Components Configuration
@@ -343,6 +352,14 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     OopConceptVisualizer,
     CollectionExplorer,
     LinqQueryBuilder,
+    WebApiControllerVisualizer,
+    RoutingAttributeExplorer,
+    ModelBindingVisualizer,
+    ResponseFormattingDemo,
+    MinimalApiBuilder,
+    ServiceLifetimeDemo,
+    DIContainerExplorer,
+    DIPatternShowcase,
 
     // Enhanced HTML elements with proper styling
     h1: ({ children, ...props }) => (

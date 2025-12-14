@@ -234,7 +234,7 @@ export function MiddlewarePipelineSimulator({
         {mode === 'advanced' && (
           <div className="mt-4 bg-gray-900 rounded-lg p-4 font-mono text-xs">
             <pre className="text-gray-300">
-              <span className="text-gray-500">// Program.cs - Middleware Order Matters!</span>
+              <span className="text-gray-500">{"//"} Program.cs - Middleware Order Matters!</span>
               {'\n'}
               <span className="text-purple-400">app</span>
               <span className="text-gray-400">.</span>

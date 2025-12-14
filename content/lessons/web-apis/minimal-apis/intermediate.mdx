@@ -1,0 +1,143 @@
+# Minimal APIs in Depth
+
+Minimal APIs provide a lightweight approach to building HTTP APIs in ASP.NET Core. They leverage C# features like lambda expressions and local functions for concise endpoint definitions.
+
+## Route Groups
+
+<MinimalApiBuilder mode="intermediate" />
+
+Organize related endpoints:
+
+```csharp
+var app = builder.Build();
+
+var products = app.MapGroup("/api/products");
+
+products.MapGet("/", GetAllProducts);
+products.MapGet("/{id}", GetProductById);
+products.MapPost("/", CreateProduct);
+products.MapPut("/{id}", UpdateProduct);
+products.MapDelete("/{id}", DeleteProduct);
+
+// Handler methods
+static IResult GetAllProducts(IProductService service)
+    => Results.Ok(service.GetAll());
+
+static IResult GetProductById(int id, IProductService service)
+    => service.GetById(id) is Product p
+        ? Results.Ok(p)
+        : Results.NotFound();
+```
+
+## Parameter Binding
+
+Minimal APIs infer binding sources:
+
+```csharp
+// Route parameter
+app.MapGet("/products/{id}", (int id) => ...);
+
+// Query string
+app.MapGet("/search", (string? term, int page = 1) => ...);
+
+// Request body (complex types)
+app.MapPost("/products", (Product product) => ...);
+
+// Explicit binding attributes
+app.MapPut("/products/{id}", (
+    [FromRoute] int id,
+    [FromBody] Product product,
+    [FromQuery] bool notify,
+    [FromHeader(Name = "X-Correlation-Id")] string? correlationId) => ...);
+
+// Services from DI
+app.MapGet("/products", (IProductService service) =>
+    service.GetAll());
+
+// HttpContext when needed
+app.MapGet("/info", (HttpContext context) =>
+    new { Path = context.Request.Path });
+```
+
+## Results Class
+
+Return typed results:
+
+```csharp
+app.MapGet("/products/{id}", (int id, IProductService service) =>
+{
+    var product = service.GetById(id);
+
+    return product is not null
+        ? Results.Ok(product)
+        : Results.NotFound(new { message = "Product not found" });
+});
+
+app.MapPost("/products", (Product product, IProductService service) =>
+{
+    service.Add(product);
+    return Results.Created($"/products/{product.Id}", product);
+});
+
+app.MapDelete("/products/{id}", (int id, IProductService service) =>
+{
+    if (!service.Exists(id))
+        return Results.NotFound();
+
+    service.Delete(id);
+    return Results.NoContent();
+});
+```
+
+## Endpoint Filters
+
+Add cross-cutting concerns:
+
+```csharp
+app.MapGet("/products/{id}", GetProductById)
+    .AddEndpointFilter(async (context, next) =>
+    {
+        var id = context.GetArgument<int>(0);
+        if (id < 0)
+            return Results.BadRequest("Invalid ID");
+
+        return await next(context);
+    });
+
+// Reusable filter
+public class ValidationFilter<T> : IEndpointFilter
+{
+    public async ValueTask<object?> InvokeAsync(
+        EndpointFilterInvocationContext context,
+        EndpointFilterDelegate next)
+    {
+        var model = context.Arguments.OfType<T>().FirstOrDefault();
+
+        // Validate model...
+
+        return await next(context);
+    }
+}
+
+app.MapPost("/products", CreateProduct)
+    .AddEndpointFilter<ValidationFilter<Product>>();
+```
+
+## Validation with FluentValidation
+
+```csharp
+app.MapPost("/products", async (
+    Product product,
+    IValidator<Product> validator) =>
+{
+    var result = await validator.ValidateAsync(product);
+
+    if (!result.IsValid)
+        return Results.ValidationProblem(result.ToDictionary());
+
+    // Process valid product...
+    return Results.Created($"/products/{product.Id}", product);
+});
+```
+
+<ProgressCheckpoint section="minimal-apis-intermediate" xpReward={40} />

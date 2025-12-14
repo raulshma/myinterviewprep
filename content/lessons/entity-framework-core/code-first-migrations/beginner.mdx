@@ -1,0 +1,96 @@
+# Code-First Migrations
+
+Imagine you're building with LEGO blocks, and you want to keep a record of every change you make - "First I built the base, then I added walls, then a roof." If you ever want to rebuild or see your history, you have perfect records! That's exactly what **migrations** do for your database.
+
+## What Are Migrations?
+
+Migrations are like **time travel for your database**! They:
+
+- Track every change you make to your data models
+- Can move your database forward (add new things)
+- Can move your database backward (undo changes)
+- Keep a history of all changes
+
+> **Think of it this way:**
+>
+> Migrations are like save points in a video game. If you mess up, you can go back to an earlier save!
+
+<MigrationVisualizer mode="beginner" />
+
+## The Two Magic Commands
+
+In EF Core, you mainly use two commands:
+
+### 1. Add-Migration (Create a Save Point)
+
+This command looks at your C# classes and figures out what changed:
+
+```powershell
+dotnet ef migrations add YourMigrationName
+```
+
+This is like taking a photo of your LEGO creation at this moment.
+
+### 2. Update-Database (Apply Changes)
+
+This command actually applies the migration to your database:
+
+```powershell
+dotnet ef database update
+```
+
+This is like building the LEGO changes for real!
+
+## A Simple Example
+
+<DotnetCodePreview
+  title="Your First Migration"
+  code={`// Step 1: You change your model
+public class Blog
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public string Url { get; set; }  // NEW!
+}
+
+// Step 2: Create migration (in terminal)
+// dotnet ef migrations add AddBlogUrl
+
+// Step 3: Apply to database (in terminal)
+// dotnet ef database update`}
+steps={[
+{
+lineNumbers: [3, 4, 5, 6],
+highlight: "Model change",
+explanation: "You added a new Url property to your Blog class"
+},
+{
+lineNumbers: [10],
+highlight: "Record the change",
+explanation: "This creates a migration file that describes adding the Url column"
+},
+{
+lineNumbers: [13],
+highlight: "Apply to database",
+explanation: "This runs the migration and adds the Url column to your database"
+}
+]}
+/>
+
+## Why Not Just Change the Database Directly?
+
+| Direct Database Changes | Using Migrations            |
+| :---------------------- | :-------------------------- |
+| Changes get lost        | Changes are tracked forever |
+| Hard to undo            | Easy to roll back           |
+| Team confusion          | Everyone stays in sync      |
+| Production issues       | Safe deployment             |
+
+## Quick Summary
+
+- **Migrations** = Save points for your database structure
+- **Add-Migration** = Creates a new save point
+- **Update-Database** = Applies pending changes
+- Always create migrations when you change your models!
+
+<ProgressCheckpoint section="intro-migrations" xpReward={25} />

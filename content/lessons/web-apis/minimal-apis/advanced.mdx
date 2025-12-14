@@ -1,0 +1,207 @@
+# Advanced Minimal APIs Patterns
+
+Leverage Minimal APIs for sophisticated scenarios including OpenAPI, testing, and enterprise patterns.
+
+## TypedResults for OpenAPI
+
+Use `TypedResults` for better OpenAPI documentation:
+
+```csharp
+app.MapGet("/products/{id}", Results<Ok<Product>, NotFound> (int id, IProductService service) =>
+{
+    var product = service.GetById(id);
+    return product is not null
+        ? TypedResults.Ok(product)
+        : TypedResults.NotFound();
+})
+.WithName("GetProductById")
+.WithOpenApi(op =>
+{
+    op.Summary = "Get a product by ID";
+    op.Description = "Returns a single product";
+    return op;
+});
+```
+
+<MinimalApiBuilder mode="advanced" />
+
+## OpenAPI/Swagger Configuration
+
+Enhance API documentation:
+
+```csharp
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Products API",
+        Version = "v1"
+    });
+});
+
+var app = builder.Build();
+
+var products = app.MapGroup("/api/products")
+    .WithTags("Products")
+    .WithOpenApi();
+
+products.MapGet("/", GetAll)
+    .Produces<List<Product>>(200)
+    .ProducesProblem(500);
+
+products.MapGet("/{id}", GetById)
+    .Produces<Product>(200)
+    .Produces(404)
+    .WithDescription("Fetches a product by its unique identifier");
+
+products.MapPost("/", Create)
+    .Accepts<CreateProductRequest>("application/json")
+    .Produces<Product>(201)
+    .ProducesValidationProblem();
+```
+
+## Endpoint Routing Extensions
+
+Create reusable endpoint extensions:
+
+```csharp
+public static class ProductEndpoints
+{
+    public static RouteGroupBuilder MapProductEndpoints(
+        this IEndpointRouteBuilder routes)
+    {
+        var group = routes.MapGroup("/api/products")
+            .WithTags("Products")
+            .RequireAuthorization();
+
+        group.MapGet("/", GetAll);
+        group.MapGet("/{id}", GetById);
+        group.MapPost("/", Create)
+            .AllowAnonymous();
+        group.MapPut("/{id}", Update);
+        group.MapDelete("/{id}", Delete)
+            .RequireAuthorization("AdminOnly");
+
+        return group;
+    }
+
+    private static async Task<IResult> GetAll(
+        IProductService service,
+        [AsParameters] ProductQueryParams query)
+    {
+        var products = await service.SearchAsync(query);
+        return TypedResults.Ok(products);
+    }
+
+    private static async Task<IResult> Create(
+        CreateProductRequest request,
+        IProductService service,
+        IValidator<CreateProductRequest> validator)
+    {
+        var validation = await validator.ValidateAsync(request);
+        if (!validation.IsValid)
+            return TypedResults.ValidationProblem(validation.ToDictionary());
+
+        var product = await service.CreateAsync(request);
+        return TypedResults.Created($"/api/products/{product.Id}", product);
+    }
+}
+
+// Usage in Program.cs
+app.MapProductEndpoints();
+```
+
+## Parameter Objects
+
+Bind multiple parameters with `[AsParameters]`:
+
+```csharp
+public class ProductQueryParams
+{
+    [FromQuery] public string? Category { get; set; }
+    [FromQuery] public decimal? MinPrice { get; set; }
+    [FromQuery] public decimal? MaxPrice { get; set; }
+    [FromQuery] public int Page { get; set; } = 1;
+    [FromQuery] public int PageSize { get; set; } = 10;
+    [FromQuery] public string SortBy { get; set; } = "name";
+}
+
+app.MapGet("/products", (
+    [AsParameters] ProductQueryParams query,
+    IProductService service) =>
+{
+    return service.Search(query);
+});
+```
+
+## Testing Minimal APIs
+
+Use `WebApplicationFactory`:
+
+```csharp
+public class ProductApiTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly HttpClient _client;
+
+    public ProductApiTests(WebApplicationFactory<Program> factory)
+    {
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task GetProducts_ReturnsOk()
+    {
+        var response = await _client.GetAsync("/api/products");
+
+        response.EnsureSuccessStatusCode();
+        var products = await response.Content
+            .ReadFromJsonAsync<List<Product>>();
+        Assert.NotNull(products);
+    }
+
+    [Fact]
+    public async Task CreateProduct_WithValidData_ReturnsCreated()
+    {
+        var product = new { Name = "Test", Price = 9.99 };
+
+        var response = await _client.PostAsJsonAsync("/api/products", product);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.NotNull(response.Headers.Location);
+    }
+
+    [Fact]
+    public async Task GetProduct_WithInvalidId_ReturnsNotFound()
+    {
+        var response = await _client.GetAsync("/api/products/999999");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+}
+```
+
+## Containerized Deployment
+
+Minimal APIs with Docker:
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY . .
+RUN dotnet publish -c Release -o /app
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app .
+EXPOSE 8080
+ENTRYPOINT ["dotnet", "ProductApi.dll"]
+```
+
+```csharp
+// Enable container-friendly defaults
+var builder = WebApplication.CreateSlimBuilder(args);
+builder.WebHost.UseUrls("http://+:8080");
+```
+
+<ProgressCheckpoint section="minimal-apis-advanced" xpReward={50} />

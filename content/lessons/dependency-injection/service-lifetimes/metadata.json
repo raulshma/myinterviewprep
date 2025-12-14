@@ -1,0 +1,28 @@
+{
+  "id": "service-lifetimes",
+  "title": "Service Lifetimes (Singleton, Scoped, Transient)",
+  "description": "Master the three service lifetimes in ASP.NET Core: Singleton for application-wide sharing, Scoped for per-request instances, and Transient for fresh instances every time.",
+  "milestone": "dependency-injection",
+  "order": 2,
+  "sections": [
+    "lifetime-overview",
+    "lifetime-comparison",
+    "lifetime-pitfalls"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["di-fundamentals"],
+  "tags": ["dependency-injection", "singleton", "scoped", "transient", "service-lifetime"]
+}

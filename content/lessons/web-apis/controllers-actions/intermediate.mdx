@@ -1,0 +1,111 @@
+# Controllers & Actions in Depth
+
+Controllers in ASP.NET Core are the entry points for handling HTTP requests. They inherit from `ControllerBase` (for APIs) or `Controller` (for MVC with views) and contain action methods that respond to specific routes.
+
+## Controller Architecture
+
+<WebApiControllerVisualizer mode="intermediate" />
+
+## The [ApiController] Attribute
+
+The `[ApiController]` attribute enables several API-specific behaviors:
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class ProductsController : ControllerBase
+{
+    // Automatic 400 responses for validation errors
+    // Binding source inference
+    // Problem details for error responses
+}
+```
+
+### Key Behaviors Enabled
+
+| Feature                        | Description                                            |
+| :----------------------------- | :----------------------------------------------------- |
+| **Automatic Model Validation** | Returns 400 Bad Request if ModelState is invalid       |
+| **Binding Source Inference**   | Complex types from body, simple types from route/query |
+| **Problem Details**            | Standardized error response format (RFC 7807)          |
+| **Attribute Routing Required** | Convention-based routing disabled                      |
+
+## Action Return Types
+
+Actions can return various types:
+
+```csharp
+// Specific type - automatically wrapped in 200 OK
+[HttpGet]
+public List<Product> GetAll() => _service.GetAll();
+
+// ActionResult<T> - flexible return type with type safety
+[HttpGet("{id}")]
+public ActionResult<Product> GetById(int id)
+{
+    var product = _service.GetById(id);
+    return product is null ? NotFound() : Ok(product);
+}
+
+// IActionResult - maximum flexibility
+[HttpPost]
+public IActionResult Create(Product product)
+{
+    _service.Add(product);
+    return CreatedAtAction(nameof(GetById),
+        new { id = product.Id }, product);
+}
+```
+
+## Dependency Injection in Controllers
+
+Controllers support constructor injection:
+
+```csharp
+public class ProductsController : ControllerBase
+{
+    private readonly IProductService _service;
+    private readonly ILogger<ProductsController> _logger;
+
+    public ProductsController(
+        IProductService service,
+        ILogger<ProductsController> logger)
+    {
+        _service = service;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    public ActionResult<List<Product>> GetAll()
+    {
+        _logger.LogInformation("Fetching all products");
+        return Ok(_service.GetAll());
+    }
+}
+```
+
+## Common Action Results
+
+| Method         | Status Code | Use Case              |
+| :------------- | :---------- | :-------------------- |
+| `Ok()`         | 200         | Successful GET/PUT    |
+| `Created()`    | 201         | Successful POST       |
+| `NoContent()`  | 204         | Successful DELETE/PUT |
+| `BadRequest()` | 400         | Validation failure    |
+| `NotFound()`   | 404         | Resource not found    |
+| `Conflict()`   | 409         | Duplicate/conflict    |
+
+## Async Actions
+
+For I/O-bound operations, use async:
+
+```csharp
+[HttpGet("{id}")]
+public async Task<ActionResult<Product>> GetByIdAsync(int id)
+{
+    var product = await _service.GetByIdAsync(id);
+    return product is null ? NotFound() : Ok(product);
+}
+```
+
+<ProgressCheckpoint section="controllers-actions-intermediate" xpReward={40} />

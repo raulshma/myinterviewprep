@@ -1,0 +1,189 @@
+# DbContext & DbSet - Advanced Patterns
+
+Master the advanced patterns and internal workings of DbContext for high-performance applications.
+
+## DbContext Pooling
+
+For high-throughput scenarios, creating new DbContext instances can be expensive. EF Core 2.0+ offers **context pooling**:
+
+<DotnetCodePreview
+  title="DbContext Pooling"
+  code={`// Enable pooling in Program.cs
+builder.Services.AddDbContextPool<BloggingContext>(options =>
+    options.UseSqlServer(connectionString),
+    poolSize: 128); // Max pooled instances
+
+// Factory pattern for scenarios requiring explicit control
+builder.Services.AddPooledDbContextFactory<BloggingContext>(options =>
+options.UseSqlServer(connectionString));
+
+// Using the factory
+public class MyService
+{
+private readonly IDbContextFactory<BloggingContext> \_factory;
+
+    public async Task DoWorkAsync()
+    {
+        using var context = await _factory.CreateDbContextAsync();
+        // Use context...
+    }
+
+}`}
+steps={[
+{
+lineNumbers: [2, 3, 4],
+highlight: "Enable pooling",
+explanation: "AddDbContextPool reuses contexts instead of creating new ones"
+},
+{
+lineNumbers: [7, 8],
+highlight: "Factory pattern",
+explanation: "IDbContextFactory allows explicit context lifetime control"
+},
+{
+lineNumbers: [16, 17],
+highlight: "Factory usage",
+explanation: "Create short-lived contexts on demand"
+}
+]}
+/>
+
+## Custom Change Tracking
+
+<DbContextVisualizer mode="advanced" />
+
+## The Unit of Work Pattern
+
+DbContext naturally implements the Unit of Work pattern. For complex scenarios, you can extend this:
+
+<DotnetCodePreview
+  title="Unit of Work Implementation"
+  code={`public interface IUnitOfWork : IDisposable
+{
+    IRepository<Blog> Blogs { get; }
+    IRepository<Post> Posts { get; }
+    Task<int> CommitAsync(CancellationToken ct = default);
+}
+
+public class UnitOfWork : IUnitOfWork
+{
+private readonly BloggingContext \_context;
+
+    public UnitOfWork(BloggingContext context)
+    {
+        _context = context;
+        Blogs = new Repository<Blog>(_context);
+        Posts = new Repository<Post>(_context);
+    }
+
+    public IRepository<Blog> Blogs { get; }
+    public IRepository<Post> Posts { get; }
+
+    public async Task<int> CommitAsync(CancellationToken ct)
+    {
+        return await _context.SaveChangesAsync(ct);
+    }
+
+    public void Dispose() => _context.Dispose();
+
+}`}
+/>
+
+## Interceptors and Events
+
+EF Core provides hooks for monitoring and modifying operations:
+
+<DotnetCodePreview
+  title="SaveChanges Interceptor"
+  code={`public class AuditInterceptor : SaveChangesInterceptor
+{
+    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData eventData,
+        InterceptionResult<int> result,
+        CancellationToken ct = default)
+    {
+        var context = eventData.Context;
+        
+        foreach (var entry in context.ChangeTracker.Entries())
+        {
+            if (entry.State == EntityState.Modified)
+            {
+                // Set audit fields
+                entry.Property("ModifiedAt").CurrentValue = DateTime.UtcNow;
+            }
+        }
+        
+        return base.SavingChangesAsync(eventData, result, ct);
+    }
+}
+
+// Register in OnConfiguring
+optionsBuilder.AddInterceptors(new AuditInterceptor());`}
+steps={[
+{
+lineNumbers: [1, 2, 3, 4, 5, 6, 7],
+highlight: "Interceptor class",
+explanation: "Inherit from SaveChangesInterceptor to hook into save operations"
+},
+{
+lineNumbers: [10, 11, 12, 13, 14, 15, 16, 17],
+highlight: "Modify entries",
+explanation: "Access ChangeTracker to modify entities before save"
+}
+]}
+/>
+
+## Compiled Models for Startup Performance
+
+For large models, startup can be slow. EF Core 6+ supports compiled models:
+
+```bash
+# Generate compiled model
+dotnet ef dbcontext optimize -o CompiledModels -n MyApp.CompiledModels
+```
+
+<DotnetCodePreview
+  title="Using Compiled Models"
+  code={`// Reference the compiled model
+protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+{
+    optionsBuilder
+        .UseSqlServer(connectionString)
+        .UseModel(CompiledModels.BloggingContextModel.Instance);
+}`}
+/>
+
+## Stress Testing and Diagnostics
+
+<DotnetCodePreview
+  title="Query Logging and Diagnostics"
+  code={`optionsBuilder
+    .UseSqlServer(connectionString)
+    .LogTo(Console.WriteLine, LogLevel.Information)
+    .EnableSensitiveDataLogging() // Show parameter values
+    .EnableDetailedErrors();
+
+// Or use interception
+public class QueryTimingInterceptor : DbCommandInterceptor
+{
+public override DbDataReader ReaderExecuted(
+DbCommand command,
+CommandExecutedEventData eventData,
+DbDataReader result)
+{
+Console.WriteLine($"Query took: {eventData.Duration.TotalMilliseconds}ms");
+Console.WriteLine(command.CommandText);
+return result;
+}
+}`}
+/>
+
+## Key Takeaways
+
+- Use **DbContext pooling** for high-throughput scenarios
+- Implement **interceptors** for cross-cutting concerns (auditing, logging)
+- Consider **compiled models** for faster startup with large schemas
+- Use **IDbContextFactory** when you need explicit lifetime control
+- Monitor performance with **query logging** and **diagnostics**
+
+<ProgressCheckpoint section="savechanges" xpReward={60} />

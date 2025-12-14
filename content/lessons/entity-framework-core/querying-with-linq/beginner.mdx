@@ -1,0 +1,121 @@
+# Querying Data with LINQ
+
+Imagine you have a huge library with thousands of books. LINQ is like having a super-smart librarian who can find exactly what you need instantly! Instead of saying "find books," you can say "find all mystery books written after 2020 with more than 300 pages" - and LINQ gets them for you!
+
+## What is LINQ?
+
+**LINQ** (Language Integrated Query) lets you ask questions about your data using C# code. EF Core then translates your questions into SQL that the database understands.
+
+> **Think of it this way:**
+>
+> You speak C#, the database speaks SQL, and LINQ is your translator that converts your requests perfectly!
+
+<EntityFrameworkVisualizer mode="beginner" />
+
+## Your First Query
+
+<DotnetCodePreview
+  title="Basic LINQ Query"
+  code={`// Get all blogs
+var allBlogs = context.Blogs.ToList();
+
+// Get blogs with "Tech" in the title
+var techBlogs = context.Blogs
+.Where(b => b.Title.Contains("Tech"))
+.ToList();
+
+// Get just one blog by ID
+var blog = context.Blogs.Find(1);`}
+steps={[
+{
+lineNumbers: [2],
+highlight: "Get everything",
+explanation: "ToList() fetches all blogs from the database"
+},
+{
+lineNumbers: [5, 6, 7],
+highlight: "Filter with Where",
+explanation: "Where() is like a sieve - only matching items get through"
+},
+{
+lineNumbers: [10],
+highlight: "Find by ID",
+explanation: "Find() is a shortcut to get one item by its primary key"
+}
+]}
+/>
+
+## Common Query Operations
+
+| What You Want   | LINQ Method         | Example                   |
+| :-------------- | :------------------ | :------------------------ |
+| Filter items    | `.Where()`          | Only blogs with 5+ rating |
+| Sort items      | `.OrderBy()`        | Sort by date              |
+| Get first item  | `.FirstOrDefault()` | Get newest blog           |
+| Count items     | `.Count()`          | How many posts?           |
+| Check if exists | `.Any()`            | Are there any posts?      |
+
+## Sorting Your Results
+
+<DotnetCodePreview
+  title="Sorting with OrderBy"
+  code={`// Sort A to Z by title
+var sorted = context.Blogs
+    .OrderBy(b => b.Title)
+    .ToList();
+
+// Sort newest first
+var newest = context.Blogs
+.OrderByDescending(b => b.CreatedDate)
+.ToList();`}
+steps={[
+{
+lineNumbers: [2, 3, 4],
+highlight: "OrderBy",
+explanation: "Sorts in ascending order (A→Z, 1→10)"
+},
+{
+lineNumbers: [7, 8, 9],
+highlight: "OrderByDescending",
+explanation: "Sorts in descending order (Z→A, newest first)"
+}
+]}
+/>
+
+## Getting Just One Item
+
+<DotnetCodePreview
+  title="Single Item Queries"
+  code={`// Get first blog (or null if none exist)
+var first = context.Blogs.FirstOrDefault();
+
+// Get first blog matching condition
+var techBlog = context.Blogs
+.FirstOrDefault(b => b.Title.Contains("Tech"));
+
+// Get single item (throws if more than one!)
+var unique = context.Blogs
+.SingleOrDefault(b => b.Id == 5);`}
+steps={[
+{
+lineNumbers: [2],
+highlight: "FirstOrDefault",
+explanation: "Gets the first item, or null if nothing found"
+},
+{
+lineNumbers: [9, 10],
+highlight: "SingleOrDefault",
+explanation: "Like First, but throws an error if there are multiple matches"
+}
+]}
+/>
+
+## Quick Summary
+
+- **LINQ** = Asking questions about data in C#
+- **Where()** = Filter (keep only matching items)
+- **OrderBy()** = Sort results
+- **ToList()** = Execute query and get results
+- **FirstOrDefault()** = Get one item (or null)
+
+<ProgressCheckpoint section="intro-linq" xpReward={25} />

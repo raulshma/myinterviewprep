@@ -1,0 +1,65 @@
+# Model Binding & Validation
+
+Ever filled out a form online? When you click submit, the website somehow knows which field is your name, which is your email, and whether you filled everything out correctly. ASP.NET Core does this same magic for APIs through **model binding** and **validation**!
+
+## What is Model Binding? 📝
+
+**Model binding** automatically takes data from the HTTP request and puts it into your action method parameters. It's like having a smart assistant who reads the incoming request and fills in all your variables!
+
+<ModelBindingVisualizer mode="beginner" />
+
+## The Form-Filling Analogy 📋
+
+> **Imagine you're at a hotel check-in.**
+>
+> You provide your ID (URL parameter), your reservation number (query string), and your preferences form (request body). The front desk worker (model binding) takes all this information and fills in their system automatically!
+
+## Where Does Data Come From?
+
+| Source     | What It Is          | Example                      |
+| :--------- | :------------------ | :--------------------------- |
+| **Route**  | Part of the URL     | `/api/products/42` → id = 42 |
+| **Query**  | After the ? in URL  | `?category=electronics`      |
+| **Body**   | The request content | JSON payload                 |
+| **Header** | HTTP headers        | `Authorization: Bearer ...`  |
+
+## Simple Example
+
+```csharp
+// URL: /api/products/42?inStock=true
+[HttpGet("{id}")]
+public string GetProduct(int id, bool inStock)
+{
+    // id = 42 (from route)
+    // inStock = true (from query string)
+    return $"Product {id}, In Stock: {inStock}";
+}
+```
+
+## Validation = Checking the Answers ✅
+
+**Validation** ensures the data is correct before you use it:
+
+```csharp
+public class CreateProductDto
+{
+    [Required]           // Must have a name
+    [StringLength(100)]  // Max 100 characters
+    public string Name { get; set; }
+
+    [Range(0.01, 10000)] // Price between $0.01 and $10,000
+    public decimal Price { get; set; }
+}
+```
+
+## Key Takeaways
+
+| Concept                | Description                             |
+| :--------------------- | :-------------------------------------- |
+| **Model Binding**      | Auto-fills parameters from request data |
+| **[Required]**         | Field must have a value                 |
+| **[StringLength]**     | Limits text length                      |
+| **[Range]**            | Limits numeric values                   |
+| **ModelState.IsValid** | Checks if all validation passed         |
+
+<ProgressCheckpoint section="model-binding-intro" xpReward={25} />

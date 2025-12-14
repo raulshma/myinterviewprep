@@ -1,0 +1,143 @@
+# DbContext & DbSet - Practical Patterns
+
+DbContext is the foundation of Entity Framework Core - understanding how it works under the hood will help you write more efficient data access code.
+
+## DbContext Configuration
+
+Every DbContext needs to know how to connect to the database. You can configure this in multiple ways:
+
+<DotnetCodePreview
+  title="DbContext with Configuration"
+  code={`public class BloggingContext : DbContext
+{
+    public DbSet<Blog> Blogs { get; set; }
+    public DbSet<Post> Posts { get; set; }
+
+    protected override void OnConfiguring(
+        DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.UseSqlServer(
+            "Server=.;Database=Blogging;Trusted_Connection=True");
+    }
+
+}`}
+steps={[
+{
+lineNumbers: [3, 4],
+highlight: "Entity Sets",
+explanation: "Each DbSet represents a table and allows querying/manipulating that entity type"
+},
+{
+lineNumbers: [6, 7, 8, 9, 10, 11],
+highlight: "Configuration",
+explanation: "OnConfiguring sets up the database provider and connection string"
+}
+]}
+/>
+
+## Dependency Injection Pattern
+
+In real applications, you'll typically inject DbContext using the DI container:
+
+<DotnetCodePreview
+  title="DbContext with DI"
+  code={`// In Program.cs
+builder.Services.AddDbContext<BloggingContext>(options =>
+    options.UseSqlServer(connectionString));
+
+// In your service
+public class BlogService
+{
+private readonly BloggingContext \_context;
+
+    public BlogService(BloggingContext context)
+    {
+        _context = context;
+    }
+
+    public async Task<List<Blog>> GetAllBlogsAsync()
+    {
+        return await _context.Blogs.ToListAsync();
+    }
+
+}`}
+steps={[
+{
+lineNumbers: [2, 3],
+highlight: "Register with DI",
+explanation: "AddDbContext registers the context for dependency injection"
+},
+{
+lineNumbers: [10, 11, 12, 13],
+highlight: "Constructor injection",
+explanation: "The context is automatically injected when the service is created"
+},
+{
+lineNumbers: [15, 16, 17, 18],
+highlight: "Using the context",
+explanation: "Access DbSet properties to query the database"
+}
+]}
+/>
+
+## Change Tracking in Action
+
+<DbContextVisualizer mode="intermediate" />
+
+## Understanding Entity States
+
+The change tracker assigns a state to each entity:
+
+| State         | Description                  | What SaveChanges Does |
+| :------------ | :--------------------------- | :-------------------- |
+| **Added**     | New entity, not in database  | INSERT                |
+| **Modified**  | Existing entity with changes | UPDATE                |
+| **Deleted**   | Marked for removal           | DELETE                |
+| **Unchanged** | No changes from database     | Nothing               |
+| **Detached**  | Not tracked by context       | Nothing               |
+
+<DotnetCodePreview
+  title="Working with Entity States"
+  code={`// Adding a new entity
+context.Blogs.Add(new Blog { Title = "New" });
+// State: Added
+
+// Modifying an existing entity
+var blog = context.Blogs.Find(1);
+blog.Title = "Updated Title";
+// State: Modified
+
+// Deleting an entity
+context.Blogs.Remove(blog);
+// State: Deleted
+
+// Check entity state
+var entry = context.Entry(blog);
+Console.WriteLine(entry.State);`}
+steps={[
+{
+lineNumbers: [2, 3],
+highlight: "Adding",
+explanation: "Add() marks the entity as Added"
+},
+{
+lineNumbers: [6, 7, 8],
+highlight: "Modifying",
+explanation: "Changing properties of a tracked entity sets it to Modified"
+},
+{
+lineNumbers: [11, 12],
+highlight: "Deleting",
+explanation: "Remove() marks the entity for deletion"
+}
+]}
+/>
+
+## Best Practices
+
+1. **Use `using` or DI**: Always dispose of your DbContext properly
+2. **Keep DbContext short-lived**: Don't hold onto contexts for long periods
+3. **One DbContext per request**: In web apps, use scoped lifetime
+4. **Use async methods**: Prefer `ToListAsync()`, `FirstOrDefaultAsync()`, etc.
+
+<ProgressCheckpoint section="dbset-basics" xpReward={40} />

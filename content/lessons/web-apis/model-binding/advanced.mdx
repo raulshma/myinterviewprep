@@ -1,0 +1,209 @@
+# Advanced Model Binding & Validation
+
+Master custom binders, complex validation scenarios, and enterprise-grade validation patterns.
+
+## Custom Model Binders
+
+Create specialized binding logic:
+
+```csharp
+// Custom binder for comma-separated values
+public class CommaSeparatedModelBinder : IModelBinder
+{
+    public Task BindModelAsync(ModelBindingContext bindingContext)
+    {
+        var valueProviderResult = bindingContext.ValueProvider
+            .GetValue(bindingContext.ModelName);
+
+        if (valueProviderResult == ValueProviderResult.None)
+            return Task.CompletedTask;
+
+        var value = valueProviderResult.FirstValue;
+        if (string.IsNullOrEmpty(value))
+            return Task.CompletedTask;
+
+        var result = value.Split(',')
+            .Select(int.Parse)
+            .ToList();
+
+        bindingContext.Result = ModelBindingResult.Success(result);
+        return Task.CompletedTask;
+    }
+}
+
+// Provider
+public class CommaSeparatedModelBinderProvider : IModelBinderProvider
+{
+    public IModelBinder? GetBinder(ModelBinderProviderContext context)
+    {
+        if (context.Metadata.ModelType == typeof(List<int>) &&
+            context.BindingInfo.BindingSource == BindingSource.Query)
+        {
+            return new CommaSeparatedModelBinder();
+        }
+        return null;
+    }
+}
+
+// Register
+builder.Services.AddControllers(options =>
+{
+    options.ModelBinderProviders.Insert(0, new CommaSeparatedModelBinderProvider());
+});
+
+// Usage: GET /api/products?ids=1,2,3,4
+[HttpGet]
+public ActionResult GetMany([FromQuery] List<int> ids) { }
+```
+
+<ModelBindingVisualizer mode="advanced" />
+
+## IValidatableObject
+
+Implement cross-property validation:
+
+```csharp
+public class DateRangeDto : IValidatableObject
+{
+    [Required]
+    public DateTime StartDate { get; set; }
+
+    [Required]
+    public DateTime EndDate { get; set; }
+
+    public IEnumerable<ValidationResult> Validate(
+        ValidationContext validationContext)
+    {
+        if (EndDate < StartDate)
+        {
+            yield return new ValidationResult(
+                "End date must be after start date",
+                new[] { nameof(EndDate) });
+        }
+
+        if ((EndDate - StartDate).TotalDays > 365)
+        {
+            yield return new ValidationResult(
+                "Date range cannot exceed one year",
+                new[] { nameof(StartDate), nameof(EndDate) });
+        }
+    }
+}
+```
+
+## FluentValidation Integration
+
+Use FluentValidation for complex rules:
+
+```csharp
+// Install: dotnet add package FluentValidation.AspNetCore
+
+public class CreateOrderValidator : AbstractValidator<CreateOrderRequest>
+{
+    public CreateOrderValidator(ICustomerService customerService)
+    {
+        RuleFor(x => x.CustomerId)
+            .MustAsync(async (id, ct) =>
+                await customerService.ExistsAsync(id))
+            .WithMessage("Customer does not exist");
+
+        RuleFor(x => x.Items)
+            .NotEmpty()
+            .WithMessage("Order must have at least one item");
+
+        RuleForEach(x => x.Items).ChildRules(item =>
+        {
+            item.RuleFor(x => x.Quantity)
+                .GreaterThan(0);
+            item.RuleFor(x => x.UnitPrice)
+                .GreaterThan(0);
+        });
+
+        RuleFor(x => x)
+            .Must(HaveValidTotal)
+            .WithMessage("Order total exceeds credit limit");
+    }
+
+    private bool HaveValidTotal(CreateOrderRequest order)
+    {
+        var total = order.Items.Sum(i => i.Quantity * i.UnitPrice);
+        return total <= 10000;
+    }
+}
+
+// Register
+builder.Services.AddValidatorsFromAssemblyContaining<CreateOrderValidator>();
+builder.Services.AddFluentValidationAutoValidation();
+```
+
+## Custom Validation Attributes
+
+Create reusable validation rules:
+
+```csharp
+[AttributeUsage(AttributeTargets.Property)]
+public class FutureDateAttribute : ValidationAttribute
+{
+    protected override ValidationResult? IsValid(
+        object? value,
+        ValidationContext validationContext)
+    {
+        if (value is DateTime date && date <= DateTime.Today)
+        {
+            return new ValidationResult(
+                ErrorMessage ?? "Date must be in the future");
+        }
+        return ValidationResult.Success;
+    }
+}
+
+// Async validation attribute
+public class UniqueEmailAttribute : ValidationAttribute
+{
+    protected override ValidationResult? IsValid(
+        object? value,
+        ValidationContext context)
+    {
+        var dbContext = context.GetRequiredService<AppDbContext>();
+        var email = value as string;
+
+        if (dbContext.Users.Any(u => u.Email == email))
+        {
+            return new ValidationResult("Email already exists");
+        }
+
+        return ValidationResult.Success;
+    }
+}
+```
+
+## Global Error Handling
+
+Customize validation error responses:
+
+```csharp
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(e => e.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    e => e.Key,
+                    e => e.Value!.Errors.Select(x => x.ErrorMessage).ToArray());
+
+            var response = new
+            {
+                Success = false,
+                Message = "Validation failed",
+                Errors = errors,
+                TraceId = context.HttpContext.TraceIdentifier
+            };
+
+            return new BadRequestObjectResult(response);
+        };
+    });
+```
+
+<ProgressCheckpoint section="model-binding-advanced" xpReward={50} />

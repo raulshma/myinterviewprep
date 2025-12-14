@@ -1,0 +1,208 @@
+# Querying Data with LINQ - Advanced Techniques
+
+Master advanced LINQ patterns for complex queries, performance optimization, and raw SQL integration.
+
+## Query Analysis
+
+<EntityFrameworkVisualizer mode="advanced" />
+
+<DotnetCodePreview
+  title="Inspecting Generated SQL"
+  code={`// Get the SQL without executing
+var query = context.Blogs
+    .Where(b => b.Rating > 3)
+    .OrderBy(b => b.Title);
+
+var sql = query.ToQueryString();
+Console.WriteLine(sql);
+
+// With logging enabled
+optionsBuilder
+.UseSqlServer(connectionString)
+.LogTo(Console.WriteLine, LogLevel.Information);`}
+/>
+
+## Compiled Queries
+
+For frequently executed queries, compiled queries eliminate parsing overhead:
+
+<DotnetCodePreview
+  title="Compiled Queries"
+  code={`// Define compiled query
+private static readonly Func<BloggingContext, int, Blog?> _getBlogById =
+    EF.CompileQuery((BloggingContext ctx, int id) =>
+        ctx.Blogs.FirstOrDefault(b => b.Id == id));
+
+private static readonly Func<BloggingContext, int, IEnumerable<Blog>> \_getTopBlogs =
+EF.CompileQuery((BloggingContext ctx, int count) =>
+ctx.Blogs
+.OrderByDescending(b => b.Rating)
+.Take(count));
+
+// Use compiled query
+public Blog? GetBlog(int id)
+{
+return \_getBlogById(\_context, id);
+}
+
+// Async version
+private static readonly Func<BloggingContext, int, Task<Blog?>> \_getBlogByIdAsync =
+EF.CompileAsyncQuery((BloggingContext ctx, int id) =>
+ctx.Blogs.FirstOrDefault(b => b.Id == id));`}
+steps={[
+{
+lineNumbers: [2, 3, 4],
+highlight: "Define compiled query",
+explanation: "EF.CompileQuery creates a precompiled query function"
+},
+{
+lineNumbers: [13, 14, 15, 16],
+highlight: "Usage",
+explanation: "Call like a regular function - no parsing overhead"
+},
+{
+lineNumbers: [19, 20, 21],
+highlight: "Async support",
+explanation: "CompileAsyncQuery for async operations"
+}
+]}
+/>
+
+## Raw SQL Queries
+
+When LINQ isn't enough or you need specific SQL:
+
+<DotnetCodePreview
+  title="Raw SQL Options"
+  code={`// FromSqlRaw for full entities
+var blogs = context.Blogs
+    .FromSqlRaw("SELECT * FROM Blogs WHERE Rating > {0}", minRating)
+    .ToList();
+
+// FromSqlInterpolated (safer - parameterized)
+var blogs2 = context.Blogs
+.FromSqlInterpolated($"SELECT \* FROM Blogs WHERE Rating > {minRating}")
+.Include(b => b.Posts) // Can still chain LINQ!
+.OrderBy(b => b.Title)
+.ToList();
+
+// SqlQuery for scalars or non-entities (EF Core 7+)
+var ratings = context.Database
+.SqlQuery<int>($"SELECT Rating FROM Blogs WHERE Id = {id}")
+.ToList();
+
+// ExecuteSqlRaw for non-query operations
+var affected = context.Database
+.ExecuteSqlRaw("UPDATE Blogs SET Rating = Rating + 1 WHERE Rating < 3");`}
+steps={[
+{
+lineNumbers: [2, 3, 4],
+highlight: "FromSqlRaw",
+explanation: "Execute raw SQL that returns entities"
+},
+{
+lineNumbers: [7, 8, 9, 10, 11],
+highlight: "Composable SQL",
+explanation: "Chain LINQ methods after FromSqlInterpolated"
+},
+{
+lineNumbers: [14, 15, 16],
+highlight: "SqlQuery",
+explanation: "For non-entity results like scalars or DTOs"
+}
+]}
+/>
+
+## Split Queries
+
+For queries with multiple collection includes, split queries can improve performance:
+
+<DotnetCodePreview
+  title="Split Queries"
+  code={`// Default: single query (may cause Cartesian explosion)
+var blogs = context.Blogs
+    .Include(b => b.Posts)
+    .Include(b => b.Tags)
+    .ToList();
+
+// Split into multiple queries
+var splitBlogs = context.Blogs
+.Include(b => b.Posts)
+.Include(b => b.Tags)
+.AsSplitQuery()
+.ToList();
+
+// Configure globally
+optionsBuilder.UseSqlServer(connectionString)
+.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);`}
+steps={[
+{
+lineNumbers: [2, 3, 4, 5],
+highlight: "Single query (default)",
+explanation: "One query with JOINs - can cause data duplication"
+},
+{
+lineNumbers: [8, 9, 10, 11, 12],
+highlight: "Split query",
+explanation: "Separate queries for each include - cleaner but more round-trips"
+}
+]}
+/>
+
+## Dynamic Queries
+
+Build queries dynamically based on conditions:
+
+<DotnetCodePreview
+  title="Dynamic Query Building"
+  code={`public IQueryable<Blog> BuildQuery(BlogFilter filter)
+{
+    IQueryable<Blog> query = context.Blogs;
+
+    if (!string.IsNullOrEmpty(filter.Title))
+        query = query.Where(b => b.Title.Contains(filter.Title));
+
+    if (filter.MinRating.HasValue)
+        query = query.Where(b => b.Rating >= filter.MinRating.Value);
+
+    if (filter.AuthorId.HasValue)
+        query = query.Where(b => b.AuthorId == filter.AuthorId.Value);
+
+    // Dynamic ordering
+    query = filter.SortDescending
+        ? query.OrderByDescending(b => EF.Property<object>(b, filter.SortBy))
+        : query.OrderBy(b => EF.Property<object>(b, filter.SortBy));
+
+    return query;
+
+}`}
+/>
+
+## Query Tags
+
+Add context to queries for debugging:
+
+<DotnetCodePreview
+  title="Query Tagging"
+  code={`var blogs = context.Blogs
+    .TagWith("Getting blogs for homepage")
+    .TagWith($"User: {userId}")
+    .Where(b => b.IsPublished)
+    .ToList();
+
+// Generated SQL includes:
+// -- Getting blogs for homepage
+// -- User: 123
+// SELECT \* FROM Blogs WHERE IsPublished = 1`}
+/>
+
+## Key Takeaways
+
+- Use **ToQueryString()** to inspect generated SQL
+- **Compiled queries** eliminate parsing for hot paths
+- **Raw SQL** when LINQ can't express your query
+- **Split queries** for multiple collection includes
+- **Dynamic building** with IQueryable for flexible filters
+- **Tags** for debugging and profiling
+
+<ProgressCheckpoint section="eager-loading" xpReward={60} />

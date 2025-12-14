@@ -1,0 +1,137 @@
+# Model Binding & Validation in Depth
+
+ASP.NET Core's model binding system automatically maps HTTP request data to action parameters and model properties. Understanding binding sources and validation gives you precise control over data flow.
+
+## Binding Source Attributes
+
+<ModelBindingVisualizer mode="intermediate" />
+
+Explicitly specify where data comes from:
+
+```csharp
+[HttpPut("{id}")]
+public ActionResult Update(
+    [FromRoute] int id,           // From URL path
+    [FromQuery] bool notify,       // From query string
+    [FromBody] ProductDto product, // From request body
+    [FromHeader(Name = "X-Request-ID")] string? requestId)
+{
+    // All parameters bound from their specified sources
+}
+```
+
+### Binding Source Summary
+
+| Attribute        | Source            | Default For      |
+| :--------------- | :---------------- | :--------------- |
+| `[FromRoute]`    | URL path segments | Route parameters |
+| `[FromQuery]`    | Query string      | Simple types     |
+| `[FromBody]`     | Request body      | Complex types    |
+| `[FromHeader]`   | HTTP headers      | -                |
+| `[FromForm]`     | Form data         | -                |
+| `[FromServices]` | DI container      | -                |
+
+## Complex Type Binding
+
+For complex objects, use `[FromBody]`:
+
+```csharp
+public class CreateOrderRequest
+{
+    public int CustomerId { get; set; }
+    public List<OrderItem> Items { get; set; } = new();
+    public ShippingAddress Address { get; set; }
+}
+
+[HttpPost]
+public ActionResult CreateOrder([FromBody] CreateOrderRequest request)
+{
+    // JSON automatically deserialized to object
+}
+```
+
+## Data Annotations for Validation
+
+Common validation attributes:
+
+```csharp
+public class ProductDto
+{
+    [Required(ErrorMessage = "Name is required")]
+    [StringLength(100, MinimumLength = 3)]
+    public string Name { get; set; }
+
+    [Range(0.01, double.MaxValue, ErrorMessage = "Price must be positive")]
+    public decimal Price { get; set; }
+
+    [EmailAddress]
+    public string? ContactEmail { get; set; }
+
+    [Url]
+    public string? Website { get; set; }
+
+    [RegularExpression(@"^[A-Z]{3}-\d{4}$",
+        ErrorMessage = "SKU format: ABC-1234")]
+    public string? SKU { get; set; }
+
+    [Compare(nameof(Price),
+        ErrorMessage = "Sale price must match price")]
+    public decimal ConfirmPrice { get; set; }
+}
+```
+
+## Checking Validation in Actions
+
+With `[ApiController]`, validation is automatic. Without it:
+
+```csharp
+[HttpPost]
+public ActionResult Create([FromBody] ProductDto product)
+{
+    if (!ModelState.IsValid)
+    {
+        return ValidationProblem(ModelState);
+    }
+
+    // Process valid data...
+    return Ok();
+}
+```
+
+## ValidationProblemDetails Response
+
+Failed validation returns standardized error format:
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+  "title": "One or more validation errors occurred.",
+  "status": 400,
+  "errors": {
+    "Name": ["Name is required"],
+    "Price": ["Price must be positive"]
+  }
+}
+```
+
+## Collection Binding
+
+Bind arrays and lists:
+
+```csharp
+// Query: ?ids=1&ids=2&ids=3
+[HttpGet]
+public ActionResult GetMany([FromQuery] int[] ids)
+{
+    return Ok(_service.GetByIds(ids));
+}
+
+// Body: [{"id": 1}, {"id": 2}]
+[HttpPost("batch")]
+public ActionResult CreateMany([FromBody] List<ProductDto> products)
+{
+    return Ok(_service.CreateMany(products));
+}
+```
+
+<ProgressCheckpoint section="model-binding-intermediate" xpReward={40} />

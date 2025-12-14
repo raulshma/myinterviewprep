@@ -1,0 +1,268 @@
+# DI Patterns & Best Practices
+
+Let's explore common DI patterns, anti-patterns to avoid, and practical guidelines for writing maintainable, testable code.
+
+## Constructor Injection Best Practices
+
+### Explicit Dependencies
+
+List ALL required dependencies in the constructor:
+
+```csharp
+public class OrderService
+{
+    private readonly IOrderRepository _orderRepo;
+    private readonly IPaymentService _payment;
+    private readonly ILogger<OrderService> _logger;
+
+    public OrderService(
+        IOrderRepository orderRepo,
+        IPaymentService payment,
+        ILogger<OrderService> logger)
+    {
+        _orderRepo = orderRepo ?? throw new ArgumentNullException(nameof(orderRepo));
+        _payment = payment ?? throw new ArgumentNullException(nameof(payment));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+}
+```
+
+<DIPatternShowcase pattern="constructor-injection" mode="intermediate" />
+
+### Guard Clauses vs Null-Forgiving
+
+```csharp
+// Option 1: Guard clauses (verbose but clear)
+public OrderService(IOrderRepository repo)
+{
+    _repo = repo ?? throw new ArgumentNullException(nameof(repo));
+}
+
+// Option 2: C# 11+ required keyword
+public class OrderService
+{
+    private readonly IOrderRepository _repo;
+
+    public required IOrderRepository Repo { init => _repo = value; }
+}
+```
+
+## The Options Pattern
+
+Use `IOptions<T>` for configuration instead of raw values:
+
+<DIPatternShowcase pattern="options-pattern" mode="intermediate" />
+
+```csharp
+// Define options class
+public class EmailOptions
+{
+    public string SmtpHost { get; set; } = "smtp.example.com";
+    public int Port { get; set; } = 587;
+    public string FromAddress { get; set; } = "";
+}
+
+// Register
+builder.Services.Configure<EmailOptions>(
+    builder.Configuration.GetSection("Email"));
+
+// Inject
+public class EmailService
+{
+    private readonly EmailOptions _options;
+
+    public EmailService(IOptions<EmailOptions> options)
+    {
+        _options = options.Value;
+    }
+}
+```
+
+### Options Interfaces Compared
+
+| Interface             | When to Use                                      |
+| :-------------------- | :----------------------------------------------- |
+| `IOptions<T>`         | Singleton options, read once                     |
+| `IOptionsSnapshot<T>` | Scoped, updates per request (reloadable configs) |
+| `IOptionsMonitor<T>`  | Singleton but watches for changes                |
+
+## Service Locator Anti-Pattern
+
+**Avoid** injecting `IServiceProvider` and resolving manually:
+
+<DIPatternShowcase pattern="service-locator" mode="intermediate" />
+
+```csharp
+// ❌ ANTI-PATTERN: Service Locator
+public class OrderService
+{
+    private readonly IServiceProvider _provider;
+
+    public OrderService(IServiceProvider provider)
+    {
+        _provider = provider;
+    }
+
+    public void Process(Order order)
+    {
+        // Hidden dependencies - not visible in constructor!
+        var payment = _provider.GetRequiredService<IPaymentService>();
+        var email = _provider.GetRequiredService<IEmailService>();
+    }
+}
+```
+
+**Problems:**
+
+1. Dependencies are **hidden** (not visible in constructor)
+2. **Harder to test** (need to mock IServiceProvider)
+3. **Runtime failures** instead of compile-time errors
+
+### When Service Locator is Acceptable
+
+The ONLY acceptable places:
+
+- **Factories** that create objects at runtime
+- **Middleware** that needs scoped services
+- **Background services** that need to create scopes
+
+```csharp
+// ✅ OK: Factory using IServiceProvider
+public class NotifierFactory : INotifierFactory
+{
+    private readonly IServiceProvider _provider;
+
+    public INotifier Create(string type) => type switch
+    {
+        "email" => _provider.GetRequiredService<EmailNotifier>(),
+        "sms" => _provider.GetRequiredService<SmsNotifier>(),
+        _ => throw new ArgumentException("Unknown type")
+    };
+}
+```
+
+## Factory Pattern with DI
+
+Use factories for runtime object creation:
+
+<DIPatternShowcase pattern="factory-pattern" mode="intermediate" />
+
+```csharp
+// Factory interface
+public interface IReportFactory
+{
+    IReport Create(ReportType type);
+}
+
+// Factory implementation
+public class ReportFactory : IReportFactory
+{
+    private readonly IServiceProvider _provider;
+
+    public ReportFactory(IServiceProvider provider)
+    {
+        _provider = provider;
+    }
+
+    public IReport Create(ReportType type) => type switch
+    {
+        ReportType.Sales => _provider.GetRequiredService<SalesReport>(),
+        ReportType.Inventory => _provider.GetRequiredService<InventoryReport>(),
+        _ => throw new ArgumentException("Unknown report type")
+    };
+}
+
+// Usage
+public class ReportController
+{
+    private readonly IReportFactory _factory;
+
+    public ReportController(IReportFactory factory)
+    {
+        _factory = factory;
+    }
+
+    [HttpGet("{type}")]
+    public IActionResult Generate(ReportType type)
+    {
+        var report = _factory.Create(type);
+        return Ok(report.Generate());
+    }
+}
+```
+
+## Common Anti-Patterns
+
+### 1. Captive Dependency
+
+```csharp
+// ❌ Scoped service captured in singleton
+public class MySingleton
+{
+    private readonly MyScopedService _scoped;  // WRONG!
+}
+```
+
+**Fix:** Use `IServiceScopeFactory` in singletons.
+
+### 2. Circular Dependency
+
+```csharp
+// ❌ A depends on B, B depends on A
+public class ServiceA { public ServiceA(ServiceB b) { } }
+public class ServiceB { public ServiceB(ServiceA a) { } }  // Boom!
+```
+
+**Fix:** Introduce a third service or use `Lazy<T>`.
+
+### 3. Constructor Over-Injection
+
+```csharp
+// ❌ Too many dependencies = class does too much
+public class GodClass
+{
+    public GodClass(IA a, IB b, IC c, ID d, IE e, IF f, IG g) { }
+}
+```
+
+**Fix:** Split into smaller classes (Single Responsibility Principle).
+
+## Testing with DI
+
+Constructor injection makes testing straightforward:
+
+```csharp
+public class UserServiceTests
+{
+    [Fact]
+    public async Task CreateUser_SendsWelcomeEmail()
+    {
+        // Arrange - Create mocks
+        var mockRepo = new Mock<IUserRepository>();
+        var mockEmail = new Mock<IEmailService>();
+
+        // Inject mocks
+        var service = new UserService(
+            mockRepo.Object,
+            mockEmail.Object);
+
+        // Act
+        await service.CreateUserAsync("test@example.com");
+
+        // Assert
+        mockEmail.Verify(
+            e => e.SendAsync("test@example.com", It.IsAny<string>()),
+            Times.Once);
+    }
+}
+```
+
+## Key Takeaways
+
+- 💉 **Constructor injection** - All dependencies explicit and visible
+- ⚙️ **Options pattern** - Use `IOptions<T>` for configuration
+- 🚫 **Avoid Service Locator** - Except in factories/middleware
+- 🏭 **Factory pattern** - For runtime object creation
+- 🧪 **Easy testing** - Inject mocks via constructor
+
+<ProgressCheckpoint section="common-anti-patterns" xpReward={40} />

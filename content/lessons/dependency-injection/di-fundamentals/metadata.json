@@ -1,0 +1,28 @@
+{
+  "id": "di-fundamentals",
+  "title": "DI Fundamentals",
+  "description": "Understand what dependency injection is, why it matters, and how it decouples your code for better testability and maintainability.",
+  "milestone": "dependency-injection",
+  "order": 1,
+  "sections": [
+    "di-what-is",
+    "di-why-matters",
+    "di-how-works"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": [],
+  "tags": ["dependency-injection", "di", "ioc", "aspnet-core", "dotnet"]
+}

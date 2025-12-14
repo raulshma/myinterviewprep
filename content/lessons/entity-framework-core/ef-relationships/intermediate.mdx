@@ -1,0 +1,189 @@
+# Entity Relationships - Practical Patterns
+
+Master the practical aspects of configuring and using entity relationships in EF Core.
+
+## Relationship Configuration
+
+<RelationshipDiagram mode="intermediate" initialType="one-to-many" />
+
+## Convention vs Fluent API
+
+EF Core can detect relationships automatically by convention, but Fluent API gives full control:
+
+<DotnetCodePreview
+  title="Fluent API Configuration"
+  code={`protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    // One-to-Many: Blog -> Posts
+    modelBuilder.Entity<Blog>()
+        .HasMany(b => b.Posts)
+        .WithOne(p => p.Blog)
+        .HasForeignKey(p => p.BlogId)
+        .OnDelete(DeleteBehavior.Cascade);
+
+    // One-to-One: Person -> Passport
+    modelBuilder.Entity<Person>()
+        .HasOne(p => p.Passport)
+        .WithOne(pp => pp.Person)
+        .HasForeignKey<Passport>(pp => pp.PersonId);
+
+    // Required vs Optional
+    modelBuilder.Entity<Post>()
+        .HasOne(p => p.Blog)
+        .WithMany(b => b.Posts)
+        .IsRequired();  // Post MUST have a blog
+
+}`}
+steps={[
+{
+lineNumbers: [4, 5, 6, 7, 8],
+highlight: "One-to-Many",
+explanation: "HasMany + WithOne defines 1:N with cascade delete"
+},
+{
+lineNumbers: [11, 12, 13, 14],
+highlight: "One-to-One",
+explanation: "HasOne + WithOne for 1:1, FK on dependent side"
+},
+{
+lineNumbers: [20],
+highlight: "IsRequired",
+explanation: "Makes the relationship required (non-nullable FK)"
+}
+]}
+/>
+
+## Navigation Properties Deep Dive
+
+<DotnetCodePreview
+  title="Navigation Property Patterns"
+  code={`public class Blog
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+
+    // Collection navigation (initialized to avoid null)
+    public ICollection<Post> Posts { get; set; } = new List<Post>();
+
+}
+
+public class Post
+{
+public int Id { get; set; }
+public string Title { get; set; }
+
+    // Foreign key property (explicit)
+    public int BlogId { get; set; }
+
+    // Reference navigation
+    public Blog Blog { get; set; } = null!;
+
+}
+
+// Usage:
+var blog = context.Blogs.Include(b => b.Posts).First();
+foreach (var post in blog.Posts)
+{
+Console.WriteLine($"{post.Title} belongs to {post.Blog.Title}");
+}`}
+steps={[
+{
+lineNumbers: [7],
+highlight: "Initialize collection",
+explanation: "Prevents null reference when adding posts to new blogs"
+},
+{
+lineNumbers: [16],
+highlight: "Explicit FK",
+explanation: "Having explicit FK property makes querying easier"
+},
+{
+lineNumbers: [19],
+highlight: "null! pattern",
+explanation: "Suppresses nullable warning - EF will populate this"
+}
+]}
+/>
+
+## Cascade Delete Behaviors
+
+| Behavior     | When Principal Deleted | Use Case                     |
+| :----------- | :--------------------- | :--------------------------- |
+| **Cascade**  | Dependents deleted     | Posts deleted with Blog      |
+| **SetNull**  | FK set to null         | Author deleted, posts remain |
+| **Restrict** | Throws exception       | Prevent accidental deletion  |
+| **NoAction** | Database decides       | Custom FK constraints        |
+
+<DotnetCodePreview
+  title="Delete Behaviors"
+  code={`modelBuilder.Entity<Blog>()
+    .HasMany(b => b.Posts)
+    .WithOne(p => p.Blog)
+    .OnDelete(DeleteBehavior.Cascade);  // Delete posts with blog
+
+modelBuilder.Entity<Post>()
+.HasOne(p => p.Author)
+.WithMany(a => a.Posts)
+.OnDelete(DeleteBehavior.SetNull); // Keep posts, clear author
+
+modelBuilder.Entity<Order>()
+.HasMany(o => o.Items)
+.WithOne(i => i.Order)
+.OnDelete(DeleteBehavior.Restrict); // Must delete items first`}
+/>
+
+## Many-to-Many with Payload
+
+Sometimes you need extra data on the join table:
+
+<DotnetCodePreview
+  title="Join Entity with Payload"
+  code={`public class Enrollment  // Join entity
+{
+    public int StudentId { get; set; }
+    public Student Student { get; set; }
+    
+    public int CourseId { get; set; }
+    public Course Course { get; set; }
+    
+    // Payload - extra data
+    public DateTime EnrollmentDate { get; set; }
+    public Grade? Grade { get; set; }
+}
+
+// Configure in OnModelCreating
+modelBuilder.Entity<Enrollment>()
+.HasKey(e => new { e.StudentId, e.CourseId });
+
+modelBuilder.Entity<Enrollment>()
+.HasOne(e => e.Student)
+.WithMany(s => s.Enrollments)
+.HasForeignKey(e => e.StudentId);
+
+modelBuilder.Entity<Enrollment>()
+.HasOne(e => e.Course)
+.WithMany(c => c.Enrollments)
+.HasForeignKey(e => e.CourseId);`}
+steps={[
+{
+lineNumbers: [10, 11],
+highlight: "Payload properties",
+explanation: "Extra data stored on the relationship itself"
+},
+{
+lineNumbers: [16],
+highlight: "Composite key",
+explanation: "The join table uses both FKs as its primary key"
+}
+]}
+/>
+
+## Best Practices
+
+1. **Always initialize collections** to avoid null reference exceptions
+2. **Include explicit FK properties** for easier querying
+3. **Choose delete behavior carefully** based on business requirements
+4. **Use Fluent API** for complex relationships
+5. **Consider using join entities** when you need payload data
+
+<ProgressCheckpoint section="one-to-many" xpReward={40} />

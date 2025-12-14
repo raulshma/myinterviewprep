@@ -1,0 +1,28 @@
+{
+  "id": "di-patterns",
+  "title": "DI Patterns & Best Practices",
+  "description": "Master dependency injection patterns like constructor injection and the options pattern, while learning to avoid anti-patterns like service locator.",
+  "milestone": "dependency-injection",
+  "order": 4,
+  "sections": [
+    "injection-patterns",
+    "common-anti-patterns",
+    "best-practices"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["di-fundamentals", "service-lifetimes", "builtin-di-container"],
+  "tags": ["dependency-injection", "patterns", "best-practices", "anti-patterns", "testing"]
+}

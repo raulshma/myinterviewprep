@@ -1,0 +1,72 @@
+# Routing & Attributes
+
+Think of your API like a city map. When someone wants to visit a specific shop (endpoint), they need the right address (route). In ASP.NET Core, **routing** tells your app which controller and action should handle each request!
+
+## What is Routing? 🗺️
+
+**Routing** is how ASP.NET Core matches incoming URLs to your controller actions. It's like a GPS system for your API!
+
+<RoutingAttributeExplorer mode="beginner" />
+
+## The GPS Analogy 🚗
+
+> **Routes are like addresses. When someone requests `/api/products/42`, the routing system finds the right controller and says "Hey, someone wants product #42!"**
+
+| URL Part    | What It Means                    |
+| :---------- | :------------------------------- |
+| `/api`      | The neighborhood (API area)      |
+| `/products` | The street (controller)          |
+| `/42`       | The house number (specific item) |
+
+## Route Attributes 🏷️
+
+You put attributes on your controller and actions to define routes:
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]  // 👈 Base address for all actions
+public class ProductsController : ControllerBase
+{
+    [HttpGet]           // GET /api/products
+    public string GetAll() => "All products!";
+
+    [HttpGet("{id}")]   // GET /api/products/42
+    public string GetById(int id) => $"Product {id}!";
+
+    [HttpPost]          // POST /api/products
+    public string Create() => "Created!";
+}
+```
+
+## HTTP Methods = Types of Visits 🚪
+
+| Method     | Meaning      | Example               |
+| :--------- | :----------- | :-------------------- |
+| **GET**    | "Show me"    | View a product        |
+| **POST**   | "Create new" | Add a product         |
+| **PUT**    | "Replace"    | Update entire product |
+| **DELETE** | "Remove"     | Delete a product      |
+
+## Route Parameters
+
+The `{id}` in `[HttpGet("{id}")]` is a **route parameter**. It captures part of the URL:
+
+```csharp
+// URL: /api/products/42
+[HttpGet("{id}")]
+public string GetById(int id)  // id will be 42!
+{
+    return $"You asked for product {id}";
+}
+```
+
+## Key Takeaways
+
+| Concept          | Description                        |
+| :--------------- | :--------------------------------- |
+| **[Route]**      | Defines the URL pattern            |
+| **[HttpGet]**    | Handles GET requests               |
+| **{parameter}**  | Captures URL values                |
+| **[controller]** | Auto-replaces with controller name |
+
+<ProgressCheckpoint section="routing-intro" xpReward={25} />

@@ -1,0 +1,29 @@
+{
+  "id": "api-routing",
+  "title": "Routing & Attributes",
+  "description": "Master URL routing with attribute routing, route templates, constraints, and parameters in ASP.NET Core Web APIs.",
+  "milestone": "web-apis",
+  "order": 2,
+  "sections": [
+    "routing-intro",
+    "route-templates",
+    "route-constraints",
+    "route-parameters"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    }
+  },
+  "prerequisites": ["controllers-actions"],
+  "tags": ["routing", "attributes", "web-api", "aspnet-core", "url"]
+}

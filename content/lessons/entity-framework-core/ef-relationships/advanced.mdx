@@ -1,0 +1,226 @@
+# Entity Relationships - Advanced Patterns
+
+Master advanced relationship patterns including inheritance, owned entities, and complex configurations.
+
+<RelationshipDiagram mode="advanced" initialType="many-to-many" />
+
+## Inheritance Strategies
+
+EF Core supports multiple inheritance mapping strategies:
+
+### Table-Per-Hierarchy (TPH)
+
+<DotnetCodePreview
+  title="TPH - Single Table"
+  code={`// All types in one table with discriminator
+public abstract class Content
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+}
+
+public class BlogPost : Content
+{
+public string Body { get; set; }
+}
+
+public class NewsArticle : Content
+{
+public string Summary { get; set; }
+public DateTime PublishDate { get; set; }
+}
+
+// Configuration
+modelBuilder.Entity<Content>()
+.HasDiscriminator<string>("ContentType")
+.HasValue<BlogPost>("blog")
+.HasValue<NewsArticle>("news");`}
+steps={[
+{
+lineNumbers: [2, 3, 4, 5, 6],
+highlight: "Base class",
+explanation: "Abstract base class with shared properties"
+},
+{
+lineNumbers: [20, 21, 22, 23],
+highlight: "Discriminator",
+explanation: "ContentType column determines the actual type"
+}
+]}
+/>
+
+### Table-Per-Type (TPT)
+
+<DotnetCodePreview
+  title="TPT - Separate Tables"
+  code={`// Each type gets its own table
+modelBuilder.Entity<Content>().ToTable("Contents");
+modelBuilder.Entity<BlogPost>().ToTable("BlogPosts");
+modelBuilder.Entity<NewsArticle>().ToTable("NewsArticles");
+
+// Or using attribute
+[Table("BlogPosts")]
+public class BlogPost : Content { }`}
+/>
+
+### Table-Per-Concrete-Type (TPC) - EF Core 7+
+
+<DotnetCodePreview
+  title="TPC - No Base Table"
+  code={`// No table for base class, full tables for concrete types
+modelBuilder.Entity<Content>().UseTpcMappingStrategy();
+
+// Each concrete type has ALL columns
+// BlogPosts: Id, Title, Body
+// NewsArticles: Id, Title, Summary, PublishDate`}
+/>
+
+## Owned Entity Types
+
+For value objects that don't have their own identity:
+
+<DotnetCodePreview
+  title="Owned Entities"
+  code={`public class Order
+{
+    public int Id { get; set; }
+    public Address ShippingAddress { get; set; }
+    public Address BillingAddress { get; set; }
+}
+
+public class Address // Value object
+{
+public string Street { get; set; }
+public string City { get; set; }
+public string PostalCode { get; set; }
+}
+
+// Configuration
+modelBuilder.Entity<Order>()
+.OwnsOne(o => o.ShippingAddress, sa =>
+{
+sa.Property(a => a.Street).HasColumnName("ShippingStreet");
+sa.Property(a => a.City).HasColumnName("ShippingCity");
+});
+
+modelBuilder.Entity<Order>()
+.OwnsOne(o => o.BillingAddress); // Uses default naming`}
+steps={[
+{
+lineNumbers: [4, 5],
+highlight: "Multiple owned instances",
+explanation: "Same type owned multiple times with different names"
+},
+{
+lineNumbers: [17, 18, 19, 20, 21, 22],
+highlight: "Column customization",
+explanation: "Customize column names for clarity"
+}
+]}
+/>
+
+## Self-Referencing Relationships
+
+<DotnetCodePreview
+  title="Hierarchical Data"
+  code={`public class Employee
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    
+    public int? ManagerId { get; set; }
+    public Employee? Manager { get; set; }
+    public ICollection<Employee> DirectReports { get; set; } = new List<Employee>();
+}
+
+modelBuilder.Entity<Employee>()
+.HasOne(e => e.Manager)
+.WithMany(e => e.DirectReports)
+.HasForeignKey(e => e.ManagerId)
+.OnDelete(DeleteBehavior.Restrict);
+
+// Query with hierarchy
+var ceo = context.Employees
+.Include(e => e.DirectReports)
+.ThenInclude(e => e.DirectReports)
+.FirstOrDefault(e => e.ManagerId == null);`}
+steps={[
+{
+lineNumbers: [6, 7, 8],
+highlight: "Self-reference navigation",
+explanation: "Manager points to another Employee"
+},
+{
+lineNumbers: [18, 19, 20, 21],
+highlight: "Hierarchical query",
+explanation: "Chain ThenInclude for multiple levels"
+}
+]}
+/>
+
+## Shadow Properties
+
+Foreign keys without explicit properties:
+
+<DotnetCodePreview
+  title="Shadow Foreign Keys"
+  code={`public class Post
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    // No BlogId property!
+    public Blog Blog { get; set; }
+}
+
+// EF creates shadow property "BlogId"
+modelBuilder.Entity<Post>()
+.Property<int>("BlogId");
+
+// Access shadow property
+var blogId = context.Entry(post).Property("BlogId").CurrentValue;
+
+// Query using shadow property
+var posts = context.Posts
+.Where(p => EF.Property<int>(p, "BlogId") == 1)
+.ToList();`}
+/>
+
+## Table Splitting
+
+Multiple entities sharing one table:
+
+<DotnetCodePreview
+  title="Table Splitting"
+  code={`public class Order
+{
+    public int Id { get; set; }
+    public string Status { get; set; }
+    public OrderDetail Detail { get; set; }
+}
+
+public class OrderDetail // Same table!
+{
+public int Id { get; set; }
+public string PaymentMethod { get; set; }
+public string ShippingNotes { get; set; }
+}
+
+modelBuilder.Entity<Order>()
+.HasOne(o => o.Detail)
+.WithOne()
+.HasForeignKey<OrderDetail>(d => d.Id);
+
+modelBuilder.Entity<Order>().ToTable("Orders");
+modelBuilder.Entity<OrderDetail>().ToTable("Orders"); // Same table!`}
+/>
+
+## Key Takeaways
+
+- **TPH** is default and most performant for simple hierarchies
+- **TPT/TPC** provide better normalization at query cost
+- **Owned entities** for value objects without identity
+- **Self-referencing** for hierarchical/tree structures
+- **Shadow properties** when you don't need FK in the model
+- **Table splitting** for loading subsets of wide tables
+
+<ProgressCheckpoint section="many-to-many" xpReward={60} />

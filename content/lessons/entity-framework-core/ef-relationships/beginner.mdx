@@ -1,0 +1,157 @@
+# Entity Relationships in EF Core
+
+Think about your family and friends. You have **one** mom, your mom can have **many** children, and students can be in **many** classes while classes have **many** students. These are **relationships** - and EF Core helps you model them in your database!
+
+## What Are Relationships?
+
+Relationships define how different pieces of data connect to each other. In EF Core, there are three main types:
+
+| Type             | Example            | Visual      |
+| :--------------- | :----------------- | :---------- |
+| **One-to-One**   | Person ↔ Passport  | 🧑 ↔ 📘     |
+| **One-to-Many**  | Blog → Posts       | 📚 → 📝📝📝 |
+| **Many-to-Many** | Students ↔ Courses | 👨‍🎓👩‍🎓 ↔ 📖📖 |
+
+<RelationshipDiagram mode="beginner" />
+
+## One-to-One: Like You and Your Shadow
+
+A **one-to-one** relationship means each thing has exactly ONE matching thing.
+
+> **Real-world examples:**
+>
+> - You ↔ Your social security number
+> - Country ↔ Capital city
+> - User ↔ Profile details
+
+<DotnetCodePreview
+  title="One-to-One Example"
+  code={`// Each person has ONE passport
+public class Person
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    
+    public Passport Passport { get; set; }  // Link to passport
+}
+
+public class Passport
+{
+public int Id { get; set; }
+public string Number { get; set; }
+
+    public int PersonId { get; set; }       // Who owns this?
+    public Person Person { get; set; }       // Link back
+
+}`}
+steps={[
+{
+lineNumbers: [7],
+highlight: "Navigation to Passport",
+explanation: "This lets you access person.Passport directly"
+},
+{
+lineNumbers: [15],
+highlight: "Foreign Key",
+explanation: "PersonId connects this passport to its owner"
+}
+]}
+/>
+
+## One-to-Many: Like a Folder with Files
+
+A **one-to-many** relationship means one thing can have MANY related things.
+
+> **Real-world examples:**
+>
+> - One teacher → Many students
+> - One blog → Many posts
+> - One order → Many items
+
+<DotnetCodePreview
+  title="One-to-Many Example"
+  code={`// One blog has MANY posts
+public class Blog
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    
+    public ICollection<Post> Posts { get; set; }  // Many posts!
+}
+
+public class Post
+{
+public int Id { get; set; }
+public string Title { get; set; }
+
+    public int BlogId { get; set; }     // Which blog?
+    public Blog Blog { get; set; }       // Link back
+
+}`}
+steps={[
+{
+lineNumbers: [7],
+highlight: "Collection Navigation",
+explanation: "ICollection<Post> means this blog can have many posts"
+},
+{
+lineNumbers: [15, 16],
+highlight: "Foreign Key + Navigation",
+explanation: "Each post tracks which blog it belongs to"
+}
+]}
+/>
+
+## Many-to-Many: Like Friends on Social Media
+
+A **many-to-many** relationship means many things connect to many other things.
+
+> **Real-world examples:**
+>
+> - Students ↔ Classes (you take many, classes have many students)
+> - Actors ↔ Movies (actors are in many movies, movies have many actors)
+> - Products ↔ Categories
+
+<DotnetCodePreview
+  title="Many-to-Many Example"
+  code={`// Students can enroll in many courses
+// Courses can have many students
+public class Student
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    
+    public ICollection<Course> Courses { get; set; }
+}
+
+public class Course
+{
+public int Id { get; set; }
+public string Title { get; set; }
+
+    public ICollection<Student> Students { get; set; }
+
+}`}
+steps={[
+{
+lineNumbers: [8],
+highlight: "Student's courses",
+explanation: "A student can be in many courses"
+},
+{
+lineNumbers: [16],
+highlight: "Course's students",
+explanation: "A course can have many students"
+}
+]}
+/>
+
+## Quick Summary
+
+| Relationship | One Side      | Other Side    | Example            |
+| :----------- | :------------ | :------------ | :----------------- |
+| **1:1**      | Single entity | Single entity | Person ↔ Passport  |
+| **1:N**      | Single entity | Collection    | Blog → Posts       |
+| **N:N**      | Collection    | Collection    | Students ↔ Courses |
+
+<ProgressCheckpoint section="intro-relationships" xpReward={25} />

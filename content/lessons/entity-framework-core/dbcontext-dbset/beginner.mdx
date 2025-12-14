@@ -1,0 +1,95 @@
+# DbContext & DbSet in Entity Framework Core
+
+Imagine you're at a fancy restaurant. You don't go into the kitchen to cook your food - instead, you have a **waiter** who takes your order, communicates with the kitchen, and brings you your meal. In Entity Framework Core, **DbContext** is exactly like that waiter - it's the bridge between your C# code and the database!
+
+## What is DbContext?
+
+DbContext is your **connection point** to the database. It's the main class that:
+
+- Connects to your database
+- Keeps track of all the changes you make
+- Sends those changes to the database when you're ready
+
+> **Think of it this way:**
+>
+> DbContext is like a universal translator - you speak C#, the database speaks SQL, and DbContext translates everything between you two!
+
+## What is DbSet?
+
+A DbSet represents a **collection of entities** of a specific type. If DbContext is the restaurant, then each DbSet is like a menu section - one for appetizers, one for main courses, one for desserts.
+
+<DotnetCodePreview
+  title="Your First DbContext"
+  code={`// This is your "waiter" - connects to database
+public class BloggingContext : DbContext
+{
+    // These are "menu sections" - collections of data
+    public DbSet<Blog> Blogs { get; set; }
+    public DbSet<Post> Posts { get; set; }
+}`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Creating your context",
+      explanation:
+        "BloggingContext inherits from DbContext - this makes it your database bridge",
+    },
+    {
+      lineNumbers: [5],
+      highlight: "Blog menu section",
+      explanation: "DbSet<Blog> = a collection of all blogs in your database",
+    },
+    {
+      lineNumbers: [6],
+      highlight: "Post menu section",
+      explanation: "DbSet<Post> = a collection of all posts in your database",
+    },
+  ]}
+/>
+
+## See It In Action!
+
+<DbContextVisualizer mode="beginner" />
+
+## The Magic of SaveChanges
+
+Just like a waiter doesn't run to the kitchen after every word you say, DbContext **batches your requests**. You can add, modify, or delete many things, and they all get saved at once when you call `SaveChanges()`.
+
+<DotnetCodePreview
+  title="Using DbContext"
+  code={`// Create a new blog (like writing on a notepad)
+var blog = new Blog { Title = "My Blog" };
+
+// Tell the context about it
+context.Blogs.Add(blog);
+
+// Now send it to the database!
+context.SaveChanges();`}
+steps={[
+{
+lineNumbers: [2],
+highlight: "Create your data",
+explanation: "This just creates an object in memory - not in the database yet!"
+},
+{
+lineNumbers: [5],
+highlight: "Tell the context",
+explanation: "Add() marks this blog as 'needs to be inserted'"
+},
+{
+lineNumbers: [8],
+highlight: "Save to database",
+explanation: "SaveChanges() sends all pending changes to the database at once"
+}
+]}
+/>
+
+## Quick Summary
+
+| Concept         | What It Does                     | Analogy                  |
+| :-------------- | :------------------------------- | :----------------------- |
+| **DbContext**   | Bridge between C# and database   | Restaurant waiter        |
+| **DbSet**       | Collection of one type of entity | Menu section             |
+| **SaveChanges** | Sends all changes to database    | Sending order to kitchen |
+
+<ProgressCheckpoint section="intro-dbcontext" xpReward={25} />

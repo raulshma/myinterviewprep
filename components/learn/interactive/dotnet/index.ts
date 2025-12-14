@@ -8,6 +8,12 @@ export { EntityFrameworkVisualizer } from './EntityFrameworkVisualizer';
 export { ApiEndpointBuilder } from './ApiEndpointBuilder';
 export { SolidPrincipleDemo } from './SolidPrincipleDemo';
 
+// EF Core Components
+export { DbContextVisualizer } from './DbContextVisualizer';
+export { MigrationVisualizer } from './MigrationVisualizer';
+export { RelationshipDiagram } from './RelationshipDiagram';
+export { PerformanceAnalyzer } from './PerformanceAnalyzer';
+
 // C# Basics Components
 export { ControlFlowVisualizer } from './ControlFlowVisualizer';
 export { OopConceptVisualizer } from './OopConceptVisualizer';
@@ -18,6 +24,18 @@ export { AspNetCoreIntroVisualizer } from './AspNetCoreIntroVisualizer';
 export { ProjectStructureExplorer } from './ProjectStructureExplorer';
 export { ConfigurationVisualizer } from './ConfigurationVisualizer';
 export { EnvironmentSwitcher } from './EnvironmentSwitcher';
+
+// Web API Components
+export { WebApiControllerVisualizer } from './WebApiControllerVisualizer';
+export { RoutingAttributeExplorer } from './RoutingAttributeExplorer';
+export { ModelBindingVisualizer } from './ModelBindingVisualizer';
+export { ResponseFormattingDemo } from './ResponseFormattingDemo';
+export { MinimalApiBuilder } from './MinimalApiBuilder';
+
+// Dependency Injection Components
+export { ServiceLifetimeDemo } from './ServiceLifetimeDemo';
+export { DIContainerExplorer } from './DIContainerExplorer';
+export { DIPatternShowcase } from './DIPatternShowcase';
 
 // Types exports
 export type { DotnetCodePreviewProps, CodeStep } from './DotnetCodePreview';
@@ -34,3 +52,20 @@ export type { AspNetCoreIntroVisualizerProps } from './AspNetCoreIntroVisualizer
 export type { ProjectStructureExplorerProps } from './ProjectStructureExplorer';
 export type { ConfigurationVisualizerProps } from './ConfigurationVisualizer';
 export type { EnvironmentSwitcherProps } from './EnvironmentSwitcher';
+
+// EF Core Types
+export type { DbContextVisualizerProps, Entity } from './DbContextVisualizer';
+export type { MigrationVisualizerProps, Migration } from './MigrationVisualizer';
+export type { RelationshipDiagramProps, RelationshipType } from './RelationshipDiagram';
+export type { PerformanceAnalyzerProps, PerformanceScenario } from './PerformanceAnalyzer';
+
+// Web API Types
+export type { WebApiControllerVisualizerProps, ControllerAction } from './WebApiControllerVisualizer';
+export type { RoutingAttributeExplorerProps, RouteTemplate } from './RoutingAttributeExplorer';
+export type { ModelBindingVisualizerProps, BindingSource, BindingParameter } from './ModelBindingVisualizer';
+export type { ResponseFormattingDemoProps, ResponseFormat, ActionResultType } from './ResponseFormattingDemo';
+export type { MinimalApiBuilderProps, MinimalEndpoint } from './MinimalApiBuilder';
+
+export type { ServiceLifetimeDemoProps } from './ServiceLifetimeDemo';
+export type { DIContainerExplorerProps } from './DIContainerExplorer';
+export type { DIPatternShowcaseProps, DIPattern } from './DIPatternShowcase';

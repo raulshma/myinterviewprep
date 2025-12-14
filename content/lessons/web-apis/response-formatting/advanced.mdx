@@ -1,0 +1,209 @@
+# Advanced Response Formatting
+
+Master custom formatters, HATEOAS, and enterprise API response patterns.
+
+## Custom Output Formatters
+
+Create formatters for specialized media types:
+
+```csharp
+public class CsvOutputFormatter : TextOutputFormatter
+{
+    public CsvOutputFormatter()
+    {
+        SupportedMediaTypes.Add("text/csv");
+        SupportedEncodings.Add(Encoding.UTF8);
+    }
+
+    protected override bool CanWriteType(Type? type)
+    {
+        return typeof(IEnumerable).IsAssignableFrom(type);
+    }
+
+    public override async Task WriteResponseBodyAsync(
+        OutputFormatterWriteContext context,
+        Encoding selectedEncoding)
+    {
+        var response = context.HttpContext.Response;
+        var items = context.Object as IEnumerable<object>;
+
+        if (items == null) return;
+
+        var sb = new StringBuilder();
+        var first = items.FirstOrDefault();
+        if (first == null) return;
+
+        // Header row
+        var properties = first.GetType().GetProperties();
+        sb.AppendLine(string.Join(",", properties.Select(p => p.Name)));
+
+        // Data rows
+        foreach (var item in items)
+        {
+            var values = properties.Select(p =>
+                p.GetValue(item)?.ToString() ?? "");
+            sb.AppendLine(string.Join(",", values));
+        }
+
+        await response.WriteAsync(sb.ToString(), selectedEncoding);
+    }
+}
+
+// Register
+builder.Services.AddControllers(options =>
+{
+    options.OutputFormatters.Add(new CsvOutputFormatter());
+});
+```
+
+<ResponseFormattingDemo mode="advanced" />
+
+## HATEOAS (Hypermedia)
+
+Include navigation links in responses:
+
+```csharp
+public class ProductResponse
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+    public List<Link> Links { get; set; } = new();
+}
+
+public class Link
+{
+    public string Href { get; set; }
+    public string Rel { get; set; }
+    public string Method { get; set; }
+}
+
+[HttpGet("{id}")]
+public ActionResult<ProductResponse> GetById(int id)
+{
+    var product = _service.GetById(id);
+    if (product == null) return NotFound();
+
+    var response = new ProductResponse
+    {
+        Id = product.Id,
+        Name = product.Name,
+        Price = product.Price,
+        Links = new List<Link>
+        {
+            new() { Href = $"/api/products/{id}", Rel = "self", Method = "GET" },
+            new() { Href = $"/api/products/{id}", Rel = "update", Method = "PUT" },
+            new() { Href = $"/api/products/{id}", Rel = "delete", Method = "DELETE" },
+            new() { Href = $"/api/products/{id}/reviews", Rel = "reviews", Method = "GET" }
+        }
+    };
+
+    return Ok(response);
+}
+```
+
+## Envelope Pattern
+
+Wrap all responses in a consistent envelope:
+
+```csharp
+public class ApiEnvelope<T>
+{
+    public bool Success { get; set; }
+    public T? Data { get; set; }
+    public ApiError? Error { get; set; }
+    public ApiMeta Meta { get; set; } = new();
+}
+
+public class ApiMeta
+{
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    public string? TraceId { get; set; }
+    public int? Page { get; set; }
+    public int? PageSize { get; set; }
+    public int? TotalCount { get; set; }
+}
+
+public class ApiError
+{
+    public string Code { get; set; }
+    public string Message { get; set; }
+    public IDictionary<string, string[]>? Details { get; set; }
+}
+
+// Response filter for automatic wrapping
+public class EnvelopeResultFilter : IAsyncResultFilter
+{
+    public async Task OnResultExecutionAsync(
+        ResultExecutingContext context,
+        ResultExecutionDelegate next)
+    {
+        if (context.Result is ObjectResult objectResult)
+        {
+            var envelope = new ApiEnvelope<object>
+            {
+                Success = objectResult.StatusCode is >= 200 and < 300,
+                Data = objectResult.Value,
+                Meta = new ApiMeta
+                {
+                    TraceId = context.HttpContext.TraceIdentifier
+                }
+            };
+            objectResult.Value = envelope;
+        }
+
+        await next();
+    }
+}
+```
+
+## Conditional Responses (ETags)
+
+Implement caching with ETags:
+
+```csharp
+[HttpGet("{id}")]
+public ActionResult<Product> GetById(int id)
+{
+    var product = _service.GetById(id);
+    if (product == null) return NotFound();
+
+    // Generate ETag
+    var etag = $"\"{product.Version}\"";
+
+    // Check If-None-Match header
+    if (Request.Headers.IfNoneMatch.Contains(etag))
+    {
+        return StatusCode(304); // Not Modified
+    }
+
+    Response.Headers.ETag = etag;
+    return Ok(product);
+}
+```
+
+## Streaming Large Responses
+
+Stream large datasets efficiently:
+
+```csharp
+[HttpGet("export")]
+public async IAsyncEnumerable<Product> ExportAll(
+    CancellationToken cancellationToken)
+{
+    await foreach (var product in _service.GetAllAsync(cancellationToken))
+    {
+        yield return product;
+    }
+}
+
+// Or use FileStreamResult
+[HttpGet("download")]
+public FileResult DownloadReport()
+{
+    var stream = _reportService.GenerateLargeReport();
+    return File(stream, "application/octet-stream", "report.csv");
+}
+```
+
+<ProgressCheckpoint section="response-formatting-advanced" xpReward={50} />

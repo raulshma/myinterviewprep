@@ -1,0 +1,29 @@
+{
+  "id": "model-binding",
+  "title": "Model Binding & Validation",
+  "description": "Learn how ASP.NET Core automatically binds request data to action parameters and validates incoming data.",
+  "milestone": "web-apis",
+  "order": 3,
+  "sections": [
+    "model-binding-intro",
+    "binding-sources",
+    "data-annotations",
+    "validation-handling"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    }
+  },
+  "prerequisites": ["api-routing"],
+  "tags": ["model-binding", "validation", "web-api", "aspnet-core", "data-annotations"]
+}

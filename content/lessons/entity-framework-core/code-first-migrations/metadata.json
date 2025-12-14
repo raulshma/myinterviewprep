@@ -1,0 +1,29 @@
+{
+  "id": "code-first-migrations",
+  "title": "Code-First Migrations",
+  "description": "Learn how to evolve your database schema using Code-First migrations - creating, applying, and managing database changes through code.",
+  "milestone": "entity-framework-core",
+  "order": 2,
+  "sections": [
+    "intro-migrations",
+    "add-migration",
+    "update-database",
+    "migration-history"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["entity-framework-core/dbcontext-dbset"],
+  "tags": ["ef-core", "migrations", "database", "schema", "code-first"]
+}

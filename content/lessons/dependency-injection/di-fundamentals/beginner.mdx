@@ -1,0 +1,101 @@
+# Dependency Injection Fundamentals
+
+Imagine you're building a LEGO house. Instead of each LEGO piece coming with its own glue built inside 🏗️, you snap pieces together from the outside. **That's exactly what Dependency Injection does for code!**
+
+## The Restaurant Kitchen Analogy 🍳
+
+Think about how a restaurant works:
+
+| **Without DI** 😰     | **With DI** 😊                       |
+| :-------------------- | :----------------------------------- |
+| Chef buys ingredients | Kitchen manager provides ingredients |
+| Chef hires staff      | Restaurant manager assigns staff     |
+| Chef owns the ovens   | Equipment is provided by the kitchen |
+| Chef does EVERYTHING  | Chef just cooks!                     |
+
+<InfoBox type="tip">
+  **DI means:** Instead of your class creating what it needs, it **receives**
+  what it needs from the outside.
+</InfoBox>
+
+## What's the Problem DI Solves?
+
+Look at this "bad" code - the `UserService` creates its own helpers:
+
+```csharp
+// ❌ WITHOUT Dependency Injection
+public class UserService
+{
+    public void CreateUser(string email)
+    {
+        // Creates its own database connection
+        var database = new SqlDatabase("connection...");
+
+        // Creates its own email sender
+        var emailSender = new SmtpEmailSender();
+
+        // Now it can work...
+        database.Save(new User { Email = email });
+        emailSender.Send(email, "Welcome!");
+    }
+}
+```
+
+**Problems:**
+
+- 🔒 Cannot change the database without editing this file
+- 🧪 Cannot test without a real database and email server
+- 🔗 Everything is tightly connected (coupled)
+
+## The DI Solution
+
+<DIPatternShowcase pattern="constructor-injection" mode="beginner" />
+
+With DI, the `UserService` **receives** everything it needs:
+
+```csharp
+// ✅ WITH Dependency Injection
+public class UserService
+{
+    private readonly IDatabase _database;
+    private readonly IEmailSender _emailSender;
+
+    // Dependencies are GIVEN (injected) through the constructor
+    public UserService(IDatabase database, IEmailSender emailSender)
+    {
+        _database = database;
+        _emailSender = emailSender;
+    }
+
+    public void CreateUser(string email)
+    {
+        _database.Save(new User { Email = email });
+        _emailSender.Send(email, "Welcome!");
+    }
+}
+```
+
+**Benefits:**
+
+- ✅ Can swap to any database (SQL, MongoDB, etc.)
+- ✅ Can use fake versions for testing
+- ✅ Each piece works independently
+
+## The Simple Rule
+
+> **"Don't call us, we'll call you"** — Hollywood Principle
+
+Your class shouldn't go hunting for what it needs. Instead:
+
+1. 📋 **List what you need** (in the constructor)
+2. 🎁 **Receive what you need** (from DI container)
+3. ✨ **Use what you got** (do your job)
+
+## Key Takeaways
+
+- 📦 **DI = Receiving instead of creating** dependencies
+- 🍳 Think of it like a **chef receiving ingredients** instead of buying them
+- 🧪 Makes code **easy to test** with fake versions
+- 🔌 Makes code **easy to change** without breaking things
+
+<ProgressCheckpoint section="di-what-is" xpReward={25} />

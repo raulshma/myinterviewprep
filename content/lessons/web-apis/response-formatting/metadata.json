@@ -1,0 +1,29 @@
+{
+  "id": "response-formatting",
+  "title": "Response Formatting",
+  "description": "Understand content negotiation, action results, and how to format API responses for different clients.",
+  "milestone": "web-apis",
+  "order": 4,
+  "sections": [
+    "response-formatting-intro",
+    "content-negotiation",
+    "action-results",
+    "custom-formatters"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    }
+  },
+  "prerequisites": ["model-binding"],
+  "tags": ["response", "formatting", "web-api", "aspnet-core", "json", "content-negotiation"]
+}

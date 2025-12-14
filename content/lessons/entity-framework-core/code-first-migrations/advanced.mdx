@@ -1,0 +1,202 @@
+# Code-First Migrations - Production Strategies
+
+Managing migrations in production environments requires careful planning and robust deployment strategies.
+
+## Migration Bundles (EF Core 6+)
+
+Migration bundles create self-contained executables for deployment:
+
+<MigrationVisualizer mode="advanced" />
+
+<DotnetCodePreview
+  title="Creating Migration Bundles"
+  code={`# Create the bundle
+dotnet ef migrations bundle --output ./efbundle.exe
+
+# With specific configuration
+
+dotnet ef migrations bundle \\
+--output ./efbundle.exe \\
+--self-contained \\
+--target-runtime linux-x64
+
+# Execute the bundle
+
+./efbundle.exe --connection "Server=prod;Database=App;..."
+
+# Execute to specific migration
+
+./efbundle.exe --connection "..." --target AddRating`}
+steps={[
+{
+lineNumbers: [2],
+highlight: "Create bundle",
+explanation: "Generates a portable executable containing all migrations"
+},
+{
+lineNumbers: [5, 6, 7, 8],
+highlight: "Self-contained bundle",
+explanation: "Includes .NET runtime for deployment without SDK"
+},
+{
+lineNumbers: [11],
+highlight: "Execute in production",
+explanation: "Run with connection string at deployment time"
+}
+]}
+/>
+
+## Idempotent SQL Scripts
+
+Generate scripts that can be run multiple times safely:
+
+```powershell
+# Generate idempotent script for all migrations
+dotnet ef migrations script --idempotent -o migration.sql
+
+# Generate script from specific migration
+dotnet ef migrations script FromMigration ToMigration -o update.sql
+
+# Include transactions
+dotnet ef migrations script --idempotent --no-transactions false
+```
+
+<DotnetCodePreview
+  title="Idempotent Script Example"
+  code={`-- Generated idempotent script
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = '20241214_AddRating'
+)
+BEGIN
+    ALTER TABLE [Blogs] ADD [Rating] int NOT NULL DEFAULT 0;
+    
+    INSERT INTO [__EFMigrationsHistory] 
+        ([MigrationId], [ProductVersion])
+    VALUES ('20241214_AddRating', '8.0.0');
+END;
+GO`}
+/>
+
+## CI/CD Pipeline Integration
+
+<DotnetCodePreview
+  title="GitHub Actions Deployment"
+  code={`# .github/workflows/deploy.yml
+name: Deploy with Migrations
+on:
+  push:
+    branches: [main]
+
+jobs:
+deploy:
+runs-on: ubuntu-latest
+steps: - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install EF tools
+        run: dotnet tool install -g dotnet-ef
+
+      - name: Create migration bundle
+        run: dotnet ef migrations bundle --output efbundle
+        working-directory: ./src/MyApp
+
+      - name: Apply migrations
+        run: ./efbundle --connection "\${{ secrets.DB_CONNECTION }}"
+        working-directory: ./src/MyApp`}
+
+/>
+
+## Handling Breaking Changes
+
+For complex schema changes, use a multi-step approach:
+
+<DotnetCodePreview
+  title="Non-Destructive Column Rename"
+  code={`// Step 1: Add new column (Migration: AddDisplayName)
+migrationBuilder.AddColumn<string>(
+    name: "DisplayName",
+    table: "Users",
+    nullable: true);
+
+migrationBuilder.Sql(
+"UPDATE Users SET DisplayName = Name");
+
+// Step 2: Deploy app that reads from both columns
+
+// Step 3: Make new column required (Migration: RequireDisplayName)
+migrationBuilder.AlterColumn<string>(
+name: "DisplayName",
+table: "Users",
+nullable: false,
+defaultValue: "");
+
+// Step 4: Drop old column (Migration: RemoveNameColumn)
+migrationBuilder.DropColumn(name: "Name", table: "Users");`}
+/>
+
+## Transactional Migrations
+
+Control transaction behavior for complex migrations:
+
+<DotnetCodePreview
+  title="Transaction Control"
+  code={`public partial class ComplexMigration : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        // This runs in default transaction
+        migrationBuilder.AddColumn<int>("TempColumn", "Blogs");
+        
+        // For operations that can't be in transactions (e.g., CREATE INDEX CONCURRENTLY)
+        migrationBuilder.Sql(
+            "CREATE INDEX CONCURRENTLY IX_Blogs_Rating ON Blogs(Rating)",
+            suppressTransaction: true);
+    }
+}
+
+// Or disable transaction for entire migration
+[DbContext(typeof(BlogContext))]
+[Migration("20241214_NoTransaction")]
+public partial class NoTransactionMigration : Migration
+{
+public override bool DisableTransactions => true;
+
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        // All operations run without transaction
+    }
+
+}`}
+/>
+
+## Migration History Table
+
+EF Core tracks applied migrations in `__EFMigrationsHistory`:
+
+```sql
+-- View migration history
+SELECT * FROM __EFMigrationsHistory ORDER BY MigrationId;
+
+-- Manually mark migration as applied (dangerous!)
+INSERT INTO __EFMigrationsHistory (MigrationId, ProductVersion)
+VALUES ('20241214_ManualFix', '8.0.0');
+
+-- Remove migration record (for re-running)
+DELETE FROM __EFMigrationsHistory WHERE MigrationId = '20241214_Broken';
+```
+
+## Key Takeaways
+
+- Use **migration bundles** for production deployments
+- Generate **idempotent scripts** for DBA-controlled environments
+- Integrate migrations into **CI/CD pipelines**
+- Plan **multi-step migrations** for breaking changes
+- Understand **transaction control** for complex operations
+- **Never manually modify** the migrations history in production
+
+<ProgressCheckpoint section="migration-history" xpReward={60} />

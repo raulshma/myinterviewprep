@@ -1,0 +1,345 @@
+# DI Patterns & Best Practices: Advanced
+
+Let's explore advanced DI patterns, composition strategies, and architectural considerations for enterprise applications.
+
+## The Composition Root
+
+The **Composition Root** is the single location where the entire object graph is composed. In ASP.NET Core, this is `Program.cs`.
+
+```csharp
+// Program.cs - THE Composition Root
+var builder = WebApplication.CreateBuilder(args);
+
+// ALL registrations here - organized by feature
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApplication();
+builder.Services.AddPresentation();
+
+var app = builder.Build();
+```
+
+<InfoBox type="important">
+  **Rule:** Reference concrete implementations **only** in the Composition Root.
+  Everywhere else, depend only on abstractions.
+</InfoBox>
+
+### Layered Registration
+
+```csharp
+// Infrastructure layer registration
+public static class InfrastructureServiceExtensions
+{
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseSqlServer(configuration.GetConnectionString("Default")));
+
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        services.Configure<EmailOptions>(configuration.GetSection("Email"));
+        services.AddTransient<IEmailService, SmtpEmailService>();
+
+        return services;
+    }
+}
+
+// Application layer registration
+public static class ApplicationServiceExtensions
+{
+    public static IServiceCollection AddApplication(
+        this IServiceCollection services)
+    {
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IOrderService, OrderService>();
+
+        // MediatR for CQRS
+        services.AddMediatR(cfg =>
+            cfg.RegisterServicesFromAssembly(typeof(CreateUserCommand).Assembly));
+
+        // FluentValidation
+        services.AddValidatorsFromAssembly(typeof(CreateUserValidator).Assembly);
+
+        return services;
+    }
+}
+```
+
+## Advanced Factory Patterns
+
+### Abstract Factory
+
+```csharp
+public interface INotificationChannelFactory
+{
+    INotificationChannel Create(NotificationPreference preference);
+}
+
+public class NotificationChannelFactory : INotificationChannelFactory
+{
+    private readonly IServiceProvider _provider;
+
+    public NotificationChannelFactory(IServiceProvider provider)
+    {
+        _provider = provider;
+    }
+
+    public INotificationChannel Create(NotificationPreference pref)
+    {
+        return pref.Channels
+            .Select(channel => ResolveChannel(channel))
+            .Aggregate<INotificationChannel, INotificationChannel>(
+                new NullChannel(),
+                (acc, next) => new CompositeChannel(acc, next));
+    }
+
+    private INotificationChannel ResolveChannel(ChannelType type) => type switch
+    {
+        ChannelType.Email => _provider.GetRequiredService<EmailChannel>(),
+        ChannelType.Sms => _provider.GetRequiredService<SmsChannel>(),
+        ChannelType.Push => _provider.GetRequiredService<PushChannel>(),
+        _ => new NullChannel()
+    };
+}
+```
+
+### Func<T> Factory
+
+For simple scenarios, inject `Func<T>` instead of `IServiceProvider`:
+
+```csharp
+// Registration
+builder.Services.AddTransient<ExpensiveService>();
+builder.Services.AddSingleton<Func<ExpensiveService>>(provider =>
+    () => provider.GetRequiredService<ExpensiveService>());
+
+// Usage
+public class MyService
+{
+    private readonly Func<ExpensiveService> _factory;
+
+    public MyService(Func<ExpensiveService> factory)
+    {
+        _factory = factory;
+    }
+
+    public void DoWork()
+    {
+        using var expensive = _factory();
+        expensive.Process();
+    }
+}
+```
+
+## Decorator Chain Pattern
+
+Build a processing pipeline using decorators:
+
+```csharp
+// Base behavior
+public class CreateUserHandler : IRequestHandler<CreateUserCommand, User>
+{
+    public async Task<User> Handle(CreateUserCommand cmd) =>
+        new User { Email = cmd.Email };
+}
+
+// Validation decorator
+public class ValidationDecorator<TRequest, TResponse>
+    : IRequestHandler<TRequest, TResponse>
+{
+    private readonly IRequestHandler<TRequest, TResponse> _inner;
+    private readonly IValidator<TRequest> _validator;
+
+    public async Task<TResponse> Handle(TRequest request)
+    {
+        await _validator.ValidateAndThrowAsync(request);
+        return await _inner.Handle(request);
+    }
+}
+
+// Logging decorator
+public class LoggingDecorator<TRequest, TResponse>
+    : IRequestHandler<TRequest, TResponse>
+{
+    private readonly IRequestHandler<TRequest, TResponse> _inner;
+    private readonly ILogger _logger;
+
+    public async Task<TResponse> Handle(TRequest request)
+    {
+        _logger.LogInformation("Handling {Request}", typeof(TRequest).Name);
+        var result = await _inner.Handle(request);
+        _logger.LogInformation("Handled {Request}", typeof(TRequest).Name);
+        return result;
+    }
+}
+
+// Registration with Scrutor
+builder.Services.AddScoped(typeof(IRequestHandler<,>), typeof(CreateUserHandler));
+builder.Services.Decorate(typeof(IRequestHandler<,>), typeof(ValidationDecorator<,>));
+builder.Services.Decorate(typeof(IRequestHandler<,>), typeof(LoggingDecorator<,>));
+```
+
+## Conditional Registration
+
+Register different implementations based on environment or configuration:
+
+```csharp
+// Environment-based
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddScoped<IEmailService, FakeEmailService>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+}
+
+// Feature flag-based
+var features = builder.Configuration.GetSection("Features");
+if (features.GetValue<bool>("UseNewPaymentGateway"))
+{
+    builder.Services.AddScoped<IPaymentGateway, StripeGateway>();
+}
+else
+{
+    builder.Services.AddScoped<IPaymentGateway, LegacyGateway>();
+}
+
+// Assembly scanning with conditional filtering
+builder.Services.Scan(scan => scan
+    .FromAssemblyOf<IApplicationService>()
+    .AddClasses(classes => classes.Where(type =>
+        !type.Name.EndsWith("Deprecated")))
+    .AsImplementedInterfaces()
+    .WithScopedLifetime());
+```
+
+## Integration Testing with DI
+
+### WebApplicationFactory Customization
+
+```csharp
+public class CustomWebApplicationFactory : WebApplicationFactory<Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.ConfigureServices(services =>
+        {
+            // Remove production database
+            var dbDescriptor = services.Single(
+                d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
+            services.Remove(dbDescriptor);
+
+            // Add test database
+            services.AddDbContext<AppDbContext>(options =>
+            {
+                options.UseInMemoryDatabase("TestDb");
+            });
+
+            // Replace external services with fakes
+            services.RemoveAll<IEmailService>();
+            services.AddScoped<IEmailService, FakeEmailService>();
+        });
+    }
+}
+
+// Test usage
+public class UserApiTests : IClassFixture<CustomWebApplicationFactory>
+{
+    private readonly HttpClient _client;
+
+    public UserApiTests(CustomWebApplicationFactory factory)
+    {
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task CreateUser_ReturnsCreated()
+    {
+        var response = await _client.PostAsJsonAsync("/api/users",
+            new { Email = "test@example.com" });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+}
+```
+
+## Module Pattern
+
+Organize registrations into cohesive modules:
+
+```csharp
+public interface IServiceModule
+{
+    void RegisterServices(IServiceCollection services, IConfiguration configuration);
+}
+
+public class UserModule : IServiceModule
+{
+    public void RegisterServices(IServiceCollection services, IConfiguration config)
+    {
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IUserValidator, UserValidator>();
+    }
+}
+
+public class EmailModule : IServiceModule
+{
+    public void RegisterServices(IServiceCollection services, IConfiguration config)
+    {
+        services.Configure<EmailOptions>(config.GetSection("Email"));
+        services.AddTransient<IEmailService, SmtpEmailService>();
+        services.AddTransient<IEmailTemplateEngine, RazorTemplateEngine>();
+    }
+}
+
+// Registration extension
+public static class ModuleExtensions
+{
+    public static IServiceCollection AddModules(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        params IServiceModule[] modules)
+    {
+        foreach (var module in modules)
+        {
+            module.RegisterServices(services, configuration);
+        }
+        return services;
+    }
+}
+
+// Usage
+builder.Services.AddModules(
+    builder.Configuration,
+    new UserModule(),
+    new EmailModule(),
+    new PaymentModule());
+```
+
+## Anti-Pattern Detection Checklist
+
+| Smell                      | Detection                      | Fix                      |
+| :------------------------- | :----------------------------- | :----------------------- |
+| Service Locator            | `IServiceProvider` in app code | Constructor injection    |
+| Captive Dependency         | Scoped in singleton            | `IServiceScopeFactory`   |
+| Constructor Over-Injection | 5+ dependencies                | Split class, use facade  |
+| Circular Dependency        | A→B→A                          | Introduce mediator, lazy |
+| Hidden Dependency          | Static service calls           | Explicit injection       |
+| Ambient Context            | `HttpContext.Current`          | `IHttpContextAccessor`   |
+
+<DIPatternShowcase pattern="service-locator" mode="advanced" />
+
+## Key Takeaways
+
+- 🏠 **Composition Root** - Single registration location, organized by feature
+- 🎭 **Decorator chains** - Build cross-cutting behavior pipelines
+- 🔀 **Conditional registration** - Environment/feature-based implementations
+- 🧪 **WebApplicationFactory** - Replace services for integration testing
+- 📦 **Module pattern** - Organize registrations into cohesive units
+- 🔍 **Anti-pattern detection** - Know the smells and their fixes
+
+<ProgressCheckpoint section="best-practices" xpReward={60} />

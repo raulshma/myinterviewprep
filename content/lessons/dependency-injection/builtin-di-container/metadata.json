@@ -1,0 +1,28 @@
+{
+  "id": "builtin-di-container",
+  "title": "Built-in DI Container",
+  "description": "Learn to use Microsoft.Extensions.DependencyInjection - the built-in DI container in ASP.NET Core for registering, resolving, and managing services.",
+  "milestone": "dependency-injection",
+  "order": 3,
+  "sections": [
+    "container-basics",
+    "registration-methods",
+    "advanced-registration"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["di-fundamentals", "service-lifetimes"],
+  "tags": ["dependency-injection", "iservicecollection", "di-container", "aspnet-core"]
+}

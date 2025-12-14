@@ -1,0 +1,123 @@
+# The Built-in DI Container
+
+ASP.NET Core comes with a **built-in DI container** - like a smart assistant that creates and delivers all your services! No extra packages needed. 🎁
+
+## What is the DI Container?
+
+Think of the DI container as a **smart vending machine**:
+
+| **Without Container** 😰       | **With Container** 😊             |
+| :----------------------------- | :-------------------------------- |
+| You create everything yourself | You ask, it delivers              |
+| You track who needs what       | It tracks all dependencies        |
+| You manage lifetimes           | It manages when to create/destroy |
+| Lots of `new` keywords         | Almost no `new` keywords          |
+
+<InfoBox type="tip">
+  The DI Container is like a **factory manager** - you tell it what to build,
+  and it builds everything you need automatically!
+</InfoBox>
+
+## Setting Up Services
+
+In ASP.NET Core, you register services in `Program.cs`:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// 👇 THIS is where you register services!
+builder.Services.AddSingleton<ILogger, ConsoleLogger>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddTransient<IEmailService, SmtpEmailService>();
+
+var app = builder.Build();
+```
+
+<DIContainerExplorer mode="beginner" />
+
+## The Three Registration Methods
+
+### AddSingleton - One Forever
+
+```csharp
+// Creates ONE logger for the entire app
+builder.Services.AddSingleton<ILogger, ConsoleLogger>();
+```
+
+💜 Like hiring ONE head chef for your restaurant.
+
+### AddScoped - One Per Request
+
+```csharp
+// Creates ONE per HTTP request
+builder.Services.AddScoped<IShoppingCart, ShoppingCart>();
+```
+
+💙 Like assigning ONE waiter per table.
+
+### AddTransient - New Every Time
+
+```csharp
+// Creates a NEW one every time it's needed
+builder.Services.AddTransient<IEmailService, SmtpEmailService>();
+```
+
+💚 Like getting fresh napkins - new one each time!
+
+## How Services Are Used
+
+Once registered, services are **automatically injected** into controllers:
+
+```csharp
+public class UsersController : ControllerBase
+{
+    private readonly IUserRepository _repository;
+    private readonly ILogger _logger;
+
+    // 🎁 The container GIVES us these automatically!
+    public UsersController(
+        IUserRepository repository,
+        ILogger logger)
+    {
+        _repository = repository;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    public IActionResult GetAll()
+    {
+        _logger.Log("Getting all users");
+        return Ok(_repository.GetAll());
+    }
+}
+```
+
+## Simple Registration Pattern
+
+The most common pattern:
+
+```csharp
+// Interface → Implementation
+builder.Services.AddScoped<IUserService, UserService>();
+//               ↑ What you ask for   ↑ What you get
+```
+
+**How to read it:** "When anyone asks for `IUserService`, give them a `UserService`."
+
+## Quick Registration Cheat Sheet
+
+| What You Need    | Registration Method                               |
+| :--------------- | :------------------------------------------------ |
+| Database context | `AddScoped<AppDbContext>()`                       |
+| Logging          | `AddSingleton<ILogger, ConsoleLogger>()`          |
+| Email service    | `AddTransient<IEmailService, SmtpEmailService>()` |
+| Configuration    | `AddSingleton<IConfiguration>(...)`               |
+
+## Key Takeaways
+
+- 🤖 The **DI Container** creates and delivers services automatically
+- 📦 Register services with `AddSingleton`, `AddScoped`, or `AddTransient`
+- 💉 Controllers receive services **automatically** via constructors
+- 📍 All registration happens in **Program.cs**
+
+<ProgressCheckpoint section="container-basics" xpReward={25} />

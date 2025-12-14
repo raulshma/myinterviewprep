@@ -1,0 +1,193 @@
+# Advanced Routing Patterns
+
+Master sophisticated routing techniques for complex API architectures.
+
+## Custom Route Constraints
+
+Create reusable constraints for domain-specific validation:
+
+```csharp
+// Custom constraint for valid product codes
+public class ProductCodeConstraint : IRouteConstraint
+{
+    public bool Match(
+        HttpContext? httpContext,
+        IRouter? route,
+        string routeKey,
+        RouteValueDictionary values,
+        RouteDirection routeDirection)
+    {
+        if (values.TryGetValue(routeKey, out var value))
+        {
+            var code = value?.ToString();
+            return code != null &&
+                   code.Length == 8 &&
+                   code.StartsWith("PRD-");
+        }
+        return false;
+    }
+}
+
+// Register in Program.cs
+builder.Services.Configure<RouteOptions>(options =>
+{
+    options.ConstraintMap.Add("productCode", typeof(ProductCodeConstraint));
+});
+
+// Usage
+[HttpGet("{code:productCode}")]
+public ActionResult<Product> GetByCode(string code) { }
+```
+
+<RoutingAttributeExplorer mode="advanced" />
+
+## Endpoint Metadata
+
+Access and apply metadata to endpoints:
+
+```csharp
+// Custom metadata attribute
+[AttributeUsage(AttributeTargets.Method)]
+public class RequiresPremiumAttribute : Attribute, IEndpointMetadata
+{
+    public string Plan { get; set; } = "Premium";
+}
+
+// Usage
+[HttpGet("premium-features")]
+[RequiresPremium(Plan = "Enterprise")]
+public ActionResult GetPremiumFeatures() { }
+
+// Access in middleware
+app.Use(async (context, next) =>
+{
+    var endpoint = context.GetEndpoint();
+    var requiresPremium = endpoint?.Metadata
+        .GetMetadata<RequiresPremiumAttribute>();
+
+    if (requiresPremium != null)
+    {
+        // Check user's subscription
+    }
+
+    await next();
+});
+```
+
+## Area Routing
+
+Organize large APIs into areas:
+
+```csharp
+// Areas/Admin/Controllers/UsersController.cs
+[Area("Admin")]
+[Route("api/[area]/[controller]")]
+public class UsersController : ControllerBase
+{
+    // Route: /api/admin/users
+    [HttpGet]
+    public ActionResult<List<User>> GetAll() { }
+}
+```
+
+## Dynamic Route Generation
+
+Generate routes programmatically:
+
+```csharp
+// Route provider for dynamic endpoints
+public class FeatureRouteConvention : IApplicationModelConvention
+{
+    public void Apply(ApplicationModel application)
+    {
+        foreach (var controller in application.Controllers)
+        {
+            var feature = controller.ControllerType
+                .GetCustomAttribute<FeatureAttribute>();
+
+            if (feature != null)
+            {
+                controller.Selectors[0].AttributeRouteModel =
+                    new AttributeRouteModel
+                    {
+                        Template = $"api/features/{feature.Name}/[controller]"
+                    };
+            }
+        }
+    }
+}
+```
+
+## Route Precedence
+
+Understanding route matching priority:
+
+```csharp
+// More specific routes match first
+
+// 1. Literal segments match first
+[HttpGet("featured")]  // /api/products/featured
+
+// 2. Then constrained parameters
+[HttpGet("{id:int}")]  // /api/products/42
+
+// 3. Then unconstrained parameters
+[HttpGet("{slug}")]    // /api/products/laptop-pro
+
+// 4. Finally catch-all
+[HttpGet("{**path}")]  // /api/products/any/nested/path
+```
+
+## Link Generation
+
+Generate URLs for routing:
+
+```csharp
+public class ProductsController : ControllerBase
+{
+    private readonly LinkGenerator _linkGenerator;
+
+    public ProductsController(LinkGenerator linkGenerator)
+        => _linkGenerator = linkGenerator;
+
+    [HttpPost]
+    public ActionResult Create(Product product)
+    {
+        _service.Add(product);
+
+        // Generate URL to the GetById action
+        var url = _linkGenerator.GetPathByAction(
+            action: nameof(GetById),
+            controller: "Products",
+            values: new { id = product.Id });
+
+        return Created(url!, product);
+    }
+
+    [HttpGet("{id}", Name = "GetProductById")]
+    public ActionResult<Product> GetById(int id) { }
+}
+```
+
+## Route Debugging
+
+Inspect registered routes:
+
+```csharp
+app.MapGet("/debug/routes", (IEnumerable<EndpointDataSource> sources) =>
+{
+    var endpoints = sources
+        .SelectMany(s => s.Endpoints)
+        .OfType<RouteEndpoint>()
+        .Select(e => new
+        {
+            Route = e.RoutePattern.RawText,
+            Methods = e.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods,
+            DisplayName = e.DisplayName
+        });
+
+    return Results.Ok(endpoints);
+});
+```
+
+<ProgressCheckpoint section="routing-advanced" xpReward={50} />

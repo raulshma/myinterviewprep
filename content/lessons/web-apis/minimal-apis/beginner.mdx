@@ -1,0 +1,70 @@
+# Minimal APIs
+
+Imagine you want a quick snack from a food truck instead of a full restaurant experience. **Minimal APIs** are like that food truck - less setup, faster service, perfect when you don't need all the bells and whistles!
+
+## What are Minimal APIs? ⚡
+
+Minimal APIs are a simplified way to create HTTP endpoints in ASP.NET Core. Instead of creating controller classes, you define routes directly in your `Program.cs` file with just a few lines of code!
+
+<MinimalApiBuilder mode="beginner" />
+
+## The Food Truck Analogy 🚐
+
+> **Controllers are like restaurants** - full kitchen, wait staff, formal service.
+>
+> **Minimal APIs are like food trucks** - quick setup, direct service, get what you need fast!
+
+## Your First Minimal API
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+// That's it! One line = one endpoint
+app.MapGet("/hello", () => "Hello, World!");
+
+app.MapGet("/products", () => new[] { "Laptop", "Phone", "Tablet" });
+
+app.Run();
+```
+
+**Just 5 lines** and you have a working API! No controllers, no classes, no complexity.
+
+## Common Map Methods
+
+| Method      | Purpose    | Example              |
+| :---------- | :--------- | :------------------- |
+| `MapGet`    | Read data  | Get list of items    |
+| `MapPost`   | Create new | Add new item         |
+| `MapPut`    | Update     | Modify existing item |
+| `MapDelete` | Remove     | Delete an item       |
+
+## Adding Parameters
+
+```csharp
+// Route parameter
+app.MapGet("/products/{id}", (int id) => $"Product {id}");
+
+// Query parameter: /search?term=laptop
+app.MapGet("/search", (string term) => $"Searching for {term}");
+```
+
+## When to Use Minimal APIs
+
+| ✅ Great For     | ❌ Not Ideal For       |
+| :--------------- | :--------------------- |
+| Small projects   | Large enterprise apps  |
+| Microservices    | Complex business logic |
+| Quick prototypes | When you need filters  |
+| Learning ASP.NET | Team prefers OOP style |
+
+## Key Takeaways
+
+| Concept            | Description                           |
+| :----------------- | :------------------------------------ |
+| **MapGet**         | Creates a GET endpoint                |
+| **MapPost**        | Creates a POST endpoint               |
+| **Lambda**         | Arrow function defining handler       |
+| **No controllers** | Routes defined directly in Program.cs |
+
+<ProgressCheckpoint section="minimal-apis-intro" xpReward={25} />

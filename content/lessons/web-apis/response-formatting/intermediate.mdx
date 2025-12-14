@@ -1,0 +1,147 @@
+# Response Formatting in Depth
+
+ASP.NET Core uses **content negotiation** to determine response format based on the client's `Accept` header. Understanding formatters and action results gives you full control over API responses.
+
+## Content Negotiation
+
+<ResponseFormattingDemo mode="intermediate" />
+
+The process:
+
+1. Client sends `Accept: application/json` header
+2. Server checks available output formatters
+3. Server selects matching formatter
+4. Data is serialized in requested format
+
+## Configuring JSON Serialization
+
+Customize JSON output globally:
+
+```csharp
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Use camelCase (default)
+        options.JsonSerializerOptions.PropertyNamingPolicy =
+            JsonNamingPolicy.CamelCase;
+
+        // Pretty print
+        options.JsonSerializerOptions.WriteIndented = true;
+
+        // Handle null values
+        options.JsonSerializerOptions.DefaultIgnoreCondition =
+            JsonIgnoreCondition.WhenWritingNull;
+
+        // Handle enums as strings
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter());
+    });
+```
+
+## Action Result Types
+
+Choose the right result for each scenario:
+
+```csharp
+// Return data with 200 OK
+[HttpGet("{id}")]
+public ActionResult<Product> GetById(int id)
+{
+    var product = _service.GetById(id);
+    return product is null ? NotFound() : Ok(product);
+}
+
+// Return created resource with location header
+[HttpPost]
+public ActionResult<Product> Create(Product product)
+{
+    _service.Add(product);
+    return CreatedAtAction(
+        nameof(GetById),
+        new { id = product.Id },
+        product);
+}
+
+// Return no content for updates
+[HttpPut("{id}")]
+public ActionResult Update(int id, Product product)
+{
+    _service.Update(id, product);
+    return NoContent();
+}
+```
+
+## Problem Details (RFC 7807)
+
+Standardized error response format:
+
+```csharp
+// Automatic with [ApiController]
+// Or manually:
+[HttpGet("{id}")]
+public ActionResult GetById(int id)
+{
+    if (id < 0)
+    {
+        return Problem(
+            title: "Invalid ID",
+            detail: "ID must be a positive integer",
+            statusCode: 400,
+            instance: HttpContext.Request.Path
+        );
+    }
+    // ...
+}
+```
+
+Response:
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+  "title": "Invalid ID",
+  "status": 400,
+  "detail": "ID must be a positive integer",
+  "instance": "/api/products/-1"
+}
+```
+
+## Adding XML Support
+
+Enable XML responses:
+
+```csharp
+builder.Services.AddControllers()
+    .AddXmlSerializerFormatters();
+```
+
+```csharp
+// Force specific format
+[HttpGet]
+[Produces("application/xml")]
+public ActionResult<List<Product>> GetAllXml() { }
+
+// Support multiple formats
+[HttpGet]
+[Produces("application/json", "application/xml")]
+public ActionResult<List<Product>> GetAll() { }
+```
+
+## Custom Response Headers
+
+Add custom headers to responses:
+
+```csharp
+[HttpGet]
+public ActionResult<List<Product>> GetAll()
+{
+    var products = _service.GetAll();
+
+    Response.Headers.Add("X-Total-Count", products.Count.ToString());
+    Response.Headers.Add("X-Page-Size", "10");
+
+    return Ok(products);
+}
+```
+
+<ProgressCheckpoint section="response-formatting-intermediate" xpReward={40} />

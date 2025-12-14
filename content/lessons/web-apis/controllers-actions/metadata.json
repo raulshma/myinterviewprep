@@ -1,0 +1,29 @@
+{
+  "id": "controllers-actions",
+  "title": "Controllers & Actions",
+  "description": "Learn how Web API controllers receive requests and how action methods process them to return responses.",
+  "milestone": "web-apis",
+  "order": 1,
+  "sections": [
+    "controllers-actions-intro",
+    "controller-architecture",
+    "action-methods",
+    "dependency-injection"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    }
+  },
+  "prerequisites": ["aspnet-core-basics"],
+  "tags": ["controllers", "actions", "web-api", "aspnet-core", "rest"]
+}

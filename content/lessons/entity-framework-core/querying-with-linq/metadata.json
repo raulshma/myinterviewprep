@@ -1,0 +1,29 @@
+{
+  "id": "querying-with-linq",
+  "title": "Querying Data with LINQ",
+  "description": "Master LINQ queries in EF Core - from basic filtering to complex projections and eager loading.",
+  "milestone": "entity-framework-core",
+  "order": 3,
+  "sections": [
+    "intro-linq",
+    "filtering-sorting",
+    "projections",
+    "eager-loading"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["entity-framework-core/dbcontext-dbset"],
+  "tags": ["ef-core", "linq", "querying", "database"]
+}

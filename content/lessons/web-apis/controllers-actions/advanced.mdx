@@ -1,0 +1,173 @@
+# Advanced Controller Patterns
+
+Beyond the basics, ASP.NET Core controllers support sophisticated patterns for building enterprise-grade APIs.
+
+## Custom Action Results
+
+Create reusable action results for consistent responses:
+
+```csharp
+public class ApiResponse<T> : ActionResult
+{
+    public T? Data { get; set; }
+    public string? Message { get; set; }
+    public bool Success { get; set; }
+    public IEnumerable<string>? Errors { get; set; }
+
+    public override async Task ExecuteResultAsync(ActionContext context)
+    {
+        var result = new ObjectResult(this)
+        {
+            StatusCode = Success ? 200 : 400
+        };
+        await result.ExecuteResultAsync(context);
+    }
+}
+
+// Usage
+[HttpGet("{id}")]
+public ApiResponse<Product> GetById(int id)
+{
+    var product = _service.GetById(id);
+    return product is null
+        ? new ApiResponse<Product> { Success = false, Message = "Not found" }
+        : new ApiResponse<Product> { Success = true, Data = product };
+}
+```
+
+<WebApiControllerVisualizer mode="advanced" />
+
+## Action Filters
+
+Filters execute code before/after actions:
+
+```csharp
+// Custom validation filter
+public class ValidateModelAttribute : ActionFilterAttribute
+{
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        if (!context.ModelState.IsValid)
+        {
+            context.Result = new BadRequestObjectResult(
+                new ValidationProblemDetails(context.ModelState));
+        }
+    }
+}
+
+// Custom logging filter
+public class LoggingFilterAttribute : ActionFilterAttribute
+{
+    public override void OnActionExecuting(ActionExecutingContext context)
+    {
+        var logger = context.HttpContext.RequestServices
+            .GetRequiredService<ILogger<LoggingFilterAttribute>>();
+        logger.LogInformation("Executing {Action}",
+            context.ActionDescriptor.DisplayName);
+    }
+}
+
+// Apply to controller or action
+[LoggingFilter]
+[ValidateModel]
+public class ProductsController : ControllerBase { }
+```
+
+## API Versioning
+
+Support multiple API versions:
+
+```csharp
+// Using URL segment versioning
+[ApiController]
+[Route("api/v{version:apiVersion}/products")]
+[ApiVersion("1.0")]
+[ApiVersion("2.0")]
+public class ProductsController : ControllerBase
+{
+    [HttpGet]
+    [MapToApiVersion("1.0")]
+    public ActionResult<List<ProductV1>> GetAllV1()
+        => Ok(_service.GetAllV1());
+
+    [HttpGet]
+    [MapToApiVersion("2.0")]
+    public ActionResult<List<ProductV2>> GetAllV2()
+        => Ok(_service.GetAllV2());
+}
+```
+
+## CQRS Pattern with MediatR
+
+Decouple controllers from business logic:
+
+```csharp
+public class ProductsController : ControllerBase
+{
+    private readonly IMediator _mediator;
+
+    public ProductsController(IMediator mediator)
+        => _mediator = mediator;
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ProductDto>> GetById(int id)
+        => Ok(await _mediator.Send(new GetProductQuery(id)));
+
+    [HttpPost]
+    public async Task<ActionResult<int>> Create(CreateProductCommand command)
+    {
+        var id = await _mediator.Send(command);
+        return CreatedAtAction(nameof(GetById), new { id }, id);
+    }
+}
+```
+
+## Cancellation Token Support
+
+Handle client disconnections gracefully:
+
+```csharp
+[HttpGet]
+public async Task<ActionResult<List<Product>>> GetAll(
+    CancellationToken cancellationToken)
+{
+    try
+    {
+        return Ok(await _service.GetAllAsync(cancellationToken));
+    }
+    catch (OperationCanceledException)
+    {
+        _logger.LogInformation("Request cancelled by client");
+        return StatusCode(499); // Client Closed Request
+    }
+}
+```
+
+## Controller Testing
+
+Test controllers with WebApplicationFactory:
+
+```csharp
+public class ProductsControllerTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly HttpClient _client;
+
+    public ProductsControllerTests(WebApplicationFactory<Program> factory)
+    {
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task GetAll_ReturnsProducts()
+    {
+        var response = await _client.GetAsync("/api/products");
+
+        response.EnsureSuccessStatusCode();
+        var products = await response.Content
+            .ReadFromJsonAsync<List<Product>>();
+        Assert.NotEmpty(products);
+    }
+}
+```
+
+<ProgressCheckpoint section="controllers-actions-advanced" xpReward={50} />

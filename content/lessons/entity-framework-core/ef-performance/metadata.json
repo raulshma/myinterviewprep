@@ -1,0 +1,29 @@
+{
+  "id": "ef-performance",
+  "title": "EF Core Performance",
+  "description": "Learn essential performance optimization techniques for Entity Framework Core - from avoiding common pitfalls to advanced tuning strategies.",
+  "milestone": "entity-framework-core",
+  "order": 5,
+  "sections": [
+    "intro-performance",
+    "n-plus-one",
+    "tracking-optimization",
+    "advanced-tuning"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["entity-framework-core/querying-with-linq"],
+  "tags": ["ef-core", "performance", "optimization", "n+1"]
+}

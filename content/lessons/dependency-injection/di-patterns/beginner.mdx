@@ -1,0 +1,148 @@
+# DI Patterns & Best Practices
+
+Now that you understand DI, let's learn the **right way** to use it and the common mistakes to avoid! 🎯
+
+## The Golden Rule: Constructor Injection
+
+The most important pattern in DI is **constructor injection** - receiving dependencies through the constructor.
+
+<DIPatternShowcase pattern="constructor-injection" mode="beginner" />
+
+### Why Constructor Injection is Best
+
+| Benefit          | Explanation                                                     |
+| :--------------- | :-------------------------------------------------------------- |
+| **Visible** 👀   | You can see all dependencies just by looking at the constructor |
+| **Required** ✅  | Can't create the object without providing dependencies          |
+| **Testable** 🧪  | Easy to pass fake versions for testing                          |
+| **Immutable** 🔒 | Dependencies don't change after creation                        |
+
+## The "new" Keyword is a Code Smell
+
+In DI-powered code, avoid using `new` for services:
+
+```csharp
+// ❌ BAD - Creates its own dependency
+public class UserService
+{
+    public void CreateUser(string email)
+    {
+        var emailService = new SmtpEmailService();  // Don't do this!
+        emailService.Send(email, "Welcome!");
+    }
+}
+
+// ✅ GOOD - Receives dependency
+public class UserService
+{
+    private readonly IEmailService _emailService;
+
+    public UserService(IEmailService emailService)
+    {
+        _emailService = emailService;  // Given to us!
+    }
+
+    public void CreateUser(string email)
+    {
+        _emailService.Send(email, "Welcome!");
+    }
+}
+```
+
+<InfoBox type="tip">
+  **Simple Rule:** If you see `new SomeService()` inside a class (not in
+  Program.cs), it's usually wrong!
+</InfoBox>
+
+## Depend on Interfaces, Not Classes
+
+Always inject **interfaces**, not concrete classes:
+
+<DIPatternShowcase pattern="tight-coupling" mode="beginner" />
+
+```csharp
+// ❌ BAD - Depends on specific implementation
+public class OrderService
+{
+    private readonly SqlDatabase _database;  // Tied to SQL!
+}
+
+// ✅ GOOD - Depends on interface
+public class OrderService
+{
+    private readonly IDatabase _database;  // Any database works!
+}
+```
+
+## Make Dependencies Readonly
+
+Always use `readonly` for injected dependencies:
+
+```csharp
+public class ProductService
+{
+    // ✅ Can't be changed after constructor
+    private readonly IProductRepository _repository;
+
+    public ProductService(IProductRepository repository)
+    {
+        _repository = repository;
+    }
+}
+```
+
+This prevents accidental changes and makes your code safer!
+
+## Common Mistakes to Avoid
+
+### ❌ Mistake 1: Too Many Dependencies
+
+```csharp
+// BAD: This class does too much!
+public class GodService
+{
+    public GodService(
+        IUserRepository users,
+        IProductRepository products,
+        IOrderRepository orders,
+        IEmailService email,
+        IPaymentService payment,
+        IShippingService shipping,
+        INotificationService notifications,
+        IAnalyticsService analytics)  // 8 dependencies? Yikes!
+    { }
+}
+```
+
+**Fix:** Split into smaller, focused classes!
+
+### ❌ Mistake 2: Using new for Services
+
+```csharp
+// BAD: Don't create services with "new"
+var service = new UserService();  // Where are the dependencies?
+```
+
+**Fix:** Let the DI container create everything!
+
+### ❌ Mistake 3: Storing in Static Fields
+
+```csharp
+// BAD: Don't store services in static fields
+public static class ServiceLocator
+{
+    public static IUserService UserService;  // Global state = bad!
+}
+```
+
+**Fix:** Inject where needed, don't use global state!
+
+## Key Takeaways
+
+- 💉 **Constructor injection** is the best pattern
+- 🚫 **Avoid "new"** for services (except in Program.cs)
+- 📜 **Use interfaces** (`IUserService`) not classes (`UserService`)
+- 🔒 **Make dependencies readonly** to prevent changes
+- 📏 **Keep constructors small** (3-5 dependencies max)
+
+<ProgressCheckpoint section="injection-patterns" xpReward={25} />

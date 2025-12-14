@@ -1,0 +1,159 @@
+# Code-First Migrations - Practical Workflow
+
+Migrations are the foundation of database evolution in EF Core. Let's dive into the practical aspects of creating, managing, and applying migrations.
+
+## Migration Commands Deep Dive
+
+<MigrationVisualizer mode="intermediate" />
+
+## Essential CLI Commands
+
+```powershell
+# Create a new migration
+dotnet ef migrations add <MigrationName>
+
+# Apply all pending migrations
+dotnet ef database update
+
+# Apply up to a specific migration
+dotnet ef database update <MigrationName>
+
+# Remove the last migration (before applying)
+dotnet ef migrations remove
+
+# List all migrations
+dotnet ef migrations list
+
+# Generate SQL script (for production)
+dotnet ef migrations script
+```
+
+## Understanding Migration Files
+
+When you create a migration, EF Core generates three files:
+
+<DotnetCodePreview
+  title="Migration File Structure"
+  code={`// 20241214_AddBlogRating.cs
+public partial class AddBlogRating : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.AddColumn<int>(
+            name: "Rating",
+            table: "Blogs",
+            type: "int",
+            nullable: false,
+            defaultValue: 0);
+    }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            name: "Rating",
+            table: "Blogs");
+    }
+
+}`}
+steps={[
+{
+lineNumbers: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+highlight: "Up method",
+explanation: "Defines what to do when migrating forward (adding the column)"
+},
+{
+lineNumbers: [14, 15, 16, 17, 18, 19],
+highlight: "Down method",
+explanation: "Defines how to undo this migration (removing the column)"
+}
+]}
+/>
+
+## Data Seeding in Migrations
+
+Add initial data using the `HasData` method:
+
+<DotnetCodePreview
+  title="Seeding Data"
+  code={`protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Blog>().HasData(
+        new Blog { Id = 1, Title = "Introduction", Url = "intro.com" },
+        new Blog { Id = 2, Title = "Advanced Topics", Url = "advanced.com" }
+    );
+}
+
+// Or in the migration itself:
+protected override void Up(MigrationBuilder migrationBuilder)
+{
+migrationBuilder.InsertData(
+table: "Blogs",
+columns: new[] { "Id", "Title", "Url" },
+values: new object[] { 1, "Seed Blog", "seed.com" });
+}`}
+steps={[
+{
+lineNumbers: [3, 4, 5, 6],
+highlight: "HasData method",
+explanation: "Define seed data in OnModelCreating - EF tracks changes"
+},
+{
+lineNumbers: [11, 12, 13, 14, 15],
+highlight: "InsertData in migration",
+explanation: "Directly insert data in migration file for one-time seeds"
+}
+]}
+/>
+
+## Handling Migration Conflicts
+
+When working in teams, migration conflicts can occur:
+
+```powershell
+# If you have conflicting migrations, try:
+# 1. Remove your local migration
+dotnet ef migrations remove
+
+# 2. Pull latest changes from team
+git pull
+
+# 3. Update your database to latest
+dotnet ef database update
+
+# 4. Re-create your migration
+dotnet ef migrations add YourMigration
+```
+
+## Custom SQL in Migrations
+
+Sometimes you need raw SQL:
+
+<DotnetCodePreview
+  title="Custom SQL"
+  code={`protected override void Up(MigrationBuilder migrationBuilder)
+{
+    // Create a stored procedure
+    migrationBuilder.Sql(@"
+        CREATE PROCEDURE GetTopBlogs
+        AS
+        BEGIN
+            SELECT TOP 10 * FROM Blogs ORDER BY Rating DESC
+        END
+    ");
+
+    // Execute a complex update
+    migrationBuilder.Sql(
+        "UPDATE Blogs SET Rating = 5 WHERE Rating IS NULL");
+
+}`}
+/>
+
+## Best Practices
+
+1. **Meaningful names**: Use descriptive names like `AddBlogRating` not `Migration1`
+2. **One concern per migration**: Keep migrations focused on single changes
+3. **Test Down migrations**: Ensure rollbacks work before deploying
+4. **Review generated SQL**: Always check what EF generates
+5. **Never edit applied migrations**: Create new migrations to fix issues
+
+<ProgressCheckpoint section="update-database" xpReward={40} />
