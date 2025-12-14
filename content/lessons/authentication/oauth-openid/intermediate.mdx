@@ -1,0 +1,261 @@
+# OAuth 2.0 & OpenID Connect
+
+Implement social login and external identity providers in ASP.NET Core.
+
+## Setting Up External Login
+
+### Adding Google Authentication
+
+```csharp
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
+})
+.AddCookie()
+.AddGoogle(options =>
+{
+    options.ClientId = builder.Configuration["Google:ClientId"];
+    options.ClientSecret = builder.Configuration["Google:ClientSecret"];
+    options.Scope.Add("email");
+    options.Scope.Add("profile");
+});
+```
+
+### Adding Microsoft Authentication
+
+```csharp
+builder.Services.AddAuthentication()
+    .AddMicrosoftAccount(options =>
+    {
+        options.ClientId = builder.Configuration["Microsoft:ClientId"];
+        options.ClientSecret = builder.Configuration["Microsoft:ClientSecret"];
+        options.Scope.Add("User.Read");
+    });
+```
+
+### Adding Generic OpenID Connect
+
+```csharp
+builder.Services.AddAuthentication()
+    .AddOpenIdConnect("oidc", options =>
+    {
+        options.Authority = "https://your-identity-server.com";
+        options.ClientId = "your-client-id";
+        options.ClientSecret = "your-client-secret";
+        options.ResponseType = "code";
+        
+        options.Scope.Clear();
+        options.Scope.Add("openid");
+        options.Scope.Add("profile");
+        options.Scope.Add("email");
+        
+        options.SaveTokens = true;  // Store tokens in cookie
+        options.GetClaimsFromUserInfoEndpoint = true;
+    });
+```
+
+## The Authorization Code Flow
+
+<AuthFlowDiagram mode="intermediate" flowType="oauth-code" />
+
+### Initiating Login
+
+```csharp
+[HttpGet("login/google")]
+public IActionResult LoginGoogle(string returnUrl = "/")
+{
+    var properties = new AuthenticationProperties
+    {
+        RedirectUri = Url.Action("ExternalLoginCallback"),
+        Items = { { "returnUrl", returnUrl } }
+    };
+    
+    return Challenge(properties, GoogleDefaults.AuthenticationScheme);
+}
+```
+
+### Handling the Callback
+
+```csharp
+[HttpGet("signin-oidc")]
+public async Task<IActionResult> ExternalLoginCallback()
+{
+    // Get external login info
+    var info = await _signInManager.GetExternalLoginInfoAsync();
+    if (info == null)
+        return RedirectToAction("Login");
+    
+    // Try to sign in with existing external login
+    var result = await _signInManager.ExternalLoginSignInAsync(
+        info.LoginProvider,
+        info.ProviderKey,
+        isPersistent: false
+    );
+    
+    if (result.Succeeded)
+        return LocalRedirect(returnUrl);
+    
+    // User doesn't exist - create new account
+    var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+    var name = info.Principal.FindFirstValue(ClaimTypes.Name);
+    
+    var user = new ApplicationUser
+    {
+        UserName = email,
+        Email = email,
+        FullName = name,
+        EmailConfirmed = true  // Email verified by provider
+    };
+    
+    var createResult = await _userManager.CreateAsync(user);
+    if (createResult.Succeeded)
+    {
+        await _userManager.AddLoginAsync(user, info);
+        await _signInManager.SignInAsync(user, isPersistent: false);
+        return LocalRedirect(returnUrl);
+    }
+    
+    // Handle errors
+    foreach (var error in createResult.Errors)
+        ModelState.AddModelError(string.Empty, error.Description);
+    
+    return View("ExternalLoginFailure");
+}
+```
+
+## PKCE for Public Clients
+
+<OAuthPkceFlowSimulator />
+
+PKCE protects against authorization code interception:
+
+```csharp
+builder.Services.AddAuthentication()
+    .AddOpenIdConnect("oidc", options =>
+    {
+        // Enable PKCE (default in .NET 8)
+        options.UsePkce = true;
+        
+        // For public clients (SPAs, mobile apps)
+        // Don't set ClientSecret when using PKCE only
+    });
+```
+
+## Accessing External API Resources
+
+Use the access token to call provider APIs:
+
+```csharp
+public async Task<IActionResult> GetGoogleProfile()
+{
+    // Get stored tokens
+    var accessToken = await HttpContext.GetTokenAsync("access_token");
+    
+    // Call Google People API
+    var client = _httpClientFactory.CreateClient();
+    client.DefaultRequestHeaders.Authorization = 
+        new AuthenticationHeaderValue("Bearer", accessToken);
+    
+    var response = await client.GetAsync(
+        "https://people.googleapis.com/v1/people/me?personFields=names,emailAddresses"
+    );
+    
+    var profile = await response.Content.ReadFromJsonAsync<GoogleProfile>();
+    return Ok(profile);
+}
+```
+
+## Claims Transformation
+
+Map external claims to your application claims:
+
+```csharp
+public class ExternalClaimsTransformation : IClaimsTransformation
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+    
+    public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
+    {
+        var identity = (ClaimsIdentity)principal.Identity;
+        
+        // Get user from database
+        var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
+        var user = await _userManager.FindByIdAsync(userId);
+        
+        if (user != null)
+        {
+            // Add role claims
+            var roles = await _userManager.GetRolesAsync(user);
+            foreach (var role in roles)
+            {
+                identity.AddClaim(new Claim(ClaimTypes.Role, role));
+            }
+            
+            // Add custom claims
+            identity.AddClaim(new Claim("department", user.Department ?? ""));
+        }
+        
+        return principal;
+    }
+}
+```
+
+## Token Refresh
+
+Automatically refresh expired tokens:
+
+```csharp
+options.Events = new OpenIdConnectEvents
+{
+    OnTokenValidated = async context =>
+    {
+        // Store tokens with expiration
+        var tokens = context.TokenEndpointResponse;
+        
+        context.Properties.StoreTokens(new[]
+        {
+            new AuthenticationToken 
+            { 
+                Name = "access_token", 
+                Value = tokens.AccessToken 
+            },
+            new AuthenticationToken 
+            { 
+                Name = "refresh_token", 
+                Value = tokens.RefreshToken 
+            },
+            new AuthenticationToken 
+            { 
+                Name = "expires_at", 
+                Value = (DateTime.UtcNow.AddSeconds(
+                    double.Parse(tokens.ExpiresIn))).ToString("o")
+            }
+        });
+    }
+};
+
+// Refresh token when needed
+public async Task<string> GetAccessTokenAsync()
+{
+    var expiresAt = await HttpContext.GetTokenAsync("expires_at");
+    
+    if (DateTime.Parse(expiresAt) < DateTime.UtcNow.AddMinutes(5))
+    {
+        // Token expired or expiring soon - refresh it
+        await RefreshAccessTokenAsync();
+    }
+    
+    return await HttpContext.GetTokenAsync("access_token");
+}
+```
+
+## Key Takeaways
+
+- 🔧 **AddGoogle/AddMicrosoftAccount** simplifies common providers
+- 🔐 **AddOpenIdConnect** works with any OIDC provider
+- 📜 **PKCE** is required for SPAs and mobile apps
+- 🎫 **SaveTokens = true** stores tokens in the auth cookie
+- 🔄 **Token refresh** keeps sessions alive without re-login
+
+<ProgressCheckpoint section="oauth-flows" xpReward={50} />

@@ -1,0 +1,29 @@
+{
+  "id": "sql-fundamentals",
+  "title": "SQL Fundamentals",
+  "description": "Master the essential SQL commands that form the foundation of all database interactions - SELECT, INSERT, UPDATE, and DELETE.",
+  "milestone": "databases",
+  "order": 1,
+  "sections": [
+    "intro-sql",
+    "select-queries",
+    "insert-update-delete",
+    "where-clauses"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": [],
+  "tags": ["sql", "database", "queries", "crud"]
+}

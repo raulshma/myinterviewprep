@@ -1,0 +1,124 @@
+# Kubernetes Basics
+
+Imagine you're directing a massive **orchestra performance**. You have dozens of musicians, each playing different instruments. Your job is to make sure everyone starts on time, plays in harmony, and if someone gets tired, you bring in a replacement without the audience ever noticing.
+
+**Kubernetes is the conductor for your containers!**
+
+## What is Kubernetes?
+
+Kubernetes (K8s) is an **orchestration platform** that manages your containerized applications. It handles:
+
+- Starting and stopping containers
+- Distributing traffic between containers
+- Replacing crashed containers automatically
+- Scaling up or down based on demand
+
+<KubernetesClusterVisualizer mode="beginner" />
+
+## The Orchestra Analogy
+
+| Orchestra Term | Kubernetes Term | Purpose |
+|:--------------|:----------------|:--------|
+| Musician | **Pod** | Runs your actual app |
+| Music Stand | **ConfigMap** | Configuration for the musician |
+| Sheet Music | **Container Image** | What to play (your code) |
+| Section (violins, cellos) | **Deployment** | A group of identical musicians |
+| Concert Hall Entrance | **Service** | How audience finds musicians |
+| Conductor | **Kubernetes** | Coordinates everything |
+
+## Core Concepts Simplified
+
+### Pod 🎵
+The smallest unit - a single "musician" playing your app:
+
+<DotnetCodePreview
+  title="What is a Pod?"
+  code={`# A Pod is like a wrapper for your container
+apiVersion: v1
+kind: Pod
+metadata:
+  name: my-dotnet-app
+spec:
+  containers:
+  - name: app
+    image: myapp:latest
+    ports:
+    - containerPort: 80`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "Kind: Pod",
+      explanation: "This tells Kubernetes we want to create a Pod"
+    },
+    {
+      lineNumbers: [8, 9],
+      highlight: "Container Image",
+      explanation: "The Docker image to run - your .NET app!"
+    }
+  ]}
+/>
+
+### Deployment 🎼
+A group of identical pods - like having 5 violin players:
+
+<DotnetCodePreview
+  title="What is a Deployment?"
+  code={`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-dotnet-app
+spec:
+  replicas: 3  # We want 3 copies!
+  selector:
+    matchLabels:
+      app: my-dotnet-app
+  template:
+    # Pod template goes here
+    spec:
+      containers:
+      - name: app
+        image: myapp:latest`}
+  steps={[
+    {
+      lineNumbers: [6],
+      highlight: "Replicas",
+      explanation: "Kubernetes ensures exactly 3 pods are always running"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "Selector",
+      explanation: "Labels help Kubernetes track which pods belong to this deployment"
+    }
+  ]}
+/>
+
+### Service 🚪
+The entry point - how traffic finds your pods:
+
+```
+Internet → Service → [Pod 1, Pod 2, Pod 3]
+                         ↓
+                   (Load balanced!)
+```
+
+## Why Kubernetes?
+
+> Without K8s: "Pod crashed at 3 AM... your app is DOWN!"
+> 
+> With K8s: "Pod crashed at 3 AM, K8s automatically replaced it. Users never noticed!"
+
+<KeyConcept 
+  title="Self-Healing"
+  description="Kubernetes constantly watches your pods. If one crashes or becomes unhealthy, K8s automatically creates a replacement - no human intervention needed!"
+/>
+
+## Quick Summary
+
+| Concept | What It Does | Real-World Analogy |
+|:--------|:------------|:-------------------|
+| **Pod** | Runs your container | A single musician |
+| **Deployment** | Manages replica pods | A section of the orchestra |
+| **Service** | Routes traffic to pods | Concert hall entrance |
+| **Cluster** | Group of machines running K8s | The entire concert hall |
+
+<ProgressCheckpoint section="intro-kubernetes" xpReward={35} />

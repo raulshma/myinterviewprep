@@ -1,0 +1,190 @@
+# Azure App Service - Deployment Slots & Scaling
+
+Now that you understand the basics, let's explore the powerful features that make App Service a favorite for production deployments: **deployment slots** and **scaling**.
+
+## Deployment Slots: Zero-Downtime Deployments
+
+Imagine you're renovating a restaurant. With deployment slots, you:
+1. Build the new kitchen backstage (staging slot)
+2. Test everything works perfectly
+3. Swap the kitchens instantly (swap to production)
+4. If something's wrong, swap back in seconds!
+
+<AzureAppServiceExplorer mode="intermediate" />
+
+## How Slot Swapping Works
+
+```
+Before Swap:
+├── Production Slot → v1.0.0 (live traffic)
+└── Staging Slot → v1.1.0 (testing)
+
+After Swap:
+├── Production Slot → v1.1.0 (live traffic)
+└── Staging Slot → v1.0.0 (rollback ready)
+```
+
+**Key Point**: The swap is just a DNS/routing change - your containers don't restart!
+
+## Creating and Using Slots
+
+<DotnetCodePreview
+  title="Deployment Slot Commands"
+  code={`# Create a staging slot
+az webapp deployment slot create \\
+    --name my-dotnet-app \\
+    --resource-group myapp-rg \\
+    --slot staging
+
+# Deploy to staging
+az webapp deploy \\
+    --name my-dotnet-app \\
+    --resource-group myapp-rg \\
+    --slot staging \\
+    --src-path ./publish.zip
+
+# Swap staging to production
+az webapp deployment slot swap \\
+    --name my-dotnet-app \\
+    --resource-group myapp-rg \\
+    --slot staging \\
+    --target-slot production`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5],
+      highlight: "Create Slot",
+      explanation: "Creates a complete copy of your app with its own URL: my-dotnet-app-staging.azurewebsites.net"
+    },
+    {
+      lineNumbers: [14, 15, 16, 17, 18],
+      highlight: "Swap Slots",
+      explanation: "Atomically swaps the two slots - production gets new code, staging becomes rollback"
+    }
+  ]}
+/>
+
+## Slot-Specific Configuration
+
+Some settings should differ between slots:
+
+```json
+// Staging slot settings
+{
+  "ASPNETCORE_ENVIRONMENT": "Staging",
+  "ConnectionStrings__Default": "Server=staging-db...",
+  "FeatureFlags__NewFeature": "true"
+}
+
+// Production slot settings  
+{
+  "ASPNETCORE_ENVIRONMENT": "Production",
+  "ConnectionStrings__Default": "Server=prod-db...",
+  "FeatureFlags__NewFeature": "false"
+}
+```
+
+**Sticky Settings**: Mark settings that should NOT swap with the slot!
+
+## Scaling Your Application
+
+App Service offers two types of scaling:
+
+### Scale Up (Vertical)
+Move to a bigger apartment:
+- More CPU
+- More RAM
+- Better features
+
+```bash
+az appservice plan update \
+    --name myapp-plan \
+    --resource-group myapp-rg \
+    --sku P1v3
+```
+
+### Scale Out (Horizontal)
+Get more apartments (instances):
+
+```bash
+az monitor autoscale create \
+    --resource-group myapp-rg \
+    --name myapp-autoscale \
+    --resource myapp-plan \
+    --resource-type "Microsoft.Web/serverfarms" \
+    --min-count 2 \
+    --max-count 10 \
+    --count 2
+```
+
+## Auto-Scale Rules
+
+<DotnetCodePreview
+  title="Auto-Scale Configuration"
+  code={`az monitor autoscale rule create \\
+    --resource-group myapp-rg \\
+    --autoscale-name myapp-autoscale \\
+    --condition "CpuPercentage > 70 avg 5m" \\
+    --scale out 2
+
+az monitor autoscale rule create \\
+    --resource-group myapp-rg \\
+    --autoscale-name myapp-autoscale \\
+    --condition "CpuPercentage < 30 avg 5m" \\
+    --scale in 1`}
+  steps={[
+    {
+      lineNumbers: [4, 5],
+      highlight: "Scale Out Rule",
+      explanation: "When CPU > 70% for 5 minutes, add 2 instances"
+    },
+    {
+      lineNumbers: [10, 11],
+      highlight: "Scale In Rule",
+      explanation: "When CPU < 30% for 5 minutes, remove 1 instance (save money!)"
+    }
+  ]}
+/>
+
+## Continuous Deployment from GitHub
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      - name: Publish
+        run: dotnet publish -c Release -o ./publish
+      
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'my-dotnet-app'
+          slot-name: 'staging'
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: './publish'
+```
+
+## Summary
+
+| Feature | Purpose |
+|:--------|:--------|
+| **Deployment Slots** | Zero-downtime deployments, easy rollback |
+| **Scale Up** | More power per instance |
+| **Scale Out** | More instances for traffic |
+| **Auto-Scale** | Automatic scaling based on metrics |
+
+<ProgressCheckpoint section="slots-and-scaling" xpReward={50} />

@@ -1,0 +1,158 @@
+# SQL Fundamentals
+
+Welcome to the world of databases! SQL (Structured Query Language) is the universal language for talking to databases. Let's learn how to speak it!
+
+## 🗣️ What is SQL?
+
+Imagine you have a giant filing cabinet with thousands of folders. SQL is like having a super-smart assistant who can:
+
+- **Find** any document you describe
+- **Add** new documents
+- **Update** existing documents
+- **Remove** documents you don't need
+
+> **Think of it this way:** SQL is like ordering at a restaurant. You tell the database what you want, and it brings it to you!
+
+## The Four Magic Words: CRUD
+
+Every database operation falls into four categories, known as **CRUD**:
+
+| Operation | SQL Command | What It Does | Restaurant Analogy |
+|:----------|:------------|:-------------|:-------------------|
+| **C**reate | INSERT | Adds new data | Ordering new food |
+| **R**ead | SELECT | Retrieves data | Looking at the menu |
+| **U**pdate | UPDATE | Changes existing data | Modifying your order |
+| **D**elete | DELETE | Removes data | Canceling an order |
+
+## Try It Out!
+
+Use the interactive visualizer below to see how each SQL command works:
+
+<SqlQueryVisualizer mode="beginner" />
+
+## SELECT - Reading Data 📖
+
+SELECT is the most common SQL command. It's how you ask questions about your data.
+
+<DotnetCodePreview
+  title="Your First SELECT Query"
+  code={`-- Get everything from the Users table
+SELECT * FROM Users;
+
+-- Get only names and emails
+SELECT Name, Email FROM Users;`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "The asterisk (*)",
+      explanation: "The * means 'give me ALL columns' - it's like saying 'show me everything!'"
+    },
+    {
+      lineNumbers: [5],
+      highlight: "Specific columns",
+      explanation: "You can also ask for just the columns you need - like ordering only the items you want"
+    }
+  ]}
+/>
+
+## INSERT - Adding Data ➕
+
+INSERT adds new records to your table - like putting a new card in a filing cabinet.
+
+<DotnetCodePreview
+  title="Adding a New User"
+  code={`INSERT INTO Users (Name, Email, Age)
+VALUES ('Alice', 'alice@email.com', 28);`}
+  steps={[
+    {
+      lineNumbers: [1],
+      highlight: "Table and columns",
+      explanation: "Tell the database which table and which columns you're filling"
+    },
+    {
+      lineNumbers: [2],
+      highlight: "The values",
+      explanation: "Provide the actual data - make sure the order matches the columns!"
+    }
+  ]}
+/>
+
+## UPDATE - Changing Data ✏️
+
+UPDATE modifies existing records. Be careful - you can change many records at once!
+
+<DotnetCodePreview
+  title="Updating a User's Email"
+  code={`UPDATE Users
+SET Email = 'alice.new@email.com'
+WHERE Name = 'Alice';`}
+  steps={[
+    {
+      lineNumbers: [1],
+      highlight: "Which table",
+      explanation: "Specify the table you want to update"
+    },
+    {
+      lineNumbers: [2],
+      highlight: "What to change",
+      explanation: "SET tells the database what new value(s) to use"
+    },
+    {
+      lineNumbers: [3],
+      highlight: "WHERE is crucial!",
+      explanation: "Without WHERE, you'd update EVERY row! Always double-check your WHERE clause"
+    }
+  ]}
+/>
+
+## DELETE - Removing Data 🗑️
+
+DELETE permanently removes records. Once gone, they're gone forever (without backups)!
+
+<DotnetCodePreview
+  title="Deleting a User"
+  code={`-- Delete a specific user
+DELETE FROM Users
+WHERE Name = 'Alice';
+
+-- DANGER! This deletes EVERYONE!
+-- DELETE FROM Users;`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "WHERE saves you",
+      explanation: "The WHERE clause ensures you only delete what you intend to delete"
+    },
+    {
+      lineNumbers: [6],
+      highlight: "Never do this!",
+      explanation: "Without WHERE, you'd delete ALL data in the table - always use WHERE with DELETE"
+    }
+  ]}
+/>
+
+## 🔍 WHERE - Filtering Your Data
+
+The WHERE clause is like a filter - it lets you specify exactly which rows you want to work with.
+
+```sql
+-- Find users over 25
+SELECT * FROM Users WHERE Age > 25;
+
+-- Find users named 'Bob'
+SELECT * FROM Users WHERE Name = 'Bob';
+
+-- Combine conditions
+SELECT * FROM Users WHERE Age > 25 AND Active = 1;
+```
+
+## Quick Summary
+
+| Command | Purpose | Always Include? |
+|:--------|:--------|:----------------|
+| SELECT | Read data | Usually with WHERE |
+| INSERT | Add new data | Column values |
+| UPDATE | Change data | **Always use WHERE!** |
+| DELETE | Remove data | **Always use WHERE!** |
+
+<ProgressCheckpoint section="intro-sql" xpReward={30} />

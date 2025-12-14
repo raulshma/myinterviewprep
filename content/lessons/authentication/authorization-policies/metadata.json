@@ -1,0 +1,28 @@
+{
+  "id": "authorization-policies",
+  "title": "Authorization Policies",
+  "description": "Master role-based, claims-based, and policy-based authorization to control access to resources in your ASP.NET Core applications.",
+  "milestone": "authentication",
+  "order": 4,
+  "sections": [
+    "authz-intro",
+    "authz-policies",
+    "authz-handlers"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["oauth-openid"],
+  "tags": ["authorization", "policies", "roles", "claims", "security", "dotnet"]
+}

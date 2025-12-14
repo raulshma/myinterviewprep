@@ -1,0 +1,100 @@
+# Built-in Middleware: Your Ready-Made Toolkit 🧰
+
+Imagine you want to build a house. Would you forge your own nails? Craft your own screws? Of course not! You'd use **ready-made tools**.
+
+ASP.NET Core comes with a **toolbox full of middleware** for common tasks. Let's explore what's available!
+
+## The Toolbox Analogy
+
+| **Tool**                     | **What It Does**                    |
+| :--------------------------- | :---------------------------------- |
+| 🔴 Exception Handler         | Catches errors and shows nice pages |
+| 🔒 HTTPS Redirection         | Forces secure connections           |
+| 📁 Static Files              | Serves CSS, JS, images              |
+| 🛤️ Routing                   | Finds the right endpoint            |
+| 👤 Authentication            | Checks who you are                  |
+| 🔑 Authorization             | Checks what you can do              |
+
+<InfoBox type="tip">
+  **Don't reinvent the wheel!** ASP.NET Core has middleware for most common tasks. Use them instead of writing your own.
+</InfoBox>
+
+## Explore the Built-in Middleware
+
+Click on each middleware to learn what it does:
+
+<BuiltInMiddlewareExplorer mode="beginner" />
+
+## The Essential Five
+
+Every ASP.NET Core app typically uses these five:
+
+### 1. 🔴 Exception Handler
+**Catches errors so users see a friendly page, not scary code:**
+
+```csharp
+app.UseExceptionHandler("/Error");
+```
+
+### 2. 🔒 HTTPS Redirection
+**Automatically upgrades HTTP to HTTPS:**
+
+```csharp
+app.UseHttpsRedirection();
+```
+
+### 3. 📁 Static Files
+**Serves your CSS, JavaScript, and images from wwwroot:**
+
+```csharp
+app.UseStaticFiles();
+```
+
+### 4. 🛤️ Routing
+**Figures out which endpoint to call based on the URL:**
+
+```csharp
+app.UseRouting();
+```
+
+### 5. 👤🔑 Authentication & Authorization
+**Checks who you are and what you can do:**
+
+```csharp
+app.UseAuthentication();  // Who are you?
+app.UseAuthorization();   // What can you do?
+```
+
+## A Simple Setup
+
+Here's what a basic app looks like:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+// Use the built-in middleware!
+app.UseExceptionHandler("/Error");
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthorization();
+
+// Your endpoint
+app.MapGet("/", () => "Hello World!");
+
+app.Run();
+```
+
+<InfoBox type="info">
+  **Notice:** Each middleware is just ONE line! ASP.NET Core does all the hard work for you.
+</InfoBox>
+
+## Key Takeaways
+
+- 🧰 **Use what's built-in** — Don't write your own error handler or static file server
+- 🔒 **Always use HTTPS** — It's 2024, security is non-negotiable
+- 📋 **Order matters** — Exception Handler first, Authorization before your endpoints
+- 🎯 **One line, one job** — Each `app.Use*()` adds one capability
+
+<ProgressCheckpoint section="builtin-overview" xpReward={30} />

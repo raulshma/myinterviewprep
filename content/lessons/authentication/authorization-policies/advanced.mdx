@@ -1,0 +1,334 @@
+# Authorization Policies
+
+Advanced authorization patterns including resource-based access, dynamic policies, and caching.
+
+## Resource-Based Authorization
+
+Authorize against specific resources:
+
+```csharp
+public class DocumentAuthorizationHandler : 
+    AuthorizationHandler<OperationAuthorizationRequirement, Document>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        OperationAuthorizationRequirement requirement,
+        Document resource)
+    {
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        
+        if (requirement.Name == Operations.Read.Name)
+        {
+            // Public docs or owner can read
+            if (resource.IsPublic || resource.OwnerId == userId)
+            {
+                context.Succeed(requirement);
+            }
+        }
+        else if (requirement.Name == Operations.Update.Name)
+        {
+            // Only owner or editors can update
+            if (resource.OwnerId == userId || 
+                resource.Editors.Contains(userId))
+            {
+                context.Succeed(requirement);
+            }
+        }
+        else if (requirement.Name == Operations.Delete.Name)
+        {
+            // Only owner can delete
+            if (resource.OwnerId == userId)
+            {
+                context.Succeed(requirement);
+            }
+        }
+        
+        return Task.CompletedTask;
+    }
+}
+
+public static class Operations
+{
+    public static OperationAuthorizationRequirement Read = new() { Name = nameof(Read) };
+    public static OperationAuthorizationRequirement Update = new() { Name = nameof(Update) };
+    public static OperationAuthorizationRequirement Delete = new() { Name = nameof(Delete) };
+}
+```
+
+Usage in controllers:
+
+```csharp
+public async Task<IActionResult> Edit(int id)
+{
+    var document = await _documentService.GetByIdAsync(id);
+    
+    var authResult = await _authService.AuthorizeAsync(
+        User, 
+        document, 
+        Operations.Update
+    );
+    
+    if (!authResult.Succeeded)
+    {
+        if (User.Identity.IsAuthenticated)
+            return Forbid();
+        else
+            return Challenge();
+    }
+    
+    return View(document);
+}
+```
+
+## Dynamic Policy Providers
+
+Create policies at runtime:
+
+```csharp
+public class PermissionPolicyProvider : IAuthorizationPolicyProvider
+{
+    private readonly DefaultAuthorizationPolicyProvider _fallbackProvider;
+    
+    public PermissionPolicyProvider(IOptions<AuthorizationOptions> options)
+    {
+        _fallbackProvider = new DefaultAuthorizationPolicyProvider(options);
+    }
+    
+    public Task<AuthorizationPolicy> GetPolicyAsync(string policyName)
+    {
+        // Handle dynamic permission policies
+        if (policyName.StartsWith("Permission:"))
+        {
+            var permission = policyName.Substring("Permission:".Length);
+            
+            var policy = new AuthorizationPolicyBuilder()
+                .AddRequirements(new PermissionRequirement(permission))
+                .Build();
+            
+            return Task.FromResult(policy);
+        }
+        
+        return _fallbackProvider.GetPolicyAsync(policyName);
+    }
+    
+    public Task<AuthorizationPolicy> GetDefaultPolicyAsync() =>
+        _fallbackProvider.GetDefaultPolicyAsync();
+    
+    public Task<AuthorizationPolicy> GetFallbackPolicyAsync() =>
+        _fallbackProvider.GetFallbackPolicyAsync();
+}
+
+// Usage
+[Authorize(Policy = "Permission:Documents.Edit")]
+public IActionResult EditDocument() { ... }
+
+[Authorize(Policy = "Permission:Users.Delete")]
+public IActionResult DeleteUser() { ... }
+```
+
+Handler for dynamic permissions:
+
+```csharp
+public class PermissionHandler : AuthorizationHandler<PermissionRequirement>
+{
+    private readonly IPermissionService _permissionService;
+    
+    protected override async Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        PermissionRequirement requirement)
+    {
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        
+        var hasPermission = await _permissionService.UserHasPermissionAsync(
+            userId, 
+            requirement.Permission
+        );
+        
+        if (hasPermission)
+        {
+            context.Succeed(requirement);
+        }
+    }
+}
+```
+
+## Hierarchical Permissions
+
+Implement permission inheritance:
+
+```csharp
+public class HierarchicalPermissionService : IPermissionService
+{
+    private readonly Dictionary<string, HashSet<string>> _permissionHierarchy = new()
+    {
+        ["Documents.Admin"] = new() { "Documents.Read", "Documents.Write", "Documents.Delete" },
+        ["Documents.Write"] = new() { "Documents.Read" },
+        ["Users.Admin"] = new() { "Users.Read", "Users.Write", "Users.Delete" },
+        ["SuperAdmin"] = new() { "Documents.Admin", "Users.Admin" }
+    };
+    
+    public async Task<bool> UserHasPermissionAsync(string userId, string permission)
+    {
+        var userPermissions = await GetUserPermissionsAsync(userId);
+        
+        return userPermissions.Any(p => 
+            p == permission || 
+            HasInheritedPermission(p, permission)
+        );
+    }
+    
+    private bool HasInheritedPermission(string userPermission, string requiredPermission)
+    {
+        if (!_permissionHierarchy.TryGetValue(userPermission, out var children))
+            return false;
+        
+        if (children.Contains(requiredPermission))
+            return true;
+        
+        // Recursive check
+        return children.Any(child => HasInheritedPermission(child, requiredPermission));
+    }
+}
+```
+
+## Authorization Caching
+
+Cache authorization results for performance:
+
+```csharp
+public class CachedAuthorizationHandler<TRequirement> : AuthorizationHandler<TRequirement>
+    where TRequirement : IAuthorizationRequirement
+{
+    private readonly IMemoryCache _cache;
+    private readonly AuthorizationHandler<TRequirement> _inner;
+    
+    protected override async Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        TRequirement requirement)
+    {
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var cacheKey = $"authz:{userId}:{typeof(TRequirement).Name}";
+        
+        if (_cache.TryGetValue(cacheKey, out bool cachedResult))
+        {
+            if (cachedResult)
+                context.Succeed(requirement);
+            return;
+        }
+        
+        // Create temporary context
+        var tempContext = new AuthorizationHandlerContext(
+            new[] { requirement },
+            context.User,
+            context.Resource
+        );
+        
+        await _inner.HandleAsync(tempContext);
+        
+        var succeeded = tempContext.HasSucceeded;
+        
+        // Cache for 5 minutes
+        _cache.Set(cacheKey, succeeded, TimeSpan.FromMinutes(5));
+        
+        if (succeeded)
+            context.Succeed(requirement);
+    }
+}
+```
+
+## Combining Multiple Policies
+
+Create composite authorization:
+
+```csharp
+// AND logic: All policies must pass
+options.AddPolicy("StrictAccess", policy =>
+{
+    policy.RequireRole("Employee");
+    policy.RequireClaim("department", "Engineering");
+    policy.RequireClaim("clearance", "Secret", "TopSecret");
+    policy.Requirements.Add(new MinimumAgeRequirement(18));
+    policy.Requirements.Add(new BusinessHoursRequirement());
+});
+
+// OR logic: Use authorization service
+public async Task<IActionResult> FlexibleAccess()
+{
+    var policies = new[] { "AdminPolicy", "OwnerPolicy", "EditorPolicy" };
+    
+    foreach (var policy in policies)
+    {
+        var result = await _authService.AuthorizeAsync(User, policy);
+        if (result.Succeeded)
+            return View();
+    }
+    
+    return Forbid();
+}
+```
+
+## Global Fallback Policy
+
+Secure by default:
+
+```csharp
+builder.Services.AddAuthorization(options =>
+{
+    // All endpoints require authentication by default
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
+
+// Must explicitly allow anonymous
+app.MapGet("/public", () => "Anyone can see this")
+    .AllowAnonymous();
+```
+
+## Authorization Failure Handling
+
+Custom responses on failure:
+
+```csharp
+builder.Services.AddSingleton<IAuthorizationMiddlewareResultHandler, 
+    CustomAuthorizationMiddlewareResultHandler>();
+
+public class CustomAuthorizationMiddlewareResultHandler : IAuthorizationMiddlewareResultHandler
+{
+    public async Task HandleAsync(
+        RequestDelegate next,
+        HttpContext context,
+        AuthorizationPolicy policy,
+        PolicyAuthorizationResult authorizeResult)
+    {
+        if (authorizeResult.Forbidden)
+        {
+            // Log the failure
+            var logger = context.RequestServices.GetRequiredService<ILogger<...>>();
+            logger.LogWarning("Authorization failed for {Path}", context.Request.Path);
+            
+            // Custom response
+            context.Response.StatusCode = 403;
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error = "Forbidden",
+                message = "You do not have permission to access this resource",
+                requiredPolicy = policy.AuthenticationSchemes.FirstOrDefault()
+            });
+            return;
+        }
+        
+        await next(context);
+    }
+}
+```
+
+## Key Takeaways
+
+- 📦 **Resource-based** authorization checks against specific objects
+- 🔄 **Dynamic policies** created at runtime via IAuthorizationPolicyProvider
+- 🌲 **Hierarchical permissions** support inheritance
+- ⚡ **Caching** improves authorization performance
+- 🛡️ **Fallback policy** secures endpoints by default
+
+<ProgressCheckpoint section="authz-handlers" xpReward={75} />

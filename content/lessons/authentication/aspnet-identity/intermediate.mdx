@@ -1,0 +1,261 @@
+# ASP.NET Core Identity
+
+Build robust user authentication with ASP.NET Core Identity's powerful APIs.
+
+## Core Services Deep Dive
+
+Identity provides three main services for user management:
+
+<IdentityArchitectureVisualizer mode="intermediate" scenario="overview" />
+
+### UserManager<TUser>
+
+The `UserManager` is your primary interface for user operations:
+
+```csharp
+public class AccountController : Controller
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+    
+    public AccountController(UserManager<ApplicationUser> userManager)
+    {
+        _userManager = userManager;
+    }
+    
+    public async Task<IActionResult> Register(RegisterViewModel model)
+    {
+        // Create user with hashed password
+        var user = new ApplicationUser 
+        { 
+            UserName = model.Email, 
+            Email = model.Email 
+        };
+        
+        var result = await _userManager.CreateAsync(user, model.Password);
+        
+        if (result.Succeeded)
+        {
+            // Add claims for additional user info
+            await _userManager.AddClaimAsync(user, 
+                new Claim("Department", model.Department));
+            
+            return RedirectToAction("Login");
+        }
+        
+        // Handle errors
+        foreach (var error in result.Errors)
+        {
+            ModelState.AddModelError("", error.Description);
+        }
+        return View(model);
+    }
+}
+```
+
+### SignInManager<TUser>
+
+The `SignInManager` handles authentication:
+
+```csharp
+public async Task<IActionResult> Login(LoginViewModel model)
+{
+    // PasswordSignInAsync validates credentials and creates cookie
+    var result = await _signInManager.PasswordSignInAsync(
+        model.Email, 
+        model.Password,
+        isPersistent: model.RememberMe,
+        lockoutOnFailure: true  // Lock account after failed attempts
+    );
+    
+    if (result.Succeeded)
+        return RedirectToAction("Index", "Home");
+        
+    if (result.RequiresTwoFactor)
+        return RedirectToAction("TwoFactorLogin");
+        
+    if (result.IsLockedOut)
+        return View("Lockout");
+        
+    ModelState.AddModelError("", "Invalid login attempt");
+    return View(model);
+}
+```
+
+## Customizing IdentityUser
+
+Extend the default user with your own properties:
+
+```csharp
+public class ApplicationUser : IdentityUser
+{
+    // Custom properties
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public DateTime DateOfBirth { get; set; }
+    public string Department { get; set; }
+    
+    // Navigation properties
+    public virtual ICollection<Order> Orders { get; set; }
+}
+```
+
+Update your DbContext:
+
+```csharp
+public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options)
+    {
+    }
+    
+    public DbSet<Order> Orders { get; set; }
+}
+```
+
+## Role Management
+
+<IdentityArchitectureVisualizer mode="intermediate" scenario="role-management" />
+
+### Creating and Assigning Roles
+
+```csharp
+public class RolesController : Controller
+{
+    private readonly RoleManager<IdentityRole> _roleManager;
+    private readonly UserManager<ApplicationUser> _userManager;
+    
+    public async Task<IActionResult> CreateRole(string roleName)
+    {
+        if (!await _roleManager.RoleExistsAsync(roleName))
+        {
+            await _roleManager.CreateAsync(new IdentityRole(roleName));
+        }
+        return Ok();
+    }
+    
+    public async Task<IActionResult> AssignRole(string userId, string roleName)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        await _userManager.AddToRoleAsync(user, roleName);
+        return Ok();
+    }
+}
+```
+
+### Checking Roles in Code
+
+```csharp
+// In a controller
+if (User.IsInRole("Admin"))
+{
+    // Show admin features
+}
+
+// Using UserManager
+var roles = await _userManager.GetRolesAsync(user);
+bool isAdmin = roles.Contains("Admin");
+```
+
+## External Login Providers
+
+Add social login with OpenID Connect:
+
+```csharp
+builder.Services.AddAuthentication()
+    .AddGoogle(options =>
+    {
+        options.ClientId = builder.Configuration["Google:ClientId"];
+        options.ClientSecret = builder.Configuration["Google:ClientSecret"];
+    })
+    .AddMicrosoftAccount(options =>
+    {
+        options.ClientId = builder.Configuration["Microsoft:ClientId"];
+        options.ClientSecret = builder.Configuration["Microsoft:ClientSecret"];
+    });
+```
+
+Handle the callback:
+
+```csharp
+public async Task<IActionResult> ExternalLoginCallback()
+{
+    var info = await _signInManager.GetExternalLoginInfoAsync();
+    
+    // Try to sign in with external provider
+    var result = await _signInManager.ExternalLoginSignInAsync(
+        info.LoginProvider, 
+        info.ProviderKey, 
+        isPersistent: false
+    );
+    
+    if (result.Succeeded)
+        return RedirectToAction("Index", "Home");
+        
+    // User doesn't exist - create account
+    var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+    var user = new ApplicationUser { UserName = email, Email = email };
+    
+    await _userManager.CreateAsync(user);
+    await _userManager.AddLoginAsync(user, info);
+    await _signInManager.SignInAsync(user, isPersistent: false);
+    
+    return RedirectToAction("Index", "Home");
+}
+```
+
+## Two-Factor Authentication
+
+Enable 2FA for enhanced security:
+
+```csharp
+public async Task<IActionResult> EnableAuthenticator()
+{
+    var user = await _userManager.GetUserAsync(User);
+    
+    // Generate shared key for authenticator app
+    var key = await _userManager.GetAuthenticatorKeyAsync(user);
+    if (string.IsNullOrEmpty(key))
+    {
+        await _userManager.ResetAuthenticatorKeyAsync(user);
+        key = await _userManager.GetAuthenticatorKeyAsync(user);
+    }
+    
+    // Return QR code for scanning
+    return View(new EnableAuthenticatorViewModel 
+    { 
+        SharedKey = FormatKey(key),
+        AuthenticatorUri = GenerateQrCodeUri(user.Email, key)
+    });
+}
+
+public async Task<IActionResult> VerifyAuthenticator(string code)
+{
+    var user = await _userManager.GetUserAsync(User);
+    
+    var isValid = await _userManager.VerifyTwoFactorTokenAsync(
+        user, 
+        _userManager.Options.Tokens.AuthenticatorTokenProvider, 
+        code
+    );
+    
+    if (isValid)
+    {
+        await _userManager.SetTwoFactorEnabledAsync(user, true);
+        return RedirectToAction("TwoFactorEnabled");
+    }
+    
+    ModelState.AddModelError("", "Invalid verification code");
+    return View();
+}
+```
+
+## Key Takeaways
+
+- 🔧 **UserManager** creates/updates users and manages passwords
+- 🔐 **SignInManager** handles login, logout, and 2FA
+- 👥 **RoleManager** creates and assigns roles
+- 🌐 **External providers** enable social login (Google, Microsoft, etc.)
+- 📱 **2FA** adds authenticator app support
+
+<ProgressCheckpoint section="identity-services" xpReward={50} />

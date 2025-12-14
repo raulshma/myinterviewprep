@@ -1,0 +1,223 @@
+# .NET Aspire - AppHost & Service Integrations
+
+Now let's dive deeper into building real applications with Aspire. We'll explore integrations, configuration, and the service defaults pattern.
+
+## Building with Aspire
+
+<AspireAppBuilder mode="intermediate" />
+
+## Common Resource Integrations
+
+Aspire has built-in support for many common backing services:
+
+<DotnetCodePreview
+  title="Rich AppHost Configuration"
+  code={`var builder = DistributedApplication.CreateBuilder(args);
+
+// Databases
+var postgres = builder.AddPostgres("postgres")
+    .WithDataVolume();  // Persist data between runs!
+var sqldb = postgres.AddDatabase("ordersdb");
+
+// Caching
+var redis = builder.AddRedis("redis")
+    .WithRedisCommander();  // Redis GUI included!
+
+// Messaging
+var rabbitmq = builder.AddRabbitMQ("messaging")
+    .WithManagementPlugin();
+
+// Your microservices
+var catalogApi = builder.AddProject<Projects.CatalogApi>("catalog")
+    .WithReference(sqldb)
+    .WithReference(redis);
+
+var orderService = builder.AddProject<Projects.OrderService>("orders")
+    .WithReference(sqldb)
+    .WithReference(rabbitmq);
+
+var frontend = builder.AddProject<Projects.WebFrontend>("web")
+    .WithReference(catalogApi)
+    .WithReference(orderService)
+    .WithExternalHttpEndpoints();
+
+builder.Build().Run();`}
+  steps={[
+    {
+      lineNumbers: [4, 5],
+      highlight: "Data Volumes",
+      explanation: "WithDataVolume() persists database data between container restarts"
+    },
+    {
+      lineNumbers: [9],
+      highlight: "Companion Tools",
+      explanation: "WithRedisCommander() adds a Redis GUI - great for debugging!"
+    },
+    {
+      lineNumbers: [26],
+      highlight: "External Endpoints",
+      explanation: "Makes this service accessible outside the cluster"
+    }
+  ]}
+/>
+
+## Service Defaults: The Secret Sauce
+
+The `.ServiceDefaults` project adds enterprise features to all your services:
+
+<DotnetCodePreview
+  title="Extensions.cs"
+  code={`public static class Extensions
+{
+    public static IHostApplicationBuilder AddServiceDefaults(
+        this IHostApplicationBuilder builder)
+    {
+        // OpenTelemetry for tracing
+        builder.ConfigureOpenTelemetry();
+        
+        // Health checks
+        builder.AddDefaultHealthChecks();
+        
+        // Service discovery
+        builder.Services.AddServiceDiscovery();
+        
+        // Resilience patterns
+        builder.Services.ConfigureHttpClientDefaults(http =>
+        {
+            http.AddStandardResilienceHandler();
+        });
+        
+        return builder;
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [7],
+      highlight: "OpenTelemetry",
+      explanation: "Automatic distributed tracing - see requests flow across services!"
+    },
+    {
+      lineNumbers: [10],
+      highlight: "Health Checks",
+      explanation: "Readiness and liveness endpoints for orchestrators"
+    },
+    {
+      lineNumbers: [16, 17, 18],
+      highlight: "Resilience",
+      explanation: "Automatic retries, circuit breakers, and timeouts for HTTP calls"
+    }
+  ]}
+/>
+
+## Using Service Defaults
+
+In each service project:
+
+```csharp
+// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// Add all the service defaults!
+builder.AddServiceDefaults();
+
+// Your service-specific configuration
+builder.Services.AddDbContext<OrderDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("ordersdb")));
+
+var app = builder.Build();
+
+// Map health check endpoints
+app.MapDefaultEndpoints();
+
+app.MapControllers();
+app.Run();
+```
+
+## Typed HTTP Clients with Service Discovery
+
+<DotnetCodePreview
+  title="Calling Other Services"
+  code={`// In ConfigureServices
+builder.Services.AddHttpClient<ICatalogClient, CatalogClient>(
+    client => client.BaseAddress = new Uri("http://catalog"));
+
+// The client class
+public class CatalogClient : ICatalogClient
+{
+    private readonly HttpClient _httpClient;
+    
+    public CatalogClient(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+    
+    public async Task<List<Product>> GetProducts()
+    {
+        // Just use relative URLs - Aspire resolves "catalog" to actual address
+        return await _httpClient.GetFromJsonAsync<List<Product>>("/api/products") 
+            ?? [];
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "Service Name as URL",
+      explanation: "Use 'http://catalog' - Aspire's service discovery resolves the actual address"
+    },
+    {
+      lineNumbers: [17, 18],
+      highlight: "Simple HTTP Calls",
+      explanation: "Your code stays clean - no hardcoded URLs or connection strings"
+    }
+  ]}
+/>
+
+## Component Packages
+
+Aspire provides client packages that integrate seamlessly:
+
+```bash
+# Database clients
+dotnet add package Aspire.Npgsql.EntityFrameworkCore.PostgreSQL
+dotnet add package Aspire.Microsoft.EntityFrameworkCore.SqlServer
+
+# Caching
+dotnet add package Aspire.StackExchange.Redis
+
+# Messaging
+dotnet add package Aspire.RabbitMQ.Client
+```
+
+Usage:
+```csharp
+// Automatically configured, health-checked Redis
+builder.AddRedisClient("redis");
+
+// Automatically configured, health-checked PostgreSQL
+builder.AddNpgsqlDbContext<OrderDbContext>("ordersdb");
+```
+
+## Environment-Specific Configuration
+
+```csharp
+// AppHost/Program.cs
+var builder = DistributedApplication.CreateBuilder(args);
+
+var postgres = builder.ExecutionContext.IsPublishMode
+    ? builder.AddConnectionString("postgres")  // Use external DB in production
+    : builder.AddPostgres("postgres");         // Use container in development
+
+builder.AddProject<Projects.Api>("api")
+    .WithReference(postgres);
+```
+
+## Summary
+
+| Component | Purpose |
+|:----------|:--------|
+| **AppHost** | Orchestrates all resources and services |
+| **ServiceDefaults** | Shared config (telemetry, health, resilience) |
+| **Aspire Components** | Pre-configured clients with health checks |
+| **Service Discovery** | Automatic service-to-service resolution |
+
+<ProgressCheckpoint section="app-host" xpReward={50} />

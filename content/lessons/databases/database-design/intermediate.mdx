@@ -1,0 +1,236 @@
+# Database Design - Intermediate
+
+Learn normalization - the science of organizing data to eliminate redundancy and improve integrity.
+
+## 📐 What is Normalization?
+
+Normalization is the process of organizing your data to:
+- **Eliminate redundancy** (don't store the same data twice)
+- **Prevent anomalies** (no weird bugs when updating/deleting)
+- **Improve data integrity** (data stays consistent)
+
+<DatabaseDesignVisualizer mode="intermediate" initialTab="normalization" />
+
+## 📊 The Normal Forms Journey
+
+### Unnormalized Data (0NF)
+
+Start with a messy spreadsheet:
+
+| OrderId | Customer | Products | Quantities |
+|:--------|:---------|:---------|:-----------|
+| 1 | John Smith | Laptop, Mouse | 1, 2 |
+| 2 | Jane Doe | Keyboard | 1 |
+
+**Problems:**
+- ❌ Multiple values in one cell (violates atomicity)
+- ❌ Can't easily query individual products
+- ❌ Can't add quantities to products
+
+## 1️⃣ First Normal Form (1NF)
+
+**Rule:** Each cell must contain only ONE value. No repeating groups.
+
+<DotnetCodePreview
+  title="Converting to 1NF"
+  code={`-- BAD: Violates 1NF (multiple values in cell)
+| OrderId | Products        | Quantities |
+| 1       | Laptop, Mouse   | 1, 2       |
+
+-- GOOD: 1NF compliant (one value per cell)
+| OrderId | Customer    | Product  | Quantity |
+| 1       | John Smith  | Laptop   | 1        |
+| 1       | John Smith  | Mouse    | 2        |
+| 2       | Jane Doe    | Keyboard | 1        |`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Before",
+      explanation: "Multiple products in one cell - can't query or sort properly"
+    },
+    {
+      lineNumbers: [6, 7, 8, 9],
+      highlight: "After",
+      explanation: "Each product gets its own row - atomic values"
+    }
+  ]}
+/>
+
+**New Problem:** Customer name is repeated! 🔄
+
+## 2️⃣ Second Normal Form (2NF)
+
+**Rule:** Must be in 1NF + all non-key columns must depend on the ENTIRE primary key.
+
+<DotnetCodePreview
+  title="Converting to 2NF"
+  code={`-- Problem: Customer depends only on OrderId, not OrderId+Product
+-- This is a "partial dependency"
+
+-- Solution: Split into two tables!
+
+-- Orders table (customer info here)
+CREATE TABLE Orders (
+    OrderId INT PRIMARY KEY,
+    CustomerId INT,
+    OrderDate DATE
+);
+
+-- OrderItems table (products here)
+CREATE TABLE OrderItems (
+    OrderId INT,
+    ProductId INT,
+    Quantity INT,
+    PRIMARY KEY (OrderId, ProductId)
+);`}
+  steps={[
+    {
+      lineNumbers: [7, 8, 9, 10],
+      highlight: "Orders",
+      explanation: "Customer info lives with order - no product dependency"
+    },
+    {
+      lineNumbers: [14, 15, 16, 17],
+      highlight: "OrderItems",
+      explanation: "Products reference orders - proper composite key"
+    }
+  ]}
+/>
+
+## 3️⃣ Third Normal Form (3NF)
+
+**Rule:** Must be in 2NF + no transitive dependencies (non-key → non-key).
+
+<DotnetCodePreview
+  title="Converting to 3NF"
+  code={`-- Problem: CustomerCity depends on CustomerZip, not on OrderId
+-- CustomerZip → CustomerCity is a transitive dependency!
+
+-- BAD: 2NF but not 3NF
+| OrderId | CustomerName | CustomerZip | CustomerCity |
+| 1       | John Smith   | 10001       | New York     |
+
+-- GOOD: 3NF - Separate customers
+CREATE TABLE Customers (
+    Id INT PRIMARY KEY,
+    Name VARCHAR(100),
+    ZipCode VARCHAR(10)
+);
+
+CREATE TABLE ZipCodes (
+    ZipCode VARCHAR(10) PRIMARY KEY,
+    City VARCHAR(100),
+    State VARCHAR(50)
+);
+
+-- Now city is looked up from ZipCodes, not duplicated!`}
+  steps={[
+    {
+      lineNumbers: [5, 6],
+      highlight: "Transitive dependency",
+      explanation: "City depends on Zip, Zip depends on Customer"
+    },
+    {
+      lineNumbers: [15, 16, 17, 18],
+      highlight: "Separate table",
+      explanation: "ZipCode determines City - stored once, reused many times"
+    }
+  ]}
+/>
+
+## 🎯 The Golden Rule
+
+> **A column should depend on the key, the whole key, and nothing but the key!**
+
+| Normal Form | What to Check |
+|:------------|:--------------|
+| 1NF | Every cell has one value |
+| 2NF | No partial dependencies |
+| 3NF | No transitive dependencies |
+
+## 🔗 Implementing Many-to-Many
+
+Many-to-many relationships need a **junction table** (also called bridge table, link table):
+
+<DotnetCodePreview
+  title="Many-to-Many Relationship"
+  code={`-- Students can take many courses
+-- Courses can have many students
+
+-- Parent tables
+CREATE TABLE Students (
+    Id INT PRIMARY KEY,
+    Name VARCHAR(100)
+);
+
+CREATE TABLE Courses (
+    Id INT PRIMARY KEY,
+    Title VARCHAR(200)
+);
+
+-- Junction table (bridge)
+CREATE TABLE Enrollments (
+    StudentId INT REFERENCES Students(Id),
+    CourseId INT REFERENCES Courses(Id),
+    EnrollDate DATE DEFAULT CURRENT_DATE,
+    Grade DECIMAL(3,2),
+    PRIMARY KEY (StudentId, CourseId)  -- Composite key
+);`}
+  steps={[
+    {
+      lineNumbers: [15, 16, 17],
+      highlight: "Junction table",
+      explanation: "Links students and courses with foreign keys"
+    },
+    {
+      lineNumbers: [18, 19],
+      highlight: "Extra columns",
+      explanation: "Can store relationship-specific data like enrollment date"
+    },
+    {
+      lineNumbers: [20],
+      highlight: "Composite primary key",
+      explanation: "Each student-course pair is unique"
+    }
+  ]}
+/>
+
+## 🛡️ More Constraints
+
+### CHECK Constraint
+
+```sql
+CREATE TABLE Products (
+    Id INT PRIMARY KEY,
+    Price DECIMAL(10,2) CHECK (Price >= 0),
+    Stock INT CHECK (Stock >= 0),
+    Rating DECIMAL(2,1) CHECK (Rating BETWEEN 0 AND 5)
+);
+```
+
+### Composite Unique Constraints
+
+```sql
+-- User can review each product only once
+CREATE TABLE Reviews (
+    Id INT PRIMARY KEY,
+    UserId INT,
+    ProductId INT,
+    Rating INT,
+    UNIQUE (UserId, ProductId)  -- Composite unique
+);
+```
+
+<DatabaseDesignVisualizer mode="intermediate" initialTab="keys" />
+
+## Quick Reference
+
+| Concept | Key Point |
+|:--------|:----------|
+| 1NF | Atomic values only |
+| 2NF | No partial dependencies |
+| 3NF | No transitive dependencies |
+| Junction Table | Enables many-to-many |
+| CHECK | Validates data values |
+
+<ProgressCheckpoint section="relationships" xpReward={50} />

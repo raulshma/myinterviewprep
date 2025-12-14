@@ -1,0 +1,358 @@
+# Service Communication
+
+Advanced service communication involves implementing robust patterns for reliability, observability, and scalability in distributed systems.
+
+## Interactive Demo
+
+<ServiceCommunicationDemo mode="advanced" />
+
+## gRPC Implementation in .NET
+
+### Setting Up gRPC Services
+
+```csharp
+// Program.cs - gRPC Server
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddGrpc();
+builder.Services.AddGrpcReflection(); // For development
+
+var app = builder.Build();
+
+app.MapGrpcService<PaymentGrpcService>();
+
+if (app.Environment.IsDevelopment())
+{
+    app.MapGrpcReflectionService();
+}
+
+app.Run();
+```
+
+### Implementing gRPC Service
+
+```csharp
+public class PaymentGrpcService : Payment.PaymentBase
+{
+    private readonly IPaymentProcessor _processor;
+    private readonly ILogger<PaymentGrpcService> _logger;
+
+    public PaymentGrpcService(
+        IPaymentProcessor processor,
+        ILogger<PaymentGrpcService> logger)
+    {
+        _processor = processor;
+        _logger = logger;
+    }
+
+    public override async Task<PaymentResponse> ProcessPayment(
+        PaymentRequest request,
+        ServerCallContext context)
+    {
+        _logger.LogInformation(
+            "Processing payment for order {OrderId}",
+            request.OrderId);
+
+        var result = await _processor.ProcessAsync(new PaymentDetails
+        {
+            OrderId = request.OrderId,
+            Amount = (decimal)request.Amount,
+            Currency = request.Currency
+        });
+
+        return new PaymentResponse
+        {
+            Success = result.IsSuccess,
+            TransactionId = result.TransactionId,
+            Message = result.Message
+        };
+    }
+
+    // Streaming example
+    public override async Task StreamPaymentStatus(
+        PaymentStatusRequest request,
+        IServerStreamWriter<PaymentStatusUpdate> responseStream,
+        ServerCallContext context)
+    {
+        while (!context.CancellationToken.IsCancellationRequested)
+        {
+            var status = await _processor.GetStatusAsync(request.TransactionId);
+            
+            await responseStream.WriteAsync(new PaymentStatusUpdate
+            {
+                Status = status.ToString(),
+                Timestamp = Timestamp.FromDateTime(DateTime.UtcNow)
+            });
+
+            await Task.Delay(1000, context.CancellationToken);
+        }
+    }
+}
+```
+
+### gRPC Client Factory
+
+```csharp
+// Register gRPC client
+builder.Services.AddGrpcClient<Payment.PaymentClient>(options =>
+{
+    options.Address = new Uri("https://payment-service:5001");
+})
+.ConfigurePrimaryHttpMessageHandler(() =>
+{
+    var handler = new HttpClientHandler();
+    // Allow self-signed certs in development
+    if (builder.Environment.IsDevelopment())
+    {
+        handler.ServerCertificateCustomValidationCallback = 
+            HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+    }
+    return handler;
+})
+.AddInterceptor<LoggingInterceptor>()
+.AddPolicyHandler(GetRetryPolicy());
+
+static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .WaitAndRetryAsync(3, retryAttempt => 
+            TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)));
+}
+```
+
+## Event-Driven Architecture with MassTransit
+
+### Configuration
+
+```csharp
+builder.Services.AddMassTransit(x =>
+{
+    // Add consumers
+    x.AddConsumer<OrderCreatedConsumer>();
+    x.AddConsumer<PaymentProcessedConsumer>();
+
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host("rabbitmq", "/", h =>
+        {
+            h.Username("guest");
+            h.Password("guest");
+        });
+
+        cfg.ConfigureEndpoints(context);
+    });
+});
+```
+
+### Publishing Events
+
+```csharp
+public class OrderService
+{
+    private readonly IPublishEndpoint _publishEndpoint;
+
+    public async Task CreateOrderAsync(CreateOrderCommand command)
+    {
+        // Create order logic...
+        var order = await _repository.CreateAsync(command);
+
+        // Publish integration event
+        await _publishEndpoint.Publish(new OrderCreatedEvent
+        {
+            OrderId = order.Id,
+            CustomerId = order.CustomerId,
+            Items = order.Items.Select(i => new OrderItemDto
+            {
+                ProductId = i.ProductId,
+                Quantity = i.Quantity,
+                Price = i.Price
+            }).ToList(),
+            TotalAmount = order.Total,
+            CreatedAt = order.CreatedAt
+        });
+    }
+}
+```
+
+### Consuming Events
+
+```csharp
+public class OrderCreatedConsumer : IConsumer<OrderCreatedEvent>
+{
+    private readonly IPaymentService _paymentService;
+    private readonly ILogger<OrderCreatedConsumer> _logger;
+
+    public async Task Consume(ConsumeContext<OrderCreatedEvent> context)
+    {
+        var message = context.Message;
+        
+        _logger.LogInformation(
+            "Processing payment for order {OrderId}",
+            message.OrderId);
+
+        try
+        {
+            await _paymentService.ProcessPaymentAsync(new PaymentRequest
+            {
+                OrderId = message.OrderId,
+                Amount = message.TotalAmount,
+                CustomerId = message.CustomerId
+            });
+
+            // Publish success event
+            await context.Publish(new PaymentProcessedEvent
+            {
+                OrderId = message.OrderId,
+                TransactionId = Guid.NewGuid().ToString()
+            });
+        }
+        catch (PaymentFailedException ex)
+        {
+            // Publish failure event for compensation
+            await context.Publish(new PaymentFailedEvent
+            {
+                OrderId = message.OrderId,
+                Reason = ex.Message
+            });
+        }
+    }
+}
+```
+
+## Outbox Pattern for Reliable Messaging
+
+Ensures events are published even if the message broker is temporarily unavailable:
+
+```csharp
+public class OrderService
+{
+    private readonly OrderDbContext _context;
+    private readonly IOutboxService _outbox;
+
+    public async Task CreateOrderAsync(CreateOrderCommand command)
+    {
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        
+        try
+        {
+            // 1. Create order
+            var order = new Order { ... };
+            _context.Orders.Add(order);
+
+            // 2. Store event in outbox (same transaction)
+            await _outbox.AddAsync(new OutboxMessage
+            {
+                Id = Guid.NewGuid(),
+                Type = nameof(OrderCreatedEvent),
+                Payload = JsonSerializer.Serialize(new OrderCreatedEvent
+                {
+                    OrderId = order.Id,
+                    // ...
+                }),
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
+}
+
+// Background service publishes outbox messages
+public class OutboxPublisher : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            var messages = await _outbox.GetPendingAsync();
+            
+            foreach (var message in messages)
+            {
+                await _bus.Publish(message.Payload, message.Type);
+                await _outbox.MarkAsPublishedAsync(message.Id);
+            }
+
+            await Task.Delay(1000, stoppingToken);
+        }
+    }
+}
+```
+
+## Distributed Tracing with OpenTelemetry
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddSource("OrderService")
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddGrpcClientInstrumentation()
+            .AddMassTransitInstrumentation()
+            .AddOtlpExporter(options =>
+            {
+                options.Endpoint = new Uri("http://jaeger:4317");
+            });
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddPrometheusExporter();
+    });
+```
+
+## Resilience Patterns with Polly
+
+```csharp
+public static class ResiliencePolicies
+{
+    public static IAsyncPolicy<HttpResponseMessage> GetCombinedPolicy()
+    {
+        var retryPolicy = Policy
+            .HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
+            .WaitAndRetryAsync(3, attempt => 
+                TimeSpan.FromSeconds(Math.Pow(2, attempt)));
+
+        var circuitBreakerPolicy = Policy
+            .HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
+            .CircuitBreakerAsync(
+                handledEventsAllowedBeforeBreaking: 5,
+                durationOfBreak: TimeSpan.FromSeconds(30));
+
+        var timeoutPolicy = Policy
+            .TimeoutAsync<HttpResponseMessage>(TimeSpan.FromSeconds(10));
+
+        var bulkheadPolicy = Policy
+            .BulkheadAsync<HttpResponseMessage>(
+                maxParallelization: 10,
+                maxQueuingActions: 100);
+
+        return Policy.WrapAsync(
+            bulkheadPolicy,
+            timeoutPolicy,
+            retryPolicy,
+            circuitBreakerPolicy);
+    }
+}
+```
+
+## Key Takeaways
+
+- ⚡ **gRPC** provides high-performance, strongly-typed service communication
+- 📨 **MassTransit** simplifies message-based communication with RabbitMQ
+- 📤 **Outbox Pattern** ensures reliable event publishing
+- 🔍 **OpenTelemetry** enables distributed tracing across services
+- 🛡️ **Polly** provides comprehensive resilience policies
+- 🔄 Combine **retries**, **circuit breakers**, and **timeouts** for robust communication
+
+<ProgressCheckpoint section="sc-implementation" xpReward={75} />

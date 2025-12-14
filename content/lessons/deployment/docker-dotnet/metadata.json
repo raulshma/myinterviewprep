@@ -1,0 +1,29 @@
+{
+  "id": "docker-dotnet",
+  "title": "Docker for .NET",
+  "description": "Learn how to containerize .NET applications using Docker. Understand multi-stage builds, image optimization, and deployment strategies.",
+  "milestone": "deployment",
+  "order": 1,
+  "sections": [
+    "intro-docker",
+    "dockerfile-basics",
+    "multi-stage-builds",
+    "optimization"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["aspnet-core-basics"],
+  "tags": ["docker", "containers", "deployment", "devops", "dotnet"]
+}

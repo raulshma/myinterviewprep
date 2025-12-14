@@ -1,0 +1,28 @@
+{
+  "id": "builtin-middleware",
+  "title": "Built-in Middleware",
+  "description": "Explore the middleware components that come with ASP.NET Core for common tasks like authentication, static files, and error handling.",
+  "milestone": "middleware",
+  "order": 2,
+  "sections": [
+    "builtin-overview",
+    "security-middleware",
+    "performance-middleware"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 20,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 28,
+      "xpReward": 65
+    }
+  },
+  "prerequisites": ["request-pipeline"],
+  "tags": ["middleware", "built-in", "security", "performance", "aspnet-core", "dotnet"]
+}

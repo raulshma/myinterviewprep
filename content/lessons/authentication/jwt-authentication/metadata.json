@@ -1,0 +1,28 @@
+{
+  "id": "jwt-authentication",
+  "title": "JWT Authentication",
+  "description": "Learn how to implement token-based authentication using JSON Web Tokens (JWT) in ASP.NET Core APIs for stateless, scalable authentication.",
+  "milestone": "authentication",
+  "order": 2,
+  "sections": [
+    "jwt-intro",
+    "jwt-implementation",
+    "jwt-security"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["aspnet-identity"],
+  "tags": ["jwt", "token", "authentication", "api", "bearer", "dotnet"]
+}

@@ -1,0 +1,160 @@
+# Docker for .NET - Multi-Stage Builds & Optimization
+
+Now that you understand the basics of Docker, let's dive into how professionals containerize .NET applications. The secret weapon? **Multi-stage builds**.
+
+## The Problem with Single-Stage Builds
+
+If we just copy our source code and build inside the container, we end up with a huge image:
+
+```
+Image size: ~800MB (includes SDK, source code, build artifacts)
+```
+
+This is wasteful because we only need about 100MB to actually **run** the app!
+
+## Multi-Stage Builds: Build vs Runtime
+
+Think of it like building a car:
+- **Stage 1 (Build)**: Factory floor with all the heavy machinery
+- **Stage 2 (Runtime)**: Just the finished car on the road
+
+<DockerDotnetVisualizer mode="intermediate" />
+
+## The Professional Dockerfile
+
+<DotnetCodePreview
+  title="Multi-Stage Dockerfile"
+  code={`# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Restore dependencies (cached layer)
+COPY *.csproj ./
+RUN dotnet restore
+
+# Build application
+COPY . .
+RUN dotnet publish -c Release -o /app/publish
+
+# Stage 2: Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/publish .
+ENTRYPOINT ["dotnet", "MyApp.dll"]`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Build Stage",
+      explanation: "Start with the full SDK (includes compiler, NuGet, etc.) - we'll throw this away later"
+    },
+    {
+      lineNumbers: [5, 6],
+      highlight: "Layer Caching",
+      explanation: "Copy csproj first! Docker caches this layer, so if dependencies don't change, restore is skipped"
+    },
+    {
+      lineNumbers: [13],
+      highlight: "Runtime Stage",
+      explanation: "Fresh start with slim runtime image - no SDK, no source code, just what's needed to RUN"
+    },
+    {
+      lineNumbers: [15],
+      highlight: "Copy from Build",
+      explanation: "Only copy the published output from the build stage - everything else is discarded"
+    }
+  ]}
+/>
+
+## Understanding Docker Layers
+
+Docker images are built in layers, like a cake:
+
+```
+┌─────────────────────────────┐
+│  Your App (15 MB)           │ ← Changes frequently
+├─────────────────────────────┤
+│  Dependencies (50 MB)       │ ← Changes sometimes
+├─────────────────────────────┤
+│  .NET Runtime (87 MB)       │ ← Changes rarely
+├─────────────────────────────┤
+│  OS Layer (varies)          │ ← Almost never changes
+└─────────────────────────────┘
+```
+
+**Key insight**: Docker caches unchanged layers. That's why we copy `*.csproj` first!
+
+## Common Docker Commands
+
+```bash
+# Build an image
+docker build -t myapp:latest .
+
+# Run a container
+docker run -p 8080:80 myapp:latest
+
+# List running containers
+docker ps
+
+# View container logs
+docker logs <container-id>
+
+# Stop a container
+docker stop <container-id>
+```
+
+## Environment Variables in Docker
+
+<DotnetCodePreview
+  title="Using Environment Variables"
+  code={`FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# Set default environment
+ENV ASPNETCORE_ENVIRONMENT=Production
+ENV ASPNETCORE_URLS=http://+:80
+
+EXPOSE 80
+ENTRYPOINT ["dotnet", "MyApp.dll"]`}
+  steps={[
+    {
+      lineNumbers: [6, 7],
+      highlight: "Environment Variables",
+      explanation: "ENV sets default values. These can be overridden at runtime with 'docker run -e'"
+    },
+    {
+      lineNumbers: [9],
+      highlight: "Port Documentation",
+      explanation: "EXPOSE documents which port your app listens on (doesn't publish it externally)"
+    }
+  ]}
+/>
+
+## Docker Compose for Development
+
+For local development with databases:
+
+```yaml
+version: '3.8'
+services:
+  api:
+    build: .
+    ports:
+      - "5000:80"
+    environment:
+      - ConnectionStrings__Default=Host=db;Database=myapp
+    depends_on:
+      - db
+  
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: devpassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+```
+
+<ProgressCheckpoint section="multi-stage-builds" xpReward={50} />

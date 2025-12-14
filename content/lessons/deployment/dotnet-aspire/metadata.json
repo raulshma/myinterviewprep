@@ -1,0 +1,29 @@
+{
+  "id": "dotnet-aspire",
+  "title": ".NET Aspire",
+  "description": "Learn .NET Aspire, the new cloud-native stack for building distributed applications. Understand service orchestration, the dashboard, and deployment.",
+  "milestone": "deployment",
+  "order": 4,
+  "sections": [
+    "intro-aspire",
+    "app-host",
+    "service-defaults",
+    "deployment"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["docker-dotnet"],
+  "tags": ["aspire", "cloud-native", "microservices", "orchestration", "dotnet"]
+}

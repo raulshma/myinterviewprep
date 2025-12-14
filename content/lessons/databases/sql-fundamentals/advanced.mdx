@@ -1,0 +1,285 @@
+# SQL Fundamentals - Advanced
+
+Master advanced SQL techniques used by professional database developers and architects.
+
+## 🪟 Window Functions
+
+Window functions perform calculations across a set of rows related to the current row, without collapsing them like GROUP BY:
+
+<DotnetCodePreview
+  title="Window Functions in Action"
+  code={`-- Row numbering
+SELECT 
+    Name,
+    OrderDate,
+    Total,
+    ROW_NUMBER() OVER (ORDER BY OrderDate DESC) AS RowNum
+FROM Orders;
+
+-- Ranking with ties
+SELECT 
+    Name,
+    Score,
+    RANK() OVER (ORDER BY Score DESC) AS Rank,
+    DENSE_RANK() OVER (ORDER BY Score DESC) AS DenseRank
+FROM Students;
+
+-- Running total
+SELECT 
+    OrderDate,
+    Total,
+    SUM(Total) OVER (ORDER BY OrderDate) AS RunningTotal
+FROM Orders;`}
+  steps={[
+    {
+      lineNumbers: [5, 6],
+      highlight: "ROW_NUMBER()",
+      explanation: "Assigns unique sequential numbers - useful for pagination"
+    },
+    {
+      lineNumbers: [12, 13],
+      highlight: "RANK vs DENSE_RANK",
+      explanation: "RANK skips numbers after ties (1,1,3), DENSE_RANK doesn't (1,1,2)"
+    },
+    {
+      lineNumbers: [19, 20],
+      highlight: "Running totals",
+      explanation: "SUM() with OVER creates a cumulative sum - great for financial reports"
+    }
+  ]}
+/>
+
+### PARTITION BY - Windows Within Windows
+
+```sql
+-- Rank customers within each region
+SELECT 
+    Region,
+    CustomerName,
+    TotalPurchases,
+    RANK() OVER (
+        PARTITION BY Region 
+        ORDER BY TotalPurchases DESC
+    ) AS RegionRank
+FROM Customers;
+
+-- Moving average (last 3 orders)
+SELECT 
+    OrderDate,
+    Total,
+    AVG(Total) OVER (
+        ORDER BY OrderDate
+        ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+    ) AS MovingAvg3
+FROM Orders;
+```
+
+## 📝 Common Table Expressions (CTEs)
+
+CTEs make complex queries readable and reusable:
+
+<DotnetCodePreview
+  title="CTE Examples"
+  code={`-- Simple CTE
+WITH ActiveUsers AS (
+    SELECT Id, Name, Email
+    FROM Users
+    WHERE IsActive = 1
+)
+SELECT * FROM ActiveUsers WHERE Email LIKE '%@company.com';
+
+-- Multiple CTEs
+WITH 
+    OrderTotals AS (
+        SELECT UserId, SUM(Total) AS TotalSpent
+        FROM Orders
+        GROUP BY UserId
+    ),
+    TopSpenders AS (
+        SELECT UserId, TotalSpent
+        FROM OrderTotals
+        WHERE TotalSpent > 10000
+    )
+SELECT Users.Name, TopSpenders.TotalSpent
+FROM TopSpenders
+JOIN Users ON TopSpenders.UserId = Users.Id;`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6],
+      highlight: "CTE definition",
+      explanation: "WITH creates a named temporary result set you can reference"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+      highlight: "Chained CTEs",
+      explanation: "Multiple CTEs build on each other - much cleaner than nested subqueries"
+    }
+  ]}
+/>
+
+## 🔄 Recursive CTEs
+
+Powerful for hierarchical data like org charts or category trees:
+
+<DotnetCodePreview
+  title="Recursive CTE for Org Chart"
+  code={`WITH RECURSIVE OrgChart AS (
+    -- Anchor: Start with the CEO (no manager)
+    SELECT Id, Name, ManagerId, 0 AS Level
+    FROM Employees
+    WHERE ManagerId IS NULL
+    
+    UNION ALL
+    
+    -- Recursive: Add each level of reports
+    SELECT e.Id, e.Name, e.ManagerId, oc.Level + 1
+    FROM Employees e
+    INNER JOIN OrgChart oc ON e.ManagerId = oc.Id
+)
+SELECT 
+    REPLICATE('  ', Level) + Name AS OrgHierarchy,
+    Level
+FROM OrgChart
+ORDER BY Level, Name;`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5],
+      highlight: "Anchor member",
+      explanation: "The starting point - CEO with no manager, at Level 0"
+    },
+    {
+      lineNumbers: [9, 10, 11, 12],
+      highlight: "Recursive member",
+      explanation: "Joins back to itself, increasing Level each time"
+    },
+    {
+      lineNumbers: [15],
+      highlight: "Formatted output",
+      explanation: "Indentation shows the hierarchy visually"
+    }
+  ]}
+/>
+
+## ⚡ Query Optimization
+
+Understanding execution plans and writing efficient queries:
+
+### Index Usage
+
+```sql
+-- BAD: Function on column prevents index use
+SELECT * FROM Users WHERE YEAR(CreatedAt) = 2024;
+
+-- GOOD: Rewrite to use the index
+SELECT * FROM Users 
+WHERE CreatedAt >= '2024-01-01' 
+  AND CreatedAt < '2025-01-01';
+
+-- BAD: Leading wildcard prevents index use
+SELECT * FROM Users WHERE Email LIKE '%@gmail.com';
+
+-- GOOD: Use full-text search for text patterns
+SELECT * FROM Users WHERE CONTAINS(Email, 'gmail.com');
+```
+
+### Avoiding Common Performance Pitfalls
+
+<DotnetCodePreview
+  title="Performance Best Practices"
+  code={`-- BAD: SELECT * is wasteful
+SELECT * FROM Orders JOIN Users ON Orders.UserId = Users.Id;
+
+-- GOOD: Select only needed columns
+SELECT 
+    Orders.Id,
+    Orders.Total,
+    Users.Name
+FROM Orders 
+JOIN Users ON Orders.UserId = Users.Id;
+
+-- BAD: Correlated subquery runs per row
+SELECT Name, (
+    SELECT COUNT(*) FROM Orders 
+    WHERE Orders.UserId = Users.Id
+) AS OrderCount
+FROM Users;
+
+-- GOOD: Use JOIN and GROUP BY instead
+SELECT Users.Name, COUNT(Orders.Id) AS OrderCount
+FROM Users
+LEFT JOIN Orders ON Users.Id = Orders.UserId
+GROUP BY Users.Id, Users.Name;`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Avoid SELECT *",
+      explanation: "Fetching unnecessary columns wastes memory and I/O"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15, 16],
+      highlight: "Correlated subquery",
+      explanation: "Runs once per row - can be extremely slow on large tables"
+    },
+    {
+      lineNumbers: [19, 20, 21, 22],
+      highlight: "JOIN solution",
+      explanation: "Single pass through data - orders of magnitude faster"
+    }
+  ]}
+/>
+
+## 📊 Advanced Analytics
+
+```sql
+-- PIVOT: Rows to columns
+SELECT *
+FROM (
+    SELECT Region, Quarter, Revenue
+    FROM Sales
+) AS SourceTable
+PIVOT (
+    SUM(Revenue)
+    FOR Quarter IN ([Q1], [Q2], [Q3], [Q4])
+) AS PivotTable;
+
+-- LAG/LEAD: Compare with previous/next rows
+SELECT 
+    OrderDate,
+    Total,
+    LAG(Total, 1) OVER (ORDER BY OrderDate) AS PreviousTotal,
+    Total - LAG(Total, 1) OVER (ORDER BY OrderDate) AS Change
+FROM Orders;
+
+-- FIRST_VALUE/LAST_VALUE
+SELECT 
+    Name,
+    Score,
+    FIRST_VALUE(Name) OVER (ORDER BY Score DESC) AS TopScorer,
+    LAST_VALUE(Name) OVER (
+        ORDER BY Score DESC
+        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+    ) AS LowestScorer
+FROM Students;
+```
+
+## 🎯 Query Execution Order
+
+Understanding the logical order of SQL clause processing:
+
+1. **FROM** - Tables are loaded
+2. **JOIN** - Tables are combined
+3. **WHERE** - Rows are filtered
+4. **GROUP BY** - Rows are grouped
+5. **HAVING** - Groups are filtered
+6. **SELECT** - Columns are selected
+7. **DISTINCT** - Duplicates removed
+8. **ORDER BY** - Results sorted
+9. **LIMIT/OFFSET** - Results paginated
+
+> This explains why you can't use column aliases in WHERE (SELECT happens after WHERE)!
+
+## Interactive Practice
+
+<SqlQueryVisualizer mode="advanced" />
+
+<ProgressCheckpoint section="where-clauses" xpReward={75} />

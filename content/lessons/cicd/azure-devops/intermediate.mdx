@@ -1,0 +1,269 @@
+# Azure DevOps Pipelines - Intermediate
+
+Now let's build production-ready pipelines with multiple stages, environments, deployment approvals, and artifact management.
+
+## Multi-Stage Pipelines 🎭
+
+Real-world deployments need multiple environments. Let's build a complete pipeline:
+
+<AzureDevOpsVisualizer mode="intermediate" showYaml={true} interactive={true} />
+
+## Understanding Stages, Jobs, and Steps 📋
+
+```yaml
+stages:
+  - stage: Build          # First stage
+    jobs:
+      - job: BuildJob     # A job within the stage
+        steps:
+          - task: DotNetCoreCLI@2  # A step within the job
+            inputs:
+              command: 'build'
+  
+  - stage: Deploy         # Second stage
+    dependsOn: Build      # Wait for Build to complete
+    jobs:
+      - job: DeployJob
+        steps:
+          - script: echo "Deploying..."
+```
+
+<KeyConcept title="Pipeline Hierarchy">
+  **Stage** → Contains one or more **Jobs** → Contains one or more **Steps**
+  
+  - **Stages** run sequentially by default
+  - **Jobs** within a stage can run in parallel
+  - **Steps** within a job always run sequentially
+</KeyConcept>
+
+## Variables and Variable Groups 🔧
+
+### Inline Variables
+
+```yaml
+variables:
+  buildConfiguration: 'Release'
+  dotnetVersion: '8.0.x'
+
+steps:
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'build'
+      arguments: '--configuration $(buildConfiguration)'
+```
+
+### Variable Groups (Shared across pipelines)
+
+```yaml
+variables:
+  - group: 'Production-Settings'  # Linked from Library
+  - name: localVar
+    value: 'my-value'
+```
+
+### Secret Variables
+
+```yaml
+variables:
+  - name: mySecret
+    value: $(MySecretFromLibrary)  # Retrieved at runtime
+```
+
+<InfoBox type="warning">
+  **Secret variables** are encrypted and masked in logs. Never echo them or write them to files that get published!
+</InfoBox>
+
+## Environments and Deployment Approvals 🛡️
+
+Environments provide deployment history, approvals, and checks:
+
+```yaml
+stages:
+  - stage: DeployStaging
+    jobs:
+      - deployment: DeployWeb
+        environment: 'staging'    # Creates/uses environment
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  inputs:
+                    appName: 'my-app-staging'
+
+  - stage: DeployProduction
+    dependsOn: DeployStaging
+    jobs:
+      - deployment: DeployWeb
+        environment: 'production'  # Requires approval
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  inputs:
+                    appName: 'my-app-prod'
+```
+
+Configure approvals in Azure DevOps:
+1. Go to **Pipelines → Environments**
+2. Select your environment
+3. Click **Approvals and checks**
+4. Add required approvers
+
+## Service Connections 🔗
+
+Connect to external services like Azure, Docker Hub, or Kubernetes:
+
+```yaml
+- task: AzureWebApp@1
+  inputs:
+    azureSubscription: 'MyAzureConnection'  # Service connection name
+    appName: 'my-web-app'
+    package: '$(Pipeline.Workspace)/drop/*.zip'
+```
+
+## Artifact Management 📦
+
+### Publishing Artifacts
+
+```yaml
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'publish'
+    publishWebProjects: true
+    arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+    zipAfterPublish: true
+
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(Build.ArtifactStagingDirectory)'
+    artifactName: 'webapp'
+```
+
+### Downloading Artifacts
+
+```yaml
+- stage: Deploy
+  jobs:
+    - deployment: DeployWeb
+      environment: 'production'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - download: current
+                artifact: webapp
+              
+              - task: AzureWebApp@1
+                inputs:
+                  package: '$(Pipeline.Workspace)/webapp/*.zip'
+```
+
+## The .NET Core CLI Task Deep Dive 🔨
+
+The `DotNetCoreCLI@2` task is your Swiss Army knife for .NET:
+
+```yaml
+# Build
+- task: DotNetCoreCLI@2
+  displayName: 'Build'
+  inputs:
+    command: 'build'
+    projects: '**/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --no-restore'
+
+# Test with coverage
+- task: DotNetCoreCLI@2
+  displayName: 'Test'
+  inputs:
+    command: 'test'
+    projects: '**/*Tests.csproj'
+    arguments: '--configuration $(buildConfiguration) --collect:"XPlat Code Coverage"'
+    publishTestResults: true
+
+# Pack NuGet packages
+- task: DotNetCoreCLI@2
+  displayName: 'Pack'
+  inputs:
+    command: 'pack'
+    packagesToPack: '**/MyLibrary.csproj'
+    versioningScheme: 'byBuildNumber'
+
+# Push to NuGet feed
+- task: DotNetCoreCLI@2
+  displayName: 'Push'
+  inputs:
+    command: 'push'
+    packagesToPush: '$(Build.ArtifactStagingDirectory)/*.nupkg'
+    nuGetFeedType: 'internal'
+    publishVstsFeed: 'my-feed'
+```
+
+## Conditions and Expressions 🎯
+
+Control when stages, jobs, or steps run:
+
+```yaml
+stages:
+  - stage: Deploy
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - job: DeployProd
+        steps:
+          - script: echo "Only runs on main branch"
+
+# Common conditions:
+# succeeded() - previous stage/job succeeded
+# failed() - previous failed
+# always() - run regardless
+# eq(variables['var'], 'value') - equality check
+# ne(), gt(), lt() - other comparisons
+# contains(), startsWith(), endsWith() - string functions
+```
+
+## Pipeline Templates (DRY) 🔄
+
+### Step Templates
+
+```yaml
+# templates/dotnet-build-steps.yml
+parameters:
+  - name: configuration
+    default: 'Release'
+
+steps:
+  - task: UseDotNet@2
+    inputs:
+      version: '8.0.x'
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'build'
+      arguments: '--configuration ${{ parameters.configuration }}'
+```
+
+**Using the template:**
+
+```yaml
+# azure-pipelines.yml
+stages:
+  - stage: Build
+    jobs:
+      - job: BuildJob
+        steps:
+          - template: templates/dotnet-build-steps.yml
+            parameters:
+              configuration: 'Release'
+```
+
+## Key Takeaways
+
+- 🎭 **Multi-stage pipelines** separate build, test, and deploy
+- 🔧 **Variable groups** share configuration across pipelines
+- 🛡️ **Environments** provide approvals and deployment tracking
+- 🔗 **Service connections** securely connect to external services
+- 📦 **Artifacts** pass build outputs between stages
+- 🎯 **Conditions** control when things run
+- 🔄 **Templates** keep your pipelines DRY
+
+<ProgressCheckpoint section="ado-yaml-pipelines" xpReward={50} />

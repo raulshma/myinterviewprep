@@ -1,0 +1,321 @@
+# Build & Release Automation - Intermediate
+
+Now let's explore Continuous Integration best practices, versioning strategies, test automation integration, and release management patterns.
+
+## Professional CI/CD Pipeline 🏗️
+
+A production-ready pipeline includes more than just build and deploy:
+
+<CICDPipelineBuilder mode="intermediate" interactive={true} />
+
+## Continuous Integration Best Practices ✅
+
+### 1. Build on Every Commit
+
+```yaml
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - feature/*
+  paths:
+    exclude:
+      - '**/*.md'
+      - 'docs/**'
+```
+
+### 2. Keep Builds Fast
+
+Target: **Under 10 minutes** for CI builds
+
+```yaml
+# Parallel jobs for speed
+jobs:
+  - job: Build
+    steps:
+      - run: dotnet build --no-restore
+  
+  - job: UnitTests
+    steps:
+      - run: dotnet test --filter "Category=Unit"
+  
+  - job: IntegrationTests
+    steps:
+      - run: dotnet test --filter "Category=Integration"
+```
+
+### 3. Fail Fast
+
+```yaml
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    arguments: '--warnaserror'  # Treat warnings as errors
+```
+
+<KeyConcept title="CI Cardinal Rules">
+  1. **Never break the build** — Fix it immediately if you do
+  2. **Commit frequently** — Small changes are easier to debug
+  3. **Don't commit broken code** — Run tests locally first
+  4. **Write automated tests** — Manual testing doesn't scale
+</KeyConcept>
+
+## Semantic Versioning (SemVer) 📊
+
+Version your software meaningfully:
+
+```
+MAJOR.MINOR.PATCH
+  │     │     │
+  │     │     └── Bug fixes (no API changes)
+  │     └──────── New features (backward compatible)
+  └────────────── Breaking changes
+```
+
+**Examples:**
+- `1.0.0` → `1.0.1` — Bug fix
+- `1.0.1` → `1.1.0` — New feature added
+- `1.1.0` → `2.0.0` — Breaking API change
+
+### Automatic Versioning in .NET
+
+```xml
+<!-- Directory.Build.props -->
+<Project>
+  <PropertyGroup>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.$(BuildNumber)</FileVersion>
+  </PropertyGroup>
+</Project>
+```
+
+```yaml
+# In your pipeline
+variables:
+  buildNumber: $[counter(variables['Build.SourceBranch'], 100)]
+
+steps:
+  - task: DotNetCoreCLI@2
+    inputs:
+      command: 'build'
+      arguments: '/p:Version=1.2.$(buildNumber)'
+```
+
+<InfoBox type="tip">
+  Use **GitVersion** or **Nerdbank.GitVersioning** for fully automated version management based on Git history and branch names!
+</InfoBox>
+
+## Test Automation Integration 🧪
+
+### Test Categories
+
+```csharp
+[Trait("Category", "Unit")]
+public class CalculatorTests { }
+
+[Trait("Category", "Integration")]
+public class DatabaseTests { }
+
+[Trait("Category", "E2E")]
+public class ApiTests { }
+```
+
+### Running by Category
+
+```yaml
+jobs:
+  - job: FastTests
+    steps:
+      - run: dotnet test --filter "Category=Unit"
+        displayName: 'Unit Tests (2 min)'
+  
+  - job: SlowTests
+    dependsOn: FastTests
+    steps:
+      - run: dotnet test --filter "Category=Integration"
+        displayName: 'Integration Tests (10 min)'
+  
+  - job: E2ETests
+    dependsOn: SlowTests
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    steps:
+      - run: dotnet test --filter "Category=E2E"
+        displayName: 'End-to-End Tests (30 min)'
+```
+
+### Code Coverage Enforcement
+
+```yaml
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'test'
+    arguments: '--collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Exclude="[*Tests]*"'
+
+- task: PublishCodeCoverageResults@2
+  inputs:
+    summaryFileLocation: '$(Agent.TempDirectory)/**/coverage.cobertura.xml'
+
+- script: |
+    # Fail if coverage is below 80%
+    COVERAGE=$(grep -oP 'line-rate="\K[^"]+' coverage.xml)
+    if (( $(echo "$COVERAGE < 0.80" | bc -l) )); then
+      echo "##vso[task.complete result=Failed;]Coverage below 80%"
+    fi
+```
+
+## Artifact Versioning Strategies 📦
+
+### Immutable Artifacts
+
+```yaml
+# Each build creates a uniquely numbered artifact
+- task: PublishPipelineArtifact@1
+  inputs:
+    targetPath: '$(Build.ArtifactStagingDirectory)'
+    artifactName: 'app-$(Build.BuildNumber)'
+```
+
+### Container Image Tagging
+
+```yaml
+- task: Docker@2
+  inputs:
+    command: 'buildAndPush'
+    repository: 'myapp'
+    tags: |
+      $(Build.BuildNumber)
+      $(Build.SourceBranchName)
+      latest
+```
+
+## Release Gates and Approvals 🚦
+
+### Pre-Deployment Gates
+
+```yaml
+- stage: Production
+  jobs:
+    - deployment: Deploy
+      environment: 'production'
+      strategy:
+        runOnce:
+          preDeploy:
+            steps:
+              # Check monitoring shows healthy system
+              - script: |
+                  HEALTH=$(curl -s https://myapp.com/health)
+                  if [ "$HEALTH" != "healthy" ]; then
+                    exit 1
+                  fi
+                displayName: 'Health Check Gate'
+```
+
+### Post-Deployment Verification
+
+```yaml
+          postDeploy:
+            steps:
+              # Smoke tests
+              - script: |
+                  curl --fail https://myapp.com/api/health
+                  curl --fail https://myapp.com/api/version
+                displayName: 'Smoke Tests'
+              
+              # Synthetic monitoring
+              - task: AzureCLI@2
+                inputs:
+                  scriptType: 'bash'
+                  inlineScript: |
+                    az monitor metrics list \
+                      --resource /subscriptions/.../myapp \
+                      --metric "FailedRequests" \
+                      --interval PT1M
+```
+
+## Environment Promotion Patterns 🔄
+
+### Linear Promotion
+
+```
+Dev → Staging → Production
+```
+
+### Parallel Testing
+
+```
+           ┌─► Performance Testing
+Dev → QA ─┼─► Security Testing
+           └─► Accessibility Testing
+                     │
+                     ▼
+                Production
+```
+
+### Feature Flags
+
+```yaml
+- stage: DeployWithFlags
+  steps:
+    - script: |
+        # Enable feature only for 5% of users
+        az appconfig kv set \
+          --key "Features:NewCheckout" \
+          --value "true" \
+          --tags "percentage=5"
+```
+
+## Rollback Strategies 🔙
+
+### Automatic Rollback on Failure
+
+```yaml
+- deployment: Deploy
+  environment: 'production'
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+          - script: ./deploy.sh
+      on:
+        failure:
+          steps:
+            - script: |
+                # Restore previous version
+                az webapp deployment slot swap \
+                  --name myapp \
+                  --resource-group myrg \
+                  --slot production \
+                  --target-slot previous
+              displayName: 'Emergency Rollback'
+```
+
+### Database Migration Rollback
+
+```yaml
+- script: |
+    # Apply migration with rollback point
+    dotnet ef database update --context MyDbContext
+  displayName: 'Apply Migration'
+  continueOnError: true
+
+- script: |
+    if [ $? -ne 0 ]; then
+      dotnet ef database update $(PreviousMigration)
+      exit 1
+    fi
+  displayName: 'Rollback on Failure'
+```
+
+## Key Takeaways
+
+- ✅ **CI best practices**: Fast builds, fail fast, commit frequently
+- 📊 **Semantic versioning** communicates change impact
+- 🧪 **Test automation** catches bugs before production
+- 📦 **Immutable artifacts** ensure reproducibility
+- 🚦 **Release gates** prevent bad deployments
+- 🔄 **Environment promotion** controls risk
+- 🔙 **Rollback strategies** minimize downtime
+
+<ProgressCheckpoint section="ba-versioning-testing" xpReward={45} />

@@ -1,0 +1,80 @@
+# Docker for .NET
+
+Imagine you're moving to a new house. Instead of hoping all your furniture fits in random boxes and prays nothing breaks, you rent a **standardized shipping container**. Everything fits perfectly, it's protected during transport, and it works the same whether it goes by truck, ship, or train.
+
+**Docker does exactly this for your .NET apps!**
+
+## What is Docker?
+
+Docker is like a magic box that packages your entire application - code, runtime, libraries, settings - into a neat, portable container.
+
+<DockerDotnetVisualizer mode="beginner" />
+
+## Why Use Docker for .NET?
+
+Think about these common developer headaches:
+
+| Problem | Docker Solution |
+|:--------|:---------------|
+| "It works on my machine!" | ✅ Same container = same behavior everywhere |
+| Complex setup instructions | ✅ One command: `docker run` |
+| Dependency conflicts | ✅ Each app has its own isolated world |
+| Slow deployments | ✅ Deploy containers in seconds |
+
+## The Dockerfile - Your Recipe
+
+A Dockerfile is like a recipe for baking your app into a container. Let's look at the simplest version:
+
+<DotnetCodePreview
+  title="Simple Dockerfile"
+  code={`# Start with a base image that has .NET
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+
+# Copy your published app
+COPY ./publish /app
+
+# Set the working directory
+WORKDIR /app
+
+# Tell Docker how to start your app
+ENTRYPOINT ["dotnet", "MyApp.dll"]`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Base Image",
+      explanation: "This is like starting with a pre-made pizza base. Microsoft provides ready-to-use .NET images!"
+    },
+    {
+      lineNumbers: [5],
+      highlight: "Copy Your App",
+      explanation: "Copy your already-built app into the container"
+    },
+    {
+      lineNumbers: [11],
+      highlight: "Start Command",
+      explanation: "Tell Docker exactly how to run your app"
+    }
+  ]}
+/>
+
+## Key Concepts to Remember
+
+> **Image** = The recipe/blueprint (like a class)  
+> **Container** = A running instance (like an object)  
+> **Dockerfile** = Instructions to build the image
+
+<KeyConcept 
+  title="Docker is like a Portable Computer"
+  description="Your container carries its own mini operating system, .NET runtime, and your app. Wherever it goes, it behaves exactly the same!"
+/>
+
+## Quick Summary
+
+| Concept | Real-World Analogy |
+|:--------|:------------------|
+| **Docker Image** | Recipe or blueprint |
+| **Container** | Actual running app |
+| **Dockerfile** | Cooking instructions |
+| **Registry** | Recipe book store (like Docker Hub) |
+
+<ProgressCheckpoint section="intro-docker" xpReward={30} />

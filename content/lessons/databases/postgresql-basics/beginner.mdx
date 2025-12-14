@@ -1,0 +1,170 @@
+# PostgreSQL Basics
+
+Welcome to PostgreSQL (often called "Postgres") - the world's most advanced open-source database!
+
+## 🐘 What is PostgreSQL?
+
+Think of PostgreSQL as a **Swiss Army knife for databases**:
+- It's completely **free and open-source**
+- It can do things other databases can't (JSON, arrays, full-text search)
+- It's **super reliable** - trusted by companies like Apple, Spotify, and Instagram
+
+> **Why the elephant?** 🐘 PostgreSQL's mascot, Slonik, represents the database's strength and memory (elephants never forget)!
+
+## Explore PostgreSQL
+
+<PostgresqlExplorer mode="beginner" />
+
+## 🖥️ psql - The Command Line Tool
+
+psql is PostgreSQL's command-line interface - powerful and always available:
+
+<DotnetCodePreview
+  title="Getting Started with psql"
+  code={`-- Connect to a database
+psql -U postgres -d myapp
+
+-- Once connected, try these commands:
+\\l          -- List all databases
+\\c myapp    -- Connect to 'myapp' database
+\\dt         -- List all tables
+\\d users    -- Describe the 'users' table
+\\q          -- Quit psql`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Connection",
+      explanation: "-U is username, -d is database name"
+    },
+    {
+      lineNumbers: [5, 6],
+      highlight: "List and connect",
+      explanation: "Backslash commands are psql shortcuts"
+    },
+    {
+      lineNumbers: [7, 8],
+      highlight: "Explore structure",
+      explanation: "\\dt shows tables, \\d describes a specific table"
+    }
+  ]}
+/>
+
+## 📊 PostgreSQL Data Types
+
+PostgreSQL has all the standard types PLUS some unique ones:
+
+| Category | Type | What It's For |
+|:---------|:-----|:--------------|
+| **Numbers** | `integer` | Standard whole numbers |
+| | `serial` | Auto-incrementing integer |
+| | `numeric(10,2)` | Precise decimals (money) |
+| **Text** | `text` | Unlimited length strings |
+| | `varchar(100)` | Limited length strings |
+| **Date/Time** | `timestamp` | Date and time |
+| | `timestamptz` | Timestamp with timezone ⭐ |
+| **Boolean** | `boolean` | true/false (or t/f) |
+| **Special** | `uuid` | Unique identifiers |
+
+### Creating Your First Table
+
+<DotnetCodePreview
+  title="Creating a PostgreSQL Table"
+  code={`CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    balance NUMERIC(10,2) DEFAULT 0.00,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT true
+);`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "SERIAL",
+      explanation: "Auto-incrementing integer - PostgreSQL generates the id for you"
+    },
+    {
+      lineNumbers: [3],
+      highlight: "TEXT",
+      explanation: "Unlimited length - no need to guess a maximum size"
+    },
+    {
+      lineNumbers: [6],
+      highlight: "TIMESTAMPTZ",
+      explanation: "Stores timezone info - crucial for international apps!"
+    },
+    {
+      lineNumbers: [7],
+      highlight: "BOOLEAN",
+      explanation: "Real booleans! Can use true/false (not just 1/0)"
+    }
+  ]}
+/>
+
+## 🔌 Connecting from .NET
+
+Use **Npgsql** - the official .NET driver for PostgreSQL:
+
+```bash
+# Install the package
+dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
+```
+
+### Connection String
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=myapp;Username=postgres;Password=secret"
+  }
+}
+```
+
+### Connection String Parts
+
+| Part | Meaning |
+|:-----|:--------|
+| `Host=localhost` | Where PostgreSQL is running |
+| `Port=5432` | Default PostgreSQL port |
+| `Database=myapp` | Which database to use |
+| `Username=postgres` | Login username |
+| `Password=secret` | Login password |
+
+## 🎯 PostgreSQL vs SQL Server
+
+| Feature | PostgreSQL | SQL Server |
+|:--------|:-----------|:-----------|
+| **Cost** | Free! | Paid (Express is free but limited) |
+| **Platform** | Linux, Windows, Mac | Windows (Linux limited) |
+| **JSON** | Native JSONB (fast!) | JSON (string-based) |
+| **Arrays** | Yes, built-in | No |
+| **Extensions** | 100+ available | Limited |
+| **Case** | lowercase preferred | PascalCase typical |
+
+## 🏃 Quick Start Steps
+
+1. **Install PostgreSQL** - Download from postgresql.org
+2. **Start the server** - Usually automatic
+3. **Connect with psql:**
+   ```bash
+   psql -U postgres
+   ```
+4. **Create a database:**
+   ```sql
+   CREATE DATABASE myapp;
+   ```
+5. **Connect to it:**
+   ```sql
+   \c myapp
+   ```
+
+## Summary
+
+| Component | What It Does |
+|:----------|:-------------|
+| PostgreSQL | The database engine |
+| psql | Command-line interface |
+| pgAdmin | GUI tool (like SSMS for Postgres) |
+| Npgsql | .NET driver |
+
+<ProgressCheckpoint section="intro-postgres" xpReward={30} />

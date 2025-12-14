@@ -1,0 +1,298 @@
+# Kubernetes - Production Patterns & Helm
+
+Time to master production-grade Kubernetes deployments. We'll cover Helm, Ingress controllers, observability, and advanced deployment strategies.
+
+## Production Architecture
+
+<KubernetesClusterVisualizer mode="advanced" />
+
+## Ingress: The Smart Front Door
+
+Instead of LoadBalancer per service (expensive!), use one Ingress controller:
+
+<DotnetCodePreview
+  title="Ingress Configuration"
+  code={`apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dotnet-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - api.mycompany.com
+    secretName: api-tls
+  rules:
+  - host: api.mycompany.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: dotnet-api
+            port:
+              number: 80`}
+  steps={[
+    {
+      lineNumbers: [6, 7, 8],
+      highlight: "Annotations",
+      explanation: "Controller-specific settings like SSL redirect and request limits"
+    },
+    {
+      lineNumbers: [11, 12, 13, 14],
+      highlight: "TLS/SSL",
+      explanation: "Automatic HTTPS with cert-manager and Let's Encrypt"
+    },
+    {
+      lineNumbers: [15, 16],
+      highlight: "Path Routing",
+      explanation: "Route different paths to different services"
+    }
+  ]}
+/>
+
+## Helm: Package Manager for Kubernetes
+
+Helm lets you template and package Kubernetes manifests:
+
+```
+my-dotnet-chart/
+├── Chart.yaml          # Chart metadata
+├── values.yaml         # Default configuration
+├── values-prod.yaml    # Production overrides
+└── templates/
+    ├── deployment.yaml
+    ├── service.yaml
+    ├── ingress.yaml
+    └── configmap.yaml
+```
+
+### Templated Deployment
+```yaml
+# templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api
+spec:
+  replicas: {{ .Values.replicaCount }}
+  template:
+    spec:
+      containers:
+      - name: api
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+```
+
+### Values Files
+```yaml
+# values.yaml (defaults)
+replicaCount: 2
+image:
+  repository: myregistry.azurecr.io/dotnet-api
+  tag: latest
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+```
+
+```yaml
+# values-prod.yaml (production overrides)
+replicaCount: 5
+image:
+  tag: v2.1.0
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 1Gi
+```
+
+### Helm Commands
+```bash
+# Install chart
+helm install my-app ./my-dotnet-chart
+
+# Upgrade with production values
+helm upgrade my-app ./my-dotnet-chart -f values-prod.yaml
+
+# Rollback
+helm rollback my-app 1
+```
+
+## Pod Disruption Budgets
+
+Ensure minimum availability during updates/maintenance:
+
+```yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: dotnet-api-pdb
+spec:
+  minAvailable: 2    # At least 2 pods always running
+  selector:
+    matchLabels:
+      app: dotnet-api
+```
+
+## Network Policies
+
+Restrict pod-to-pod communication:
+
+<DotnetCodePreview
+  title="Network Policy"
+  code={`apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-network-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: dotnet-api
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: frontend
+    ports:
+    - port: 80
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: database
+    ports:
+    - port: 5432`}
+  steps={[
+    {
+      lineNumbers: [12, 13, 14, 15, 16, 17, 18],
+      highlight: "Ingress Rules",
+      explanation: "Only allow traffic from frontend pods on port 80"
+    },
+    {
+      lineNumbers: [19, 20, 21, 22, 23, 24, 25],
+      highlight: "Egress Rules",
+      explanation: "Only allow connections to database pods on port 5432"
+    }
+  ]}
+/>
+
+## Observability Stack
+
+### Prometheus & Grafana
+```yaml
+# ServiceMonitor for .NET app
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: dotnet-api-monitor
+spec:
+  selector:
+    matchLabels:
+      app: dotnet-api
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+```
+
+### .NET Prometheus Integration
+```csharp
+// Program.cs
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics =>
+    {
+        metrics.AddAspNetCoreInstrumentation();
+        metrics.AddPrometheusExporter();
+    });
+
+app.UseOpenTelemetryPrometheusScrapingEndpoint();
+```
+
+## Deployment Strategies
+
+### Canary Deployment
+```yaml
+# Main deployment: 90% traffic
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dotnet-api
+spec:
+  replicas: 9
+---
+# Canary deployment: 10% traffic
+apiVersion: apps/v1
+kind: Deployment  
+metadata:
+  name: dotnet-api-canary
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - image: myapp:v2.0.0-canary
+```
+
+### Blue-Green with Argo Rollouts
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: dotnet-api
+spec:
+  replicas: 5
+  strategy:
+    blueGreen:
+      activeService: dotnet-api-active
+      previewService: dotnet-api-preview
+      autoPromotionEnabled: false
+```
+
+## Resource Quotas & Limits
+
+```yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: team-quota
+  namespace: production
+spec:
+  hard:
+    requests.cpu: "20"
+    requests.memory: 40Gi
+    limits.cpu: "40"
+    limits.memory: 80Gi
+    pods: "50"
+```
+
+## Summary
+
+| Pattern | Purpose |
+|:--------|:--------|
+| **Ingress** | Single entry point, SSL termination |
+| **Helm** | Package and version your manifests |
+| **PDB** | Maintain availability during updates |
+| **Network Policy** | Zero-trust security |
+| **Prometheus** | Metrics and alerting |
+| **Canary/Blue-Green** | Safe rollouts |
+
+<ProgressCheckpoint section="production" xpReward={80} />

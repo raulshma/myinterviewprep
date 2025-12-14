@@ -1,0 +1,445 @@
+# Azure DevOps Pipelines - Advanced
+
+Master enterprise-grade Azure DevOps patterns including complex templates, runtime parameters, container jobs, Azure Resource Manager integration, and security best practices.
+
+## Enterprise Pipeline Architecture 🏢
+
+Let's build a comprehensive enterprise pipeline:
+
+<AzureDevOpsVisualizer mode="advanced" showYaml={true} interactive={true} />
+
+## Advanced Template Patterns 🔄
+
+### Extends Templates (Pipeline Inheritance)
+
+Create a base template that other pipelines must extend:
+
+```yaml
+# templates/base-pipeline.yml
+parameters:
+  - name: stages
+    type: stageList
+    default: []
+
+stages:
+  - stage: Validate
+    jobs:
+      - job: SecurityScan
+        steps:
+          - script: echo "Running mandatory security scan"
+          - task: CredScan@3
+            inputs:
+              outputFormat: 'sarif'
+  
+  - ${{ parameters.stages }}  # Inject custom stages
+
+  - stage: Audit
+    jobs:
+      - job: AuditLog
+        steps:
+          - script: echo "Logging deployment for compliance"
+```
+
+**Using extends:**
+
+```yaml
+# azure-pipelines.yml
+extends:
+  template: templates/base-pipeline.yml
+  parameters:
+    stages:
+      - stage: Build
+        jobs:
+          - job: BuildApp
+            steps:
+              - task: DotNetCoreCLI@2
+                inputs:
+                  command: 'build'
+      
+      - stage: Deploy
+        jobs:
+          - deployment: DeployApp
+            environment: 'production'
+            strategy:
+              runOnce:
+                deploy:
+                  steps:
+                    - script: echo "Deploying..."
+```
+
+<InfoBox type="tip">
+  **Extends templates** are powerful for **governance**. Security teams can mandate certain stages (scanning, auditing) while letting dev teams customize the middle.
+</InfoBox>
+
+### Template Expressions and Loops
+
+```yaml
+# templates/multi-env-deploy.yml
+parameters:
+  - name: environments
+    type: object
+    default:
+      - name: dev
+        subscription: 'Dev-Azure'
+      - name: staging
+        subscription: 'Staging-Azure'
+      - name: production
+        subscription: 'Prod-Azure'
+
+stages:
+  - ${{ each env in parameters.environments }}:
+    - stage: Deploy_${{ env.name }}
+      displayName: 'Deploy to ${{ env.name }}'
+      jobs:
+        - deployment: Deploy
+          environment: ${{ env.name }}
+          strategy:
+            runOnce:
+              deploy:
+                steps:
+                  - task: AzureWebApp@1
+                    inputs:
+                      azureSubscription: ${{ env.subscription }}
+                      appName: 'myapp-${{ env.name }}'
+```
+
+## Runtime Parameters 🎛️
+
+Allow users to customize pipeline runs:
+
+```yaml
+parameters:
+  - name: environment
+    displayName: 'Target Environment'
+    type: string
+    default: 'staging'
+    values:
+      - dev
+      - staging
+      - production
+  
+  - name: skipTests
+    displayName: 'Skip Tests'
+    type: boolean
+    default: false
+  
+  - name: regions
+    displayName: 'Deployment Regions'
+    type: object
+    default:
+      - eastus
+      - westeurope
+
+trigger: none  # Manual trigger only
+
+stages:
+  - stage: Build
+    jobs:
+      - job: BuildJob
+        steps:
+          - script: echo "Building for ${{ parameters.environment }}"
+          
+          - ${{ if eq(parameters.skipTests, false) }}:
+            - task: DotNetCoreCLI@2
+              inputs:
+                command: 'test'
+  
+  - ${{ each region in parameters.regions }}:
+    - stage: Deploy_${{ region }}
+      displayName: 'Deploy to ${{ region }}'
+      jobs:
+        - deployment: Deploy
+          environment: '${{ parameters.environment }}-${{ region }}'
+          strategy:
+            runOnce:
+              deploy:
+                steps:
+                  - script: echo "Deploying to ${{ region }}"
+```
+
+## Container Jobs 🐳
+
+Run jobs in Docker containers for consistent environments:
+
+```yaml
+jobs:
+  - job: ContainerBuild
+    pool:
+      vmImage: 'ubuntu-latest'
+    container:
+      image: mcr.microsoft.com/dotnet/sdk:8.0
+      options: --user root
+    steps:
+      - script: dotnet build
+      - script: dotnet test
+      - script: dotnet publish -o /app
+
+  - job: ContainerTest
+    pool:
+      vmImage: 'ubuntu-latest'
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: testpassword
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+    steps:
+      - script: |
+          dotnet test --filter "Category=Integration"
+        env:
+          ConnectionStrings__Postgres: "Host=localhost;Port=5432;Database=test;Username=postgres;Password=testpassword"
+          ConnectionStrings__Redis: "localhost:6379"
+```
+
+<KeyConcept title="Service Containers">
+  **Service containers** spin up databases, caches, and other dependencies for integration testing. They're automatically cleaned up after the job!
+</KeyConcept>
+
+## Azure Resource Manager Integration 🏗️
+
+### Infrastructure as Code with Bicep
+
+```yaml
+stages:
+  - stage: Infrastructure
+    jobs:
+      - job: DeployInfra
+        steps:
+          - task: AzureCLI@2
+            displayName: 'Deploy Bicep'
+            inputs:
+              azureSubscription: 'Production-Azure'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az deployment group create \
+                  --resource-group myapp-rg \
+                  --template-file ./infra/main.bicep \
+                  --parameters environment=production \
+                  --parameters sqlAdminPassword=$(SqlAdminPassword)
+
+  - stage: DeployApp
+    dependsOn: Infrastructure
+    jobs:
+      - deployment: Deploy
+        environment: 'production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: 'Production-Azure'
+                    appName: 'myapp-prod'
+```
+
+### What-If Deployments (Preview Changes)
+
+```yaml
+- task: AzureCLI@2
+  displayName: 'Preview Infrastructure Changes'
+  inputs:
+    azureSubscription: 'Production-Azure'
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      az deployment group what-if \
+        --resource-group myapp-rg \
+        --template-file ./infra/main.bicep \
+        --parameters environment=production
+```
+
+## Advanced Deployment Strategies 🚀
+
+### Canary Deployment
+
+```yaml
+- deployment: CanaryDeploy
+  environment: 'production'
+  strategy:
+    canary:
+      increments: [10, 25, 50]
+      preDeploy:
+        steps:
+          - script: echo "Prepare canary"
+      deploy:
+        steps:
+          - task: AzureWebApp@1
+            inputs:
+              appName: 'myapp-prod'
+              slotName: 'canary'
+      routeTraffic:
+        steps:
+          - task: AzureAppServiceManage@0
+            inputs:
+              Action: 'Start Azure App Service'
+              # Route traffic percentage
+      postRouteTraffic:
+        steps:
+          - script: |
+              # Check error rates
+              if [ "$ERROR_RATE" -gt "5" ]; then
+                echo "##vso[task.complete result=Failed;]High error rate detected"
+              fi
+      on:
+        failure:
+          steps:
+            - script: echo "Rolling back canary"
+        success:
+          steps:
+            - script: echo "Promoting canary to production"
+```
+
+### Rolling Deployment
+
+```yaml
+- deployment: RollingDeploy
+  environment: 
+    name: 'production'
+    resourceType: VirtualMachine
+    tags: web
+  strategy:
+    rolling:
+      maxParallel: 2
+      preDeploy:
+        steps:
+          - script: echo "Take out of load balancer"
+      deploy:
+        steps:
+          - script: echo "Deploy new version"
+      postDeploy:
+        steps:
+          - script: echo "Add back to load balancer"
+          - script: echo "Run health check"
+```
+
+## Security Best Practices 🛡️
+
+### Branch Policies
+
+```yaml
+# Only allow this pipeline for main branch
+trigger:
+  branches:
+    include:
+      - main
+    exclude:
+      - feature/*
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    exclude:
+      - docs/*
+```
+
+### Secure Files and Variable Scoping
+
+```yaml
+stages:
+  - stage: Build
+    variables:
+      - name: buildVar
+        value: 'available in build'
+    jobs:
+      - job: BuildJob
+        steps:
+          - task: DownloadSecureFile@1
+            name: certFile
+            inputs:
+              secureFile: 'production-cert.pfx'
+          
+          - script: |
+              # Use the secure file
+              dotnet publish --p:SignCertificate=$(certFile.secureFilePath)
+
+  - stage: Deploy
+    variables:
+      - group: 'Production-Secrets'  # Only in deploy stage
+    jobs:
+      - deployment: Deploy
+        environment: 'production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: echo "Using production secrets"
+```
+
+### Audit and Compliance
+
+```yaml
+- stage: Compliance
+  jobs:
+    - job: Audit
+      steps:
+        - task: PublishPipelineMetadata@0
+          inputs:
+            buildData: |
+              {
+                "pipelineId": "$(System.DefinitionId)",
+                "buildId": "$(Build.BuildId)",
+                "deployer": "$(Build.RequestedFor)",
+                "commitId": "$(Build.SourceVersion)",
+                "timestamp": "$(System.TimelineId)"
+              }
+        
+        - task: AzureCLI@2
+          inputs:
+            azureSubscription: 'Audit-Connection'
+            scriptType: 'bash'
+            scriptLocation: 'inlineScript'
+            inlineScript: |
+              az monitor activity-log alert create \
+                --name "Deployment-Audit" \
+                --description "Track deployments for compliance"
+```
+
+## Parallel Jobs and Matrix Strategy 🔀
+
+```yaml
+jobs:
+  - job: Test
+    strategy:
+      parallel: 4  # Run 4 identical jobs
+    steps:
+      - script: |
+          # Split tests based on agent number
+          dotnet test --filter "Partition==$(System.JobPositionInPhase)"
+  
+  - job: CrossPlatform
+    strategy:
+      matrix:
+        linux:
+          imageName: 'ubuntu-latest'
+          rid: 'linux-x64'
+        windows:
+          imageName: 'windows-latest'
+          rid: 'win-x64'
+        mac:
+          imageName: 'macos-latest'
+          rid: 'osx-x64'
+    pool:
+      vmImage: $(imageName)
+    steps:
+      - script: dotnet publish -r $(rid) --self-contained
+```
+
+## Key Takeaways
+
+- 🔄 **Extends templates** enforce governance while allowing customization
+- 🎛️ **Runtime parameters** make pipelines flexible and reusable
+- 🐳 **Container jobs** provide consistent, isolated build environments
+- 🏗️ **ARM/Bicep integration** enables infrastructure as code
+- 🚀 **Advanced deployment strategies** like canary reduce risk
+- 🛡️ **Security best practices** protect sensitive data
+- 🔀 **Matrix strategies** test across multiple configurations
+
+<ProgressCheckpoint section="ado-advanced-features" xpReward={75} />

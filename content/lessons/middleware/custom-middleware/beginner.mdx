@@ -1,0 +1,133 @@
+# Creating Your Own Middleware 🔧
+
+Sometimes the built-in tools aren't enough. What if you want to log every request? Or block certain IP addresses? **You create your own middleware!**
+
+## The Checkpoint Analogy
+
+Think of custom middleware like creating your own **checkpoint at the airport**:
+
+| **You Decide...**          | **In Middleware...**          |
+| :------------------------- | :---------------------------- |
+| What to check              | `if` statements               |
+| What to allow through      | Call `next()`                 |
+| What to block              | Return without calling `next` |
+| What to add to the ticket  | Modify request/response       |
+
+<InfoBox type="tip">
+  Every middleware you write has THREE chances to act:
+  1. **Before** the next middleware (inspect request)
+  2. **Decide** whether to call next or block
+  3. **After** the next middleware (modify response)
+</InfoBox>
+
+## Your First Custom Middleware
+
+The simplest way is **inline middleware** using `app.Use()`:
+
+```csharp
+app.Use(async (context, next) =>
+{
+    // 🔵 BEFORE: Runs on every incoming request
+    Console.WriteLine($"📥 Request: {context.Request.Path}");
+    
+    await next();  // 🟢 Call the next middleware
+    
+    // 🟡 AFTER: Runs on the way back out
+    Console.WriteLine($"📤 Response: {context.Response.StatusCode}");
+});
+```
+
+**What happens:**
+1. Request comes in → "📥 Request: /hello" is printed
+2. Next middleware runs → eventually reaches your endpoint
+3. Response comes back → "📤 Response: 200" is printed
+4. Response sent to user
+
+## Try Building Your Own!
+
+Use this interactive builder to create middleware:
+
+<CustomMiddlewareBuilder mode="beginner" />
+
+## Example: Logging Middleware
+
+Let's build a simple request logger:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+// Our custom logging middleware
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+    var method = context.Request.Method;
+    
+    Console.WriteLine($"📥 {method} {path}");
+    
+    var stopwatch = Stopwatch.StartNew();
+    await next();
+    stopwatch.Stop();
+    
+    Console.WriteLine($"📤 {context.Response.StatusCode} - {stopwatch.ElapsedMilliseconds}ms");
+});
+
+app.MapGet("/hello", () => "Hello World!");
+app.MapGet("/goodbye", () => "Goodbye!");
+
+app.Run();
+```
+
+**Output when you visit `/hello`:**
+```
+📥 GET /hello
+📤 200 - 12ms
+```
+
+## Example: Blocking Middleware
+
+Block certain paths:
+
+```csharp
+app.Use(async (context, next) =>
+{
+    // Block requests to /admin
+    if (context.Request.Path.StartsWithSegments("/admin"))
+    {
+        context.Response.StatusCode = 403;
+        await context.Response.WriteAsync("🚫 Access Denied!");
+        return;  // 🛑 DON'T call next() - request stops here!
+    }
+    
+    await next();  // All other requests continue
+});
+```
+
+<InfoBox type="warning">
+  **Important:** When you DON'T call `await next()`, the request stops! This is called **short-circuiting**.
+</InfoBox>
+
+## The Simple Pattern
+
+Every custom middleware follows this pattern:
+
+```csharp
+app.Use(async (context, next) =>
+{
+    // 1️⃣ Do something BEFORE (inspect/modify request)
+    
+    // 2️⃣ Call next (or don't, to block the request)
+    await next();
+    
+    // 3️⃣ Do something AFTER (inspect/modify response)
+});
+```
+
+## Key Takeaways
+
+- 🔧 **Custom middleware** lets you handle things built-in middleware can't
+- ⏯️ **Three phases:** Before → Next → After
+- 🛑 **Short-circuit** by not calling `next()`
+- 📝 **Common uses:** Logging, blocking, timing, adding headers
+
+<ProgressCheckpoint section="inline-middleware" xpReward={35} />

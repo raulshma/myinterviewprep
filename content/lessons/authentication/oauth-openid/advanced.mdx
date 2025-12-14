@@ -1,0 +1,320 @@
+# OAuth 2.0 & OpenID Connect
+
+Build your own authorization server and implement advanced multi-tenant OIDC patterns.
+
+## Building an Authorization Server
+
+Using OpenIddict to create your own OIDC provider:
+
+```csharp
+builder.Services.AddOpenIddict()
+    .AddCore(options =>
+    {
+        options.UseEntityFrameworkCore()
+            .UseDbContext<ApplicationDbContext>();
+    })
+    .AddServer(options =>
+    {
+        // Enable authorization code flow with PKCE
+        options.AllowAuthorizationCodeFlow()
+            .RequireProofKeyForCodeExchange();
+        
+        // Enable refresh tokens
+        options.AllowRefreshTokenFlow();
+        
+        // Enable client credentials for server-to-server
+        options.AllowClientCredentialsFlow();
+        
+        // Set endpoints
+        options.SetAuthorizationEndpointUris("/connect/authorize")
+            .SetTokenEndpointUris("/connect/token")
+            .SetUserinfoEndpointUris("/connect/userinfo")
+            .SetIntrospectionEndpointUris("/connect/introspect")
+            .SetRevocationEndpointUris("/connect/revoke");
+        
+        // Configure signing keys
+        options.AddDevelopmentEncryptionCertificate()
+            .AddDevelopmentSigningCertificate();
+        
+        // Token lifetimes
+        options.SetAccessTokenLifetime(TimeSpan.FromMinutes(30))
+            .SetRefreshTokenLifetime(TimeSpan.FromDays(14));
+        
+        options.UseAspNetCore()
+            .EnableAuthorizationEndpointPassthrough()
+            .EnableTokenEndpointPassthrough()
+            .EnableUserinfoEndpointPassthrough();
+    })
+    .AddValidation(options =>
+    {
+        options.UseLocalServer();
+        options.UseAspNetCore();
+    });
+```
+
+### Authorization Endpoint
+
+```csharp
+[HttpGet("~/connect/authorize")]
+[HttpPost("~/connect/authorize")]
+public async Task<IActionResult> Authorize()
+{
+    var request = HttpContext.GetOpenIddictServerRequest();
+    
+    // Check if user is authenticated
+    var result = await HttpContext.AuthenticateAsync();
+    if (!result.Succeeded)
+    {
+        return Challenge(
+            authenticationSchemes: IdentityConstants.ApplicationScheme,
+            properties: new AuthenticationProperties
+            {
+                RedirectUri = Request.PathBase + Request.Path + QueryString.Create(
+                    Request.HasFormContentType ? Request.Form.ToList() : Request.Query.ToList()
+                )
+            }
+        );
+    }
+    
+    var user = await _userManager.GetUserAsync(result.Principal);
+    var claims = new List<Claim>
+    {
+        new Claim(Claims.Subject, user.Id),
+        new Claim(Claims.Email, user.Email),
+        new Claim(Claims.Name, user.UserName)
+    };
+    
+    // Add role claims
+    var roles = await _userManager.GetRolesAsync(user);
+    foreach (var role in roles)
+    {
+        claims.Add(new Claim(Claims.Role, role));
+    }
+    
+    var identity = new ClaimsIdentity(claims, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+    
+    // Set scopes
+    identity.SetScopes(request.GetScopes());
+    identity.SetResources(await _scopeManager.ListResourcesAsync(identity.GetScopes()).ToListAsync());
+    
+    // Set destinations (which tokens get which claims)
+    identity.SetDestinations(claim => claim.Type switch
+    {
+        Claims.Name or Claims.Email => new[] { Destinations.AccessToken, Destinations.IdentityToken },
+        Claims.Role => new[] { Destinations.AccessToken, Destinations.IdentityToken },
+        _ => new[] { Destinations.AccessToken }
+    });
+    
+    return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+}
+```
+
+## Multi-Tenant Authentication
+
+Support multiple identity providers per tenant:
+
+```csharp
+public class TenantAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>
+{
+    private readonly ITenantResolver _tenantResolver;
+    
+    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        var tenant = await _tenantResolver.ResolveAsync(Context);
+        
+        // Get tenant-specific auth configuration
+        var authConfig = await _tenantConfigService.GetAuthConfigAsync(tenant.Id);
+        
+        // Dynamically select authentication scheme
+        var scheme = authConfig.IdentityProvider switch
+        {
+            "azure-ad" => AzureADDefaults.AuthenticationScheme,
+            "okta" => "Okta",
+            "google" => GoogleDefaults.AuthenticationScheme,
+            _ => CookieAuthenticationDefaults.AuthenticationScheme
+        };
+        
+        return await Context.AuthenticateAsync(scheme);
+    }
+}
+```
+
+Configure per-tenant OIDC:
+
+```csharp
+builder.Services.AddAuthentication()
+    .AddOpenIdConnect("tenant-oidc", options =>
+    {
+        options.Events = new OpenIdConnectEvents
+        {
+            OnRedirectToIdentityProvider = async context =>
+            {
+                var tenant = await ResolveTenantAsync(context.HttpContext);
+                var config = await GetTenantOidcConfig(tenant.Id);
+                
+                context.ProtocolMessage.IssuerAddress = config.AuthorizationEndpoint;
+                context.Options.ClientId = config.ClientId;
+                context.Options.Authority = config.Authority;
+            },
+            OnAuthorizationCodeReceived = async context =>
+            {
+                var tenant = await ResolveTenantAsync(context.HttpContext);
+                var config = await GetTenantOidcConfig(tenant.Id);
+                
+                context.Options.ClientSecret = config.ClientSecret;
+            }
+        };
+    });
+```
+
+## Token Introspection
+
+Validate tokens against the authorization server:
+
+```csharp
+public class TokenIntrospectionHandler : DelegatingHandler
+{
+    private readonly IMemoryCache _cache;
+    
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, 
+        CancellationToken cancellationToken)
+    {
+        var token = request.Headers.Authorization?.Parameter;
+        
+        if (string.IsNullOrEmpty(token))
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+        
+        var cacheKey = $"introspection:{ComputeHash(token)}";
+        
+        if (!_cache.TryGetValue(cacheKey, out bool isActive))
+        {
+            isActive = await IntrospectTokenAsync(token, cancellationToken);
+            
+            if (isActive)
+            {
+                _cache.Set(cacheKey, isActive, TimeSpan.FromMinutes(5));
+            }
+        }
+        
+        if (!isActive)
+            return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+        
+        return await base.SendAsync(request, cancellationToken);
+    }
+    
+    private async Task<bool> IntrospectTokenAsync(string token, CancellationToken ct)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/connect/introspect");
+        request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["token"] = token,
+            ["token_type_hint"] = "access_token"
+        });
+        
+        // Add client credentials
+        var credentials = Convert.ToBase64String(
+            Encoding.UTF8.GetBytes($"{_clientId}:{_clientSecret}")
+        );
+        request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+        
+        var response = await _httpClient.SendAsync(request, ct);
+        var result = await response.Content.ReadFromJsonAsync<IntrospectionResponse>(ct);
+        
+        return result?.Active == true;
+    }
+}
+```
+
+## Dynamic Client Registration
+
+Allow applications to register as OAuth clients:
+
+```csharp
+[HttpPost("~/connect/register")]
+[Authorize(Policy = "ClientRegistration")]
+public async Task<IActionResult> RegisterClient([FromBody] ClientRegistrationRequest request)
+{
+    var application = new OpenIddictApplicationDescriptor
+    {
+        ClientId = Guid.NewGuid().ToString(),
+        ClientSecret = GenerateClientSecret(),
+        DisplayName = request.ClientName,
+        RedirectUris = { new Uri(request.RedirectUri) },
+        PostLogoutRedirectUris = { new Uri(request.PostLogoutRedirectUri) },
+        Permissions =
+        {
+            Permissions.Endpoints.Authorization,
+            Permissions.Endpoints.Token,
+            Permissions.GrantTypes.AuthorizationCode,
+            Permissions.GrantTypes.RefreshToken,
+            Permissions.ResponseTypes.Code,
+            Permissions.Scopes.Email,
+            Permissions.Scopes.Profile
+        },
+        Requirements =
+        {
+            Requirements.Features.ProofKeyForCodeExchange
+        }
+    };
+    
+    await _applicationManager.CreateAsync(application);
+    
+    return Ok(new
+    {
+        client_id = application.ClientId,
+        client_secret = application.ClientSecret,
+        client_id_issued_at = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+    });
+}
+```
+
+## Silent Token Renewal
+
+Implement silent refresh in the browser:
+
+```csharp
+options.Events = new OpenIdConnectEvents
+{
+    OnMessageReceived = context =>
+    {
+        // Handle silent renew iframe
+        if (context.Request.Path == "/silent-renew")
+        {
+            context.Options.SkipUnrecognizedRequests = false;
+        }
+        return Task.CompletedTask;
+    }
+};
+
+// In your SPA
+async function silentRenew() {
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = '/connect/authorize?prompt=none&...';
+    document.body.appendChild(iframe);
+    
+    return new Promise((resolve, reject) => {
+        iframe.onload = () => {
+            try {
+                const result = parseResult(iframe.contentWindow.location);
+                resolve(result);
+            } catch (e) {
+                reject(e);
+            } finally {
+                document.body.removeChild(iframe);
+            }
+        };
+    });
+}
+```
+
+## Key Takeaways
+
+- 🏗️ **OpenIddict** enables building your own OIDC provider
+- 🏢 **Multi-tenant auth** supports different IdPs per tenant
+- 🔍 **Token introspection** validates tokens in real-time
+- 📝 **Dynamic registration** allows programmatic client setup
+- 🔇 **Silent renewal** refreshes tokens without user interaction
+
+<ProgressCheckpoint section="oidc-implementation" xpReward={75} />

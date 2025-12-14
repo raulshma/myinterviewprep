@@ -1,0 +1,256 @@
+# Microservices Principles
+
+Advanced microservice architectures go beyond simple service decomposition. This lesson covers production patterns, migration strategies, and architectural considerations for large-scale distributed systems.
+
+## Architecture Visualization
+
+<MicroservicesArchitectureVisualizer mode="advanced" />
+
+## The Strangler Fig Pattern
+
+When migrating from a monolith, the **Strangler Fig Pattern** allows incremental decomposition:
+
+```
+Phase 1: Identify Seams
+┌────────────────────────┐
+│       Monolith         │    Extract functionality gradually
+│  ┌──────┐              │    without big-bang rewrites
+│  │ User │ Orders       │
+│  │Module│ Payments     │
+│  └──────┘              │
+└────────────────────────┘
+
+Phase 2: Extract First Service
+┌────────────────────────┐    ┌─────────────┐
+│       Monolith         │    │    User     │
+│          (facade) ─────┼───►│   Service   │
+│        Orders          │    └─────────────┘
+│        Payments        │
+└────────────────────────┘
+
+Phase 3: Continue Extraction
+┌────────────────────────┐    ┌─────────────┐
+│       Monolith         │    │    User     │
+│        (legacy) ───────┼───►│   Service   │
+│          │             │    └─────────────┘
+│          └─────────────┼───►┌─────────────┐
+│                        │    │   Order     │
+└────────────────────────┘    │   Service   │
+                              └─────────────┘
+```
+
+## Saga Pattern for Distributed Transactions
+
+Since microservices can't use traditional ACID transactions across databases, the **Saga Pattern** coordinates distributed transactions:
+
+### Choreography-Based Saga
+
+Services react to events without a central coordinator:
+
+```csharp
+// OrderService publishes event
+public class OrderCreatedEventHandler
+{
+    public async Task Handle(OrderCreatedEvent @event)
+    {
+        await _eventBus.PublishAsync(new ReserveInventoryCommand
+        {
+            OrderId = @event.OrderId,
+            Items = @event.Items
+        });
+    }
+}
+
+// InventoryService reacts
+public class ReserveInventoryCommandHandler
+{
+    public async Task Handle(ReserveInventoryCommand command)
+    {
+        var success = await _inventory.ReserveAsync(command.Items);
+        
+        if (success)
+            await _eventBus.PublishAsync(new InventoryReservedEvent { ... });
+        else
+            await _eventBus.PublishAsync(new InventoryReservationFailedEvent { ... });
+    }
+}
+```
+
+### Orchestration-Based Saga
+
+A central orchestrator coordinates the transaction:
+
+```csharp
+public class CreateOrderSaga : Saga<CreateOrderSagaData>
+{
+    public override void ConfigureHowToFindSaga(SagaPropertyMapper<CreateOrderSagaData> mapper)
+    {
+        mapper.MapSaga(saga => saga.OrderId)
+              .ToMessage<OrderCreated>(m => m.OrderId)
+              .ToMessage<PaymentProcessed>(m => m.OrderId)
+              .ToMessage<InventoryReserved>(m => m.OrderId);
+    }
+
+    public async Task Handle(OrderCreated message)
+    {
+        Data.OrderId = message.OrderId;
+        await _bus.Send(new ProcessPayment { OrderId = message.OrderId });
+    }
+
+    public async Task Handle(PaymentProcessed message)
+    {
+        await _bus.Send(new ReserveInventory { OrderId = message.OrderId });
+    }
+
+    public async Task Handle(InventoryReserved message)
+    {
+        await _bus.Send(new CompleteOrder { OrderId = message.OrderId });
+        MarkAsComplete();
+    }
+
+    public async Task Compensate(PaymentFailed message)
+    {
+        await _bus.Send(new CancelOrder { OrderId = Data.OrderId });
+        MarkAsComplete();
+    }
+}
+```
+
+## CQRS (Command Query Responsibility Segregation)
+
+Separate read and write models for optimal performance:
+
+```csharp
+// Write Model (Commands)
+public class OrderCommandHandler
+{
+    private readonly IOrderRepository _repository;
+    private readonly IEventBus _eventBus;
+
+    public async Task Handle(CreateOrderCommand command)
+    {
+        var order = Order.Create(command.CustomerId, command.Items);
+        await _repository.SaveAsync(order);
+        
+        // Publish for read model updates
+        await _eventBus.PublishAsync(new OrderCreatedEvent(order));
+    }
+}
+
+// Read Model (Queries)
+public class OrderQueryHandler
+{
+    private readonly IOrderReadRepository _readRepo; // Denormalized for reads
+
+    public async Task<OrderDetailsDto> Handle(GetOrderQuery query)
+    {
+        // Optimized read from denormalized store
+        return await _readRepo.GetOrderDetailsAsync(query.OrderId);
+    }
+}
+```
+
+### CQRS Architecture
+
+```
+┌─────────────┐    Commands    ┌─────────────────┐
+│   Client    │───────────────►│  Command Side   │
+│             │                │  (Write Model)  │
+│             │                └────────┬────────┘
+│             │                         │ Events
+│             │                         ▼
+│             │                ┌─────────────────┐
+│             │◄───Queries─────│   Query Side    │
+└─────────────┘                │  (Read Model)   │
+                               └─────────────────┘
+```
+
+## Service Mesh & Sidecar Pattern
+
+Modern microservices use service meshes for cross-cutting concerns:
+
+```yaml
+# Kubernetes deployment with Istio sidecar
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+spec:
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "true"  # Inject Envoy proxy
+    spec:
+      containers:
+      - name: order-service
+        image: order-service:latest
+        ports:
+        - containerPort: 80
+```
+
+**Service Mesh provides:**
+- mTLS (mutual TLS) between services
+- Traffic management and load balancing
+- Observability (metrics, tracing, logging)
+- Circuit breakers and retries
+
+## Key Architecture Decisions
+
+### Database per Service
+
+```csharp
+// Order Service - uses SQL Server
+services.AddDbContext<OrderDbContext>(options =>
+    options.UseSqlServer(Configuration.GetConnectionString("OrderDb")));
+
+// Catalog Service - uses MongoDB
+services.AddSingleton<IMongoClient>(
+    new MongoClient(Configuration.GetConnectionString("CatalogDb")));
+
+// Basket Service - uses Redis
+services.AddStackExchangeRedisCache(options =>
+    options.Configuration = Configuration.GetConnectionString("BasketDb"));
+```
+
+### API Versioning
+
+```csharp
+[ApiController]
+[ApiVersion("1.0")]
+[ApiVersion("2.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
+public class OrdersController : ControllerBase
+{
+    [HttpGet("{id}"), MapToApiVersion("1.0")]
+    public async Task<ActionResult<OrderV1Dto>> GetV1(int id) { ... }
+
+    [HttpGet("{id}"), MapToApiVersion("2.0")]
+    public async Task<ActionResult<OrderV2Dto>> GetV2(int id) { ... }
+}
+```
+
+## Anti-Patterns to Avoid
+
+### ❌ Distributed Monolith
+Services that must be deployed together aren't really microservices.
+
+### ❌ Shared Database
+```
+Service A ──┐
+            ├──► Shared Database  ❌ Tight coupling!
+Service B ──┘
+```
+
+### ❌ Too Fine-Grained
+Creating services for every small function leads to "nanoservices" with excessive network overhead.
+
+## Key Takeaways
+
+- 🔄 Use **Strangler Fig Pattern** for gradual migration
+- 💰 Implement **Saga Pattern** for distributed transactions
+- 📊 Consider **CQRS** for complex domains with different read/write patterns
+- 🕸️ Use **Service Mesh** for cross-cutting concerns at scale
+- ⚠️ Avoid **distributed monoliths** and **shared databases**
+- 📐 Right-size your services—not too big, not too small
+
+<ProgressCheckpoint section="ms-when-to-use" xpReward={75} />

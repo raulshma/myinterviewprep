@@ -1,0 +1,317 @@
+# GitHub Actions for .NET - Advanced
+
+Master enterprise-grade CI/CD patterns including reusable workflows, composite actions, self-hosted runners, container deployments, and security hardening.
+
+## Enterprise CI/CD Pipeline 🏢
+
+Let's build a production-ready pipeline with all the bells and whistles:
+
+<GitHubActionsVisualizer mode="advanced" showYaml={true} interactive={true} />
+
+## Reusable Workflows 🔄
+
+Don't repeat yourself across repositories. Create reusable workflows:
+
+```yaml
+# .github/workflows/dotnet-build.yml (reusable workflow)
+name: .NET Build Template
+
+on:
+  workflow_call:
+    inputs:
+      dotnet-version:
+        required: true
+        type: string
+        default: '8.0.x'
+      configuration:
+        required: false
+        type: string
+        default: 'Release'
+    secrets:
+      NUGET_API_KEY:
+        required: false
+    outputs:
+      artifact-name:
+        description: 'Name of the uploaded artifact'
+        value: ${{ jobs.build.outputs.artifact-name }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: ${{ steps.artifact.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+      - run: dotnet build -c ${{ inputs.configuration }}
+      - run: dotnet publish -c ${{ inputs.configuration }} -o ./publish
+      - id: artifact
+        run: echo "name=app-${{ github.sha }}" >> $GITHUB_OUTPUT
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: ./publish
+```
+
+**Calling the reusable workflow:**
+
+```yaml
+# In another repository
+jobs:
+  build:
+    uses: my-org/shared-workflows/.github/workflows/dotnet-build.yml@main
+    with:
+      dotnet-version: '8.0.x'
+      configuration: 'Release'
+    secrets:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+```
+
+<InfoBox type="tip">
+  Store reusable workflows in a central repository. Use **semantic versioning** with tags for stability: `@v1`, `@v1.2`, `@v1.2.3`
+</InfoBox>
+
+## Composite Actions 🧩
+
+For smaller, reusable pieces, create composite actions:
+
+```yaml
+# .github/actions/dotnet-test/action.yml
+name: 'Run .NET Tests with Coverage'
+description: 'Runs tests and uploads coverage to Codecov'
+
+inputs:
+  project-path:
+    description: 'Path to test project'
+    required: true
+  codecov-token:
+    description: 'Codecov upload token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run Tests
+      shell: bash
+      run: |
+        dotnet test ${{ inputs.project-path }} \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./coverage
+    
+    - name: Upload Coverage
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ inputs.codecov-token }}
+        directory: ./coverage
+```
+
+## Self-Hosted Runners 🖥️
+
+For enterprise scenarios requiring specific hardware or software:
+
+```yaml
+jobs:
+  build:
+    runs-on: [self-hosted, linux, x64, dotnet]
+    steps:
+      - uses: actions/checkout@v4
+      # Self-hosted runners can have pre-installed tools
+      - run: dotnet build
+```
+
+**Benefits of self-hosted runners:**
+- Access to on-premise resources (databases, APIs)
+- Specific hardware requirements (GPU, large memory)
+- Cost savings for high-volume builds
+- Custom software pre-installed
+
+## Docker Container Deployment 🐳
+
+Build and push Docker images:
+
+```yaml
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha
+      
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+```
+
+## Azure Deployment with OIDC 🔐
+
+Use OpenID Connect for keyless authentication to Azure:
+
+```yaml
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: my-dotnet-app
+          slot-name: staging
+          package: ./publish
+      
+      - name: Swap Slots
+        run: |
+          az webapp deployment slot swap \
+            --name my-dotnet-app \
+            --resource-group my-rg \
+            --slot staging \
+            --target-slot production
+```
+
+<KeyConcept title="OIDC vs Service Principal">
+  **OIDC (OpenID Connect)** is more secure than storing credentials:
+  - No secrets to rotate
+  - Tokens are short-lived
+  - Fine-grained permissions per workflow
+</KeyConcept>
+
+## Security Hardening 🛡️
+
+### Minimal Permissions
+
+```yaml
+permissions:
+  contents: read
+  packages: write
+  # Only grant what's needed
+
+jobs:
+  build:
+    permissions:
+      contents: read  # Read-only access to checkout
+```
+
+### Pin Action Versions
+
+```yaml
+# ❌ Bad - mutable tag
+- uses: actions/checkout@v4
+
+# ✅ Better - specific version
+- uses: actions/checkout@v4.1.1
+
+# ✅✅ Best - SHA pinning
+- uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
+```
+
+### Dependency Review
+
+```yaml
+- name: Dependency Review
+  uses: actions/dependency-review-action@v4
+  with:
+    fail-on-severity: high
+    deny-licenses: GPL-3.0, AGPL-3.0
+```
+
+## Advanced Caching Strategies 🚀
+
+```yaml
+- name: Cache .NET
+  uses: actions/cache@v4
+  with:
+    path: |
+      ~/.nuget/packages
+      ~/.local/share/NuGet/Cache
+      ./.nuke/temp
+    key: ${{ runner.os }}-dotnet-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+    restore-keys: |
+      ${{ runner.os }}-dotnet-
+
+- name: Cache Docker layers
+  uses: actions/cache@v4
+  with:
+    path: /tmp/.buildx-cache
+    key: ${{ runner.os }}-buildx-${{ github.sha }}
+    restore-keys: |
+      ${{ runner.os }}-buildx-
+```
+
+## Observability and Notifications 📊
+
+```yaml
+- name: Notify Slack on Failure
+  if: failure()
+  uses: slackapi/slack-github-action@v1
+  with:
+    channel-id: 'deployments'
+    payload: |
+      {
+        "text": "❌ Deployment failed for ${{ github.repository }}",
+        "attachments": [{
+          "color": "danger",
+          "fields": [{
+            "title": "Workflow",
+            "value": "${{ github.workflow }}",
+            "short": true
+          }]
+        }]
+      }
+  env:
+    SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+```
+
+## Key Takeaways
+
+- 🔄 **Reusable workflows** share CI/CD logic across repositories
+- 🧩 **Composite actions** create modular, reusable steps
+- 🖥️ **Self-hosted runners** for enterprise requirements
+- 🐳 **Docker deployment** with layer caching for speed
+- 🔐 **OIDC authentication** eliminates stored credentials
+- 🛡️ **Security hardening** with minimal permissions and pinned versions
+- 📊 **Observability** through notifications and monitoring
+
+<ProgressCheckpoint section="ga-dotnet-integration" xpReward={75} />

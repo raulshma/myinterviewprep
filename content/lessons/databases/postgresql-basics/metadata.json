@@ -1,0 +1,29 @@
+{
+  "id": "postgresql-basics",
+  "title": "PostgreSQL Basics",
+  "description": "Discover PostgreSQL - the powerful open-source database known for its reliability, extensibility, and advanced features.",
+  "milestone": "databases",
+  "order": 3,
+  "sections": [
+    "intro-postgres",
+    "psql-basics",
+    "unique-features",
+    "dotnet-npgsql"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["sql-fundamentals"],
+  "tags": ["postgresql", "postgres", "database", "npgsql"]
+}

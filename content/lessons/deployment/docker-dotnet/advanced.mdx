@@ -1,0 +1,200 @@
+# Docker for .NET - Production Best Practices
+
+Time to master Docker for production deployments. We'll cover security, optimization, health checks, and advanced patterns used in enterprise environments.
+
+## Production-Ready Dockerfile
+
+<DockerDotnetVisualizer mode="advanced" />
+
+<DotnetCodePreview
+  title="Production Dockerfile"
+  code={`# Build stage with specific SDK version
+FROM mcr.microsoft.com/dotnet/sdk:8.0.100 AS build
+WORKDIR /src
+
+# Restore with specific runtime
+COPY ["MyApp/MyApp.csproj", "MyApp/"]
+COPY ["MyApp.Core/MyApp.Core.csproj", "MyApp.Core/"]
+RUN dotnet restore "MyApp/MyApp.csproj"
+
+# Build with optimizations
+COPY . .
+RUN dotnet publish "MyApp/MyApp.csproj" \\
+    -c Release \\
+    -o /app/publish \\
+    --no-restore \\
+    /p:PublishTrimmed=true \\
+    /p:PublishSingleFile=true
+
+# Runtime stage - minimal image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
+WORKDIR /app
+
+# Security: Run as non-root user
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+# Copy published app
+COPY --from=build --chown=appuser:appgroup /app/publish .
+
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \\
+    CMD wget --quiet --tries=1 --spider http://localhost:80/health || exit 1
+
+EXPOSE 80
+ENTRYPOINT ["./MyApp"]`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Pinned Version",
+      explanation: "Always pin SDK versions in production for reproducible builds"
+    },
+    {
+      lineNumbers: [14, 15],
+      highlight: "Trimming",
+      explanation: "PublishTrimmed removes unused code, PublishSingleFile creates one binary - dramatic size reduction"
+    },
+    {
+      lineNumbers: [18],
+      highlight: "Alpine Image",
+      explanation: "Alpine is a minimal Linux distro - reduces image size from ~200MB to ~100MB"
+    },
+    {
+      lineNumbers: [22, 23],
+      highlight: "Non-Root User",
+      explanation: "Security best practice: never run as root in production"
+    },
+    {
+      lineNumbers: [29, 30],
+      highlight: "Health Check",
+      explanation: "Kubernetes and orchestrators use this to know if your app is healthy"
+    }
+  ]}
+/>
+
+## Image Size Comparison
+
+| Configuration | Image Size |
+|:-------------|:-----------|
+| SDK + Debug | ~800 MB |
+| ASP.NET Runtime | ~200 MB |
+| ASP.NET Alpine | ~100 MB |
+| Trimmed + Alpine | ~50 MB |
+
+## Security Scanning
+
+Always scan images for vulnerabilities before deployment:
+
+```bash
+# Using Trivy (recommended)
+trivy image myapp:latest
+
+# Using Docker Scout
+docker scout cves myapp:latest
+
+# Using Snyk
+snyk container test myapp:latest
+```
+
+## Multi-Architecture Builds
+
+Build for both AMD64 and ARM64 (for Azure, AWS Graviton, Apple Silicon):
+
+```bash
+# Enable buildx
+docker buildx create --use
+
+# Build for multiple platforms
+docker buildx build \\
+    --platform linux/amd64,linux/arm64 \\
+    -t myregistry.azurecr.io/myapp:latest \\
+    --push .
+```
+
+## Container Registry Best Practices
+
+<DotnetCodePreview
+  title="CI/CD Pipeline - GitHub Actions"
+  code={`name: Build and Push
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Login to Azure Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: myapp.azurecr.io
+          username: \${{ secrets.ACR_USERNAME }}
+          password: \${{ secrets.ACR_PASSWORD }}
+      
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            myapp.azurecr.io/myapp:latest
+            myapp.azurecr.io/myapp:\${{ github.sha }}`}
+  steps={[
+    {
+      lineNumbers: [11, 12],
+      highlight: "Registry Login",
+      explanation: "Authenticate with your container registry (ACR, Docker Hub, etc.)"
+    },
+    {
+      lineNumbers: [22, 23],
+      highlight: "Multiple Tags",
+      explanation: "Tag with both :latest and the commit SHA for traceability"
+    }
+  ]}
+/>
+
+## Advanced: Distroless Images
+
+For maximum security, consider distroless images (no shell, no package manager):
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-jammy-chiseled AS runtime
+
+COPY --from=build /app/publish/MyApp /app/MyApp
+
+ENTRYPOINT ["/app/MyApp"]
+```
+
+## Docker in Development vs Production
+
+| Aspect | Development | Production |
+|:-------|:------------|:-----------|
+| Base Image | SDK | Runtime/Alpine |
+| Volumes | Mount source code | None |
+| Environment | Development | Production |
+| Debug | Enabled | Disabled |
+| Logging | Verbose | Structured |
+| Health Checks | Optional | Required |
+
+## Graceful Shutdown
+
+Handle SIGTERM for clean container shutdown:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+var lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+
+lifetime.ApplicationStopping.Register(() =>
+{
+    // Clean up resources
+    Log.Information("Container shutting down gracefully...");
+});
+
+app.Run();
+```
+
+<ProgressCheckpoint section="optimization" xpReward={75} />

@@ -1,0 +1,181 @@
+# Database Design
+
+Good database design is like building a house - you need a solid foundation before adding walls and a roof. Let's learn how to design databases that are organized, efficient, and easy to maintain!
+
+## 🏗️ Why Does Design Matter?
+
+Imagine organizing your closet:
+- **Bad design:** Throwing everything in one big pile 😱
+- **Good design:** Separate sections for shirts, pants, shoes 👍
+
+A well-designed database:
+- ✅ Stores data efficiently (no wasted space)
+- ✅ Prevents errors (constraints stop bad data)
+- ✅ Makes queries fast (proper relationships)
+- ✅ Is easy to understand and maintain
+
+## 🧱 Tables, Rows, and Columns
+
+These are the building blocks of any database:
+
+| Term | What It Is | Real-World Analogy |
+|:-----|:-----------|:-------------------|
+| **Table** | A collection of related records | A spreadsheet |
+| **Row** | One single record | One line in the spreadsheet |
+| **Column** | A property/attribute | A column header in the spreadsheet |
+
+<DotnetCodePreview
+  title="Basic Table Structure"
+  code={`CREATE TABLE Customers (
+    Id INT PRIMARY KEY,          -- Unique identifier
+    Name VARCHAR(100) NOT NULL,  -- Customer's name
+    Email VARCHAR(255),          -- Contact email
+    JoinDate DATE                -- When they signed up
+);`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "PRIMARY KEY",
+      explanation: "Every table needs a unique identifier for each row"
+    },
+    {
+      lineNumbers: [3],
+      highlight: "NOT NULL",
+      explanation: "This field is required - can't be left empty"
+    }
+  ]}
+/>
+
+## 🔑 Primary Keys - The ID Card
+
+A **Primary Key** uniquely identifies each row - like a Social Security Number or student ID.
+
+> **Think of it this way:** No two people can have the same passport number. Similarly, no two rows can have the same primary key!
+
+### Types of Primary Keys
+
+| Type | Example | Pros | Cons |
+|:-----|:--------|:-----|:-----|
+| **Auto-increment** | 1, 2, 3, 4... | Simple, fast | Predictable |
+| **UUID** | `a1b2c3d4-e5f6-...` | Globally unique | Larger, slower |
+| **Natural** | Email, SSN | Meaningful | Can change |
+
+<DotnetCodePreview
+  title="Primary Key Examples"
+  code={`-- Auto-increment (recommended for most cases)
+CREATE TABLE Users (
+    Id INT IDENTITY(1,1) PRIMARY KEY,  -- SQL Server
+    -- OR
+    Id SERIAL PRIMARY KEY,             -- PostgreSQL
+    Name VARCHAR(100)
+);
+
+-- UUID primary key
+CREATE TABLE Sessions (
+    Id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
+    UserId INT,
+    CreatedAt DATETIME
+);`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "IDENTITY(1,1)",
+      explanation: "SQL Server: start at 1, increment by 1"
+    },
+    {
+      lineNumbers: [5],
+      highlight: "SERIAL",
+      explanation: "PostgreSQL equivalent of auto-increment"
+    },
+    {
+      lineNumbers: [11],
+      highlight: "UNIQUEIDENTIFIER",
+      explanation: "UUID - globally unique across systems"
+    }
+  ]}
+/>
+
+## 🔗 Foreign Keys - The Connectors
+
+A **Foreign Key** links two tables together - it references a primary key in another table.
+
+<DatabaseDesignVisualizer mode="beginner" initialTab="relationships" />
+
+### Real-World Example
+
+<DotnetCodePreview
+  title="Foreign Key Relationship"
+  code={`-- Parent table
+CREATE TABLE Customers (
+    Id INT PRIMARY KEY,
+    Name VARCHAR(100)
+);
+
+-- Child table with foreign key
+CREATE TABLE Orders (
+    Id INT PRIMARY KEY,
+    CustomerId INT,            -- This will reference Customers
+    OrderDate DATE,
+    Total DECIMAL(10,2),
+    
+    -- The foreign key constraint
+    FOREIGN KEY (CustomerId) REFERENCES Customers(Id)
+);`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Parent table",
+      explanation: "Customers table has the primary key"
+    },
+    {
+      lineNumbers: [9],
+      highlight: "CustomerId column",
+      explanation: "Stores the Id from Customers table"
+    },
+    {
+      lineNumbers: [14],
+      highlight: "FOREIGN KEY",
+      explanation: "Enforces that CustomerId must exist in Customers"
+    }
+  ]}
+/>
+
+## 🤝 Types of Relationships
+
+### One-to-One (1:1)
+Each person has exactly one passport. Each passport belongs to exactly one person.
+
+**Example:** User ↔ UserProfile
+
+### One-to-Many (1:N)
+One author can write many books. Each book has one author.
+
+**Example:** Customer → Orders
+
+### Many-to-Many (N:N)
+Students can enroll in many courses. Courses have many students.
+
+**Example:** Students ↔ Courses (needs a junction table!)
+
+## 📋 Common Constraints
+
+Constraints are rules that keep your data clean:
+
+| Constraint | What It Does | Example |
+|:-----------|:-------------|:--------|
+| **PRIMARY KEY** | Unique identifier | `Id INT PRIMARY KEY` |
+| **FOREIGN KEY** | Links tables | `REFERENCES Customers(Id)` |
+| **NOT NULL** | Field is required | `Name VARCHAR NOT NULL` |
+| **UNIQUE** | No duplicates | `Email VARCHAR UNIQUE` |
+| **DEFAULT** | Auto-fill value | `CreatedAt DEFAULT NOW()` |
+
+## Summary
+
+| Concept | Purpose |
+|:--------|:--------|
+| Tables | Group related data |
+| Primary Keys | Uniquely identify rows |
+| Foreign Keys | Connect related tables |
+| Constraints | Enforce data rules |
+
+<ProgressCheckpoint section="intro-design" xpReward={30} />

@@ -1,0 +1,107 @@
+# Azure App Service
+
+Imagine looking for a place to live. You could **build a house from scratch** (managing your own servers), or you could **rent a fully furnished apartment** where someone else handles maintenance, security, and utilities.
+
+**Azure App Service is that fully furnished apartment for your .NET apps!**
+
+## What is Azure App Service?
+
+Azure App Service is a **Platform-as-a-Service (PaaS)** that hosts your web apps without you worrying about the underlying infrastructure.
+
+<AzureAppServiceExplorer mode="beginner" />
+
+## Why Choose App Service?
+
+Think about what happens when you manage your own server:
+
+| You Handle (Self-Hosted) | Azure Handles (App Service) |
+|:------------------------|:---------------------------|
+| ❌ Operating system updates | ✅ Automatic patching |
+| ❌ Security configuration | ✅ Built-in SSL/TLS |
+| ❌ Load balancing setup | ✅ Automatic load balancing |
+| ❌ Scaling decisions | ✅ Auto-scale rules |
+| ❌ Hardware failures | ✅ High availability |
+
+You just bring your code, Azure does the rest!
+
+## The Deployment Journey
+
+<DotnetCodePreview
+  title="Simple Deployment via Azure CLI"
+  code={`# Step 1: Login to Azure
+az login
+
+# Step 2: Create a resource group
+az group create --name myapp-rg --location eastus
+
+# Step 3: Create an App Service plan
+az appservice plan create \\
+    --name myapp-plan \\
+    --resource-group myapp-rg \\
+    --sku B1
+
+# Step 4: Create the web app
+az webapp create \\
+    --name my-dotnet-app \\
+    --resource-group myapp-rg \\
+    --plan myapp-plan \\
+    --runtime "DOTNETCORE:8.0"
+
+# Step 5: Deploy your code
+az webapp deploy \\
+    --name my-dotnet-app \\
+    --resource-group myapp-rg \\
+    --src-path ./publish.zip`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Login",
+      explanation: "Authenticate with your Azure account"
+    },
+    {
+      lineNumbers: [8, 9, 10],
+      highlight: "App Service Plan",
+      explanation: "This is your 'apartment building' - determines pricing, features, and resources"
+    },
+    {
+      lineNumbers: [13, 14, 15, 16, 17],
+      highlight: "Create Web App",
+      explanation: "Your app's home! Gets a free URL: my-dotnet-app.azurewebsites.net"
+    }
+  ]}
+/>
+
+## Understanding App Service Plans
+
+App Service Plans are like apartment tiers:
+
+| Tier | Analogy | Best For |
+|:-----|:--------|:---------|
+| **Free/Shared** | Hostel bunk bed | Testing, learning |
+| **Basic** | Studio apartment | Dev/test, low traffic |
+| **Standard** | 2-bedroom apartment | Production, most apps |
+| **Premium** | Luxury penthouse | High-traffic, enterprise |
+
+<KeyConcept 
+  title="App Service Plan = Your Resource Pool"
+  description="Multiple apps can share the same plan (like roommates sharing an apartment). The plan determines how much CPU, memory, and features you get."
+/>
+
+## Quick Wins with App Service
+
+1. **Free SSL certificates** - HTTPS enabled by default
+2. **Custom domains** - Use your own domain name
+3. **Continuous deployment** - Connect to GitHub for automatic deploys
+4. **Built-in authentication** - Add login with Microsoft, Google, etc.
+5. **Application insights** - Monitoring out of the box
+
+## Summary
+
+| Concept | Analogy |
+|:--------|:--------|
+| **App Service** | Managed apartment for your app |
+| **App Service Plan** | The apartment building (determines size/price) |
+| **Resource Group** | Neighborhood where all your Azure stuff lives |
+| **Web App** | Your actual application running in the apartment |
+
+<ProgressCheckpoint section="intro-app-service" xpReward={30} />

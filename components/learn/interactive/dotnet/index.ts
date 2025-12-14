@@ -37,6 +37,16 @@ export { ServiceLifetimeDemo } from './ServiceLifetimeDemo';
 export { DIContainerExplorer } from './DIContainerExplorer';
 export { DIPatternShowcase } from './DIPatternShowcase';
 
+// Middleware Components
+export { BuiltInMiddlewareExplorer } from './BuiltInMiddlewareExplorer';
+export { CustomMiddlewareBuilder } from './CustomMiddlewareBuilder';
+
+// Authentication Components
+export { IdentityArchitectureVisualizer } from './IdentityArchitectureVisualizer';
+export { JwtTokenVisualizer } from './JwtTokenVisualizer';
+export { AuthFlowDiagram } from './AuthFlowDiagram';
+export { PolicyBuilder } from './PolicyBuilder';
+
 // Types exports
 export type { DotnetCodePreviewProps, CodeStep } from './DotnetCodePreview';
 export type { DependencyInjectionVisualizerProps, ServiceLifetime, Service } from './DependencyInjectionVisualizer';
@@ -69,3 +79,57 @@ export type { MinimalApiBuilderProps, MinimalEndpoint } from './MinimalApiBuilde
 export type { ServiceLifetimeDemoProps } from './ServiceLifetimeDemo';
 export type { DIContainerExplorerProps } from './DIContainerExplorer';
 export type { DIPatternShowcaseProps, DIPattern } from './DIPatternShowcase';
+
+// Database Components
+export { SqlQueryVisualizer } from './SqlQueryVisualizer';
+export { SqlServerExplorer } from './SqlServerExplorer';
+export { PostgresqlExplorer } from './PostgresqlExplorer';
+export { DatabaseDesignVisualizer } from './DatabaseDesignVisualizer';
+
+// Database Types
+export type { SqlQueryVisualizerProps, QueryType, TableRow } from './SqlQueryVisualizer';
+export type { SqlServerExplorerProps } from './SqlServerExplorer';
+export type { PostgresqlExplorerProps } from './PostgresqlExplorer';
+export type { DatabaseDesignVisualizerProps, RelationshipType as DbRelationshipType, NormalizationLevel } from './DatabaseDesignVisualizer';
+
+// Middleware Types
+export type { BuiltInMiddlewareExplorerProps } from './BuiltInMiddlewareExplorer';
+export type { CustomMiddlewareBuilderProps } from './CustomMiddlewareBuilder';
+
+// Authentication Types
+export type { IdentityArchitectureVisualizerProps } from './IdentityArchitectureVisualizer';
+export type { JwtTokenVisualizerProps } from './JwtTokenVisualizer';
+export type { AuthFlowDiagramProps } from './AuthFlowDiagram';
+export type { PolicyBuilderProps } from './PolicyBuilder';
+
+// Deployment Components
+export { DockerDotnetVisualizer } from './DockerDotnetVisualizer';
+export { AzureAppServiceExplorer } from './AzureAppServiceExplorer';
+export { KubernetesClusterVisualizer } from './KubernetesClusterVisualizer';
+export { AspireAppBuilder } from './AspireAppBuilder';
+
+// Deployment Types
+export type { DockerDotnetVisualizerProps } from './DockerDotnetVisualizer';
+export type { AzureAppServiceExplorerProps } from './AzureAppServiceExplorer';
+export type { KubernetesClusterVisualizerProps } from './KubernetesClusterVisualizer';
+export type { AspireAppBuilderProps } from './AspireAppBuilder';
+
+// CI/CD Components
+export { GitHubActionsVisualizer } from './GitHubActionsVisualizer';
+export { AzureDevOpsVisualizer } from './AzureDevOpsVisualizer';
+export { CICDPipelineBuilder } from './CICDPipelineBuilder';
+
+// CI/CD Types
+export type { GitHubActionsVisualizerProps } from './GitHubActionsVisualizer';
+export type { AzureDevOpsVisualizerProps } from './AzureDevOpsVisualizer';
+export type { CICDPipelineBuilderProps } from './CICDPipelineBuilder';
+
+// Microservices Components
+export { MicroservicesArchitectureVisualizer } from './MicroservicesArchitectureVisualizer';
+export { ServiceCommunicationDemo } from './ServiceCommunicationDemo';
+export { ApiGatewaySimulator } from './ApiGatewaySimulator';
+
+// Microservices Types
+export type { MicroservicesArchitectureVisualizerProps } from './MicroservicesArchitectureVisualizer';
+export type { ServiceCommunicationDemoProps } from './ServiceCommunicationDemo';
+export type { ApiGatewaySimulatorProps } from './ApiGatewaySimulator';

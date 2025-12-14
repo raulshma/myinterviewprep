@@ -1,0 +1,28 @@
+{
+  "id": "aspnet-identity",
+  "title": "ASP.NET Core Identity",
+  "description": "Learn how to implement user authentication with ASP.NET Core Identity - the built-in membership system for managing users, passwords, roles, and claims.",
+  "milestone": "authentication",
+  "order": 1,
+  "sections": [
+    "identity-intro",
+    "identity-services",
+    "identity-database"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["aspnet-core-basics"],
+  "tags": ["identity", "authentication", "security", "aspnet-core", "dotnet"]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "service-communication",
+  "title": "Service Communication",
+  "description": "Master synchronous and asynchronous communication patterns between microservices including REST, gRPC, and message queues.",
+  "milestone": "microservices",
+  "order": 2,
+  "sections": [
+    "sc-sync-vs-async",
+    "sc-communication-patterns",
+    "sc-implementation"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["microservices-principles"],
+  "tags": ["microservices", "rest", "grpc", "rabbitmq", "events", "communication"]
+}

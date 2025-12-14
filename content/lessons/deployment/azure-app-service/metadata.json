@@ -1,0 +1,29 @@
+{
+  "id": "azure-app-service",
+  "title": "Azure App Service",
+  "description": "Learn how to deploy .NET applications to Azure App Service. Understand deployment slots, scaling, and configuration management.",
+  "milestone": "deployment",
+  "order": 2,
+  "sections": [
+    "intro-app-service",
+    "deployment-methods",
+    "slots-and-scaling",
+    "configuration"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["docker-dotnet"],
+  "tags": ["azure", "app-service", "deployment", "cloud", "paas"]
+}

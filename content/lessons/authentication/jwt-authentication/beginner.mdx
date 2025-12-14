@@ -1,0 +1,98 @@
+# JWT Authentication
+
+Let's learn about one of the most popular ways to secure APIs! 🎫
+
+## What is a JWT?
+
+Think of a **JWT (JSON Web Token)** like a **concert ticket**:
+
+🎫 Your ticket has:
+- **Your name** (who you are)
+- **Seat number** (what you can access)
+- **Event details** (who issued it)
+- **Security hologram** (proof it&apos;s real)
+
+A JWT works the same way — it&apos;s a digital ticket that proves who you are!
+
+<JwtTokenVisualizer mode="beginner" />
+
+## The Three Parts
+
+Every JWT has **three parts** separated by dots:
+
+```
+eyJhbGciOi...   .   eyJzdWIiOi...   .   SflKxwRJ...
+    HEADER            PAYLOAD           SIGNATURE
+    (red)            (purple)            (blue)
+```
+
+| Part | What It Contains | Plain English |
+|------|-----------------|---------------|
+| **Header** | Algorithm info | "I used HS256 to sign this" |
+| **Payload** | User data (claims) | "You are John, an Admin" |
+| **Signature** | Security hash | "This proves I made it" |
+
+<InfoBox type="tip">
+  The payload is NOT encrypted! It&apos;s just Base64 encoded. Never put passwords or secrets in a JWT.
+</InfoBox>
+
+## Why Use JWT?
+
+<AuthFlowDiagram mode="beginner" flowType="jwt-bearer" />
+
+### Stateless Authentication
+
+| Cookie-Based 🍪 | JWT-Based 🎫 |
+|----------------|--------------|
+| Server stores sessions | Token contains everything |
+| Requires session database | No server storage needed |
+| Hard to scale | Easy to scale |
+| Works for websites | Perfect for APIs |
+
+<InfoBox type="note">
+  JWTs are **self-contained** — the token itself holds all the info the server needs to verify you!
+</InfoBox>
+
+## How It Works (The Simple Version)
+
+1. **Login** 🔑
+   - You send username + password
+   - Server verifies them
+   - Server creates a JWT with your info
+   - Server sends JWT back to you
+
+2. **Use the Token** 📨
+   - You include JWT in every request
+   - Server reads and verifies the JWT
+   - No database lookup needed!
+
+3. **Token Expires** ⏰
+   - JWTs have an expiration time
+   - Get a new one by refreshing or logging in again
+
+## The Simple Flow
+
+```csharp
+// Step 1: Login - You get a token
+POST /api/auth/login
+{ "email": "john@example.com", "password": "secret123" }
+
+// Response: Here's your JWT!
+{ "token": "eyJhbGciOiJIUzI1NiIs..." }
+
+// Step 2: Call protected API with token
+GET /api/protected/data
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+
+// Server says: "I see your valid ticket! Here's your data."
+```
+
+## Key Takeaways
+
+- 🎫 **JWT = Digital concert ticket** with your identity baked in
+- 📦 **Three parts**: Header (algorithm), Payload (your data), Signature (proof)
+- 🚫 **NOT encrypted** — anyone can read the payload, so no secrets!
+- ⚡ **Stateless** — server doesn&apos;t need to store sessions
+- ⏰ **Self-expiring** — tokens become invalid after set time
+
+<ProgressCheckpoint section="jwt-intro" xpReward={30} />

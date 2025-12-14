@@ -1,0 +1,28 @@
+{
+  "id": "microservices-principles",
+  "title": "Microservices Principles",
+  "description": "Learn the core principles of microservices architecture: independence, single responsibility, bounded contexts, and data ownership.",
+  "milestone": "microservices",
+  "order": 1,
+  "sections": [
+    "ms-what-are-microservices",
+    "ms-core-principles",
+    "ms-when-to-use"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": [],
+  "tags": ["microservices", "architecture", "distributed-systems", "ddd", "dotnet"]
+}

@@ -1,0 +1,348 @@
+# PostgreSQL Basics - Advanced
+
+Master PostgreSQL's advanced features for enterprise-scale applications.
+
+## 🧩 Extensions - Superpowers for Postgres
+
+PostgreSQL's extension system adds incredible functionality:
+
+<DotnetCodePreview
+  title="Essential Extensions"
+  code={`-- See available extensions
+SELECT * FROM pg_available_extensions;
+
+-- Enable popular extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";    -- UUID generation
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";      -- Fuzzy text matching
+CREATE EXTENSION IF NOT EXISTS "hstore";       -- Key-value store
+CREATE EXTENSION IF NOT EXISTS "postgis";      -- Geographic data
+
+-- Use uuid-ossp
+SELECT uuid_generate_v4();
+
+-- Use pg_trgm for fuzzy search
+SELECT name, similarity(name, 'PostgreSQL') AS score
+FROM products
+WHERE similarity(name, 'PostgreSQL') > 0.3
+ORDER BY score DESC;
+
+-- Create index for fuzzy search
+CREATE INDEX idx_products_name_trgm 
+ON products USING GIN (name gin_trgm_ops);`}
+  steps={[
+    {
+      lineNumbers: [5, 6, 7, 8],
+      highlight: "CREATE EXTENSION",
+      explanation: "One command adds powerful new features"
+    },
+    {
+      lineNumbers: [14, 15, 16],
+      highlight: "similarity()",
+      explanation: "Finds similar text even with typos - from pg_trgm"
+    },
+    {
+      lineNumbers: [20, 21],
+      highlight: "GIN with trgm",
+      explanation: "Makes fuzzy search fast on large tables"
+    }
+  ]}
+/>
+
+### Must-Know Extensions
+
+| Extension | What It Does |
+|:----------|:-------------|
+| `uuid-ossp` | Generate UUIDs |
+| `pg_trgm` | Fuzzy text matching |
+| `hstore` | Key-value pairs |
+| `postgis` | Geographic/spatial data |
+| `pgcrypto` | Cryptographic functions |
+| `pg_stat_statements` | Query performance stats |
+
+## 📊 Advanced JSONB Operations
+
+<DotnetCodePreview
+  title="JSONB Power Features"
+  code={`-- Update specific JSON fields
+UPDATE products
+SET attributes = jsonb_set(
+    attributes, 
+    '{specs,ram}', 
+    '32'::jsonb
+)
+WHERE id = 1;
+
+-- Remove a key
+UPDATE products
+SET attributes = attributes - 'unwanted_key';
+
+-- Add to nested array
+UPDATE products
+SET attributes = jsonb_set(
+    attributes,
+    '{tags}',
+    COALESCE(attributes->'tags', '[]'::jsonb) || '"new-tag"'::jsonb
+);
+
+-- JSONB aggregation
+SELECT jsonb_agg(jsonb_build_object(
+    'id', id,
+    'name', name,
+    'total', amount
+)) AS orders_json
+FROM orders
+WHERE user_id = 42;
+
+-- Path queries
+SELECT * FROM products
+WHERE attributes @? '$.specs.ram ? (@ > 16)';`}
+  steps={[
+    {
+      lineNumbers: [3, 4, 5, 6, 7],
+      highlight: "jsonb_set",
+      explanation: "Updates a specific path without replacing the whole object"
+    },
+    {
+      lineNumbers: [12],
+      highlight: "- operator",
+      explanation: "Removes a key from JSONB"
+    },
+    {
+      lineNumbers: [22, 23, 24, 25, 26, 27],
+      highlight: "jsonb_agg",
+      explanation: "Aggregates rows into a JSON array"
+    },
+    {
+      lineNumbers: [31],
+      highlight: "@? path query",
+      explanation: "SQL/JSON path language for complex queries"
+    }
+  ]}
+/>
+
+## 🔄 Table Partitioning
+
+For large tables, partitioning dramatically improves performance:
+
+<DotnetCodePreview
+  title="Declarative Partitioning"
+  code={`-- Create partitioned table
+CREATE TABLE events (
+    id SERIAL,
+    event_type TEXT NOT NULL,
+    payload JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+) PARTITION BY RANGE (created_at);
+
+-- Create partitions
+CREATE TABLE events_2024_q1 PARTITION OF events
+    FOR VALUES FROM ('2024-01-01') TO ('2024-04-01');
+
+CREATE TABLE events_2024_q2 PARTITION OF events
+    FOR VALUES FROM ('2024-04-01') TO ('2024-07-01');
+
+-- Automatic partition creation (pg_partman extension)
+-- Or use templates:
+CREATE TABLE events_default PARTITION OF events DEFAULT;
+
+-- Query hits only relevant partitions
+EXPLAIN ANALYZE
+SELECT * FROM events
+WHERE created_at >= '2024-02-01' AND created_at < '2024-03-01';`}
+  steps={[
+    {
+      lineNumbers: [7],
+      highlight: "PARTITION BY RANGE",
+      explanation: "Declares this as a partitioned table"
+    },
+    {
+      lineNumbers: [10, 11, 13, 14],
+      highlight: "Child partitions",
+      explanation: "Each partition handles a date range"
+    },
+    {
+      lineNumbers: [18],
+      highlight: "DEFAULT partition",
+      explanation: "Catches data that doesn't fit other partitions"
+    },
+    {
+      lineNumbers: [21, 22, 23],
+      highlight: "Partition pruning",
+      explanation: "PostgreSQL only scans partitions matching the WHERE clause"
+    }
+  ]}
+/>
+
+### Partition Types
+
+| Type | Use Case | Example |
+|:-----|:---------|:--------|
+| RANGE | Time-based data | `PARTITION BY RANGE (date)` |
+| LIST | Categories | `PARTITION BY LIST (region)` |
+| HASH | Even distribution | `PARTITION BY HASH (id)` |
+
+## 🔒 Row-Level Security in PostgreSQL
+
+<DotnetCodePreview
+  title="Row-Level Security (RLS)"
+  code={`-- Enable RLS on table
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+
+-- Create policy for viewing own documents
+CREATE POLICY documents_owner_policy ON documents
+    FOR ALL
+    TO authenticated_users
+    USING (owner_id = current_setting('app.user_id')::INTEGER);
+
+-- Create policy for admins (see everything)
+CREATE POLICY documents_admin_policy ON documents
+    FOR ALL
+    TO admin_users
+    USING (true);
+
+-- Set user context in your app
+SET app.user_id = '42';
+
+-- Now queries are filtered automatically
+SELECT * FROM documents;  -- Only sees documents where owner_id = 42`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "ENABLE RLS",
+      explanation: "Activates row-level security on the table"
+    },
+    {
+      lineNumbers: [5, 6, 7, 8],
+      highlight: "USING clause",
+      explanation: "The condition that filters rows"
+    },
+    {
+      lineNumbers: [16],
+      highlight: "SET context",
+      explanation: "App sets this per-connection/transaction"
+    }
+  ]}
+/>
+
+## ⚡ Performance & Monitoring
+
+### Query Statistics
+
+```sql
+-- Enable pg_stat_statements (requires restart)
+CREATE EXTENSION pg_stat_statements;
+
+-- Find slowest queries
+SELECT 
+    substring(query, 1, 100) AS query,
+    calls,
+    mean_exec_time::decimal(10,2) AS avg_ms,
+    total_exec_time::decimal(10,2) AS total_ms,
+    rows
+FROM pg_stat_statements
+ORDER BY mean_exec_time DESC
+LIMIT 20;
+
+-- Find missing indexes
+SELECT
+    schemaname,
+    tablename,
+    seq_scan,
+    seq_tup_read,
+    idx_scan,
+    seq_tup_read / nullif(seq_scan, 0) AS avg_rows_per_scan
+FROM pg_stat_user_tables
+WHERE seq_scan > 100
+ORDER BY seq_tup_read DESC;
+```
+
+### Connection Pooling with PgBouncer
+
+```ini
+# pgbouncer.ini
+[databases]
+mydb = host=localhost dbname=mydb
+
+[pgbouncer]
+pool_mode = transaction
+max_client_conn = 1000
+default_pool_size = 50
+```
+
+## 🔌 Advanced .NET Integration
+
+<DotnetCodePreview
+  title="PostgreSQL with EF Core"
+  code={`// Program.cs configuration
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(3);
+        npgsqlOptions.CommandTimeout(60);
+        npgsqlOptions.UseNetTopologySuite(); // For PostGIS
+    })
+    .UseSnakeCaseNamingConvention()
+);
+
+// Entity with JSONB
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    
+    [Column(TypeName = "jsonb")]
+    public JsonElement Attributes { get; set; }
+}
+
+// Entity with Array
+public class Article
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public List<string> Tags { get; set; } = new();
+}
+
+// Query JSONB
+var products = await context.Products
+    .Where(p => EF.Functions.JsonContains(
+        p.Attributes, 
+        @"{""brand"": ""Apple""}"
+    ))
+    .ToListAsync();`}
+  steps={[
+    {
+      lineNumbers: [8],
+      highlight: "Snake case",
+      explanation: "Matches PostgreSQL naming conventions automatically"
+    },
+    {
+      lineNumbers: [17],
+      highlight: "TypeName jsonb",
+      explanation: "Maps C# object to PostgreSQL JSONB"
+    },
+    {
+      lineNumbers: [25],
+      highlight: "List maps to array",
+      explanation: "EF Core automatically maps List<T> to PostgreSQL arrays"
+    },
+    {
+      lineNumbers: [29, 30, 31, 32],
+      highlight: "JsonContains",
+      explanation: "Translates to @> operator in PostgreSQL"
+    }
+  ]}
+/>
+
+<PostgresqlExplorer mode="advanced" />
+
+## PostgreSQL Best Practices
+
+| Area | Recommendation |
+|:-----|:---------------|
+| JSONB vs Columns | Use JSONB for flexible data, columns for frequently queried fields |
+| Partitioning | Add when tables exceed millions of rows |
+| Indexes | Use GIN for JSONB/arrays, GiST for ranges/geometry |
+| Connections | Use PgBouncer for high-concurrency apps |
+| Monitoring | Enable pg_stat_statements in production |
+
+<ProgressCheckpoint section="unique-features" xpReward={75} />

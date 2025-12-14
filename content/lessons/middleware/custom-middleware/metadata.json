@@ -1,0 +1,28 @@
+{
+  "id": "custom-middleware",
+  "title": "Custom Middleware",
+  "description": "Learn to create your own middleware components for specialized request processing in ASP.NET Core.",
+  "milestone": "middleware",
+  "order": 3,
+  "sections": [
+    "inline-middleware",
+    "convention-middleware",
+    "factory-middleware"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 18,
+      "xpReward": 35
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 32,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["builtin-middleware"],
+  "tags": ["middleware", "custom", "imiddleware", "aspnet-core", "dotnet"]
+}

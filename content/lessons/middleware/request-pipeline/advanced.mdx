@@ -1,0 +1,261 @@
+# Deep Dive: Request Pipeline Architecture
+
+At its core, the ASP.NET Core request pipeline is a chain of **request delegates** built using the **Chain of Responsibility** pattern. Understanding the underlying architecture helps you write more efficient middleware and debug complex pipeline issues.
+
+## The RequestDelegate
+
+Every middleware ultimately works with a `RequestDelegate`:
+
+```csharp
+public delegate Task RequestDelegate(HttpContext context);
+```
+
+This is simply a function that takes an `HttpContext` and returns a `Task`. The entire pipeline is composed of these delegates chained together.
+
+## How IApplicationBuilder Works
+
+The `IApplicationBuilder` maintains a list of middleware and builds the pipeline:
+
+```csharp
+public interface IApplicationBuilder
+{
+    IApplicationBuilder Use(Func<RequestDelegate, RequestDelegate> middleware);
+    RequestDelegate Build();
+}
+```
+
+Each call to `Use()` adds a **wrapper function** that receives the next delegate and returns a new delegate:
+
+```csharp
+// Simplified internal implementation
+public class ApplicationBuilder : IApplicationBuilder
+{
+    private readonly List<Func<RequestDelegate, RequestDelegate>> _components = new();
+    
+    public IApplicationBuilder Use(Func<RequestDelegate, RequestDelegate> middleware)
+    {
+        _components.Add(middleware);
+        return this;
+    }
+    
+    public RequestDelegate Build()
+    {
+        RequestDelegate app = context =>
+        {
+            // Default 404 if nothing handles the request
+            context.Response.StatusCode = 404;
+            return Task.CompletedTask;
+        };
+        
+        // Build the chain in REVERSE order
+        for (var i = _components.Count - 1; i >= 0; i--)
+        {
+            app = _components[i](app);
+        }
+        
+        return app;
+    }
+}
+```
+
+<InfoBox type="important">
+  **Key Insight:** The chain is built in **reverse order**. The first middleware you add wraps all subsequent middleware.
+</InfoBox>
+
+## Advanced Pipeline Visualization
+
+<MiddlewarePipelineSimulator mode="advanced" />
+
+## Advanced Branching with MapWhen
+
+For complex routing decisions, use `MapWhen` with a predicate:
+
+```csharp
+// Branch based on ANY condition, not just path
+app.MapWhen(
+    context => context.Request.Headers.ContainsKey("X-Custom-Header"),
+    customApp =>
+    {
+        customApp.Use(async (ctx, next) =>
+        {
+            // Special handling for requests with custom header
+            ctx.Response.Headers.Add("X-Handled-By", "CustomBranch");
+            await next();
+        });
+        customApp.MapControllers();
+    }
+);
+```
+
+### UseWhen — Non-Branching Conditional Middleware
+
+Unlike `MapWhen`, `UseWhen` **rejoins** the main pipeline:
+
+```csharp
+// Process additional logic for certain requests, then continue
+app.UseWhen(
+    context => context.Request.Path.StartsWithSegments("/api"),
+    apiApp =>
+    {
+        // This runs for /api/* requests
+        apiApp.UseMiddleware<ApiLoggingMiddleware>();
+        // Then continues to the main pipeline!
+    }
+);
+
+// This runs for ALL requests (including /api/*)
+app.UseAuthentication();
+app.UseAuthorization();
+```
+
+## Request Features Architecture
+
+`HttpContext` provides access to **features**—replaceable components:
+
+```csharp
+app.Use(async (context, next) =>
+{
+    // Access low-level request features
+    var requestFeature = context.Features.Get<IHttpRequestFeature>();
+    var connectionFeature = context.Features.Get<IHttpConnectionFeature>();
+    
+    // You can even replace features!
+    var originalBody = context.Response.Body;
+    using var newBody = new MemoryStream();
+    context.Response.Body = newBody;
+    
+    await next();
+    
+    // Read what was written
+    newBody.Seek(0, SeekOrigin.Begin);
+    var responseText = await new StreamReader(newBody).ReadToEndAsync();
+    
+    // Write to original stream
+    newBody.Seek(0, SeekOrigin.Begin);
+    await newBody.CopyToAsync(originalBody);
+    context.Response.Body = originalBody;
+});
+```
+
+## Endpoint Routing Deep Dive
+
+Modern ASP.NET Core uses **endpoint routing** which separates route matching from execution:
+
+```csharp
+app.UseRouting();  // Matches route, sets endpoint
+
+// Middleware here can inspect the selected endpoint!
+app.Use(async (context, next) =>
+{
+    var endpoint = context.GetEndpoint();
+    if (endpoint != null)
+    {
+        // Access endpoint metadata
+        var authorize = endpoint.Metadata.GetMetadata<AuthorizeAttribute>();
+        Console.WriteLine($"Endpoint: {endpoint.DisplayName}");
+    }
+    await next();
+});
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.UseEndpoints(endpoints =>  // Executes the matched endpoint
+{
+    endpoints.MapControllers();
+});
+```
+
+<InfoBox type="tip">
+  After `UseRouting()`, you can access `context.GetEndpoint()` to inspect the matched endpoint and its metadata before authorization runs!
+</InfoBox>
+
+## Performance Considerations
+
+### 1. Avoid Async State Machine Overhead
+
+For simple synchronous logic, avoid unnecessary `async`:
+
+```csharp
+// ❌ Unnecessary async overhead
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Add("X-Custom", "value");
+    await next();
+});
+
+// ✅ More efficient for sync work
+app.Use((context, next) =>
+{
+    context.Response.Headers.Add("X-Custom", "value");
+    return next();  // Returns the Task directly
+});
+```
+
+### 2. Minimize Allocations
+
+```csharp
+// ❌ Allocates on every request
+app.Use(async (context, next) =>
+{
+    var message = $"Request at {DateTime.Now}";  // String allocation
+    Console.WriteLine(message);
+    await next();
+});
+
+// ✅ Use structured logging, avoid string interpolation
+app.Use(async (context, next) =>
+{
+    _logger.LogInformation("Request at {Time}", DateTime.Now);
+    await next();
+});
+```
+
+### 3. Early Short-Circuiting
+
+Put frequently short-circuiting middleware early:
+
+```csharp
+// ✅ Static files first - short-circuits ~80% of requests on content sites
+app.UseStaticFiles();
+
+// Heavy middleware runs less often
+app.UseAuthentication();
+app.UseAuthorization();
+```
+
+## Testing Middleware in Isolation
+
+Use `TestServer` for integration testing:
+
+```csharp
+[Fact]
+public async Task Middleware_AddsCustomHeader()
+{
+    var builder = new WebHostBuilder()
+        .ConfigureServices(services => { })
+        .Configure(app =>
+        {
+            app.UseMiddleware<CustomHeaderMiddleware>();
+            app.Run(async ctx => await ctx.Response.WriteAsync("OK"));
+        });
+    
+    using var server = new TestServer(builder);
+    using var client = server.CreateClient();
+    
+    var response = await client.GetAsync("/");
+    
+    Assert.True(response.Headers.Contains("X-Custom-Header"));
+}
+```
+
+## Key Takeaways
+
+- 🔗 **Pipeline = Chain of Responsibility** built from `RequestDelegate`s
+- 🔄 **Chain built in reverse** — first middleware wraps all others
+- 🌿 **MapWhen/UseWhen** for complex conditional branching
+- 📦 **Features** provide replaceable HttpContext components
+- 🛤️ **Endpoint Routing** separates matching from execution
+- ⚡ **Performance matters** — minimize allocations, avoid unnecessary async
+
+<ProgressCheckpoint section="pipeline-order" xpReward={60} />

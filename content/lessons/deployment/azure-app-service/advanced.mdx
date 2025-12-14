@@ -1,0 +1,246 @@
+# Azure App Service - Production Configuration & Security
+
+Let's dive into enterprise-grade patterns for Azure App Service: security hardening, networking, monitoring, and infrastructure-as-code.
+
+## Production Architecture
+
+<AzureAppServiceExplorer mode="advanced" />
+
+## Managed Identity: No More Connection Strings!
+
+Instead of storing credentials in config, use Azure Managed Identity:
+
+<DotnetCodePreview
+  title="Using Managed Identity"
+  code={`// In Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// Add Azure Key Vault configuration
+builder.Configuration.AddAzureKeyVault(
+    new Uri("https://my-keyvault.vault.azure.net/"),
+    new DefaultAzureCredential()
+);
+
+// Use Managed Identity for SQL
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    var conn = new SqlConnection(
+        builder.Configuration["ConnectionStrings:Default"]
+    );
+    // Token-based auth instead of password!
+    conn.AccessToken = new DefaultAzureCredential()
+        .GetToken(new TokenRequestContext(
+            new[] { "https://database.windows.net/.default" }
+        )).Token;
+    options.UseSqlServer(conn);
+});`}
+  steps={[
+    {
+      lineNumbers: [5, 6, 7],
+      highlight: "Key Vault Integration",
+      explanation: "Pull secrets from Key Vault at runtime - no secrets in code or config files"
+    },
+    {
+      lineNumbers: [15, 16, 17, 18],
+      highlight: "Database Token Auth",
+      explanation: "App Service's identity authenticates to SQL - no password needed!"
+    }
+  ]}
+/>
+
+## Setting Up Managed Identity
+
+```bash
+# Enable system-assigned identity
+az webapp identity assign \
+    --name my-dotnet-app \
+    --resource-group myapp-rg
+
+# Grant access to Key Vault
+az keyvault set-policy \
+    --name my-keyvault \
+    --object-id <identity-principal-id> \
+    --secret-permissions get list
+
+# Grant access to SQL Database
+az sql server ad-admin create \
+    --server my-sql-server \
+    --resource-group myapp-rg \
+    --display-name "App Service" \
+    --object-id <identity-principal-id>
+```
+
+## VNet Integration & Private Endpoints
+
+For enterprise security, keep everything inside a virtual network:
+
+```
+┌─────────────────────────────────────────────────┐
+│ Virtual Network                                  │
+│  ┌─────────────┐    ┌───────────────────────┐  │
+│  │ App Service │───→│ Private Endpoint      │  │
+│  │ (VNet Integ)│    │ ├── SQL Database      │  │
+│  └─────────────┘    │ ├── Key Vault        │  │
+│         │           │ ├── Storage           │  │
+│         ▼           └───────────────────────┘  │
+│  ┌─────────────┐                               │
+│  │ NAT Gateway │  (All outbound through VNet)  │
+│  └─────────────┘                               │
+└─────────────────────────────────────────────────┘
+```
+
+## Infrastructure as Code with Bicep
+
+<DotnetCodePreview
+  title="app-service.bicep"
+  code={`@description('The name of the App Service app')
+param appName string
+
+@description('The SKU of the App Service plan')
+param sku string = 'P1v3'
+
+resource appServicePlan 'Microsoft.Web/serverfarms@2022-03-01' = {
+  name: '\${appName}-plan'
+  location: resourceGroup().location
+  sku: {
+    name: sku
+  }
+  properties: {
+    reserved: true // Linux
+  }
+}
+
+resource webApp 'Microsoft.Web/sites@2022-03-01' = {
+  name: appName
+  location: resourceGroup().location
+  properties: {
+    serverFarmId: appServicePlan.id
+    httpsOnly: true
+    siteConfig: {
+      linuxFxVersion: 'DOTNETCORE|8.0'
+      minTlsVersion: '1.2'
+      http20Enabled: true
+      healthCheckPath: '/health'
+    }
+  }
+  identity: {
+    type: 'SystemAssigned'
+  }
+}
+
+resource stagingSlot 'Microsoft.Web/sites/slots@2022-03-01' = {
+  parent: webApp
+  name: 'staging'
+  location: resourceGroup().location
+  properties: {
+    serverFarmId: appServicePlan.id
+  }
+}`}
+  steps={[
+    {
+      lineNumbers: [23, 24],
+      highlight: "Security Settings",
+      explanation: "HTTPS only + TLS 1.2 minimum - basic security hardening"
+    },
+    {
+      lineNumbers: [27],
+      highlight: "Health Check",
+      explanation: "Azure monitors this endpoint - unhealthy instances are replaced"
+    },
+    {
+      lineNumbers: [30, 31, 32],
+      highlight: "Managed Identity",
+      explanation: "Automatically creates identity for passwordless auth"
+    }
+  ]}
+/>
+
+## Application Insights Integration
+
+Full observability for your production app:
+
+```csharp
+// Program.cs
+builder.Services.AddApplicationInsightsTelemetry();
+
+// Custom telemetry
+app.Use(async (context, next) =>
+{
+    var telemetry = context.RequestServices
+        .GetService<TelemetryClient>();
+    
+    telemetry?.TrackEvent("PageView", new Dictionary<string, string>
+    {
+        ["Path"] = context.Request.Path,
+        ["User"] = context.User?.Identity?.Name ?? "anonymous"
+    });
+    
+    await next();
+});
+```
+
+## Health Checks for Production
+
+```csharp
+builder.Services.AddHealthChecks()
+    .AddSqlServer(connectionString, name: "database")
+    .AddAzureBlobStorage(storageConnString, name: "storage")
+    .AddRedis(redisConnString, name: "cache");
+
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
+```
+
+## Advanced Deployment Patterns
+
+### Blue-Green with Traffic Routing
+
+```bash
+# Gradually shift traffic to staging
+az webapp traffic-routing set \
+    --name my-dotnet-app \
+    --resource-group myapp-rg \
+    --distribution staging=10
+
+# Increase if successful
+az webapp traffic-routing set \
+    --distribution staging=50
+
+# Full swap when confident
+az webapp deployment slot swap \
+    --slot staging
+```
+
+### Slot Warm-Up
+
+```xml
+<!-- web.config -->
+<applicationInitialization>
+    <add initializationPage="/health" />
+    <add initializationPage="/api/warmup" />
+</applicationInitialization>
+```
+
+## Cost Optimization
+
+| Strategy | Impact |
+|:---------|:-------|
+| Use Linux over Windows | ~30% cheaper |
+| Reserved instances (1-3 year) | Up to 65% savings |
+| Auto-scale down at night | Significant savings |
+| Use Premium v3 over v2 | Better value per compute |
+| Shared App Service Plans | Multiple apps, one cost |
+
+## Summary
+
+| Topic | Key Takeaway |
+|:------|:-------------|
+| **Managed Identity** | No secrets in code |
+| **VNet Integration** | Private networking |
+| **Health Checks** | Auto-healing |
+| **Bicep/ARM** | Infrastructure as code |
+| **Traffic Routing** | Gradual rollouts |
+
+<ProgressCheckpoint section="configuration" xpReward={75} />

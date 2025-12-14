@@ -1,0 +1,345 @@
+# JWT Authentication
+
+Production-grade JWT implementation with asymmetric keys, revocation, and performance optimization.
+
+## Asymmetric Key Signing (RS256)
+
+Use RSA for distributed systems where multiple services validate tokens:
+
+```csharp
+// Generate RSA keys (do this once, store securely)
+using var rsa = RSA.Create(2048);
+var privateKey = rsa.ExportRSAPrivateKey();
+var publicKey = rsa.ExportRSAPublicKey();
+
+// Configure with RSA keys
+builder.Services.AddAuthentication()
+    .AddJwtBearer(options =>
+    {
+        var rsa = RSA.Create();
+        rsa.ImportRSAPublicKey(
+            Convert.FromBase64String(Configuration["Jwt:PublicKey"]), 
+            out _
+        );
+        
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new RsaSecurityKey(rsa),
+            ValidateIssuer = true,
+            ValidIssuer = Configuration["Jwt:Issuer"],
+            ValidateAudience = true,
+            ValidAudience = Configuration["Jwt:Audience"],
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+```
+
+Generate tokens with the private key:
+
+```csharp
+public string GenerateToken(ApplicationUser user, IList<string> roles)
+{
+    using var rsa = RSA.Create();
+    rsa.ImportRSAPrivateKey(
+        Convert.FromBase64String(_configuration["Jwt:PrivateKey"]), 
+        out _
+    );
+    
+    var signingCredentials = new SigningCredentials(
+        new RsaSecurityKey(rsa),
+        SecurityAlgorithms.RsaSha256
+    );
+    
+    var claims = BuildClaims(user, roles);
+    
+    var token = new JwtSecurityToken(
+        issuer: _configuration["Jwt:Issuer"],
+        audience: _configuration["Jwt:Audience"],
+        claims: claims,
+        expires: DateTime.UtcNow.AddMinutes(15),  // Short-lived
+        signingCredentials: signingCredentials
+    );
+    
+    return new JwtSecurityTokenHandler().WriteToken(token);
+}
+```
+
+## Key Rotation
+
+Implement automatic key rotation:
+
+```csharp
+public class KeyRotationService : IKeyRotationService
+{
+    private readonly IKeyStore _keyStore;
+    
+    public async Task<SigningCredentials> GetCurrentSigningKeyAsync()
+    {
+        var key = await _keyStore.GetCurrentKeyAsync();
+        return new SigningCredentials(
+            new RsaSecurityKey(key.PrivateKey),
+            SecurityAlgorithms.RsaSha256
+        );
+    }
+    
+    public async Task<IEnumerable<SecurityKey>> GetValidationKeysAsync()
+    {
+        // Return current + previous keys for grace period
+        var keys = await _keyStore.GetActiveKeysAsync();
+        return keys.Select(k => new RsaSecurityKey(k.PublicKey));
+    }
+    
+    public async Task RotateKeysAsync()
+    {
+        // Generate new key pair
+        using var rsa = RSA.Create(2048);
+        
+        var newKey = new KeyEntry
+        {
+            KeyId = Guid.NewGuid().ToString(),
+            PublicKey = rsa.ExportRSAPublicKey(),
+            PrivateKey = rsa.ExportRSAPrivateKey(),
+            CreatedAt = DateTime.UtcNow,
+            ExpiresAt = DateTime.UtcNow.AddDays(30)
+        };
+        
+        await _keyStore.AddKeyAsync(newKey);
+        
+        // Deactivate old keys after grace period
+        await _keyStore.DeactivateExpiredKeysAsync();
+    }
+}
+```
+
+Configure with multiple validation keys:
+
+```csharp
+services.AddAuthentication()
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            IssuerSigningKeyResolver = (token, securityToken, kid, parameters) =>
+            {
+                var keyService = serviceProvider.GetRequiredService<IKeyRotationService>();
+                return keyService.GetValidationKeysAsync().GetAwaiter().GetResult();
+            }
+        };
+    });
+```
+
+## Token Revocation Strategies
+
+### Approach 1: Token Blacklist
+
+```csharp
+public class TokenBlacklistMiddleware
+{
+    private readonly RequestDelegate _next;
+    
+    public async Task InvokeAsync(HttpContext context, ITokenBlacklist blacklist)
+    {
+        var token = context.Request.Headers["Authorization"]
+            .FirstOrDefault()?.Split(" ").Last();
+        
+        if (token != null && await blacklist.IsRevokedAsync(token))
+        {
+            context.Response.StatusCode = 401;
+            await context.Response.WriteAsJsonAsync(new { error = "Token revoked" });
+            return;
+        }
+        
+        await _next(context);
+    }
+}
+
+public class RedisTokenBlacklist : ITokenBlacklist
+{
+    private readonly IConnectionMultiplexer _redis;
+    
+    public async Task RevokeTokenAsync(string token, TimeSpan ttl)
+    {
+        var db = _redis.GetDatabase();
+        var jti = GetJtiFromToken(token);
+        await db.StringSetAsync($"revoked:{jti}", "1", ttl);
+    }
+    
+    public async Task<bool> IsRevokedAsync(string token)
+    {
+        var db = _redis.GetDatabase();
+        var jti = GetJtiFromToken(token);
+        return await db.KeyExistsAsync($"revoked:{jti}");
+    }
+}
+```
+
+### Approach 2: Security Stamp Validation
+
+```csharp
+options.Events = new JwtBearerEvents
+{
+    OnTokenValidated = async context =>
+    {
+        var userManager = context.HttpContext.RequestServices
+            .GetRequiredService<UserManager<ApplicationUser>>();
+        
+        var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+        var tokenStamp = context.Principal?.FindFirstValue("SecurityStamp");
+        
+        var user = await userManager.FindByIdAsync(userId);
+        
+        if (user == null || user.SecurityStamp != tokenStamp)
+        {
+            context.Fail("Token invalidated");
+        }
+    }
+};
+```
+
+## Performance Optimization
+
+### Token Caching
+
+```csharp
+public class CachedJwtService : IJwtService
+{
+    private readonly IMemoryCache _cache;
+    private readonly IJwtService _inner;
+    
+    public ClaimsPrincipal? ValidateToken(string token)
+    {
+        var cacheKey = $"token:{GetTokenHash(token)}";
+        
+        if (_cache.TryGetValue(cacheKey, out ClaimsPrincipal cached))
+            return cached;
+        
+        var principal = _inner.ValidateToken(token);
+        
+        if (principal != null)
+        {
+            var expClaim = principal.FindFirst(JwtRegisteredClaimNames.Exp);
+            if (expClaim != null)
+            {
+                var expiry = DateTimeOffset.FromUnixTimeSeconds(
+                    long.Parse(expClaim.Value)
+                );
+                var ttl = expiry - DateTimeOffset.UtcNow;
+                
+                _cache.Set(cacheKey, principal, ttl);
+            }
+        }
+        
+        return principal;
+    }
+}
+```
+
+### Minimal Claims
+
+Keep tokens small for performance:
+
+```csharp
+var claims = new List<Claim>
+{
+    // Essential only
+    new Claim(JwtRegisteredClaimNames.Sub, user.Id),
+    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+    new Claim("role", string.Join(",", roles)),  // Compact roles
+    new Claim("stamp", user.SecurityStamp[..8])   // Short stamp
+};
+```
+
+## Security Best Practices
+
+### Token Configuration Checklist
+
+```csharp
+options.TokenValidationParameters = new TokenValidationParameters
+{
+    // ALWAYS validate these
+    ValidateIssuerSigningKey = true,
+    ValidateIssuer = true,
+    ValidateAudience = true,
+    ValidateLifetime = true,
+    
+    // Prevent clock drift attacks
+    ClockSkew = TimeSpan.Zero,
+    
+    // Require expiration claim
+    RequireExpirationTime = true,
+    
+    // Prevent algorithm confusion attacks
+    ValidAlgorithms = new[] { SecurityAlgorithms.RsaSha256 }
+};
+```
+
+### Secure Logout
+
+```csharp
+[HttpPost("logout")]
+[Authorize]
+public async Task<IActionResult> Logout()
+{
+    var token = HttpContext.Request.Headers["Authorization"]
+        .FirstOrDefault()?.Split(" ").Last();
+    
+    // Get token expiration
+    var handler = new JwtSecurityTokenHandler();
+    var jwt = handler.ReadJwtToken(token);
+    var expiry = jwt.ValidTo - DateTime.UtcNow;
+    
+    // Blacklist until expiration
+    await _tokenBlacklist.RevokeTokenAsync(token, expiry);
+    
+    // Revoke all refresh tokens
+    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+    await _tokenRepository.RevokeAllRefreshTokensAsync(userId);
+    
+    // Update security stamp to invalidate ALL tokens
+    var user = await _userManager.FindByIdAsync(userId);
+    await _userManager.UpdateSecurityStampAsync(user);
+    
+    return NoContent();
+}
+```
+
+### Fingerprinting
+
+Bind tokens to client fingerprint:
+
+```csharp
+public string GenerateToken(ApplicationUser user, string fingerprint)
+{
+    var claims = new List<Claim>
+    {
+        // ... other claims
+        new Claim("fpt", ComputeHash(fingerprint))  // Fingerprint hash
+    };
+    
+    // ... generate token
+}
+
+// Validation event
+OnTokenValidated = async context =>
+{
+    var fptClaim = context.Principal?.FindFirst("fpt");
+    var currentFingerprint = context.HttpContext.Request.Headers["X-Fingerprint"];
+    
+    if (fptClaim?.Value != ComputeHash(currentFingerprint))
+    {
+        context.Fail("Token fingerprint mismatch");
+    }
+};
+```
+
+## Key Takeaways
+
+- 🔐 **RS256** enables distributed token validation without sharing secrets
+- 🔄 **Key rotation** reduces blast radius of key compromise
+- 🚫 **Revocation** requires blacklists or security stamps
+- ⚡ **Caching** improves validation performance
+- 🔒 **Fingerprinting** binds tokens to specific clients
+
+<ProgressCheckpoint section="jwt-security" xpReward={75} />

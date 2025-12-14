@@ -1,0 +1,162 @@
+# API Gateway Pattern
+
+An API Gateway acts as a reverse proxy that routes requests from clients to services, handling cross-cutting concerns like authentication, rate limiting, and request aggregation.
+
+## Interactive Gateway Visualization
+
+<ApiGatewaySimulator mode="intermediate" />
+
+## Gateway Responsibilities
+
+### 1. Request Routing
+
+The gateway routes incoming requests to appropriate backend services:
+
+```
+Client Request                    Gateway                    Services
+─────────────────────────────────────────────────────────────────────
+GET /api/products/123      →     Route matching      →     Catalog Service
+POST /api/orders           →     Route matching      →     Order Service
+GET /api/users/me          →     Route matching      →     User Service
+```
+
+### 2. Authentication & Authorization
+
+Centralized security handling:
+
+```
+┌─────────────┐
+│   Client    │
+│  (with JWT) │
+└──────┬──────┘
+       │
+       ▼
+┌──────────────────────────────────────┐
+│            API Gateway               │
+│  ┌────────────────────────────────┐  │
+│  │   1. Extract JWT token         │  │
+│  │   2. Validate signature        │  │
+│  │   3. Check expiration          │  │
+│  │   4. Verify permissions        │  │
+│  └────────────────────────────────┘  │
+└──────────────────┬───────────────────┘
+                   │ (if valid)
+                   ▼
+          ┌─────────────────┐
+          │    Microservice │
+          │  (trusts gateway)│
+          └─────────────────┘
+```
+
+### 3. Rate Limiting
+
+Protect services from being overwhelmed:
+
+| Strategy | Description | Use Case |
+| :--- | :--- | :--- |
+| Fixed Window | X requests per time window | Simple rate limiting |
+| Sliding Window | Smooth rate limiting | Avoid burst at window edges |
+| Token Bucket | Allows bursts up to limit | Handling traffic spikes |
+| Leaky Bucket | Processes at fixed rate | Consistent throughput |
+
+### 4. Request Aggregation
+
+Combine multiple service calls into one:
+
+```
+Client Request: GET /api/dashboard
+
+Gateway internally calls:
+  → User Service:    GET /api/users/123
+  → Order Service:   GET /api/orders?userId=123&limit=5
+  → Catalog Service: GET /api/recommendations/123
+
+Gateway Response: {
+  "user": { ... },
+  "recentOrders": [ ... ],
+  "recommendations": [ ... ]
+}
+```
+
+## BFF Pattern (Backend for Frontend)
+
+Different clients have different needs. The BFF pattern creates specialized gateways:
+
+```
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│  Mobile App │    │   Web App   │    │  Admin App  │
+└──────┬──────┘    └──────┬──────┘    └──────┬──────┘
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌─────────────┐    ┌─────────────┐    ┌─────────────┐
+│ Mobile BFF  │    │   Web BFF   │    │  Admin BFF  │
+│  (compact)  │    │   (rich)    │    │  (full)     │
+└─────────────┘    └─────────────┘    └─────────────┘
+       │                  │                  │
+       └──────────────────┼──────────────────┘
+                          ▼
+            ┌───────────────────────┐
+            │     Microservices     │
+            └───────────────────────┘
+```
+
+**Benefits:**
+- Mobile BFF returns minimal data (bandwidth)
+- Web BFF returns rich data (better UX)
+- Each BFF can be maintained by its frontend team
+
+## Common Gateway Features
+
+| Feature | Description |
+| :--- | :--- |
+| **SSL Termination** | Gateway handles HTTPS, internal traffic is HTTP |
+| **Load Balancing** | Distributes requests across service instances |
+| **Caching** | Reduces calls to backend services |
+| **Request/Response Transform** | Modify headers, body format |
+| **Circuit Breaker** | Prevents cascading failures |
+| **Logging & Monitoring** | Centralized observability |
+
+## Gateway Technologies Comparison
+
+| Gateway | Type | Best For |
+| :--- | :--- | :--- |
+| **Ocelot** | .NET Library | .NET microservices |
+| **YARP** | .NET Library | Modern .NET reverse proxy |
+| **Kong** | Standalone | Platform-agnostic |
+| **AWS API Gateway** | Cloud Service | Serverless/AWS |
+| **Azure API Management** | Cloud Service | Enterprise/Azure |
+| **NGINX** | Reverse Proxy | High performance |
+
+## Gateway Anti-Patterns
+
+### ❌ Overloaded Gateway
+Don't put business logic in the gateway!
+
+```
+// BAD - Business logic in gateway
+if (order.Total > 1000) {
+    applyDiscount(order, 0.1);
+}
+```
+
+### ❌ Single Point of Failure
+Don't run just one gateway instance!
+
+```
+// GOOD - Multiple gateway instances behind load balancer
+Load Balancer
+    ├── Gateway Instance 1
+    ├── Gateway Instance 2
+    └── Gateway Instance 3
+```
+
+## Key Takeaways
+
+- 🚪 Gateway is the **single entry point** for external clients
+- 🔐 Centralizes **authentication and authorization**
+- 🚦 Handles **rate limiting** to protect services
+- 📦 **BFF Pattern** provides client-specific gateways
+- ⚠️ Don't put **business logic** in the gateway
+- 🔄 Run **multiple instances** for high availability
+
+<ProgressCheckpoint section="ag-gateway-features" xpReward={45} />

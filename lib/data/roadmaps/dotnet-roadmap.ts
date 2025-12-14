@@ -508,6 +508,7 @@ export const dotnetRoadmap: CreateRoadmap = {
         { title: 'Docker for .NET', lessonId: 'docker-dotnet' },
         { title: 'Azure App Service', lessonId: 'azure-app-service' },
         { title: 'Kubernetes Basics', lessonId: 'kubernetes-basics' },
+        { title: '.NET Aspire', lessonId: 'dotnet-aspire' },
       ],
       resources: [
         {
@@ -522,11 +523,17 @@ export const dotnetRoadmap: CreateRoadmap = {
           type: 'documentation',
           description: 'Docker containerization guide',
         },
+        {
+          title: '.NET Aspire Documentation',
+          url: 'https://learn.microsoft.com/en-us/dotnet/aspire/',
+          type: 'documentation',
+          description: 'Official .NET Aspire documentation',
+        },
       ],
-      estimatedMinutes: 240,
+      estimatedMinutes: 300,
       difficulty: 6,
       skillCluster: 'devops',
-      tags: ['deployment', 'docker', 'azure', 'kubernetes'],
+      tags: ['deployment', 'docker', 'azure', 'kubernetes', 'aspire'],
     },
 
     // === ROW 11: ADVANCED TOPICS ===

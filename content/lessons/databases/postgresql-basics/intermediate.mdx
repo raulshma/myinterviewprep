@@ -1,0 +1,274 @@
+# PostgreSQL Basics - Intermediate
+
+Unlock PostgreSQL's unique features that set it apart from other databases!
+
+## 📦 JSONB - The Document Store Inside Postgres
+
+PostgreSQL's JSONB type stores JSON documents with full query capability:
+
+<DotnetCodePreview
+  title="Working with JSONB"
+  code={`-- Create a table with JSONB column
+CREATE TABLE products (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    attributes JSONB DEFAULT '{}'::jsonb
+);
+
+-- Insert with JSON data
+INSERT INTO products (name, attributes) VALUES
+('Laptop', '{"brand": "Dell", "specs": {"ram": 16, "storage": 512}}'),
+('Phone', '{"brand": "Apple", "color": "Blue", "5G": true}');
+
+-- Query JSON fields
+SELECT name, attributes->>'brand' AS brand
+FROM products;
+
+-- Filter by JSON content
+SELECT * FROM products
+WHERE attributes->>'brand' = 'Apple';
+
+-- Check if key exists
+SELECT * FROM products
+WHERE attributes ? 'color';
+
+-- Access nested values
+SELECT name, attributes->'specs'->>'ram' AS ram_gb
+FROM products;`}
+  steps={[
+    {
+      lineNumbers: [5],
+      highlight: "JSONB column",
+      explanation: "JSONB stores binary JSON - faster queries than plain JSON"
+    },
+    {
+      lineNumbers: [13],
+      highlight: "->> operator",
+      explanation: "Gets JSON value as TEXT - great for SELECTs and WHEREs"
+    },
+    {
+      lineNumbers: [21],
+      highlight: "? operator",
+      explanation: "Checks if a key exists - unique to PostgreSQL!"
+    },
+    {
+      lineNumbers: [25],
+      highlight: "Nested access",
+      explanation: "Chain -> and ->> to drill into nested objects"
+    }
+  ]}
+/>
+
+### JSONB Operators Cheat Sheet
+
+| Operator | Purpose | Example |
+|:---------|:--------|:--------|
+| `->` | Get JSON object | `data->'user'` |
+| `->>` | Get value as text | `data->>'name'` |
+| `?` | Key exists? | `data ? 'email'` |
+| `?|` | Any key exists? | `data ?| array['a','b']` |
+| `@>` | Contains? | `data @> '{"active":true}'` |
+| `||` | Merge | `data || '{"new":"val"}'` |
+
+## 📋 Arrays - Store Lists Natively
+
+PostgreSQL supports array columns - no junction table needed for simple lists:
+
+<DotnetCodePreview
+  title="Working with Arrays"
+  code={`-- Create table with array column
+CREATE TABLE articles (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    tags TEXT[] DEFAULT '{}'
+);
+
+-- Insert with array
+INSERT INTO articles (title, tags) VALUES
+('PostgreSQL Tips', ARRAY['database', 'postgres', 'tips']),
+('SQL Basics', '{"sql", "beginner"}');  -- Also valid syntax
+
+-- Query arrays
+SELECT * FROM articles
+WHERE 'postgres' = ANY(tags);
+
+-- Check if contains all
+SELECT * FROM articles
+WHERE tags @> ARRAY['database', 'tips'];
+
+-- Array functions
+SELECT 
+    title,
+    array_length(tags, 1) AS tag_count,
+    array_to_string(tags, ', ') AS tags_csv
+FROM articles;`}
+  steps={[
+    {
+      lineNumbers: [5],
+      highlight: "TEXT[]",
+      explanation: "Array of text values - works with any data type"
+    },
+    {
+      lineNumbers: [14],
+      highlight: "= ANY()",
+      explanation: "Checks if value exists in array"
+    },
+    {
+      lineNumbers: [18],
+      highlight: "@> operator",
+      explanation: "Array contains all specified elements"
+    },
+    {
+      lineNumbers: [22, 23],
+      highlight: "Array functions",
+      explanation: "Built-in functions for array manipulation"
+    }
+  ]}
+/>
+
+## 🔧 Functions and Stored Procedures
+
+PostgreSQL supports multiple languages for functions:
+
+<DotnetCodePreview
+  title="Creating Functions"
+  code={`-- PL/pgSQL function (most common)
+CREATE OR REPLACE FUNCTION get_user_order_total(user_id INTEGER)
+RETURNS NUMERIC AS $$
+DECLARE
+    total NUMERIC;
+BEGIN
+    SELECT COALESCE(SUM(amount), 0) INTO total
+    FROM orders
+    WHERE orders.user_id = get_user_order_total.user_id;
+    
+    RETURN total;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Call it
+SELECT get_user_order_total(42);
+
+-- Table-returning function
+CREATE OR REPLACE FUNCTION get_active_users()
+RETURNS TABLE(id INTEGER, name TEXT, email TEXT) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT users.id, users.name, users.email
+    FROM users
+    WHERE users.is_active = true;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Use like a table
+SELECT * FROM get_active_users();`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Function signature",
+      explanation: "Parameter and return type declaration"
+    },
+    {
+      lineNumbers: [4, 5],
+      highlight: "DECLARE",
+      explanation: "Local variable declarations"
+    },
+    {
+      lineNumbers: [18, 19],
+      highlight: "RETURNS TABLE",
+      explanation: "Returns multiple rows - can be used in FROM clause"
+    }
+  ]}
+/>
+
+## 🔍 Full-Text Search
+
+Built-in search engine capabilities:
+
+<DotnetCodePreview
+  title="Full-Text Search"
+  code={`-- Add search column
+ALTER TABLE articles ADD COLUMN search_vector tsvector;
+
+-- Update with searchable content
+UPDATE articles SET search_vector = 
+    to_tsvector('english', title || ' ' || COALESCE(content, ''));
+
+-- Create GIN index for fast search
+CREATE INDEX idx_articles_search ON articles USING GIN(search_vector);
+
+-- Search!
+SELECT title, ts_rank(search_vector, query) AS rank
+FROM articles, to_tsquery('english', 'postgres & tips') AS query
+WHERE search_vector @@ query
+ORDER BY rank DESC;
+
+-- Highlight matching text
+SELECT ts_headline('english', content, to_tsquery('postgres'))
+FROM articles
+WHERE search_vector @@ to_tsquery('postgres');`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "tsvector",
+      explanation: "Special type that stores preprocessed searchable text"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "GIN index",
+      explanation: "Generalized Inverted Index - perfect for text search"
+    },
+    {
+      lineNumbers: [12, 13],
+      highlight: "@@ operator",
+      explanation: "Matches a tsvector against a tsquery"
+    },
+    {
+      lineNumbers: [17],
+      highlight: "ts_headline",
+      explanation: "Returns text with search terms highlighted"
+    }
+  ]}
+/>
+
+## 🎨 Materialized Views
+
+Cached query results for expensive queries:
+
+```sql
+-- Create materialized view
+CREATE MATERIALIZED VIEW mv_user_stats AS
+SELECT 
+    u.id,
+    u.name,
+    COUNT(o.id) AS order_count,
+    COALESCE(SUM(o.amount), 0) AS total_spent
+FROM users u
+LEFT JOIN orders o ON u.id = o.user_id
+GROUP BY u.id, u.name;
+
+-- Create index on materialized view
+CREATE INDEX ON mv_user_stats(total_spent DESC);
+
+-- Query it (instant!)
+SELECT * FROM mv_user_stats ORDER BY total_spent DESC LIMIT 10;
+
+-- Refresh when data changes
+REFRESH MATERIALIZED VIEW mv_user_stats;
+
+-- Concurrent refresh (no locks)
+REFRESH MATERIALIZED VIEW CONCURRENTLY mv_user_stats;
+```
+
+<PostgresqlExplorer mode="intermediate" />
+
+## Quick Reference
+
+| Feature | Use Case |
+|:--------|:---------|
+| JSONB | Flexible schema, document-like data |
+| Arrays | Simple lists without join tables |
+| Full-Text Search | Search engine features |
+| Materialized Views | Cache expensive queries |
+
+<ProgressCheckpoint section="psql-basics" xpReward={50} />

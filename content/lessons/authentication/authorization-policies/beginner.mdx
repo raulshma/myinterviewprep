@@ -1,0 +1,114 @@
+# Authorization Policies
+
+Time to learn who gets to do what in your app! 🎭
+
+## Authentication vs Authorization
+
+These two words sound similar but mean very different things:
+
+| Authentication 🔐 | Authorization 🎫 |
+|-------------------|------------------|
+| **Who are you?** | **What can you do?** |
+| Verify identity | Check permissions |
+| "You are John" | "John can edit posts" |
+| Login process | Access control |
+
+<InfoBox type="tip">
+  Think of it like a theme park:
+  - **Authentication** = Checking your ticket at the gate (proving who you are)
+  - **Authorization** = Checking your wristband color for each ride (checking what you can access)
+</InfoBox>
+
+## Three Ways to Authorize
+
+<PolicyBuilder mode="beginner" />
+
+### 1. Role-Based Authorization
+
+Like VIP vs Regular tickets:
+
+```csharp
+[Authorize(Roles = "Admin")]
+public IActionResult AdminDashboard()
+{
+    // Only Admins can see this
+}
+
+[Authorize(Roles = "Admin,Manager")]
+public IActionResult Reports()
+{
+    // Admins OR Managers can see this
+}
+```
+
+### 2. Claims-Based Authorization
+
+Like checking specific attributes:
+
+```csharp
+// "Only employees in the Engineering department"
+[Authorize(Policy = "EngineeringOnly")]
+public IActionResult SourceCode()
+{
+    // Must have department = "Engineering" claim
+}
+```
+
+### 3. Policy-Based Authorization
+
+Combine multiple rules:
+
+```csharp
+// "Must be 21+, have VIP status, AND be on guest list"
+[Authorize(Policy = "VipAreaAccess")]
+public IActionResult VipLounge()
+{
+    // Complex rules checked together
+}
+```
+
+## The `[Authorize]` Attribute
+
+This is your main tool for protecting actions:
+
+```csharp
+[Authorize]  // User must be logged in
+public class ProfileController : Controller
+{
+    public IActionResult View() => View();
+    
+    [AllowAnonymous]  // Exception: anyone can access
+    public IActionResult PublicProfile() => View();
+    
+    [Authorize(Roles = "Admin")]  // More specific
+    public IActionResult Delete() => View();
+}
+```
+
+<InfoBox type="note">
+  `[Authorize]` without parameters just checks if the user is **logged in** (authenticated).
+</InfoBox>
+
+## Real-World Analogy
+
+Think of authorization like a **VIP club** 🎪:
+
+| Authorization Type | Club Analogy |
+|--------------------|--------------|
+| **Roles** | "Are you a VIP member?" |
+| **Claims** | "Are you 21+?" "On guest list?" |
+| **Policies** | "VIP + 21+ + Dress code + Guest list" |
+
+<PolicyBuilder mode="beginner" />
+
+Try building a policy above! Add requirements and see who gets access.
+
+## Key Takeaways
+
+- 🔐 **Authentication** = "Who are you?" (identity)
+- 🎫 **Authorization** = "What can you do?" (permissions)
+- 👥 **Roles** = Simple group-based access (Admin, User)
+- 📋 **Claims** = Attribute-based access (Department, Age)
+- 🎯 **Policies** = Combine multiple requirements
+
+<ProgressCheckpoint section="authz-intro" xpReward={30} />

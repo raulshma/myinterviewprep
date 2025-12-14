@@ -1,0 +1,405 @@
+# API Gateway Pattern
+
+This lesson covers production-ready API Gateway implementation using Ocelot and YARP in .NET, including configuration, authentication integration, and Kubernetes deployment.
+
+## Gateway Demo
+
+<ApiGatewaySimulator mode="advanced" />
+
+## Ocelot Implementation
+
+### Installation and Setup
+
+```bash
+dotnet add package Ocelot
+dotnet add package Ocelot.Provider.Kubernetes
+dotnet add package Ocelot.Cache.CacheManager
+```
+
+### Program.cs Configuration
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Add Ocelot configuration
+builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange: true);
+
+// Add Ocelot services
+builder.Services.AddOcelot()
+    .AddCacheManager(x =>
+    {
+        x.WithDictionaryHandle();
+    })
+    .AddKubernetes();
+
+// Add authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer("Bearer", options =>
+    {
+        options.Authority = builder.Configuration["IdentityServer:Authority"];
+        options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateAudience = false
+        };
+    });
+
+var app = builder.Build();
+
+app.UseAuthentication();
+app.UseOcelot().Wait();
+
+app.Run();
+```
+
+### Ocelot Configuration (ocelot.json)
+
+```json
+{
+  "Routes": [
+    {
+      "DownstreamPathTemplate": "/api/catalog/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "catalog-service",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/catalog/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "catalog.read", "catalog.write" ]
+      },
+      "RateLimitOptions": {
+        "ClientWhitelist": [],
+        "EnableRateLimiting": true,
+        "Period": "1m",
+        "PeriodTimespan": 60,
+        "Limit": 100
+      },
+      "FileCacheOptions": {
+        "TtlSeconds": 30,
+        "Region": "catalogcache"
+      },
+      "LoadBalancerOptions": {
+        "Type": "LeastConnection"
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/orders/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "order-service",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/orders/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer"
+      },
+      "QoSOptions": {
+        "ExceptionsAllowedBeforeBreaking": 3,
+        "DurationOfBreak": 10000,
+        "TimeoutValue": 5000
+      }
+    },
+    {
+      "DownstreamPathTemplate": "/api/payments/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "payment-service",
+          "Port": 80
+        }
+      ],
+      "UpstreamPathTemplate": "/api/payments/{everything}",
+      "UpstreamHttpMethod": [ "POST" ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "Bearer",
+        "AllowedScopes": [ "payments.write" ]
+      },
+      "DelegatingHandlers": [
+        "PaymentValidationHandler"
+      ]
+    }
+  ],
+  "GlobalConfiguration": {
+    "BaseUrl": "https://api.myapp.com",
+    "ServiceDiscoveryProvider": {
+      "Scheme": "http",
+      "Host": "consul",
+      "Port": 8500,
+      "Type": "Consul"
+    },
+    "RateLimitOptions": {
+      "DisableRateLimitHeaders": false,
+      "QuotaExceededMessage": "Too many requests. Please try again later.",
+      "HttpStatusCode": 429
+    }
+  }
+}
+```
+
+## YARP (Yet Another Reverse Proxy)
+
+Microsoft's modern reverse proxy library:
+
+### Installation
+
+```bash
+dotnet add package Yarp.ReverseProxy
+```
+
+### Program.cs Setup
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddReverseProxy()
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddTransforms<CustomTransformProvider>();
+
+var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapReverseProxy(proxyPipeline =>
+{
+    proxyPipeline.UseSessionAffinity();
+    proxyPipeline.UseLoadBalancing();
+    proxyPipeline.UsePassiveHealthChecks();
+});
+
+app.Run();
+```
+
+### YARP Configuration (appsettings.json)
+
+```json
+{
+  "ReverseProxy": {
+    "Routes": {
+      "catalog-route": {
+        "ClusterId": "catalog-cluster",
+        "AuthorizationPolicy": "RequireAuthenticatedUser",
+        "RateLimiterPolicy": "standard",
+        "Match": {
+          "Path": "/api/catalog/{**catch-all}"
+        },
+        "Transforms": [
+          { "PathRemovePrefix": "/api/catalog" },
+          { "RequestHeader": "X-Forwarded-Prefix", "Set": "/api/catalog" }
+        ]
+      },
+      "order-route": {
+        "ClusterId": "order-cluster",
+        "AuthorizationPolicy": "RequireAuthenticatedUser",
+        "Match": {
+          "Path": "/api/orders/{**catch-all}"
+        }
+      }
+    },
+    "Clusters": {
+      "catalog-cluster": {
+        "LoadBalancingPolicy": "RoundRobin",
+        "HealthCheck": {
+          "Active": {
+            "Enabled": true,
+            "Interval": "00:00:10",
+            "Timeout": "00:00:05",
+            "Policy": "ConsecutiveFailures",
+            "Path": "/health"
+          }
+        },
+        "Destinations": {
+          "catalog-1": {
+            "Address": "http://catalog-service-1:80/"
+          },
+          "catalog-2": {
+            "Address": "http://catalog-service-2:80/"
+          }
+        }
+      },
+      "order-cluster": {
+        "Destinations": {
+          "order-1": {
+            "Address": "http://order-service:80/"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Custom Middleware for Gateway
+
+```csharp
+public class RequestLoggingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<RequestLoggingMiddleware> _logger;
+
+    public RequestLoggingMiddleware(
+        RequestDelegate next,
+        ILogger<RequestLoggingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var correlationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault()
+            ?? Guid.NewGuid().ToString();
+
+        context.Request.Headers["X-Correlation-ID"] = correlationId;
+        context.Response.Headers["X-Correlation-ID"] = correlationId;
+
+        var stopwatch = Stopwatch.StartNew();
+        
+        _logger.LogInformation(
+            "→ {Method} {Path} | CorrelationId: {CorrelationId}",
+            context.Request.Method,
+            context.Request.Path,
+            correlationId);
+
+        try
+        {
+            await _next(context);
+        }
+        finally
+        {
+            stopwatch.Stop();
+            
+            _logger.LogInformation(
+                "← {Method} {Path} | Status: {StatusCode} | Duration: {Duration}ms",
+                context.Request.Method,
+                context.Request.Path,
+                context.Response.StatusCode,
+                stopwatch.ElapsedMilliseconds);
+        }
+    }
+}
+```
+
+## Kubernetes Deployment
+
+### Gateway Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+      - name: api-gateway
+        image: myregistry/api-gateway:latest
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+          requests:
+            cpu: "250m"
+            memory: "128Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: ocelot-config
+          mountPath: /app/configuration
+      volumes:
+      - name: ocelot-config
+        configMap:
+          name: ocelot-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: api-gateway
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ocelot-config
+data:
+  ocelot.json: |
+    {
+      "Routes": [
+        ...
+      ]
+    }
+```
+
+### Ingress Configuration
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  tls:
+  - hosts:
+    - api.myapp.com
+    secretName: api-tls-secret
+  rules:
+  - host: api.myapp.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 80
+```
+
+## Key Takeaways
+
+- 🔧 **Ocelot** provides feature-rich API Gateway for .NET
+- 🚀 **YARP** is Microsoft's modern, high-performance reverse proxy
+- 📝 Configure routes with **authentication**, **rate limiting**, and **caching**
+- 🔍 Add **correlation IDs** for distributed tracing
+- ☸️ Deploy with **multiple replicas** in Kubernetes
+- 🌐 Use **Ingress** for external traffic, gateway for internal routing
+
+<ProgressCheckpoint section="ag-implementation" xpReward={65} />

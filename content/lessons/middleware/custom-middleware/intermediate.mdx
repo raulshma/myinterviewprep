@@ -1,0 +1,248 @@
+# Custom Middleware: Class-Based Approach
+
+While inline middleware is quick, production applications benefit from **class-based middleware**. This separates concerns, enables dependency injection, and makes testing easier.
+
+## Three Ways to Write Middleware
+
+| **Approach**      | **Use When**                      | **DI Support**            |
+| :---------------- | :-------------------------------- | :------------------------ |
+| Inline (`Use()`)  | Quick prototyping                 | Via `HttpContext.RequestServices` |
+| Convention-based  | Most production scenarios         | Constructor (Singleton only) |
+| Factory (`IMiddleware`) | Need scoped dependencies   | Constructor (any lifetime) |
+
+## Interactive Middleware Builder
+
+Experiment with different middleware types:
+
+<CustomMiddlewareBuilder mode="intermediate" />
+
+## Convention-Based Middleware
+
+This is the most common pattern. Create a class with an `InvokeAsync` method:
+
+```csharp
+// RequestTimingMiddleware.cs
+public class RequestTimingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<RequestTimingMiddleware> _logger;
+
+    // Constructor receives next delegate and singleton dependencies
+    public RequestTimingMiddleware(
+        RequestDelegate next, 
+        ILogger<RequestTimingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+
+    // Must be named InvokeAsync (or Invoke)
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        
+        await _next(context);  // Call next middleware
+        
+        stopwatch.Stop();
+        _logger.LogInformation(
+            "Request {Method} {Path} completed in {Elapsed}ms",
+            context.Request.Method,
+            context.Request.Path,
+            stopwatch.ElapsedMilliseconds);
+    }
+}
+```
+
+<InfoBox type="important">
+  The constructor receives `RequestDelegate` as the **first parameter**. Additional parameters are resolved from DI (but only singleton services!).
+</InfoBox>
+
+## Extension Method for Clean Registration
+
+Create an extension method for clean `app.Use*()` syntax:
+
+```csharp
+// RequestTimingMiddlewareExtensions.cs
+public static class RequestTimingMiddlewareExtensions
+{
+    public static IApplicationBuilder UseRequestTiming(
+        this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<RequestTimingMiddleware>();
+    }
+}
+
+// Usage in Program.cs - clean and readable!
+app.UseRequestTiming();
+```
+
+## Middleware with Configuration
+
+Pass options to your middleware:
+
+```csharp
+// 1. Create options class
+public class RateLimitOptions
+{
+    public int MaxRequests { get; set; } = 100;
+    public TimeSpan Window { get; set; } = TimeSpan.FromMinutes(1);
+}
+
+// 2. Middleware uses options
+public class SimpleRateLimitMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly RateLimitOptions _options;
+    private static readonly Dictionary<string, List<DateTime>> _requests = new();
+
+    public SimpleRateLimitMiddleware(
+        RequestDelegate next, 
+        IOptions<RateLimitOptions> options)
+    {
+        _next = next;
+        _options = options.Value;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        
+        if (IsRateLimited(ip))
+        {
+            context.Response.StatusCode = 429;
+            await context.Response.WriteAsync("Too Many Requests");
+            return;
+        }
+        
+        await _next(context);
+    }
+    
+    private bool IsRateLimited(string ip)
+    {
+        // Implementation here...
+    }
+}
+
+// 3. Extension with options
+public static class SimpleRateLimitMiddlewareExtensions
+{
+    public static IApplicationBuilder UseSimpleRateLimit(
+        this IApplicationBuilder builder)
+    {
+        return builder.UseMiddleware<SimpleRateLimitMiddleware>();
+    }
+    
+    public static IApplicationBuilder UseSimpleRateLimit(
+        this IApplicationBuilder builder,
+        Action<RateLimitOptions> configureOptions)
+    {
+        var options = new RateLimitOptions();
+        configureOptions(options);
+        return builder.UseMiddleware<SimpleRateLimitMiddleware>(Options.Create(options));
+    }
+}
+
+// 4. Usage
+app.UseSimpleRateLimit(options =>
+{
+    options.MaxRequests = 50;
+    options.Window = TimeSpan.FromSeconds(30);
+});
+```
+
+## Short-Circuiting with Conditions
+
+Create middleware that conditionally blocks requests:
+
+```csharp
+public class MaintenanceModeMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly IConfiguration _config;
+
+    public MaintenanceModeMiddleware(
+        RequestDelegate next, 
+        IConfiguration config)
+    {
+        _next = next;
+        _config = config;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        if (_config.GetValue<bool>("MaintenanceMode:Enabled"))
+        {
+            // Allow health checks during maintenance
+            if (!context.Request.Path.StartsWithSegments("/health"))
+            {
+                context.Response.StatusCode = 503;
+                context.Response.ContentType = "text/html";
+                await context.Response.WriteAsync(
+                    "<h1>🔧 We're doing maintenance</h1><p>Be back soon!</p>");
+                return;  // Short-circuit
+            }
+        }
+        
+        await _next(context);
+    }
+}
+```
+
+## Accessing Scoped Services (The Problem)
+
+Convention-based middleware has a limitation:
+
+```csharp
+public class BadMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly MyDbContext _db;  // ⚠️ PROBLEM!
+
+    public BadMiddleware(RequestDelegate next, MyDbContext db)
+    {
+        _next = next;
+        _db = db;  // DbContext is SCOPED, but this is created ONCE!
+    }
+}
+```
+
+<InfoBox type="warning">
+  Convention-based middleware is created **once at startup** (singleton). If you inject scoped services in the constructor, you'll reuse the same instance across all requests — causing bugs and data corruption!
+</InfoBox>
+
+### The Solution: Method Injection
+
+Inject scoped services in the `InvokeAsync` method, not the constructor:
+
+```csharp
+public class CorrectMiddleware
+{
+    private readonly RequestDelegate _next;
+
+    public CorrectMiddleware(RequestDelegate next)
+    {
+        _next = next;
+    }
+
+    // Scoped services injected HERE, per-request
+    public async Task InvokeAsync(
+        HttpContext context, 
+        MyDbContext db,
+        IUserService userService)
+    {
+        // db and userService are fresh for each request!
+        var user = await userService.GetCurrentUserAsync();
+        await _next(context);
+    }
+}
+```
+
+## Key Takeaways
+
+- 📦 **Convention-based** — Class with `InvokeAsync`, most common pattern
+- 🔌 **Extension methods** — Clean `app.Use*()` registration
+- ⚙️ **Options pattern** — Configure middleware with `IOptions<T>`
+- 🛑 **Short-circuiting** — Return without calling `_next` to stop request
+- ⚠️ **Scoped services** — Inject in `InvokeAsync`, not constructor!
+
+<ProgressCheckpoint section="convention-middleware" xpReward={50} />

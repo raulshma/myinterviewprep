@@ -1,0 +1,29 @@
+{
+  "id": "database-design",
+  "title": "Database Design",
+  "description": "Learn the principles of designing robust, scalable databases - from normalization to relationships.",
+  "milestone": "databases",
+  "order": 4,
+  "sections": [
+    "intro-design",
+    "relationships",
+    "normalization",
+    "constraints"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["sql-fundamentals"],
+  "tags": ["database-design", "normalization", "relationships", "schema"]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "kubernetes-basics",
+  "title": "Kubernetes Basics",
+  "description": "Learn the fundamentals of Kubernetes for deploying and managing .NET applications. Understand pods, services, deployments, and scaling.",
+  "milestone": "deployment",
+  "order": 3,
+  "sections": [
+    "intro-kubernetes",
+    "core-concepts",
+    "deployments",
+    "production"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 18,
+      "xpReward": 35
+    },
+    "intermediate": {
+      "estimatedMinutes": 30,
+      "xpReward": 55
+    },
+    "advanced": {
+      "estimatedMinutes": 40,
+      "xpReward": 80
+    }
+  },
+  "prerequisites": ["docker-dotnet"],
+  "tags": ["kubernetes", "k8s", "containers", "orchestration", "devops"]
+}

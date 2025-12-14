@@ -174,7 +174,35 @@ import { MinimalApiBuilder } from '@/components/learn/interactive/dotnet/Minimal
 import { ServiceLifetimeDemo } from '@/components/learn/interactive/dotnet/ServiceLifetimeDemo';
 import { DIContainerExplorer } from '@/components/learn/interactive/dotnet/DIContainerExplorer';
 import { DIPatternShowcase } from '@/components/learn/interactive/dotnet/DIPatternShowcase';
+import { BuiltInMiddlewareExplorer } from '@/components/learn/interactive/dotnet/BuiltInMiddlewareExplorer';
+import { CustomMiddlewareBuilder } from '@/components/learn/interactive/dotnet/CustomMiddlewareBuilder';
+import { IdentityArchitectureVisualizer } from '@/components/learn/interactive/dotnet/IdentityArchitectureVisualizer';
+import { JwtTokenVisualizer } from '@/components/learn/interactive/dotnet/JwtTokenVisualizer';
+import { AuthFlowDiagram } from '@/components/learn/interactive/dotnet/AuthFlowDiagram';
+import { PolicyBuilder } from '@/components/learn/interactive/dotnet/PolicyBuilder';
 
+// Deployment Lesson Components
+import { DockerDotnetVisualizer } from '@/components/learn/interactive/dotnet/DockerDotnetVisualizer';
+import { AzureAppServiceExplorer } from '@/components/learn/interactive/dotnet/AzureAppServiceExplorer';
+import { KubernetesClusterVisualizer } from '@/components/learn/interactive/dotnet/KubernetesClusterVisualizer';
+import { AspireAppBuilder } from '@/components/learn/interactive/dotnet/AspireAppBuilder';
+
+// Database Lesson Components
+import { SqlQueryVisualizer } from '@/components/learn/interactive/dotnet/SqlQueryVisualizer';
+import { SqlServerExplorer } from '@/components/learn/interactive/dotnet/SqlServerExplorer';
+import { PostgresqlExplorer } from '@/components/learn/interactive/dotnet/PostgresqlExplorer';
+import { DatabaseDesignVisualizer } from '@/components/learn/interactive/dotnet/DatabaseDesignVisualizer';
+import { DbContextVisualizer } from '@/components/learn/interactive/dotnet/DbContextVisualizer';
+
+// CI/CD Lesson Components
+import { GitHubActionsVisualizer } from '@/components/learn/interactive/dotnet/GitHubActionsVisualizer';
+import { AzureDevOpsVisualizer } from '@/components/learn/interactive/dotnet/AzureDevOpsVisualizer';
+import { CICDPipelineBuilder } from '@/components/learn/interactive/dotnet/CICDPipelineBuilder';
+
+// Microservices Lesson Components
+import { MicroservicesArchitectureVisualizer } from '@/components/learn/interactive/dotnet/MicroservicesArchitectureVisualizer';
+import { ServiceCommunicationDemo } from '@/components/learn/interactive/dotnet/ServiceCommunicationDemo';
+import { ApiGatewaySimulator } from '@/components/learn/interactive/dotnet/ApiGatewaySimulator';
 
 /**
  * MDX Components Configuration
@@ -360,6 +388,35 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ServiceLifetimeDemo,
     DIContainerExplorer,
     DIPatternShowcase,
+    BuiltInMiddlewareExplorer,
+    CustomMiddlewareBuilder,
+    IdentityArchitectureVisualizer,
+    JwtTokenVisualizer,
+    AuthFlowDiagram,
+    PolicyBuilder,
+
+    // Deployment Lesson Components
+    DockerDotnetVisualizer,
+    AzureAppServiceExplorer,
+    KubernetesClusterVisualizer,
+    AspireAppBuilder,
+
+    // Database Lesson Components
+    SqlQueryVisualizer,
+    SqlServerExplorer,
+    PostgresqlExplorer,
+    DatabaseDesignVisualizer,
+    DbContextVisualizer,
+
+    // CI/CD Lesson Components
+    GitHubActionsVisualizer,
+    AzureDevOpsVisualizer,
+    CICDPipelineBuilder,
+
+    // Microservices Lesson Components
+    MicroservicesArchitectureVisualizer,
+    ServiceCommunicationDemo,
+    ApiGatewaySimulator,
 
     // Enhanced HTML elements with proper styling
     h1: ({ children, ...props }) => (

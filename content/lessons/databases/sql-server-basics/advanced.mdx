@@ -1,0 +1,267 @@
+# SQL Server Basics - Advanced
+
+Master SQL Server performance, monitoring, and enterprise integration patterns.
+
+## 📊 Query Execution Plans
+
+Execution plans show exactly how SQL Server runs your queries:
+
+<DotnetCodePreview
+  title="Analyzing Execution Plans"
+  code={`-- Enable actual execution plan
+SET STATISTICS IO ON;
+SET STATISTICS TIME ON;
+
+-- Run your query
+SELECT u.Name, COUNT(o.Id) AS OrderCount
+FROM Users u
+LEFT JOIN Orders o ON u.Id = o.UserId
+WHERE u.CreatedAt > '2024-01-01'
+GROUP BY u.Id, u.Name;
+
+-- Key metrics to watch:
+-- Logical reads: How many 8KB pages read from cache
+-- Physical reads: Pages read from disk (slow!)
+-- Elapsed time: Total execution time`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Statistics",
+      explanation: "Shows I/O and timing info in the Messages tab"
+    },
+    {
+      lineNumbers: [12, 13, 14],
+      highlight: "Key metrics",
+      explanation: "Lower logical reads = better. Physical reads = cache miss"
+    }
+  ]}
+/>
+
+### Understanding Plan Operators
+
+| Operator | Good/Bad | Meaning |
+|:---------|:---------|:--------|
+| Index Seek | ✅ Good | Directly jumps to matching rows |
+| Index Scan | ⚠️ Depends | Reads entire index |
+| Table Scan | ❌ Usually Bad | Reads entire table |
+| Key Lookup | ⚠️ Expensive | Extra lookup for non-covered columns |
+| Sort | ⚠️ Expensive | Must sort in memory/tempdb |
+
+## 🔧 Performance Tuning
+
+### Identifying Slow Queries
+
+```sql
+-- Find top 10 most CPU-intensive queries
+SELECT TOP 10
+    qs.total_worker_time / qs.execution_count AS AvgCPU,
+    qs.execution_count,
+    SUBSTRING(st.text, 
+        (qs.statement_start_offset / 2) + 1,
+        ((CASE qs.statement_end_offset
+            WHEN -1 THEN DATALENGTH(st.text)
+            ELSE qs.statement_end_offset
+        END - qs.statement_start_offset) / 2) + 1
+    ) AS QueryText
+FROM sys.dm_exec_query_stats qs
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) st
+ORDER BY AvgCPU DESC;
+```
+
+### Index Recommendations
+
+```sql
+-- Missing indexes SQL Server suggests
+SELECT 
+    d.statement AS TableName,
+    d.equality_columns,
+    d.inequality_columns,
+    d.included_columns,
+    s.avg_user_impact,
+    'CREATE INDEX IX_' + REPLACE(d.statement, '.', '_') + 
+        ' ON ' + d.statement + 
+        ' (' + ISNULL(d.equality_columns, '') + 
+        ISNULL(d.inequality_columns, '') + ')' +
+        ISNULL(' INCLUDE (' + d.included_columns + ')', '') AS SuggestedIndex
+FROM sys.dm_db_missing_index_details d
+JOIN sys.dm_db_missing_index_groups g ON d.index_handle = g.index_handle
+JOIN sys.dm_db_missing_index_group_stats s ON g.index_group_handle = s.group_handle
+WHERE d.database_id = DB_ID()
+ORDER BY s.avg_user_impact DESC;
+```
+
+## 📊 Table Partitioning
+
+For very large tables, partitioning splits data across filegroups:
+
+<DotnetCodePreview
+  title="Table Partitioning Setup"
+  code={`-- 1. Create partition function (how to split)
+CREATE PARTITION FUNCTION pf_OrderDate (datetime2)
+AS RANGE RIGHT FOR VALUES 
+    ('2022-01-01', '2023-01-01', '2024-01-01', '2025-01-01');
+
+-- 2. Create partition scheme (where to store)
+CREATE PARTITION SCHEME ps_OrderDate
+AS PARTITION pf_OrderDate
+ALL TO ([PRIMARY]);
+
+-- 3. Create partitioned table
+CREATE TABLE Orders_Partitioned (
+    Id INT IDENTITY(1,1),
+    OrderDate DATETIME2 NOT NULL,
+    Total DECIMAL(18,2),
+    -- ... other columns
+) ON ps_OrderDate(OrderDate);`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Partition function",
+      explanation: "RANGE RIGHT means values go in the partition to their right"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "Partition scheme",
+      explanation: "Maps partitions to filegroups - can spread across disks"
+    },
+    {
+      lineNumbers: [16],
+      highlight: "ON clause",
+      explanation: "Creates the table on the partition scheme using OrderDate"
+    }
+  ]}
+/>
+
+### Benefits of Partitioning:
+- Faster queries on recent data
+- Easy archival of old data
+- Parallel query processing
+- Partition-level maintenance
+
+## 🔒 Row-Level Security
+
+Control data access at the row level:
+
+<DotnetCodePreview
+  title="Row-Level Security"
+  code={`-- 1. Create a security predicate function
+CREATE FUNCTION fn_SecurityPredicate(@UserId INT)
+RETURNS TABLE
+WITH SCHEMABINDING
+AS
+    RETURN SELECT 1 AS AccessAllowed
+    WHERE @UserId = CAST(SESSION_CONTEXT(N'UserId') AS INT);
+
+-- 2. Create security policy
+CREATE SECURITY POLICY OrdersSecurityPolicy
+ADD FILTER PREDICATE dbo.fn_SecurityPredicate(UserId)
+ON dbo.Orders
+WITH (STATE = ON);
+
+-- 3. Set context in your app
+EXEC sp_set_session_context @key = N'UserId', @value = 42;
+
+-- Now queries automatically filter by user!
+SELECT * FROM Orders; -- Only sees UserId = 42`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7],
+      highlight: "Security function",
+      explanation: "Returns rows only if UserId matches session context"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13],
+      highlight: "Security policy",
+      explanation: "Applies the function as a filter on the Orders table"
+    },
+    {
+      lineNumbers: [16],
+      highlight: "Session context",
+      explanation: "App sets this per-request - database enforces access"
+    }
+  ]}
+/>
+
+## 💾 In-Memory OLTP
+
+Extreme performance for high-throughput scenarios:
+
+```sql
+-- 1. Create memory-optimized table
+CREATE TABLE Orders_InMemory (
+    Id INT IDENTITY(1,1) PRIMARY KEY NONCLUSTERED,
+    UserId INT NOT NULL,
+    Total DECIMAL(18,2) NOT NULL,
+    CreatedAt DATETIME2 NOT NULL DEFAULT GETDATE()
+) WITH (
+    MEMORY_OPTIMIZED = ON,
+    DURABILITY = SCHEMA_AND_DATA
+);
+
+-- 2. Native compiled stored procedure
+CREATE PROCEDURE sp_InsertOrder_Native
+    @UserId INT,
+    @Total DECIMAL(18,2)
+WITH NATIVE_COMPILATION, SCHEMABINDING
+AS
+BEGIN ATOMIC WITH (
+    TRANSACTION ISOLATION LEVEL = SNAPSHOT,
+    LANGUAGE = N'English'
+)
+    INSERT INTO dbo.Orders_InMemory (UserId, Total)
+    VALUES (@UserId, @Total);
+END;
+```
+
+## 🔌 Advanced .NET Integration
+
+### Connection Resiliency
+
+```csharp
+// In Program.cs with Entity Framework Core
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(
+        connectionString,
+        sqlOptions =>
+        {
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: null
+            );
+            sqlOptions.CommandTimeout(60);
+        }
+    )
+);
+```
+
+### Bulk Operations
+
+```csharp
+// Using SqlBulkCopy for fast inserts
+using var bulkCopy = new SqlBulkCopy(connection);
+bulkCopy.DestinationTableName = "Orders";
+bulkCopy.BatchSize = 10000;
+
+// Map columns
+bulkCopy.ColumnMappings.Add("UserId", "UserId");
+bulkCopy.ColumnMappings.Add("Total", "Total");
+
+// Bulk insert from DataTable or IDataReader
+await bulkCopy.WriteToServerAsync(dataTable);
+```
+
+<SqlServerExplorer mode="advanced" />
+
+## Performance Checklist
+
+| Area | Action |
+|:-----|:-------|
+| Indexes | Create based on query patterns |
+| Statistics | Keep up-to-date with regular maintenance |
+| Query Plans | Review for scans and key lookups |
+| Blocking | Monitor with dm_exec_requests |
+| Memory | Check for memory grants and spills |
+| TempDB | Monitor for contention |
+
+<ProgressCheckpoint section="tsql-features" xpReward={75} />

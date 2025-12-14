@@ -1,0 +1,200 @@
+# SQL Fundamentals - Intermediate
+
+Now that you know the basics, let's dive deeper into more powerful SQL features that will make you a database pro!
+
+## 🔗 JOINs - Connecting Tables
+
+Real databases have multiple related tables. JOINs let you combine data from different tables based on relationships.
+
+<DotnetCodePreview
+  title="Understanding JOINs"
+  code={`-- INNER JOIN: Only matching rows from both tables
+SELECT Users.Name, Orders.Total
+FROM Users
+INNER JOIN Orders ON Users.Id = Orders.UserId;
+
+-- LEFT JOIN: All users, even without orders
+SELECT Users.Name, Orders.Total
+FROM Users
+LEFT JOIN Orders ON Users.Id = Orders.UserId;`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "INNER JOIN",
+      explanation: "Returns only rows where there's a match in BOTH tables - users who have orders"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "LEFT JOIN",
+      explanation: "Returns ALL users, with NULL for Total when they have no orders"
+    }
+  ]}
+/>
+
+### Types of JOINs Visualized
+
+| JOIN Type | What It Returns | Use When |
+|:----------|:----------------|:---------|
+| INNER JOIN | Only matching rows | You need data that exists in both tables |
+| LEFT JOIN | All left + matching right | You want all records from main table |
+| RIGHT JOIN | All right + matching left | Rarely used (use LEFT JOIN instead) |
+| FULL OUTER JOIN | All rows from both | You need complete picture of both |
+
+## 📊 Aggregate Functions
+
+Aggregate functions perform calculations across multiple rows:
+
+<DotnetCodePreview
+  title="Common Aggregate Functions"
+  code={`-- Count all users
+SELECT COUNT(*) AS TotalUsers FROM Users;
+
+-- Find average age
+SELECT AVG(Age) AS AverageAge FROM Users;
+
+-- Get min and max
+SELECT MIN(Age) AS Youngest, MAX(Age) AS Oldest FROM Users;
+
+-- Sum of all order totals
+SELECT SUM(Total) AS Revenue FROM Orders;`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "COUNT(*)",
+      explanation: "Counts all rows - useful for knowing how many records exist"
+    },
+    {
+      lineNumbers: [5],
+      highlight: "AVG()",
+      explanation: "Calculates the average value - great for statistics"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "MIN/MAX",
+      explanation: "Finds the smallest and largest values"
+    },
+    {
+      lineNumbers: [11],
+      highlight: "SUM()",
+      explanation: "Adds up all values - perfect for totals like revenue"
+    }
+  ]}
+/>
+
+## 📁 GROUP BY - Grouping Data
+
+GROUP BY organizes your data into groups and lets you aggregate within each group:
+
+<DotnetCodePreview
+  title="Grouping Orders by Customer"
+  code={`-- Count orders per customer
+SELECT 
+    Users.Name,
+    COUNT(Orders.Id) AS OrderCount,
+    SUM(Orders.Total) AS TotalSpent
+FROM Users
+LEFT JOIN Orders ON Users.Id = Orders.UserId
+GROUP BY Users.Id, Users.Name;`}
+  steps={[
+    {
+      lineNumbers: [3, 4, 5],
+      highlight: "Aggregates per group",
+      explanation: "COUNT and SUM are calculated for EACH user separately"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "GROUP BY",
+      explanation: "Every non-aggregated column in SELECT must be in GROUP BY"
+    }
+  ]}
+/>
+
+## 🎯 HAVING - Filtering Groups
+
+HAVING is like WHERE, but for grouped data:
+
+```sql
+-- Find customers with more than 5 orders
+SELECT 
+    Users.Name,
+    COUNT(Orders.Id) AS OrderCount
+FROM Users
+JOIN Orders ON Users.Id = Orders.UserId
+GROUP BY Users.Id, Users.Name
+HAVING COUNT(Orders.Id) > 5;
+```
+
+> **WHERE vs HAVING:**
+> - WHERE filters individual rows BEFORE grouping
+> - HAVING filters groups AFTER grouping
+
+## 📦 Subqueries
+
+Subqueries are queries inside queries - powerful for complex logic:
+
+<DotnetCodePreview
+  title="Subquery Examples"
+  code={`-- Find users above average age
+SELECT Name, Age
+FROM Users
+WHERE Age > (SELECT AVG(Age) FROM Users);
+
+-- Find users who have placed orders
+SELECT Name
+FROM Users
+WHERE Id IN (SELECT DISTINCT UserId FROM Orders);`}
+  steps={[
+    {
+      lineNumbers: [3, 4],
+      highlight: "Scalar subquery",
+      explanation: "The inner query returns a single value (average age)"
+    },
+    {
+      lineNumbers: [8, 9],
+      highlight: "IN subquery",
+      explanation: "The inner query returns a list of values to match against"
+    }
+  ]}
+/>
+
+## 🔄 Set Operations
+
+Combine results from multiple queries:
+
+```sql
+-- UNION: Combine unique results
+SELECT Name FROM Users
+UNION
+SELECT Name FROM ArchivedUsers;
+
+-- UNION ALL: Include duplicates
+SELECT Name FROM Users
+UNION ALL
+SELECT Name FROM ArchivedUsers;
+
+-- INTERSECT: Only rows in both
+SELECT Email FROM Users
+INTERSECT
+SELECT Email FROM Newsletter;
+
+-- EXCEPT: Rows in first but not second
+SELECT Email FROM Users
+EXCEPT
+SELECT Email FROM Unsubscribed;
+```
+
+## Try Complex Queries
+
+<SqlQueryVisualizer mode="intermediate" />
+
+## Quick Reference
+
+| Feature | Syntax | Purpose |
+|:--------|:-------|:--------|
+| JOIN | `JOIN table ON condition` | Combine related tables |
+| GROUP BY | `GROUP BY column` | Aggregate by groups |
+| HAVING | `HAVING condition` | Filter grouped results |
+| Subquery | `(SELECT ... FROM ...)` | Query within a query |
+| UNION | `query1 UNION query2` | Combine query results |
+
+<ProgressCheckpoint section="select-queries" xpReward={50} />

@@ -1,0 +1,454 @@
+# Build & Release Automation - Advanced
+
+Master advanced deployment strategies, Infrastructure as Code, GitOps, feature flags, observability integration, and disaster recovery patterns.
+
+## Enterprise Deployment Pipeline 🏢
+
+Let's explore advanced patterns used by enterprise organizations:
+
+<CICDPipelineBuilder mode="advanced" interactive={true} />
+
+## Advanced Deployment Strategies 🚀
+
+### Blue-Green Deployment
+
+Run two identical production environments, switching traffic instantly:
+
+```
+┌─────────────────┐     ┌─────────────────┐
+│   BLUE (v1.0)   │◄────│   LOAD BALANCER │
+│   [ACTIVE]      │     │                 │
+└─────────────────┘     └─────────────────┘
+                              │
+┌─────────────────┐           │
+│  GREEN (v1.1)   │◄──────────┘
+│   [STANDBY]     │     (Switch on deploy)
+└─────────────────┘
+```
+
+```yaml
+- deployment: BlueGreen
+  environment: 'production'
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+          # Deploy to staging slot
+          - task: AzureWebApp@1
+            inputs:
+              appName: 'myapp'
+              slotName: 'staging'
+              package: '$(Pipeline.Workspace)/app/*.zip'
+          
+          # Warm up the staging slot
+          - script: |
+              for i in {1..5}; do
+                curl -s https://myapp-staging.azurewebsites.net/health
+                sleep 2
+              done
+            displayName: 'Warm Up'
+          
+          # Swap slots (instant traffic switch)
+          - task: AzureAppServiceManage@0
+            inputs:
+              Action: 'Swap Slots'
+              WebAppName: 'myapp'
+              SourceSlot: 'staging'
+              TargetSlot: 'production'
+```
+
+<KeyConcept title="Blue-Green Benefits">
+  ✅ **Instant rollback** — Just swap back
+  ✅ **Full testing** — Test in production environment
+  ✅ **Zero downtime** — Traffic switches atomically
+  ⚠️ **Double cost** — Need 2x infrastructure
+</KeyConcept>
+
+### Canary Deployment
+
+Gradually route traffic to the new version:
+
+```
+Time 0:   [100% v1.0] ─────────────────────────
+Time 1:   [95% v1.0] [5% v1.1] ────────────────
+Time 2:   [75% v1.0] [25% v1.1] ───────────────
+Time 3:   [50% v1.0] [50% v1.1] ───────────────
+Time 4:   [0% v1.0] [100% v1.1] ───────────────
+```
+
+```yaml
+- stage: CanaryDeploy
+  jobs:
+    - job: Deploy5Percent
+      steps:
+        - script: |
+            kubectl set image deployment/myapp myapp=myapp:$(Build.BuildNumber)
+            kubectl patch hpa myapp --patch '{"spec":{"maxReplicas":1}}'
+        - script: |
+            # Monitor error rate for 10 minutes
+            sleep 600
+            ERROR_RATE=$(curl -s prometheus:9090/api/v1/query?query=rate(http_errors_total[5m]))
+            if (( $(echo "$ERROR_RATE > 0.01" | bc -l) )); then
+              echo "High error rate, rolling back"
+              kubectl rollout undo deployment/myapp
+              exit 1
+            fi
+    
+    - job: Deploy25Percent
+      dependsOn: Deploy5Percent
+      condition: succeeded()
+      steps:
+        - script: kubectl scale deployment/myapp-canary --replicas=5
+    
+    - job: FullRollout
+      dependsOn: Deploy25Percent
+      condition: succeeded()
+      steps:
+        - script: kubectl rollout restart deployment/myapp
+```
+
+### Rolling Deployment
+
+Update instances one at a time:
+
+```yaml
+- deployment: Rolling
+  environment: 'production'
+  strategy:
+    rolling:
+      maxParallel: '25%'  # Update 25% at a time
+      preDeploy:
+        steps:
+          - script: |
+              # Remove from load balancer
+              az network lb rule update --name myapp-rule --backend-pool-name myapp-pool
+      deploy:
+        steps:
+          - script: |
+              # Deploy new version
+              dotnet publish -o /app
+              systemctl restart myapp
+      routeTraffic:
+        steps:
+          - script: |
+              # Add back to load balancer
+              az network lb rule update --enabled true
+      postRouteTraffic:
+        steps:
+          - script: |
+              # Health check
+              curl --fail http://localhost:5000/health
+```
+
+## Infrastructure as Code (IaC) 🏗️
+
+### Bicep for Azure
+
+```bicep
+// infrastructure/main.bicep
+param environment string
+param location string = resourceGroup().location
+
+module appService 'modules/app-service.bicep' = {
+  name: 'appService-${environment}'
+  params: {
+    name: 'myapp-${environment}'
+    location: location
+    sku: environment == 'production' ? 'P2v3' : 'B1'
+  }
+}
+
+module database 'modules/sql-database.bicep' = {
+  name: 'database-${environment}'
+  params: {
+    name: 'mydb-${environment}'
+    location: location
+  }
+}
+
+output appUrl string = appService.outputs.url
+```
+
+### Pipeline Integration
+
+```yaml
+stages:
+  - stage: Infrastructure
+    jobs:
+      - job: DeployInfra
+        steps:
+          - task: AzureCLI@2
+            displayName: 'What-If Analysis'
+            inputs:
+              azureSubscription: 'Production'
+              scriptType: 'bash'
+              inlineScript: |
+                az deployment group what-if \
+                  --resource-group myapp-rg \
+                  --template-file infrastructure/main.bicep \
+                  --parameters environment=production
+          
+          - task: ManualValidation@0
+            displayName: 'Review Infrastructure Changes'
+            inputs:
+              notifyUsers: 'platform-team@company.com'
+              instructions: 'Review the what-if output above'
+          
+          - task: AzureCLI@2
+            displayName: 'Deploy Infrastructure'
+            inputs:
+              azureSubscription: 'Production'
+              scriptType: 'bash'
+              inlineScript: |
+                az deployment group create \
+                  --resource-group myapp-rg \
+                  --template-file infrastructure/main.bicep \
+                  --parameters environment=production
+
+  - stage: Application
+    dependsOn: Infrastructure
+    jobs:
+      - deployment: DeployApp
+        environment: 'production'
+```
+
+## GitOps with Flux or ArgoCD 🔄
+
+### Repository Structure
+
+```
+├── apps/
+│   └── myapp/
+│       ├── base/
+│       │   ├── deployment.yaml
+│       │   ├── service.yaml
+│       │   └── kustomization.yaml
+│       └── overlays/
+│           ├── dev/
+│           │   └── kustomization.yaml
+│           ├── staging/
+│           │   └── kustomization.yaml
+│           └── production/
+│               └── kustomization.yaml
+└── clusters/
+    └── production/
+        └── flux-system/
+```
+
+### CI Pipeline Updates Git (Pull-Based Deployment)
+
+```yaml
+- stage: UpdateGitOps
+  jobs:
+    - job: UpdateManifests
+      steps:
+        - checkout: git://MyOrg/gitops-repo
+        
+        - script: |
+            # Update image tag in kustomization
+            cd apps/myapp/overlays/production
+            kustomize edit set image myapp=myapp:$(Build.BuildNumber)
+        
+        - script: |
+            git config user.email "pipeline@company.com"
+            git config user.name "CI Pipeline"
+            git add .
+            git commit -m "Update myapp to $(Build.BuildNumber)"
+            git push
+          displayName: 'Commit to GitOps Repo'
+```
+
+<InfoBox type="info">
+  **GitOps** means the desired state is stored in Git. Tools like **Flux** or **ArgoCD** continuously sync the cluster to match Git.
+</InfoBox>
+
+## Feature Flags Integration 🚩
+
+### LaunchDarkly / Azure App Configuration
+
+```yaml
+- stage: DeployWithFlags
+  jobs:
+    - deployment: Deploy
+      steps:
+        # Deploy with feature disabled
+        - task: AzureCLI@2
+          inputs:
+            inlineScript: |
+              az appconfig kv set \
+                --name myapp-config \
+                --key "FeatureFlags:NewCheckout" \
+                --value '{"enabled": false}' \
+                --content-type "application/vnd.microsoft.appconfig.ff+json;charset=utf-8"
+        
+        # Deploy application
+        - task: AzureWebApp@1
+          inputs:
+            appName: 'myapp-prod'
+        
+        # Gradually enable feature
+        - task: AzureCLI@2
+          inputs:
+            inlineScript: |
+              # Enable for 5% of users
+              az appconfig kv set \
+                --name myapp-config \
+                --key "FeatureFlags:NewCheckout" \
+                --value '{"enabled": true, "conditions": {"percentageFilter": 5}}'
+```
+
+### Code Integration
+
+```csharp
+public class CheckoutController : Controller
+{
+    private readonly IFeatureManager _features;
+    
+    public async Task<IActionResult> Checkout()
+    {
+        if (await _features.IsEnabledAsync("NewCheckout"))
+        {
+            return View("NewCheckout");  // New experience
+        }
+        return View("Checkout");  // Old experience
+    }
+}
+```
+
+## Observability Integration 📊
+
+### Deploy-Time Annotations
+
+```yaml
+- script: |
+    # Mark deployment in monitoring tool
+    curl -X POST "https://api.datadoghq.com/api/v1/events" \
+      -H "DD-API-KEY: $(DatadogApiKey)" \
+      -d '{
+        "title": "Deployment: myapp $(Build.BuildNumber)",
+        "text": "Deployed by $(Build.RequestedFor)",
+        "tags": ["environment:production", "service:myapp"],
+        "alert_type": "info"
+      }'
+  displayName: 'Create Deployment Marker'
+```
+
+### Automated Rollback on Metrics
+
+```yaml
+- script: |
+    # Wait and check metrics
+    sleep 300  # 5 minutes
+    
+    # Query error rate
+    ERROR_RATE=$(curl -s "prometheus:9090/api/v1/query" \
+      --data-urlencode 'query=sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))' \
+      | jq '.data.result[0].value[1]')
+    
+    # Query latency
+    P99_LATENCY=$(curl -s "prometheus:9090/api/v1/query" \
+      --data-urlencode 'query=histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))' \
+      | jq '.data.result[0].value[1]')
+    
+    # Rollback if metrics are bad
+    if (( $(echo "$ERROR_RATE > 0.01" | bc -l) )) || (( $(echo "$P99_LATENCY > 2" | bc -l) )); then
+      echo "##vso[task.logissue type=error]Metrics degraded - rolling back"
+      kubectl rollout undo deployment/myapp
+      exit 1
+    fi
+  displayName: 'Verify Deployment Health'
+```
+
+## Disaster Recovery Patterns 🔥
+
+### Multi-Region Deployment
+
+```yaml
+- stage: DeployPrimaryRegion
+  jobs:
+    - deployment: DeployEastUS
+      environment: 'production-eastus'
+      steps:
+        - task: AzureWebApp@1
+          inputs:
+            appName: 'myapp-eastus'
+
+- stage: DeploySecondaryRegion
+  dependsOn: DeployPrimaryRegion
+  jobs:
+    - deployment: DeployWestEurope
+      environment: 'production-westeurope'
+      steps:
+        - task: AzureWebApp@1
+          inputs:
+            appName: 'myapp-westeurope'
+
+- stage: UpdateTrafficManager
+  dependsOn: [DeployPrimaryRegion, DeploySecondaryRegion]
+  jobs:
+    - job: UpdateDNS
+      steps:
+        - task: AzureCLI@2
+          inputs:
+            inlineScript: |
+              az network traffic-manager endpoint update \
+                --name eastus-endpoint \
+                --profile-name myapp-tm \
+                --type azureEndpoints \
+                --weight 100
+```
+
+### Database Migration Safety
+
+```yaml
+- job: DatabaseMigration
+  steps:
+    # Take backup before migration
+    - task: AzureCLI@2
+      displayName: 'Backup Database'
+      inputs:
+        inlineScript: |
+          az sql db export \
+            --resource-group myapp-rg \
+            --server myapp-sql \
+            --name myapp-db \
+            --admin-user $(SqlAdmin) \
+            --admin-password $(SqlPassword) \
+            --storage-key-type SharedAccessKey \
+            --storage-key $(StorageKey) \
+            --storage-uri "https://mybackups.blob.core.windows.net/backups/pre-migration-$(Build.BuildNumber).bacpac"
+    
+    # Run migration
+    - script: dotnet ef database update
+      displayName: 'Apply EF Migrations'
+      continueOnError: true
+    
+    # Rollback on failure
+    - task: AzureCLI@2
+      displayName: 'Restore on Failure'
+      condition: failed()
+      inputs:
+        inlineScript: |
+          az sql db import \
+            --resource-group myapp-rg \
+            --server myapp-sql \
+            --name myapp-db \
+            --admin-user $(SqlAdmin) \
+            --admin-password $(SqlPassword) \
+            --storage-key-type SharedAccessKey \
+            --storage-key $(StorageKey) \
+            --storage-uri "https://mybackups.blob.core.windows.net/backups/pre-migration-$(Build.BuildNumber).bacpac"
+```
+
+## Key Takeaways
+
+- 🔵🟢 **Blue-Green** — Instant switch between environments
+- 🐤 **Canary** — Gradual rollout with monitoring
+- 🔄 **Rolling** — Update instances incrementally
+- 🏗️ **IaC** — Version control your infrastructure
+- 🔄 **GitOps** — Git as the source of truth
+- 🚩 **Feature flags** — Decouple deployment from release
+- 📊 **Observability** — Metrics-driven deployment decisions
+- 🔥 **DR patterns** — Multi-region and backup strategies
+
+<ProgressCheckpoint section="ba-deployment-patterns" xpReward={70} />

@@ -1,0 +1,261 @@
+# JWT Authentication
+
+Implement JWT Bearer authentication in your ASP.NET Core APIs.
+
+## Setting Up JWT Authentication
+
+### 1. Install the Package
+
+```bash
+dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
+```
+
+### 2. Configure in Program.cs
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Configure JWT settings from appsettings.json
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtSettings["Issuer"],
+        ValidAudience = jwtSettings["Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ClockSkew = TimeSpan.Zero  // No tolerance for expiration
+    };
+});
+
+var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
+```
+
+### 3. Configuration Settings
+
+```json
+{
+  "Jwt": {
+    "Key": "your-256-bit-secret-key-here-minimum-32-characters!",
+    "Issuer": "https://yourdomain.com",
+    "Audience": "https://yourdomain.com",
+    "ExpiryMinutes": 60
+  }
+}
+```
+
+## Generating JWT Tokens
+
+<JwtTokenVisualizer mode="intermediate" />
+
+Create a token service:
+
+```csharp
+public interface IJwtService
+{
+    string GenerateToken(ApplicationUser user, IList<string> roles);
+    ClaimsPrincipal? ValidateToken(string token);
+}
+
+public class JwtService : IJwtService
+{
+    private readonly IConfiguration _configuration;
+    
+    public JwtService(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+    
+    public string GenerateToken(ApplicationUser user, IList<string> roles)
+    {
+        var jwtSettings = _configuration.GetSection("Jwt");
+        var key = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(jwtSettings["Key"])
+        );
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        
+        // Build claims
+        var claims = new List<Claim>
+        {
+            new Claim(JwtRegisteredClaimNames.Sub, user.Id),
+            new Claim(JwtRegisteredClaimNames.Email, user.Email),
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim(ClaimTypes.Name, user.UserName)
+        };
+        
+        // Add role claims
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
+        
+        var token = new JwtSecurityToken(
+            issuer: jwtSettings["Issuer"],
+            audience: jwtSettings["Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(
+                double.Parse(jwtSettings["ExpiryMinutes"])
+            ),
+            signingCredentials: credentials
+        );
+        
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+}
+```
+
+## Login Endpoint
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController : ControllerBase
+{
+    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly IJwtService _jwtService;
+    
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
+    {
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user == null)
+            return Unauthorized(new { message = "Invalid credentials" });
+        
+        var result = await _signInManager.CheckPasswordSignInAsync(
+            user, request.Password, lockoutOnFailure: true
+        );
+        
+        if (!result.Succeeded)
+            return Unauthorized(new { message = "Invalid credentials" });
+        
+        var roles = await _userManager.GetRolesAsync(user);
+        var token = _jwtService.GenerateToken(user, roles);
+        
+        return Ok(new
+        {
+            token,
+            expiresIn = 3600,  // seconds
+            user = new { user.Email, user.UserName }
+        });
+    }
+}
+```
+
+## Protecting Endpoints
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]  // Requires valid JWT
+public class ProductsController : ControllerBase
+{
+    [HttpGet]
+    public IActionResult GetProducts()
+    {
+        // Access user info from token
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var email = User.FindFirstValue(ClaimTypes.Email);
+        
+        return Ok(new { message = $"Hello, {email}!" });
+    }
+    
+    [HttpPost]
+    [Authorize(Roles = "Admin")]  // Requires Admin role
+    public IActionResult CreateProduct([FromBody] Product product)
+    {
+        return Created($"/api/products/{product.Id}", product);
+    }
+}
+```
+
+## Refresh Token Pattern
+
+<AuthFlowDiagram mode="intermediate" flowType="jwt-bearer" />
+
+Implement token refresh:
+
+```csharp
+public class TokenResponse
+{
+    public string AccessToken { get; set; }
+    public string RefreshToken { get; set; }
+    public int ExpiresIn { get; set; }
+}
+
+[HttpPost("refresh")]
+public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
+{
+    // Validate refresh token from database
+    var storedToken = await _tokenRepository.GetRefreshTokenAsync(request.RefreshToken);
+    
+    if (storedToken == null || storedToken.ExpiryDate < DateTime.UtcNow)
+        return Unauthorized(new { message = "Invalid refresh token" });
+    
+    var user = await _userManager.FindByIdAsync(storedToken.UserId);
+    var roles = await _userManager.GetRolesAsync(user);
+    
+    // Generate new tokens
+    var newAccessToken = _jwtService.GenerateToken(user, roles);
+    var newRefreshToken = GenerateRefreshToken();
+    
+    // Rotate refresh token
+    await _tokenRepository.RevokeRefreshTokenAsync(request.RefreshToken);
+    await _tokenRepository.SaveRefreshTokenAsync(new RefreshToken
+    {
+        Token = newRefreshToken,
+        UserId = user.Id,
+        ExpiryDate = DateTime.UtcNow.AddDays(7)
+    });
+    
+    return Ok(new TokenResponse
+    {
+        AccessToken = newAccessToken,
+        RefreshToken = newRefreshToken,
+        ExpiresIn = 3600
+    });
+}
+
+private string GenerateRefreshToken()
+{
+    var randomBytes = new byte[64];
+    using var rng = RandomNumberGenerator.Create();
+    rng.GetBytes(randomBytes);
+    return Convert.ToBase64String(randomBytes);
+}
+```
+
+## Client-Side Token Storage
+
+Best practices for storing tokens:
+
+| Storage Option | Security | Use Case |
+|----------------|----------|----------|
+| **Memory** | ✅ Best | SPA with refresh tokens |
+| **HttpOnly Cookie** | ✅ Great | Web apps (prevents XSS) |
+| **localStorage** | ⚠️ XSS risk | Only if no alternatives |
+| **sessionStorage** | ⚠️ XSS risk | Short-lived sessions |
+
+## Key Takeaways
+
+- 📦 **JwtBearer middleware** validates tokens automatically
+- 🔑 **TokenValidationParameters** control what gets checked
+- 🎟️ **Claims** carry user identity and roles in the token
+- 🔄 **Refresh tokens** extend sessions without re-login
+- 🔒 **HttpOnly cookies** are safest for web apps
+
+<ProgressCheckpoint section="jwt-implementation" xpReward={50} />

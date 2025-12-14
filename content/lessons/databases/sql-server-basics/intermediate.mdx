@@ -1,0 +1,251 @@
+# SQL Server Basics - Intermediate
+
+Level up your SQL Server skills with stored procedures, indexes, and transactions!
+
+## 📦 Stored Procedures
+
+Stored procedures are saved SQL programs that live in the database:
+
+<DotnetCodePreview
+  title="Creating a Stored Procedure"
+  code={`CREATE PROCEDURE GetUserOrders
+    @UserId INT,
+    @MinTotal DECIMAL(18,2) = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    SELECT 
+        Orders.Id,
+        Orders.OrderDate,
+        Orders.Total
+    FROM Orders
+    WHERE Orders.UserId = @UserId
+      AND Orders.Total >= @MinTotal
+    ORDER BY Orders.OrderDate DESC;
+END;`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Parameters",
+      explanation: "@UserId is required, @MinTotal has a default value of 0"
+    },
+    {
+      lineNumbers: [6],
+      highlight: "SET NOCOUNT ON",
+      explanation: "Prevents 'X rows affected' messages - cleaner output"
+    },
+    {
+      lineNumbers: [8, 9, 10, 11, 12, 13, 14, 15],
+      highlight: "The query",
+      explanation: "Parameters are used like variables in the query"
+    }
+  ]}
+/>
+
+### Calling Stored Procedures
+
+```sql
+-- Execute with all parameters
+EXEC GetUserOrders @UserId = 5, @MinTotal = 100.00;
+
+-- Use default for @MinTotal
+EXEC GetUserOrders @UserId = 5;
+```
+
+### From C#
+
+```csharp
+using var cmd = new SqlCommand("GetUserOrders", connection);
+cmd.CommandType = CommandType.StoredProcedure;
+cmd.Parameters.AddWithValue("@UserId", userId);
+
+using var reader = await cmd.ExecuteReaderAsync();
+```
+
+## 🔍 Indexes - Speed Up Your Queries
+
+Indexes are like a book's index - they help find data faster:
+
+<DotnetCodePreview
+  title="Creating Indexes"
+  code={`-- Clustered Index (how data is physically stored)
+-- Usually created automatically on PRIMARY KEY
+CREATE CLUSTERED INDEX IX_Users_Id ON Users(Id);
+
+-- Non-Clustered Index (separate lookup structure)
+CREATE NONCLUSTERED INDEX IX_Users_Email 
+ON Users(Email);
+
+-- Composite Index (multiple columns)
+CREATE INDEX IX_Orders_User_Date 
+ON Orders(UserId, OrderDate DESC);
+
+-- Include columns (covered queries)
+CREATE INDEX IX_Orders_User_Covered
+ON Orders(UserId)
+INCLUDE (Total, Status);`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "Clustered",
+      explanation: "Only one per table - determines physical row order"
+    },
+    {
+      lineNumbers: [6, 7],
+      highlight: "Non-Clustered",
+      explanation: "Separate structure pointing to data - can have many"
+    },
+    {
+      lineNumbers: [10, 11],
+      highlight: "Composite",
+      explanation: "Order matters! Can use for UserId alone, but not OrderDate alone"
+    },
+    {
+      lineNumbers: [14, 15, 16],
+      highlight: "INCLUDE",
+      explanation: "Adds columns to index without affecting sort order - prevents lookups"
+    }
+  ]}
+/>
+
+### When to Add Indexes
+
+| Add Index On | Reason |
+|:-------------|:-------|
+| Foreign Keys | JOINs are faster |
+| WHERE clause columns | Filtering is faster |
+| ORDER BY columns | Sorting is faster |
+| Frequently searched columns | Lookups are faster |
+
+> ⚠️ **Warning:** Too many indexes slow down INSERT/UPDATE/DELETE!
+
+## 🔄 Transactions - All or Nothing
+
+Transactions ensure multiple operations succeed or fail together:
+
+<DotnetCodePreview
+  title="Transaction in T-SQL"
+  code={`BEGIN TRANSACTION;
+
+BEGIN TRY
+    -- Deduct from sender
+    UPDATE Accounts SET Balance = Balance - 100 
+    WHERE UserId = 1;
+    
+    -- Add to receiver
+    UPDATE Accounts SET Balance = Balance + 100 
+    WHERE UserId = 2;
+    
+    -- Both succeeded - make permanent
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    -- Something failed - undo everything
+    ROLLBACK TRANSACTION;
+    
+    THROW; -- Re-raise the error
+END CATCH;`}
+  steps={[
+    {
+      lineNumbers: [1],
+      highlight: "BEGIN TRANSACTION",
+      explanation: "Starts recording changes - nothing is final yet"
+    },
+    {
+      lineNumbers: [5, 6, 9, 10],
+      highlight: "Multiple operations",
+      explanation: "Both must succeed for the transfer to be valid"
+    },
+    {
+      lineNumbers: [13],
+      highlight: "COMMIT",
+      explanation: "Makes all changes permanent"
+    },
+    {
+      lineNumbers: [16],
+      highlight: "ROLLBACK",
+      explanation: "Undoes ALL changes since BEGIN TRANSACTION"
+    }
+  ]}
+/>
+
+## 👁️ Views - Virtual Tables
+
+Views are saved queries that act like tables:
+
+```sql
+-- Create a view
+CREATE VIEW vw_ActiveUsersWithOrders
+AS
+SELECT 
+    u.Id,
+    u.Name,
+    u.Email,
+    COUNT(o.Id) AS OrderCount,
+    SUM(o.Total) AS TotalSpent
+FROM Users u
+LEFT JOIN Orders o ON u.Id = o.UserId
+WHERE u.IsActive = 1
+GROUP BY u.Id, u.Name, u.Email;
+
+-- Use it like a table
+SELECT * FROM vw_ActiveUsersWithOrders
+WHERE TotalSpent > 1000;
+```
+
+## ⚡ Triggers - Automatic Reactions
+
+Triggers run automatically when data changes:
+
+<DotnetCodePreview
+  title="Audit Trigger"
+  code={`CREATE TRIGGER trg_Users_Audit
+ON Users
+AFTER UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    INSERT INTO UserAuditLog (UserId, ChangedAt, OldEmail, NewEmail)
+    SELECT 
+        i.Id,
+        GETDATE(),
+        d.Email,
+        i.Email
+    FROM inserted i
+    INNER JOIN deleted d ON i.Id = d.Id
+    WHERE i.Email <> d.Email;
+END;`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "AFTER UPDATE",
+      explanation: "Runs after any UPDATE on Users table"
+    },
+    {
+      lineNumbers: [14, 15],
+      highlight: "inserted/deleted",
+      explanation: "Special tables: 'inserted' has new values, 'deleted' has old values"
+    },
+    {
+      lineNumbers: [16],
+      highlight: "Change detection",
+      explanation: "Only log when email actually changed"
+    }
+  ]}
+/>
+
+<SqlServerExplorer mode="intermediate" />
+
+## Quick Reference
+
+| Feature | Purpose | Syntax Start |
+|:--------|:--------|:-------------|
+| Stored Procedure | Reusable SQL program | `CREATE PROCEDURE` |
+| Index | Speed up queries | `CREATE INDEX` |
+| Transaction | Group operations | `BEGIN TRANSACTION` |
+| View | Virtual table | `CREATE VIEW` |
+| Trigger | Auto-react to changes | `CREATE TRIGGER` |
+
+<ProgressCheckpoint section="ssms-basics" xpReward={50} />

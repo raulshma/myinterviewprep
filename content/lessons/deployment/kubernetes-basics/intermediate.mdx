@@ -1,0 +1,228 @@
+# Kubernetes - Deployments, Services & Configuration
+
+Now that you understand the core concepts, let's deploy a real .NET application and explore how to configure it properly.
+
+## Your First Deployment
+
+<KubernetesClusterVisualizer mode="intermediate" />
+
+<DotnetCodePreview
+  title="Complete .NET Deployment"
+  code={`apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dotnet-api
+  labels:
+    app: dotnet-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: dotnet-api
+  template:
+    metadata:
+      labels:
+        app: dotnet-api
+    spec:
+      containers:
+      - name: api
+        image: myregistry.azurecr.io/dotnet-api:v1.0.0
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20`}
+  steps={[
+    {
+      lineNumbers: [22, 23, 24, 25, 26, 27],
+      highlight: "Resource Management",
+      explanation: "Requests = minimum guaranteed. Limits = maximum allowed. Prevents runaway containers!"
+    },
+    {
+      lineNumbers: [28, 29, 30, 31, 32, 33],
+      highlight: "Readiness Probe",
+      explanation: "K8s checks this before sending traffic - prevents routing to starting pods"
+    },
+    {
+      lineNumbers: [34, 35, 36, 37, 38, 39],
+      highlight: "Liveness Probe",
+      explanation: "K8s checks this to know if pod is alive - restarts it if it fails"
+    }
+  ]}
+/>
+
+## Exposing Your App with Services
+
+### ClusterIP (Internal only)
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dotnet-api
+spec:
+  selector:
+    app: dotnet-api
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP
+```
+
+### LoadBalancer (External access)
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dotnet-api-external
+spec:
+  selector:
+    app: dotnet-api
+  ports:
+  - port: 80
+    targetPort: 80
+  type: LoadBalancer
+```
+
+## ConfigMaps: Externalizing Configuration
+
+Don't bake config into your image - use ConfigMaps:
+
+<DotnetCodePreview
+  title="ConfigMap for .NET App"
+  code={`apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dotnet-config
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+  Logging__LogLevel__Default: "Information"
+  Features__NewDashboard: "true"
+---
+# Reference in Deployment
+containers:
+- name: api
+  image: myapp:latest
+  envFrom:
+  - configMapRef:
+      name: dotnet-config`}
+  steps={[
+    {
+      lineNumbers: [5, 6, 7, 8],
+      highlight: "Configuration Data",
+      explanation: "Key-value pairs accessible as environment variables"
+    },
+    {
+      lineNumbers: [14, 15, 16],
+      highlight: "Inject Config",
+      explanation: "envFrom loads all ConfigMap keys as environment variables"
+    }
+  ]}
+/>
+
+## Secrets: Handling Sensitive Data
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dotnet-secrets
+type: Opaque
+stringData:
+  ConnectionStrings__Default: "Server=db;Database=app;..."
+  JwtSecret: "super-secret-key"
+---
+containers:
+- name: api
+  envFrom:
+  - secretRef:
+      name: dotnet-secrets
+```
+
+## Rolling Updates
+
+When you update your deployment, K8s rolls out changes gradually:
+
+```bash
+# Update to new image version
+kubectl set image deployment/dotnet-api api=myapp:v1.1.0
+
+# Watch the rollout
+kubectl rollout status deployment/dotnet-api
+
+# Rollback if something's wrong!
+kubectl rollout undo deployment/dotnet-api
+```
+
+### Rolling Update Strategy
+```yaml
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1    # Only 1 pod down at a time
+      maxSurge: 1          # Only 1 extra pod during update
+```
+
+## Scaling Your Application
+
+```bash
+# Manual scaling
+kubectl scale deployment/dotnet-api --replicas=5
+
+# Horizontal Pod Autoscaler
+kubectl autoscale deployment/dotnet-api \
+    --min=2 \
+    --max=10 \
+    --cpu-percent=70
+```
+
+### HPA YAML
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: dotnet-api-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: dotnet-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+## Essential kubectl Commands
+
+| Command | Purpose |
+|:--------|:--------|
+| `kubectl get pods` | List all pods |
+| `kubectl describe pod <name>` | Detailed pod info |
+| `kubectl logs <pod>` | View container logs |
+| `kubectl exec -it <pod> -- /bin/sh` | Shell into container |
+| `kubectl apply -f deployment.yaml` | Create/update resources |
+| `kubectl delete -f deployment.yaml` | Remove resources |
+
+<ProgressCheckpoint section="deployments" xpReward={55} />

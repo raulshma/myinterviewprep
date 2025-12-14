@@ -1,0 +1,28 @@
+{
+  "id": "api-gateway",
+  "title": "API Gateway Pattern",
+  "description": "Learn how API Gateways provide unified entry points, routing, authentication, and cross-cutting concerns for microservices.",
+  "milestone": "microservices",
+  "order": 3,
+  "sections": [
+    "ag-what-is-gateway",
+    "ag-gateway-features",
+    "ag-implementation"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 20,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 30,
+      "xpReward": 65
+    }
+  },
+  "prerequisites": ["microservices-principles", "service-communication"],
+  "tags": ["microservices", "api-gateway", "ocelot", "routing", "authentication"]
+}

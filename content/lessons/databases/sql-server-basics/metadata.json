@@ -1,0 +1,29 @@
+{
+  "id": "sql-server-basics",
+  "title": "SQL Server Basics",
+  "description": "Learn Microsoft SQL Server - the enterprise-grade database that powers millions of applications worldwide.",
+  "milestone": "databases",
+  "order": 2,
+  "sections": [
+    "intro-sql-server",
+    "ssms-basics",
+    "tsql-features",
+    "dotnet-integration"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["sql-fundamentals"],
+  "tags": ["sql-server", "microsoft", "tsql", "ssms"]
+}

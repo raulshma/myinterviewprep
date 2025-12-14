@@ -1,0 +1,247 @@
+# Authorization Policies
+
+Implement robust access control with ASP.NET Core&apos;s policy-based authorization.
+
+## Configuring Policies
+
+Define policies in Program.cs:
+
+```csharp
+builder.Services.AddAuthorization(options =>
+{
+    // Simple role-based policy
+    options.AddPolicy("AdminOnly", policy =>
+        policy.RequireRole("Admin"));
+    
+    // Multiple roles (OR logic)
+    options.AddPolicy("Management", policy =>
+        policy.RequireRole("Admin", "Manager"));
+    
+    // Claims-based policy
+    options.AddPolicy("EngineeringTeam", policy =>
+        policy.RequireClaim("department", "Engineering"));
+    
+    // Multiple claims (AND logic)
+    options.AddPolicy("SeniorEngineer", policy =>
+    {
+        policy.RequireClaim("department", "Engineering");
+        policy.RequireClaim("level", "Senior", "Principal");
+    });
+    
+    // Authenticated user requirement
+    options.AddPolicy("MustBeAuthenticated", policy =>
+        policy.RequireAuthenticatedUser());
+    
+    // Custom assertion
+    options.AddPolicy("BusinessHoursOnly", policy =>
+        policy.RequireAssertion(context =>
+        {
+            var hour = DateTime.Now.Hour;
+            return hour >= 9 && hour < 17;
+        }));
+});
+```
+
+## Using Policies
+
+<PolicyBuilder mode="intermediate" />
+
+### On Controllers and Actions
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+[Authorize(Policy = "MustBeAuthenticated")]  // All actions require auth
+public class ProductsController : ControllerBase
+{
+    [HttpGet]
+    [AllowAnonymous]  // Override: public access
+    public IActionResult List() => Ok(GetProducts());
+    
+    [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
+    public IActionResult Create(Product product) => Created(...);
+    
+    [HttpDelete("{id}")]
+    [Authorize(Policy = "SeniorEngineer")]
+    public IActionResult Delete(int id) => NoContent();
+}
+```
+
+### On Minimal APIs
+
+```csharp
+app.MapGet("/products", () => GetProducts())
+    .AllowAnonymous();
+
+app.MapPost("/products", (Product p) => CreateProduct(p))
+    .RequireAuthorization("AdminOnly");
+
+app.MapDelete("/products/{id}", (int id) => DeleteProduct(id))
+    .RequireAuthorization("SeniorEngineer");
+```
+
+### On Razor Pages
+
+```csharp
+// Add to folder in Program.cs
+builder.Services.AddRazorPages(options =>
+{
+    options.Conventions.AuthorizeFolder("/Admin", "AdminOnly");
+    options.Conventions.AuthorizePage("/Account/Manage", "MustBeAuthenticated");
+    options.Conventions.AllowAnonymousToPage("/Account/Login");
+});
+```
+
+## Programmatic Authorization
+
+Check authorization in code:
+
+```csharp
+public class DocumentService
+{
+    private readonly IAuthorizationService _authService;
+    
+    public DocumentService(IAuthorizationService authService)
+    {
+        _authService = authService;
+    }
+    
+    public async Task<Document> GetDocumentAsync(ClaimsPrincipal user, int id)
+    {
+        var document = await _repository.GetByIdAsync(id);
+        
+        // Check policy
+        var result = await _authService.AuthorizeAsync(user, "CanViewDocuments");
+        
+        if (!result.Succeeded)
+            throw new UnauthorizedAccessException();
+        
+        return document;
+    }
+}
+```
+
+In controllers:
+
+```csharp
+public class DocumentsController : Controller
+{
+    private readonly IAuthorizationService _authService;
+    
+    public async Task<IActionResult> View(int id)
+    {
+        var document = await _documentService.GetByIdAsync(id);
+        
+        // Resource-based authorization
+        var result = await _authService.AuthorizeAsync(
+            User, 
+            document, 
+            "DocumentOwnerPolicy"
+        );
+        
+        if (!result.Succeeded)
+            return Forbid();
+        
+        return View(document);
+    }
+}
+```
+
+## Custom Requirements
+
+Create reusable authorization requirements:
+
+```csharp
+// Step 1: Define the requirement
+public class MinimumAgeRequirement : IAuthorizationRequirement
+{
+    public int MinimumAge { get; }
+    
+    public MinimumAgeRequirement(int minimumAge)
+    {
+        MinimumAge = minimumAge;
+    }
+}
+
+// Step 2: Create the handler
+public class MinimumAgeHandler : AuthorizationHandler<MinimumAgeRequirement>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        MinimumAgeRequirement requirement)
+    {
+        var dateOfBirthClaim = context.User.FindFirst("date_of_birth");
+        
+        if (dateOfBirthClaim == null)
+            return Task.CompletedTask;  // Don't call Fail()
+        
+        var dateOfBirth = DateTime.Parse(dateOfBirthClaim.Value);
+        var age = DateTime.Today.Year - dateOfBirth.Year;
+        
+        if (age >= requirement.MinimumAge)
+        {
+            context.Succeed(requirement);
+        }
+        
+        return Task.CompletedTask;
+    }
+}
+
+// Step 3: Register handler and create policy
+builder.Services.AddSingleton<IAuthorizationHandler, MinimumAgeHandler>();
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AtLeast21", policy =>
+        policy.Requirements.Add(new MinimumAgeRequirement(21)));
+});
+```
+
+## Multiple Handlers for One Requirement
+
+```csharp
+// Two ways to satisfy "CanEditDocument" requirement
+public class DocumentOwnerHandler : AuthorizationHandler<CanEditDocumentRequirement, Document>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        CanEditDocumentRequirement requirement,
+        Document document)
+    {
+        var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        
+        if (document.OwnerId == userId)
+        {
+            context.Succeed(requirement);
+        }
+        
+        return Task.CompletedTask;
+    }
+}
+
+public class AdminOverrideHandler : AuthorizationHandler<CanEditDocumentRequirement>
+{
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        CanEditDocumentRequirement requirement)
+    {
+        if (context.User.IsInRole("Admin"))
+        {
+            context.Succeed(requirement);  // Admins can always edit
+        }
+        
+        return Task.CompletedTask;
+    }
+}
+```
+
+## Key Takeaways
+
+- 📋 **Policies** bundle requirements together
+- 🎯 **RequireAssertion** for simple inline logic
+- 🔧 **IAuthorizationRequirement** for reusable rules
+- 🛠️ **AuthorizationHandler** implements the check
+- 🔀 **Multiple handlers** = OR logic (any can succeed)
+
+<ProgressCheckpoint section="authz-policies" xpReward={50} />

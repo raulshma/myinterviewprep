@@ -1,0 +1,28 @@
+{
+  "id": "github-actions",
+  "title": "GitHub Actions for .NET",
+  "description": "Learn to automate build, test, and deployment of .NET applications using GitHub Actions workflows. Master YAML syntax, job dependencies, and CI/CD best practices.",
+  "milestone": "cicd",
+  "order": 1,
+  "sections": [
+    "ga-introduction",
+    "ga-workflow-basics",
+    "ga-dotnet-integration"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["testing"],
+  "tags": ["github-actions", "ci-cd", "automation", "devops", "dotnet"]
+}

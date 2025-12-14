@@ -1,0 +1,28 @@
+{
+  "id": "azure-devops",
+  "title": "Azure DevOps Pipelines",
+  "description": "Master Azure DevOps Pipelines for .NET applications. Learn YAML pipelines, stages, environments, and integration with Azure services.",
+  "milestone": "cicd",
+  "order": 2,
+  "sections": [
+    "ado-introduction",
+    "ado-yaml-pipelines",
+    "ado-advanced-features"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["github-actions"],
+  "tags": ["azure-devops", "pipelines", "ci-cd", "automation", "devops", "dotnet"]
+}

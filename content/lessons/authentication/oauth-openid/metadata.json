@@ -1,0 +1,28 @@
+{
+  "id": "oauth-openid",
+  "title": "OAuth 2.0 & OpenID Connect",
+  "description": "Understand OAuth 2.0 authorization flows and OpenID Connect for delegated authentication with external identity providers.",
+  "milestone": "authentication",
+  "order": 3,
+  "sections": [
+    "oauth-intro",
+    "oauth-flows",
+    "oidc-implementation"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["jwt-authentication"],
+  "tags": ["oauth", "openid", "oidc", "authentication", "social-login", "dotnet"]
+}

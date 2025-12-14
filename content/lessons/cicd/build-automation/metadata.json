@@ -1,0 +1,28 @@
+{
+  "id": "build-automation",
+  "title": "Build & Release Automation",
+  "description": "Master the principles of build and release automation. Learn CI/CD best practices, versioning strategies, deployment patterns, and infrastructure as code.",
+  "milestone": "cicd",
+  "order": 3,
+  "sections": [
+    "ba-fundamentals",
+    "ba-versioning-testing",
+    "ba-deployment-patterns"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 20,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 30,
+      "xpReward": 70
+    }
+  },
+  "prerequisites": ["azure-devops"],
+  "tags": ["automation", "ci-cd", "deployment", "versioning", "devops", "dotnet"]
+}

@@ -1,0 +1,306 @@
+# .NET Aspire - Production Deployment
+
+It's time to take your Aspire application from local development to production. We'll cover Azure Container Apps, Kubernetes deployment, and production best practices.
+
+## Deployment Options
+
+<AspireAppBuilder mode="advanced" />
+
+## Azure Developer CLI (azd) Deployment
+
+The fastest path to production is using the Azure Developer CLI:
+
+```bash
+# Initialize azd in your Aspire project
+azd init
+
+# Provision Azure resources and deploy
+azd up
+```
+
+This creates:
+- Azure Container Registry for your images
+- Azure Container Apps environment
+- Managed PostgreSQL, Redis, etc. (based on your AppHost)
+
+## The Manifest System
+
+Aspire generates a deployment manifest:
+
+```bash
+# Generate manifest
+dotnet run --project AppHost -- --publisher manifest --output-path ./manifest.json
+```
+
+<DotnetCodePreview
+  title="Generated Manifest (simplified)"
+  code={`{
+  "resources": {
+    "postgres": {
+      "type": "container.v0",
+      "image": "postgres:16",
+      "env": {
+        "POSTGRES_PASSWORD": "{postgres.inputs.password}"
+      }
+    },
+    "catalog": {
+      "type": "project.v0",
+      "path": "../CatalogApi/CatalogApi.csproj",
+      "env": {
+        "ConnectionStrings__catalogdb": "{postgres.connectionString}/catalogdb"
+      }
+    },
+    "web": {
+      "type": "project.v0",
+      "path": "../WebFrontend/WebFrontend.csproj",
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "external": true
+        }
+      }
+    }
+  }
+}`}
+  steps={[
+    {
+      lineNumbers: [3, 4, 5, 6, 7, 8],
+      highlight: "Container Resources",
+      explanation: "Databases, caches become container definitions"
+    },
+    {
+      lineNumbers: [11, 12, 13, 14],
+      highlight: "Environment Injection",
+      explanation: "Connection strings automatically configured via environment variables"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21, 22, 23],
+      highlight: "External Bindings",
+      explanation: "Controls which services are publicly accessible"
+    }
+  ]}
+/>
+
+## Azure Container Apps Deployment
+
+### Bicep Infrastructure
+
+<DotnetCodePreview
+  title="infra/main.bicep"
+  code={`@description('Location for all resources')
+param location string = resourceGroup().location
+
+// Container Apps Environment
+resource containerAppEnv 'Microsoft.App/managedEnvironments@2023-05-01' = {
+  name: 'aspire-env'
+  location: location
+  properties: {
+    appLogsConfiguration: {
+      destination: 'log-analytics'
+      logAnalyticsConfiguration: {
+        customerId: logAnalytics.properties.customerId
+        sharedKey: logAnalytics.listKeys().primarySharedKey
+      }
+    }
+  }
+}
+
+// Catalog API Container App
+resource catalogApi 'Microsoft.App/containerApps@2023-05-01' = {
+  name: 'catalog'
+  location: location
+  properties: {
+    managedEnvironmentId: containerAppEnv.id
+    configuration: {
+      ingress: {
+        external: false
+        targetPort: 8080
+      }
+      secrets: [
+        {
+          name: 'db-connection'
+          value: postgresConnectionString
+        }
+      ]
+    }
+    template: {
+      containers: [
+        {
+          name: 'catalog'
+          image: '\${acrName}.azurecr.io/catalog:latest'
+          env: [
+            { name: 'ConnectionStrings__catalogdb', secretRef: 'db-connection' }
+          ]
+          resources: {
+            cpu: json('0.5')
+            memory: '1.0Gi'
+          }
+        }
+      ]
+      scale: {
+        minReplicas: 1
+        maxReplicas: 10
+        rules: [
+          {
+            name: 'http-scaling'
+            http: { metadata: { concurrentRequests: '100' } }
+          }
+        ]
+      }
+    }
+  }
+}`}
+  steps={[
+    {
+      lineNumbers: [10, 11, 12, 13, 14],
+      highlight: "Logging",
+      explanation: "Automatic log aggregation to Log Analytics"
+    },
+    {
+      lineNumbers: [48, 49, 50, 51, 52, 53, 54, 55],
+      highlight: "Auto-scaling",
+      explanation: "Scale based on HTTP request concurrency"
+    }
+  ]}
+/>
+
+## Kubernetes Deployment with Aspirate
+
+[Aspirate](https://github.com/prom3theu5/aspirate) generates Kubernetes manifests from Aspire:
+
+```bash
+# Install aspirate
+dotnet tool install -g aspirate
+
+# Generate k8s manifests
+aspirate generate
+
+# Apply to cluster
+kubectl apply -f ./aspirate-output/
+```
+
+## Production Configuration
+
+### Secrets Management
+
+```csharp
+// AppHost for production
+var builder = DistributedApplication.CreateBuilder(args);
+
+if (builder.ExecutionContext.IsPublishMode)
+{
+    // Production: Use managed services
+    var postgres = builder.AddAzurePostgresFlexibleServer("postgres")
+        .AddDatabase("ordersdb");
+    
+    var redis = builder.AddAzureRedis("cache");
+    
+    var keyVault = builder.AddAzureKeyVault("secrets");
+}
+else
+{
+    // Development: Use containers
+    var postgres = builder.AddPostgres("postgres")
+        .AddDatabase("ordersdb");
+    
+    var redis = builder.AddRedis("cache");
+}
+```
+
+### Health Checks in Production
+
+```csharp
+// ServiceDefaults/Extensions.cs
+public static IHostApplicationBuilder AddDefaultHealthChecks(
+    this IHostApplicationBuilder builder)
+{
+    builder.Services.AddHealthChecks()
+        .AddCheck("self", () => HealthCheckResult.Healthy())
+        .AddNpgSql(builder.Configuration.GetConnectionString("ordersdb")!)
+        .AddRedis(builder.Configuration.GetConnectionString("cache")!);
+    
+    return builder;
+}
+```
+
+## Observability in Production
+
+### OpenTelemetry Export
+
+```csharp
+// Export to Azure Application Insights
+builder.Services.AddOpenTelemetry()
+    .UseAzureMonitor(options =>
+    {
+        options.ConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+    });
+```
+
+### Structured Logging
+
+```csharp
+builder.Logging.AddOpenTelemetry(logging =>
+{
+    logging.IncludeFormattedMessage = true;
+    logging.IncludeScopes = true;
+});
+```
+
+## CI/CD Pipeline
+
+```yaml
+# .github/workflows/deploy.yml
+name: Deploy Aspire App
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      
+      - name: Install azd
+        uses: Azure/setup-azd@v1
+      
+      - name: Login to Azure
+        run: azd auth login --client-id ${{ secrets.AZURE_CLIENT_ID }} --tenant-id ${{ secrets.AZURE_TENANT_ID }}
+        
+      - name: Deploy to Azure
+        run: azd deploy --no-prompt
+        env:
+          AZURE_ENV_NAME: production
+          AZURE_LOCATION: eastus
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+```
+
+## Migration from Docker Compose
+
+If you have an existing docker-compose based app:
+
+| Docker Compose | Aspire Equivalent |
+|:---------------|:-----------------|
+| `services:` | `builder.AddProject<TProject>()` |
+| `image:` | `builder.AddContainer()` |
+| `depends_on:` | `.WithReference()` + `.WaitFor()` |
+| `ports:` | `.WithHttpEndpoint()` |
+| `environment:` | `.WithEnvironment()` |
+| `volumes:` | `.WithBindMount()` / `.WithDataVolume()` |
+
+## Summary
+
+| Deployment Target | Method |
+|:------------------|:-------|
+| **Azure Container Apps** | `azd up` (easiest) |
+| **Kubernetes** | Aspirate or manifest generation |
+| **Azure Kubernetes Service** | azd + AKS template |
+| **Self-hosted** | Docker Compose from manifest |
+
+<ProgressCheckpoint section="deployment" xpReward={75} />

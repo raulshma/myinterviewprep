@@ -1,0 +1,321 @@
+# ASP.NET Core Identity
+
+Advanced patterns, customization, and production considerations for enterprise-grade authentication.
+
+## Custom Storage Providers
+
+Replace Entity Framework with your own storage mechanism:
+
+```csharp
+public class CustomUserStore : IUserStore<ApplicationUser>,
+    IUserPasswordStore<ApplicationUser>,
+    IUserEmailStore<ApplicationUser>,
+    IUserRoleStore<ApplicationUser>
+{
+    private readonly IUserRepository _repository;
+    
+    public CustomUserStore(IUserRepository repository)
+    {
+        _repository = repository;
+    }
+    
+    public async Task<IdentityResult> CreateAsync(
+        ApplicationUser user, 
+        CancellationToken cancellationToken)
+    {
+        await _repository.InsertAsync(user);
+        return IdentityResult.Success;
+    }
+    
+    public async Task<ApplicationUser> FindByIdAsync(
+        string userId, 
+        CancellationToken cancellationToken)
+    {
+        return await _repository.GetByIdAsync(userId);
+    }
+    
+    // Implement remaining interface methods...
+    
+    public void Dispose() { }
+}
+```
+
+Register your custom store:
+
+```csharp
+builder.Services.AddIdentity<ApplicationUser, ApplicationRole>()
+    .AddUserStore<CustomUserStore>()
+    .AddRoleStore<CustomRoleStore>()
+    .AddDefaultTokenProviders();
+```
+
+## Custom Password Hashers
+
+Implement your own password hashing algorithm:
+
+```csharp
+public class Argon2PasswordHasher : IPasswordHasher<ApplicationUser>
+{
+    public string HashPassword(ApplicationUser user, string password)
+    {
+        // Use Argon2id for password hashing
+        return Argon2.Hash(password, new Argon2Config
+        {
+            Type = Argon2Type.Argon2id,
+            MemoryCost = 65536,
+            TimeCost = 4,
+            Lanes = 4
+        });
+    }
+    
+    public PasswordVerificationResult VerifyHashedPassword(
+        ApplicationUser user, 
+        string hashedPassword, 
+        string providedPassword)
+    {
+        if (Argon2.Verify(hashedPassword, providedPassword))
+        {
+            // Check if rehashing is needed (algorithm parameters changed)
+            if (NeedsRehash(hashedPassword))
+                return PasswordVerificationResult.SuccessRehashNeeded;
+                
+            return PasswordVerificationResult.Success;
+        }
+        
+        return PasswordVerificationResult.Failed;
+    }
+}
+```
+
+## Custom Token Providers
+
+Create tokens for password reset, email confirmation, etc.:
+
+```csharp
+public class CustomEmailTokenProvider<TUser> : TotpSecurityStampBasedTokenProvider<TUser>
+    where TUser : class
+{
+    public override async Task<bool> CanGenerateTwoFactorTokenAsync(
+        UserManager<TUser> manager, 
+        TUser user)
+    {
+        var email = await manager.GetEmailAsync(user);
+        return !string.IsNullOrEmpty(email) && 
+               await manager.IsEmailConfirmedAsync(user);
+    }
+    
+    public override async Task<string> GetUserModifierAsync(
+        string purpose, 
+        UserManager<TUser> manager, 
+        TUser user)
+    {
+        var email = await manager.GetEmailAsync(user);
+        return $"Email:{purpose}:{email}";
+    }
+}
+```
+
+Register with custom token lifespan:
+
+```csharp
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+{
+    options.TokenLifespan = TimeSpan.FromHours(2); // Password reset tokens valid for 2 hours
+});
+```
+
+## Advanced Identity Options
+
+Fine-tune security settings:
+
+```csharp
+builder.Services.Configure<IdentityOptions>(options =>
+{
+    // Password settings
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireNonAlphanumeric = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequiredLength = 12;
+    options.Password.RequiredUniqueChars = 4;
+    
+    // Lockout settings
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
+    
+    // User settings
+    options.User.AllowedUserNameCharacters = 
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+    options.User.RequireUniqueEmail = true;
+    
+    // Sign-in settings
+    options.SignIn.RequireConfirmedEmail = true;
+    options.SignIn.RequireConfirmedPhoneNumber = false;
+    options.SignIn.RequireConfirmedAccount = true;
+});
+```
+
+## Cookie Configuration for Production
+
+Secure cookie settings:
+
+```csharp
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    // Cookie settings
+    options.Cookie.Name = ".MyApp.Auth";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    
+    // Session management
+    options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    options.SlidingExpiration = true;
+    
+    // Paths
+    options.LoginPath = "/Account/Login";
+    options.LogoutPath = "/Account/Logout";
+    options.AccessDeniedPath = "/Account/AccessDenied";
+    
+    // Events for custom behavior
+    options.Events.OnValidatePrincipal = async context =>
+    {
+        // Validate session against database
+        var userManager = context.HttpContext.RequestServices
+            .GetRequiredService<UserManager<ApplicationUser>>();
+            
+        var userId = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
+        var user = await userManager.FindByIdAsync(userId);
+        
+        if (user == null || user.SecurityStamp != 
+            context.Principal.FindFirstValue("AspNet.Identity.SecurityStamp"))
+        {
+            context.RejectPrincipal();
+            await context.HttpContext.SignOutAsync();
+        }
+    };
+});
+```
+
+## Migrating from Legacy Authentication
+
+Migrate from Forms Authentication or ASP.NET Membership:
+
+```csharp
+public class LegacyPasswordHasher : IPasswordHasher<ApplicationUser>
+{
+    private readonly IPasswordHasher<ApplicationUser> _newHasher;
+    
+    public LegacyPasswordHasher()
+    {
+        _newHasher = new PasswordHasher<ApplicationUser>();
+    }
+    
+    public string HashPassword(ApplicationUser user, string password)
+    {
+        // Always use new hashing for new passwords
+        return _newHasher.HashPassword(user, password);
+    }
+    
+    public PasswordVerificationResult VerifyHashedPassword(
+        ApplicationUser user, 
+        string hashedPassword, 
+        string providedPassword)
+    {
+        // Check if this is a legacy hash
+        if (IsLegacyHash(hashedPassword))
+        {
+            // Verify with legacy algorithm
+            if (VerifyLegacyPassword(hashedPassword, providedPassword))
+            {
+                // Success, but rehash with new algorithm
+                return PasswordVerificationResult.SuccessRehashNeeded;
+            }
+            return PasswordVerificationResult.Failed;
+        }
+        
+        // Use new hasher
+        return _newHasher.VerifyHashedPassword(user, hashedPassword, providedPassword);
+    }
+    
+    private bool IsLegacyHash(string hash) => !hash.StartsWith("AQ");
+    
+    private bool VerifyLegacyPassword(string hash, string password)
+    {
+        // Implement legacy verification (SHA1, MD5, etc.)
+        using var sha1 = SHA1.Create();
+        var computed = Convert.ToBase64String(
+            sha1.ComputeHash(Encoding.UTF8.GetBytes(password)));
+        return hash == computed;
+    }
+}
+```
+
+## Multi-Tenant Identity
+
+Support multiple tenants with isolated users:
+
+```csharp
+public class TenantUserStore : UserStoreBase<ApplicationUser, string, 
+    IdentityUserClaim<string>, IdentityUserLogin<string>, IdentityUserToken<string>>
+{
+    private readonly ITenantProvider _tenantProvider;
+    
+    protected override IQueryable<ApplicationUser> Users =>
+        base.Users.Where(u => u.TenantId == _tenantProvider.CurrentTenantId);
+    
+    public override async Task<ApplicationUser> FindByEmailAsync(
+        string normalizedEmail,
+        CancellationToken cancellationToken)
+    {
+        return await Users
+            .Where(u => u.NormalizedEmail == normalizedEmail)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+}
+```
+
+## Security Audit Logging
+
+Track authentication events:
+
+```csharp
+public class AuditableSignInManager<TUser> : SignInManager<TUser>
+    where TUser : class
+{
+    private readonly IAuditLogger _auditLogger;
+    
+    public override async Task<SignInResult> PasswordSignInAsync(
+        string userName, 
+        string password, 
+        bool isPersistent, 
+        bool lockoutOnFailure)
+    {
+        var result = await base.PasswordSignInAsync(
+            userName, password, isPersistent, lockoutOnFailure);
+        
+        await _auditLogger.LogAsync(new AuditEvent
+        {
+            EventType = result.Succeeded ? "LOGIN_SUCCESS" : "LOGIN_FAILED",
+            UserName = userName,
+            IpAddress = Context.Connection.RemoteIpAddress?.ToString(),
+            Timestamp = DateTimeOffset.UtcNow,
+            Details = result.IsLockedOut ? "Account locked" : null
+        });
+        
+        return result;
+    }
+}
+```
+
+## Key Takeaways
+
+- 🔧 **Custom stores** replace EF Core with any data source
+- 🔐 **Custom hashers** enable Argon2 or legacy migration
+- 🎟️ **Token providers** control reset/confirmation token behavior
+- 🍪 **Cookie events** enable session validation and revocation
+- 🏢 **Multi-tenant** isolates users per organization
+- 📋 **Audit logging** tracks all authentication events
+
+<ProgressCheckpoint section="identity-database" xpReward={75} />

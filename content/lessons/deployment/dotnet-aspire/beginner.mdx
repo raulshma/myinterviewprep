@@ -1,0 +1,140 @@
+# .NET Aspire
+
+Imagine you're organizing a **huge wedding**. You need caterers, florists, musicians, photographers - all working together perfectly. Coordinating them individually is a nightmare! You need a **wedding planner** who handles all the details.
+
+**.NET Aspire is that wedding planner for your microservices!**
+
+## What is .NET Aspire?
+
+.NET Aspire is Microsoft's new **opinionated stack** for building cloud-native, distributed applications. It solves the "local development nightmare" for microservices.
+
+<AspireAppBuilder mode="beginner" />
+
+## The Problem Aspire Solves
+
+Before Aspire, starting a multi-service app meant:
+
+```bash
+# Terminal 1: Start database
+docker run -p 5432:5432 postgres
+
+# Terminal 2: Start cache
+docker run -p 6379:6379 redis
+
+# Terminal 3: Start API (with correct connection strings!)
+cd api && dotnet run
+
+# Terminal 4: Start frontend
+cd frontend && npm run dev
+
+# Hope you got all the ports and connection strings right! 😅
+```
+
+With Aspire:
+
+```bash
+# One command to rule them all!
+dotnet run --project AppHost
+```
+
+## Aspire Project Structure
+
+```
+MyAspireApp/
+├── MyAspireApp.AppHost/        ← 🎯 The "wedding planner"
+│   └── Program.cs               
+├── MyAspireApp.ServiceDefaults/ ← 📋 Common configuration
+│   └── Extensions.cs
+├── MyAspireApp.Api/             ← 🔧 Your API project
+│   └── Program.cs
+└── MyAspireApp.Web/             ← 🌐 Your frontend
+    └── Program.cs
+```
+
+## The Magic of AppHost
+
+<DotnetCodePreview
+  title="The Simplest AppHost"
+  code={`// AppHost/Program.cs
+var builder = DistributedApplication.CreateBuilder(args);
+
+// Add a PostgreSQL database
+var postgres = builder.AddPostgres("postgres");
+var db = postgres.AddDatabase("mydb");
+
+// Add your API project, connected to the database
+var api = builder.AddProject<Projects.Api>("api")
+    .WithReference(db);
+
+// Add your frontend, connected to the API
+builder.AddProject<Projects.Web>("web")
+    .WithReference(api);
+
+builder.Build().Run();`}
+  steps={[
+    {
+      lineNumbers: [5, 6],
+      highlight: "Add Database",
+      explanation: "Aspire automatically starts PostgreSQL in a container and injects the connection string!"
+    },
+    {
+      lineNumbers: [9, 10],
+      highlight: "Add Project with Reference",
+      explanation: "Your API automatically gets the database connection string via configuration"
+    },
+    {
+      lineNumbers: [13],
+      highlight: "Service Discovery",
+      explanation: "Frontend can call 'http://api' - Aspire handles the actual URL resolution!"
+    }
+  ]}
+/>
+
+## The Aspire Dashboard
+
+When you run your Aspire app, you get a beautiful dashboard at `https://localhost:17888`:
+
+- 📊 **Resources**: See all running services at a glance
+- 📝 **Logs**: Structured logs from all services in one place
+- 🔍 **Traces**: Distributed tracing to follow requests across services
+- 📈 **Metrics**: CPU, memory, and custom metrics
+
+<KeyConcept 
+  title="No More 'Works on My Machine'"
+  description="Aspire ensures everyone on your team runs the EXACT same setup. Databases, caches, message queues - all automatically configured and started together."
+/>
+
+## Service Discovery Magic
+
+In your API, calling another service is simple:
+
+```csharp
+// In your API project
+public class WeatherService
+{
+    private readonly HttpClient _httpClient;
+    
+    public WeatherService(HttpClient httpClient)
+    {
+        // Aspire injects a pre-configured HttpClient!
+        _httpClient = httpClient;
+    }
+    
+    public async Task<Weather> GetWeather()
+    {
+        // Just use the service name - Aspire resolves it!
+        return await _httpClient.GetFromJsonAsync<Weather>("/weather");
+    }
+}
+```
+
+## Quick Summary
+
+| Term | What It Does | Analogy |
+|:-----|:-------------|:--------|
+| **AppHost** | Orchestrates all services | Wedding planner |
+| **ServiceDefaults** | Common config (logging, health) | Standard wedding checklist |
+| **Dashboard** | Monitoring UI | Wedding day control room |
+| **Service Discovery** | Auto-routing between services | Guest name tags |
+
+<ProgressCheckpoint section="intro-aspire" xpReward={30} />
