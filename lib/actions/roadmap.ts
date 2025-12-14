@@ -8,6 +8,7 @@ import type { Roadmap, RoadmapNode } from "@/lib/db/schemas/roadmap";
 import type {
   UserRoadmapProgress,
   NodeProgressStatus,
+  UserRoadmapProgressSummary,
 } from "@/lib/db/schemas/user-roadmap-progress";
 
 /**
@@ -17,19 +18,24 @@ import type {
 // Get all available roadmaps with user progress
 export async function getRoadmaps(): Promise<{
   roadmaps: Roadmap[];
-  progressMap: Record<string, UserRoadmapProgress>;
+  progressMap: Record<string, UserRoadmapProgressSummary>;
 }> {
   const { userId } = await auth();
   if (!userId) {
     return { roadmaps: [], progressMap: {} };
   }
 
-  const roadmaps = await roadmapRepo.findAllRoadmaps();
-  const allProgress = await progressRepo.findAllByUser(userId);
+  const [roadmaps, progressSummaries] = await Promise.all([
+    roadmapRepo.findAllRoadmaps(),
+    progressRepo.findProgressSummariesByUser(userId),
+  ]);
 
-  const progressMap: Record<string, UserRoadmapProgress> = {};
-  for (const progress of allProgress) {
-    progressMap[progress.roadmapSlug] = progress;
+  const progressMap: Record<
+    string,
+    UserRoadmapProgressSummary
+  > = {};
+  for (const summary of progressSummaries) {
+    progressMap[summary.roadmapSlug] = summary;
   }
 
   return { roadmaps, progressMap };

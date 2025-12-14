@@ -12,11 +12,11 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import type { UserGamification } from '@/lib/db/schemas/user';
-import type { UserRoadmapProgress } from '@/lib/db/schemas/user-roadmap-progress';
+import type { UserRoadmapProgressSummary } from '@/lib/db/schemas/user-roadmap-progress';
 
 interface RoadmapHeroProps {
   gamification: UserGamification | null;
-  progressMap: Record<string, UserRoadmapProgress>;
+  progressMap: Record<string, UserRoadmapProgressSummary>;
   firstName?: string | null;
 }
 

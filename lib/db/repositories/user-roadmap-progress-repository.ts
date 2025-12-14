@@ -6,6 +6,7 @@ import type {
   CreateUserRoadmapProgress,
   NodeProgress,
   NodeProgressStatus,
+  UserRoadmapProgressSummary,
 } from "../schemas/user-roadmap-progress";
 
 /**
@@ -62,6 +63,34 @@ export const findAllByUser = cache(
       ...doc,
       _id: doc._id.toString(),
     })) as UserRoadmapProgress[];
+  }
+);
+
+export const findProgressSummariesByUser = cache(
+  async (userId: string): Promise<UserRoadmapProgressSummary[]> => {
+    const collection = await getUserRoadmapProgressCollection();
+    const docs = await collection
+      .find(
+        { userId },
+        {
+          projection: {
+            roadmapSlug: 1,
+            overallProgress: 1,
+            nodesCompleted: 1,
+            totalNodes: 1,
+          },
+        }
+      )
+      .sort({ updatedAt: -1 })
+      .toArray();
+
+    return docs.map((doc) => ({
+      _id: doc._id.toString(),
+      roadmapSlug: doc.roadmapSlug as string,
+      overallProgress: doc.overallProgress ?? 0,
+      nodesCompleted: doc.nodesCompleted ?? 0,
+      totalNodes: doc.totalNodes ?? 0,
+    })) as UserRoadmapProgressSummary[];
   }
 );
 
