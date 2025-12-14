@@ -15,7 +15,7 @@ import type {
  */
 
 // Find user's progress for a specific roadmap
-export const findByUserAndRoadmap = cache(
+const findByUserAndRoadmap = cache(
   async (
     userId: string,
     roadmapId: string
@@ -33,7 +33,7 @@ export const findByUserAndRoadmap = cache(
 );
 
 // Find user's progress by roadmap slug
-export const findByUserAndSlug = cache(
+const findByUserAndSlug = cache(
   async (
     userId: string,
     roadmapSlug: string
@@ -51,7 +51,7 @@ export const findByUserAndSlug = cache(
 );
 
 // Find all roadmap progress for a user
-export const findAllByUser = cache(
+const findAllByUser = cache(
   async (userId: string): Promise<UserRoadmapProgress[]> => {
     const collection = await getUserRoadmapProgressCollection();
     const docs = await collection
@@ -66,7 +66,7 @@ export const findAllByUser = cache(
   }
 );
 
-export const findProgressSummariesByUser = cache(
+const findProgressSummariesByUser = cache(
   async (userId: string): Promise<UserRoadmapProgressSummary[]> => {
     const collection = await getUserRoadmapProgressCollection();
     const docs = await collection
@@ -95,7 +95,7 @@ export const findProgressSummariesByUser = cache(
 );
 
 // Create initial progress record when user starts a roadmap
-export async function createProgress(
+async function createProgress(
   progress: CreateUserRoadmapProgress
 ): Promise<UserRoadmapProgress> {
   const collection = await getUserRoadmapProgressCollection();
@@ -117,7 +117,7 @@ export async function createProgress(
 }
 
 // Update node progress
-export async function updateNodeProgress(
+async function updateNodeProgress(
   userId: string,
   roadmapId: string,
   nodeId: string,
@@ -171,7 +171,7 @@ export async function updateNodeProgress(
 }
 
 // Mark node as completed and recalculate overall progress
-export async function markNodeCompleted(
+async function markNodeCompleted(
   userId: string,
   roadmapId: string,
   nodeId: string
@@ -230,7 +230,7 @@ export async function markNodeCompleted(
 }
 
 // Start learning a node
-export async function startNode(
+async function startNode(
   userId: string,
   roadmapId: string,
   nodeId: string
@@ -287,7 +287,7 @@ async function recalculateProgress(
 }
 
 // Increment activity stats for a node
-export async function incrementNodeActivity(
+async function incrementNodeActivity(
   userId: string,
   roadmapId: string,
   nodeId: string,
@@ -313,3 +313,15 @@ export async function incrementNodeActivity(
     }
   );
 }
+
+export const userRoadmapProgressRepository = {
+    findByUserAndRoadmap,
+    findByUserAndSlug,
+    findAllByUser,
+    findProgressSummariesByUser,
+    createProgress,
+    updateNodeProgress,
+    markNodeCompleted,
+    startNode,
+    incrementNodeActivity
+};

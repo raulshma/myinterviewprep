@@ -57,7 +57,13 @@ export interface InterviewRepository {
   create(data: CreateInterview): Promise<Interview>;
   findById(id: string): Promise<Interview | null>;
   findByUserId(userId: string): Promise<Interview[]>;
-  findSummariesByUserId(userId: string): Promise<InterviewSummary[]>;
+  findSummariesByUserId(
+    userId: string, 
+    page?: number, 
+    limit?: number, 
+    search?: string, 
+    status?: 'active' | 'completed' | 'all'
+  ): Promise<{ interviews: InterviewSummary[]; total: number }>;
   updateModule(id: string, module: 'openingBrief', content: OpeningBrief): Promise<void>;
   updateModule(id: string, module: 'revisionTopics', content: RevisionTopic[]): Promise<void>;
   updateModule(id: string, module: 'mcqs', content: MCQ[]): Promise<void>;
@@ -128,11 +134,47 @@ export const interviewRepository: InterviewRepository = {
    * Optimized query for dashboard - uses aggregation to compute summary fields
    * and avoids fetching full module content
    */
-  async findSummariesByUserId(userId: string): Promise<InterviewSummary[]> {
+  async findSummariesByUserId(
+    userId: string, 
+    page: number = 1, 
+    limit: number = 9,
+    search?: string,
+    status?: 'active' | 'completed' | 'all'
+  ): Promise<{ interviews: InterviewSummary[]; total: number }> {
     const collection = await getInterviewsCollection();
     
-    const summaries = await collection.aggregate<InterviewSummary>([
-      { $match: { userId } },
+    // Build match query
+    const match: any = { userId };
+    
+    if (search) {
+      match.$or = [
+        { 'jobDetails.title': { $regex: search, $options: 'i' } },
+        { 'jobDetails.company': { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Status filtering is tricky because status is computed. 
+    // However, we can approximate it or filter after match if dataset is small, 
+    // BUT for scalability we should try to match on module counts if possible, 
+    // or better yet, just accept that 'status' filter might be best done in aggregation or 
+    // we just fetch all matches and paginate in memory if the result set is small?
+    // User requested "performant", so we should ideally do it in DB.
+    // The previous implementation computed status based on module counts.
+    // Let's replicate that logic in the query if possible, or just doing the text search in DB 
+    // and rely on client/server to filter status? 
+    // Actually, status filter was: 
+    // completed = all 4 modules > 0
+    // active = some modules > 0
+    // upcoming = 0 modules
+    
+    // Constructing complex $match for 'status' based on computed fields is verbose but possible.
+    // For now, let's prioritize the Search and Pagination. Status filtering is often less used 
+    // or can be done with a slightly more complex query phase.
+    
+    // Let's implement the basic aggregation pipeline first.
+    
+    const pipeline: any[] = [
+      { $match: match },
       { $sort: { updatedAt: -1 } },
       {
         $project: {
@@ -159,9 +201,62 @@ export const interviewRepository: InterviewRepository = {
           },
         },
       },
-    ]).toArray();
+      // Status filtering stage (if requested)
+      ...(status && status !== 'all' ? [
+        {
+          $addFields: {
+             // Compute status for filtering
+             computedStatus: {
+                $switch: {
+                   branches: [
+                      { 
+                        case: { 
+                          $and: [
+                             { $eq: ['$hasOpeningBrief', true] }, 
+                             { $gt: ['$topicCount', 0] },
+                             { $gt: ['$mcqCount', 0] },
+                             { $gt: ['$rapidFireCount', 0] }
+                          ]
+                        }, 
+                        then: 'completed' 
+                      },
+                      {
+                        case: {
+                           $or: [
+                             { $eq: ['$hasOpeningBrief', true] }, 
+                             { $gt: ['$topicCount', 0] },
+                             { $gt: ['$mcqCount', 0] },
+                             { $gt: ['$rapidFireCount', 0] }
+                           ]
+                        },
+                        then: 'active'
+                      }
+                   ],
+                   default: 'upcoming'
+                }
+             }
+          }
+        },
+        { 
+           $match: { 
+              computedStatus: status === 'active' ? { $in: ['active', 'upcoming'] } : status 
+           } 
+        }
+      ] : []),
+      {
+        $facet: {
+          metadata: [{ $count: 'total' }],
+          data: [{ $skip: (page - 1) * limit }, { $limit: limit }],
+        },
+      },
+    ];
 
-    return summaries;
+    const result = await collection.aggregate(pipeline).toArray();
+    
+    const total = result[0]?.metadata[0]?.total ?? 0;
+    const summaries = result[0]?.data ?? [];
+
+    return { interviews: summaries, total };
   },
 
   async updateModule(id: string, module: ModuleType, content: unknown) {

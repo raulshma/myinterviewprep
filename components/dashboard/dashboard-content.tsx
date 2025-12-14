@@ -1,179 +1,177 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Plus, Filter, LayoutGrid, List } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InterviewCardNew } from "./interview-card";
 import { deleteInterview } from "@/lib/actions/interview";
 import type { DashboardInterviewData } from "@/lib/actions/dashboard";
-
-type FilterStatus = "all" | "active" | "completed";
-type ViewMode = "grid" | "list";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface DashboardContentProps {
   interviews: DashboardInterviewData[];
+  total: number;
+  currentPage: number;
 }
+
+const ITEMS_PER_PAGE = 9;
 
 export function DashboardContent({
   interviews: initialInterviews,
+  total,
+  currentPage,
 }: DashboardContentProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  
   const [interviews, setInterviews] = useState(initialInterviews);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [isPending, startTransition] = useTransition();
 
-  const filteredInterviews = useMemo(() => {
-    return interviews.filter((interview) => {
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch =
-        searchQuery === "" ||
-        interview.jobDetails.title.toLowerCase().includes(searchLower) ||
-        interview.jobDetails.company.toLowerCase().includes(searchLower);
+  // Sync interviews when props change (e.g. after pagination/search)
+  useEffect(() => {
+    setInterviews(initialInterviews);
+  }, [initialInterviews]);
 
-      const matchesStatus =
-        filterStatus === "all" ||
-        (filterStatus === "active" &&
-          (interview.status === "active" || interview.status === "upcoming")) ||
-        (filterStatus === "completed" && interview.status === "completed");
+  // URL State
+  const currentSearch = searchParams.get("search")?.toString() || "";
+  const currentStatus = searchParams.get("status")?.toString() || "all";
 
-      return matchesSearch && matchesStatus;
-    });
-  }, [interviews, searchQuery, filterStatus]);
+  // Debounced Search Handler
+  const handleSearch = (term: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (term) {
+      params.set("search", term);
+    } else {
+      params.delete("search");
+    }
+    params.set("page", "1"); // Reset to page 1
+    router.replace(`${pathname}?${params.toString()}`);
+  };
+
+  // Filter Handler
+  const handleFilter = (status: string) => {
+    const params = new URLSearchParams(searchParams);
+    if (status && status !== "all") {
+      params.set("status", status);
+    } else {
+      params.delete("status");
+    }
+    params.set("page", "1"); // Reset to page 1
+    router.replace(`${pathname}?${params.toString()}`);
+  };
+
+  // Pagination Handler
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", page.toString());
+    // Scroll to top of list
+    const listElement = document.getElementById("interview-list");
+    if (listElement) {
+       listElement.scrollIntoView({ behavior: 'smooth' });
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  };
+  
+  const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
   const handleDelete = async (interviewId: string) => {
     startTransition(async () => {
       const result = await deleteInterview(interviewId);
       if (result.success) {
         setInterviews((prev) => prev.filter((i) => i._id !== interviewId));
+        router.refresh(); 
       }
     });
   };
 
   return (
-    <div className="overflow-hidden">
-      {/* Search & Filters */}
-      <motion.div
-        className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.2 }}
-      >
-        <div className="relative w-full sm:max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+    <div className="overflow-hidden space-y-8" id="interview-list">
+      {/* Search & Filters Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sticky top-4 z-10 bg-background/80 backdrop-blur-xl p-4 rounded-2xl border border-white/20 shadow-sm transition-all duration-300">
+        <div className="relative w-full sm:max-w-md group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors duration-300" />
           <Input
             placeholder="Search interviews..."
-            className="pl-10 h-10 rounded-lg bg-background border-border focus:border-primary transition-all"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 h-11 rounded-xl bg-secondary/50 border-transparent focus:bg-background focus:border-primary/20 transition-all duration-300"
+            defaultValue={currentSearch}
+            onChange={(e) => {
+              const val = e.target.value;
+              setTimeout(() => handleSearch(val), 300); 
+            }}
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-secondary/50 p-1 rounded-lg border border-border">
+        <div className="flex items-center gap-1 bg-secondary/30 p-1.5 rounded-xl border border-white/10 backdrop-blur-md">
             {(["all", "active", "completed"] as const).map((status) => (
-              <Button
+            <Button
                 key={status}
-                variant={filterStatus === status ? "secondary" : "ghost"}
+                variant={currentStatus === status ? "secondary" : "ghost"}
                 size="sm"
-                className={`rounded-md px-3 h-8 text-xs capitalize transition-all ${
-                  filterStatus === status
-                    ? "bg-background shadow-sm text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground"
+                className={`rounded-lg px-4 h-9 text-xs font-medium capitalize transition-all duration-300 ${
+                currentStatus === status
+                    ? "bg-white shadow-sm text-black"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/50"
                 }`}
-                onClick={() => setFilterStatus(status)}
-              >
+                onClick={() => handleFilter(status)}
+            >
                 {status}
-              </Button>
+            </Button>
             ))}
-          </div>
-
-          <div className="hidden sm:flex items-center gap-1 bg-secondary/50 p-1 rounded-lg border border-border">
-            <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="icon"
-              className={`w-8 h-8 rounded-md transition-all ${
-                viewMode === "grid" ? "bg-background shadow-sm" : ""
-              }`}
-              onClick={() => setViewMode("grid")}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="icon"
-              className={`w-8 h-8 rounded-md transition-all ${
-                viewMode === "list" ? "bg-background shadow-sm" : ""
-              }`}
-              onClick={() => setViewMode("list")}
-            >
-              <List className="w-4 h-4" />
-            </Button>
-          </div>
         </div>
-      </motion.div>
+      </div>
 
-      {/* Interview Cards */}
+      {/* Masonry Layout */}
       <AnimatePresence mode="popLayout">
         <motion.div
-          className={
-            viewMode === "grid"
-              ? "grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6"
-              : "flex flex-col gap-4 min-w-0"
-          }
+          className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6"
           layout
         >
-          {/* Add New Card */}
-          <motion.div
-            layout
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
-          >
-            <Link href="/dashboard/new">
-              <div
-                className={`group relative overflow-hidden rounded-xl border border-dashed border-border hover:border-primary/50 transition-all duration-300 flex flex-col items-center justify-center cursor-pointer bg-card hover:bg-secondary/50 ${
-                  viewMode === "grid"
-                    ? "h-full min-h-[200px]"
-                    : "h-20 flex-row gap-4"
-                }`}
-              >
-                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                  <Plus className="w-5 h-5 text-muted-foreground group-hover:text-primary" />
-                </div>
+          {/* New Interview Card - Always First */}
+          {currentPage === 1 && !currentSearch && currentStatus === 'all' && (
+            <motion.div
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+                className="break-inside-avoid mb-6"
+            >
+                <Link href="/dashboard/new" className="block w-full">
                 <div
-                  className={
-                    viewMode === "grid" ? "mt-4 text-center" : "text-left"
-                  }
+                    className="group relative overflow-hidden rounded-3xl border border-dashed border-primary/20 bg-primary/5 hover:bg-primary/10 transition-all duration-500 min-h-[300px] flex flex-col items-center justify-center cursor-pointer"
                 >
-                  <p className="font-medium text-foreground group-hover:text-primary transition-colors">
-                    New Interview
-                  </p>
-                  {viewMode === "grid" && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Start new preparation
+                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-primary transition-all duration-500">
+                    <Plus className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors duration-500" />
+                    </div>
+                    <div className="text-center px-6">
+                    <h3 className="text-xl font-semibold text-foreground mb-2 group-hover:translate-y-[-2px] transition-transform duration-500">
+                        New Interview
+                    </h3>
+                    <p className="text-sm text-muted-foreground max-w-[200px] mx-auto group-hover:text-foreground/80 transition-colors duration-500">
+                        Start a new AI-powered mock interview session
                     </p>
-                  )}
+                    </div>
                 </div>
-              </div>
-            </Link>
-          </motion.div>
+                </Link>
+            </motion.div>
+          )}
 
-          {filteredInterviews.map((interview, index) => (
+          {interviews.map((interview, index) => (
             <motion.div
               key={interview._id}
               layout
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.4, delay: index * 0.05 }}
+              transition={{ duration: 0.5, delay: index * 0.05, ease: [0.23, 1, 0.32, 1] }}
+              className="break-inside-avoid mb-6"
             >
               <InterviewCardNew
                 interview={interview}
-                viewMode={viewMode}
                 onDelete={() => handleDelete(interview._id)}
                 isDeleting={isPending}
               />
@@ -183,30 +181,63 @@ export function DashboardContent({
       </AnimatePresence>
 
       {/* Empty state */}
-      {filteredInterviews.length === 0 && interviews.length > 0 && (
+      {interviews.length === 0 && (
         <motion.div
-          className="text-center py-24"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center py-24 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
         >
-          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-secondary flex items-center justify-center">
-            <Search className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-lg font-medium mb-2">No interviews found</h3>
-          <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-            We couldn&apos;t find any interviews matching your search criteria.
-          </p>
-          <Button
-            variant="outline"
-            className="rounded-full px-6"
-            onClick={() => {
-              setSearchQuery("");
-              setFilterStatus("all");
-            }}
-          >
-            Clear filters
-          </Button>
+            <div className="w-20 h-20 rounded-3xl bg-secondary/50 flex items-center justify-center mb-6 shadow-sm">
+            <Search className="w-8 h-8 text-muted-foreground/60" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No interviews found</h3>
+            <p className="text-muted-foreground text-sm max-w-sm mx-auto mb-6">
+                We couldn&apos;t find any interviews matching your search filters.
+            </p>
+            <Button
+                variant="outline"
+                className="rounded-full px-6"
+                onClick={() => {
+                    const params = new URLSearchParams(searchParams);
+                    params.delete("search");
+                    params.delete("status");
+                    router.replace(`${pathname}?${params.toString()}`);
+                }}
+            >
+                Clear all filters
+            </Button>
         </motion.div>
+      )}
+
+      {/* Modern Pagination */}
+      {totalPages > 1 && (
+         <div className="flex items-center justify-center gap-4 py-8">
+              <Button
+                 variant="outline"
+                 size="icon"
+                 className="w-10 h-10 rounded-full border-border/60 hover:bg-secondary/80 hover:border-border transition-all duration-300"
+                 disabled={currentPage <= 1}
+                 onClick={() => handlePageChange(currentPage - 1)}
+              >
+                 <ChevronLeft className="w-4 h-4" />
+              </Button>
+              
+              <div className="flex items-center gap-2 text-sm font-medium tabular-nums">
+                 <span className="text-foreground">{currentPage}</span>
+                 <span className="text-muted-foreground/50">/</span>
+                 <span className="text-muted-foreground">{totalPages}</span>
+              </div>
+
+              <Button
+                 variant="outline"
+                 size="icon"
+                 className="w-10 h-10 rounded-full border-border/60 hover:bg-secondary/80 hover:border-border transition-all duration-300"
+                 disabled={currentPage >= totalPages}
+                 onClick={() => handlePageChange(currentPage + 1)}
+              >
+                 <ChevronRight className="w-4 h-4" />
+             </Button>
+         </div>
       )}
     </div>
   );

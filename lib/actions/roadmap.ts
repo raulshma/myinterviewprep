@@ -3,7 +3,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import * as roadmapRepo from "@/lib/db/repositories/roadmap-repository";
-import * as progressRepo from "@/lib/db/repositories/user-roadmap-progress-repository";
+import { userRoadmapProgressRepository as progressRepo } from "@/lib/db/repositories/user-roadmap-progress-repository";
 import type { Roadmap, RoadmapNode } from "@/lib/db/schemas/roadmap";
 import type {
   UserRoadmapProgress,

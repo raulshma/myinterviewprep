@@ -65,5 +65,5 @@ export type CreateUserRoadmapProgress = z.infer<typeof CreateUserRoadmapProgress
 export type UpdateNodeProgress = z.infer<typeof UpdateNodeProgressSchema>;
 export type UserRoadmapProgressSummary = Pick<
   UserRoadmapProgress,
-  '_id' | 'roadmapSlug' | 'overallProgress' | 'nodesCompleted' | 'totalNodes'
+  '_id' | 'roadmapSlug' | 'overallProgress' | 'nodesCompleted' | 'totalNodes' | 'lastActivityAt' | 'updatedAt'
 >;

@@ -30,6 +30,7 @@ export interface LearningPathRepository {
   findById(id: string): Promise<LearningPath | null>;
   findByUserId(userId: string): Promise<LearningPath[]>;
   findActiveByUserId(userId: string): Promise<LearningPath | null>;
+  findActiveSummaryByUserId(userId: string): Promise<Partial<LearningPath> | null>;
 
   // Topic management
   addTopic(pathId: string, topic: LearningTopic): Promise<void>;
@@ -102,7 +103,32 @@ export const learningPathRepository: LearningPathRepository = {
     const collection = await getLearningPathsCollection();
     const path = await collection.findOne({ userId, isActive: true });
     if (!path) return null;
-    return normalizeLearningPath(path as LearningPath);
+    return normalizeLearningPath(path as any as LearningPath);
+  },
+
+  /**
+   * Optimized fetch for dashboard - returns only necessary fields
+   */
+  async findActiveSummaryByUserId(userId: string) {
+    const collection = await getLearningPathsCollection();
+    const path = await collection.findOne(
+      { userId, isActive: true },
+      {
+        projection: {
+          _id: 1,
+          goal: 1,
+          overallElo: 1,
+          'timeline.success': 1, // Only need success status to count/calculate progress
+          'timeline.length': 1, 
+          skillScores: 1,
+          updatedAt: 1
+        }
+      }
+    );
+    if (!path) return null;
+    
+    // We cast to any because the projection creates a partial object that doesn't fully match the schema
+    return path as any as Partial<LearningPath>;
   },
 
 

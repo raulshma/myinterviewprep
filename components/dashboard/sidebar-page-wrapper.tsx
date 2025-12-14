@@ -13,7 +13,7 @@ interface SidebarPageWrapperProps {
  * Some pages like AI Chat need no padding to utilize full width
  */
 const paddingConfig = {
-  "/ai-chat": "pr-0 py-0", // No padding for AI Chat
+  none: "pr-0 py-0", // No padding
   default: "p-4 md:p-6 lg:p-8", // All-around padding for other pages
 } as const;
 
@@ -23,7 +23,7 @@ export function SidebarPageWrapper({ children }: SidebarPageWrapperProps) {
   // Determine padding based on current route
   const paddingClass =
     pathname === "/ai-chat" || pathname?.includes("/ai-chat")
-      ? paddingConfig["/ai-chat"]
+      ? paddingConfig.none
       : paddingConfig.default;
 
   return (
