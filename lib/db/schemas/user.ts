@@ -46,9 +46,12 @@ export const UserPreferencesSchema = z.object({
 
 // Pixel Pet Schemas
 export const PixelPetIdSchema = z.enum([
-  'pixel_dog',
-  'pixel_plane',
-  'pixel_toyota_corolla_e80',
+  'angler',
+  'dragon',
+  'giratina_origin_form',
+  'leathern_drake',
+  'mob_test',
+  'yveltal_bedrock',
 ]);
 
 export const PixelPetEdgeSchema = z.enum(['top', 'right', 'bottom', 'left']);
@@ -66,7 +69,7 @@ export const PixelPetPositionSchema = z.object({
 export const PixelPetPreferencesSchema = z.object({
   schemaVersion: z.number().int().min(1).default(1),
   enabled: z.boolean().default(false),
-  selectedId: PixelPetIdSchema.default('pixel_dog'),
+  selectedId: PixelPetIdSchema.catch('dragon').default('dragon'),
   /** Which opted-in edge container the pet is currently attached to */
   surfaceId: z.string().default('app-shell'),
   edge: PixelPetEdgeSchema.default('bottom'),
@@ -78,6 +81,12 @@ export const PixelPetPreferencesSchema = z.object({
   size: z.number().min(0.3).max(3).default(1),
   /** Current position on screen */
   position: PixelPetPositionSchema.default({ x: 100, y: 100 }),
+  /** Animation to play when pet is resting/idle */
+  idleAnimation: z.string().optional(),
+  /** Animation to play when pet is walking/moving */
+  walkAnimation: z.string().optional(),
+  /** Front-facing direction in degrees (the side that faces camera when idle) */
+  defaultOrientation: z.number().default(0),
 });
 
 // Gamification Schemas

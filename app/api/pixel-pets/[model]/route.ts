@@ -4,9 +4,12 @@ import path from "path";
 export const runtime = "nodejs";
 
 const ALLOWED_MODELS = new Set([
-  "pixel_dog.glb",
-  "pixel_plane.glb",
-  "pixel_car.glb",
+  "angler.glb",
+  "dragon.glb",
+  "giratina_origin_form.glb",
+  "leathern_drake.glb",
+  "mob_test.glb",
+  "yveltal_bedrock.glb",
 ]);
 
 function getSafeModelName(model: string): string | null {

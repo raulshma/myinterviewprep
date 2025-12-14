@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import { Center } from "@react-three/drei";
 import { motion, useMotionValue, useSpring, animate } from "framer-motion";
@@ -17,7 +18,7 @@ interface PixelPetOverlayProps {
 }
 
 const BASE_PET_SIZE = 96;
-const WALK_SPEED = 15; // pixels per second
+const WALK_SPEED = 40; // pixels per second (increased for visibility)
 const MIN_REST_TIME = 3000; // ms
 const MAX_REST_TIME = 8000; // ms
 const MIN_WALK_DISTANCE = 50; // px
@@ -27,13 +28,16 @@ const SCREEN_PADDING = 50; // px from edges
 const DEFAULT_PREFS: PixelPetPreferences = {
   schemaVersion: 1,
   enabled: false,
-  selectedId: "pixel_dog",
+  selectedId: "dragon",
   surfaceId: "app-shell",
   edge: "bottom",
   progress: 0.5,
   offset: { x: 0, y: 0 },
   size: 1,
   position: { x: 100, y: 100 },
+  idleAnimation: undefined,
+  walkAnimation: undefined,
+  defaultOrientation: 0,
 };
 
 function prefersReducedMotion(): boolean {
@@ -79,22 +83,38 @@ export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayPro
   const setPetState = usePixelPetStore((s) => s.setPetState);
   const setDirection = usePixelPetStore((s) => s.setDirection);
   const setPosition = usePixelPetStore((s) => s.setPosition);
+  const setAvailableAnimations = usePixelPetStore((s) => s.setAvailableAnimations);
 
   const enabled = isProPlus && prefs.enabled;
   const sizeMultiplier = prefs.size ?? 1;
   const petSize = BASE_PET_SIZE * sizeMultiplier;
 
-  // Motion values for smooth animation
+  // Motion values for smooth position animation
   const x = useMotionValue(currentPos.x);
   const y = useMotionValue(currentPos.y);
   
-  // Spring config for smooth following
+  // Motion value for smooth rotation (in radians) - avoids re-renders
+  const rotation = useMotionValue(0);
+  
+  // Spring config for smooth following during drag
   const springX = useSpring(x, { stiffness: 300, damping: 30 });
   const springY = useSpring(y, { stiffness: 300, damping: 30 });
+  // Spring for smooth rotation
+  const springRotation = useSpring(rotation, { stiffness: 120, damping: 20 });
 
   const isDragging = React.useRef(false);
   const animationRef = React.useRef<ReturnType<typeof animate> | null>(null);
+  const animationYRef = React.useRef<ReturnType<typeof animate> | null>(null);
   const [cursorStyle, setCursorStyle] = React.useState<"grab" | "grabbing">("grab");
+  
+  // Store the front orientation in a ref so we can access it in the effect without it being a dependency
+  const frontOrientationRef = React.useRef(prefs.defaultOrientation ?? 0);
+  React.useEffect(() => {
+    frontOrientationRef.current = prefs.defaultOrientation ?? 0;
+  }, [prefs.defaultOrientation]);
+
+  // Track whether pet is currently walking
+  const isWalking = petState === "walking";
 
   // Hydrate on mount
   React.useEffect(() => {
@@ -123,6 +143,17 @@ export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayPro
     let timeoutId: NodeJS.Timeout;
     let mounted = true;
 
+    const stopAllAnimations = () => {
+      if (animationRef.current) {
+        animationRef.current.stop();
+        animationRef.current = null;
+      }
+      if (animationYRef.current) {
+        animationYRef.current.stop();
+        animationYRef.current = null;
+      }
+    };
+
     const startWalking = () => {
       if (!mounted || isDragging.current) return;
       
@@ -130,10 +161,24 @@ export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayPro
       const currentY = y.get();
       const target = getRandomTarget(currentX, currentY, petSize);
       
-      // Set direction based on movement
+      // Set direction based on movement (for flipping the model)
       const newDirection = target.x > currentX ? 1 : -1;
       setDirection(newDirection);
       setPetState("walking");
+
+      // Calculate the angle from current position to target
+      const dx = target.x - currentX;
+      const dy = target.y - currentY;
+      const moveAngle = Math.atan2(dy, dx); // Angle in radians
+      
+      // Calculate target rotation based on movement direction and front offset
+      // The front offset defines which side of the model faces the camera when idle (rotation = 0)
+      // When walking, we want the model to rotate so its front faces the movement direction
+      const frontOffsetRad = (frontOrientationRef.current * Math.PI) / 180;
+      const targetRotation = moveAngle + frontOffsetRad;
+      
+      // Set the rotation target (spring will smoothly interpolate)
+      rotation.set(targetRotation);
 
       // Calculate duration based on distance
       const distance = Math.sqrt(
@@ -141,19 +186,18 @@ export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayPro
       );
       const duration = distance / WALK_SPEED;
 
-      // Cancel any existing animation
-      if (animationRef.current) {
-        animationRef.current.stop();
-      }
+      // Stop any existing animations
+      stopAllAnimations();
 
-      // Animate to target
+      // Animate X position
       animationRef.current = animate(x, target.x, {
         duration,
         ease: "linear",
         onUpdate: (v) => setCurrentPos({ x: v, y: y.get() }),
       });
 
-      animate(y, target.y, {
+      // Animate Y position with completion callback
+      animationYRef.current = animate(y, target.y, {
         duration,
         ease: "linear",
         onUpdate: (v) => setCurrentPos({ x: x.get(), y: v }),
@@ -168,6 +212,10 @@ export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayPro
       if (!mounted || isDragging.current) return;
       
       setPetState("resting");
+      
+      // Rotate back to face the camera (0 rotation)
+      rotation.set(0);
+      
       const restTime = randomBetween(MIN_REST_TIME, MAX_REST_TIME);
       
       timeoutId = setTimeout(() => {
@@ -183,11 +231,9 @@ export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayPro
     return () => {
       mounted = false;
       clearTimeout(timeoutId);
-      if (animationRef.current) {
-        animationRef.current.stop();
-      }
+      stopAllAnimations();
     };
-  }, [enabled, petSize, x, y, setCurrentPos, setPetState, setDirection]);
+  }, [enabled, petSize, x, y, rotation, setCurrentPos, setPetState, setDirection]);
 
   // Drag handlers
   const handleDragStart = () => {
@@ -195,9 +241,12 @@ export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayPro
     setPetState("dragging");
     setCursorStyle("grabbing");
     
-    // Stop any ongoing animation
+    // Stop any ongoing animations
     if (animationRef.current) {
       animationRef.current.stop();
+    }
+    if (animationYRef.current) {
+      animationYRef.current.stop();
     }
   };
 
@@ -255,24 +304,23 @@ export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayPro
         <Canvas
           key={`${selectedDef.fileName}-${sizeMultiplier}`}
           dpr={[1, 1.5]}
-          frameloop="demand"
+          frameloop={selectedDef.hasAnimations ? "always" : "demand"}
           gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
           orthographic
-          camera={{ position: [0, 0, 10], zoom: 90 }}
+          camera={{ position: [0, 0, 10], zoom: 90 * sizeMultiplier }}
         >
           <ambientLight intensity={0.9} />
           <directionalLight position={[3, 6, 5]} intensity={0.7} />
           <React.Suspense fallback={null}>
             <Center>
-              <group 
-                position={[0, -0.6, 0]} 
-                scale={[direction, 1, 1]}
-              >
-                <PixelPetModel
-                  fileName={selectedDef.fileName}
-                  modelScale={selectedDef.modelScale}
-                />
-              </group>
+              <RotatingPetGroup
+                direction={direction}
+                rotation={springRotation}
+                selectedDef={selectedDef}
+                prefs={prefs}
+                isWalking={isWalking}
+                setAvailableAnimations={setAvailableAnimations}
+              />
             </Center>
           </React.Suspense>
         </Canvas>
@@ -285,5 +333,54 @@ export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayPro
         )}
       </motion.div>
     </div>
+  );
+}
+
+// Separate component that subscribes to the spring rotation via useFrame
+interface RotatingPetGroupProps {
+  direction: number;
+  rotation: ReturnType<typeof useSpring>;
+  selectedDef: ReturnType<typeof getPixelPetDefinition>;
+  prefs: PixelPetPreferences;
+  isWalking: boolean;
+  setAvailableAnimations: (animations: string[]) => void;
+}
+
+function RotatingPetGroup({ 
+  direction, 
+  rotation, 
+  selectedDef, 
+  prefs, 
+  isWalking, 
+  setAvailableAnimations 
+}: RotatingPetGroupProps) {
+  const groupRef = React.useRef<THREE.Group>(null);
+  
+  // Update rotation every frame using the motion value
+  React.useEffect(() => {
+    const unsubscribe = rotation.on("change", (v) => {
+      if (groupRef.current) {
+        groupRef.current.rotation.y = v;
+      }
+    });
+    return () => unsubscribe();
+  }, [rotation]);
+
+  return (
+    <group 
+      ref={groupRef}
+      position={[0, -0.6, 0]} 
+      scale={[direction, 1, 1]}
+    >
+      <PixelPetModel
+        fileName={selectedDef.fileName}
+        modelScale={selectedDef.modelScale}
+        hasAnimations={selectedDef.hasAnimations}
+        idleAnimation={prefs.idleAnimation}
+        walkAnimation={prefs.walkAnimation}
+        isWalking={isWalking}
+        onAnimationsLoaded={setAvailableAnimations}
+      />
+    </group>
   );
 }

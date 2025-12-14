@@ -40,6 +40,13 @@ export function PixelPetSection({ plan, pixelPet }: PixelPetSectionProps) {
   const setEnabled = usePixelPetStore((s) => s.setEnabled);
   const setSelectedId = usePixelPetStore((s) => s.setSelectedId);
   const setSize = usePixelPetStore((s) => s.setSize);
+  const idleAnimation = usePixelPetStore((s) => s.prefs.idleAnimation);
+  const walkAnimation = usePixelPetStore((s) => s.prefs.walkAnimation);
+  const defaultOrientation = usePixelPetStore((s) => s.prefs.defaultOrientation);
+  const availableAnimations = usePixelPetStore((s) => s.availableAnimations);
+  const setIdleAnimation = usePixelPetStore((s) => s.setIdleAnimation);
+  const setWalkAnimation = usePixelPetStore((s) => s.setWalkAnimation);
+  const setDefaultOrientation = usePixelPetStore((s) => s.setDefaultOrientation);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -190,17 +197,173 @@ export function PixelPetSection({ plan, pixelPet }: PixelPetSectionProps) {
               </SelectContent>
             </Select>
             {selected && (
-              <p className="text-xs text-muted-foreground">
-                Model: <span className="font-mono">{selected.fileName}</span>
-              </p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>
+                  Model by{" "}
+                  <a 
+                    href={selected.attribution.authorUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    {selected.attribution.author}
+                  </a>
+                  {" "}({" "}
+                  <a 
+                    href={selected.attribution.sourceUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    Sketchfab
+                  </a>
+                  {" "})
+                </p>
+                <p>
+                  License:{" "}
+                  <a 
+                    href={selected.attribution.licenseUrl}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:underline"
+                  >
+                    {selected.attribution.license}
+                  </a>
+                </p>
+              </div>
             )}
 
             {selected && (
               <PixelPetModelDiagnostics
                 fileName={selected.fileName}
                 modelScale={selected.modelScale}
+                hasAnimations={selected.hasAnimations}
               />
             )}
+          </div>
+
+          {/* Animation Settings */}
+          {selected?.hasAnimations && availableAnimations.length > 0 && (
+            <div className="space-y-4">
+              {/* Idle Animation */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Idle Animation</Label>
+                <Select
+                  value={idleAnimation ?? "__random__"}
+                  onValueChange={async (value) => {
+                    const animVal = value === "__random__" ? undefined : value;
+                    const prev = idleAnimation;
+                    setIdleAnimation(animVal);
+                    try {
+                      const result = await updatePixelPetPreferences({ idleAnimation: animVal });
+                      if (!result.success) {
+                        setIdleAnimation(prev);
+                        toast.error(result.error.message ?? "Failed to save animation");
+                      }
+                    } catch (error) {
+                      console.error("Failed to save animation:", error);
+                      setIdleAnimation(prev);
+                      toast.error("Failed to save animation");
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-11 rounded-xl">
+                    <SelectValue placeholder="Random" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__random__">Random</SelectItem>
+                    {availableAnimations.map((anim) => (
+                      <SelectItem key={anim} value={anim}>
+                        {anim}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Animation when your pet is resting.
+                </p>
+              </div>
+
+              {/* Walk Animation */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Walk Animation</Label>
+                <Select
+                  value={walkAnimation ?? "__random__"}
+                  onValueChange={async (value) => {
+                    const animVal = value === "__random__" ? undefined : value;
+                    const prev = walkAnimation;
+                    setWalkAnimation(animVal);
+                    try {
+                      const result = await updatePixelPetPreferences({ walkAnimation: animVal });
+                      if (!result.success) {
+                        setWalkAnimation(prev);
+                        toast.error(result.error.message ?? "Failed to save animation");
+                      }
+                    } catch (error) {
+                      console.error("Failed to save animation:", error);
+                      setWalkAnimation(prev);
+                      toast.error("Failed to save animation");
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-11 rounded-xl">
+                    <SelectValue placeholder="Random" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__random__">Random</SelectItem>
+                    {availableAnimations.map((anim) => (
+                      <SelectItem key={anim} value={anim}>
+                        {anim}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Animation when your pet is walking around.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Front Direction Settings */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Front Direction</Label>
+            <Select
+              value={String(defaultOrientation ?? 0)}
+              onValueChange={async (value) => {
+                const orient = parseInt(value, 10);
+                const prev = defaultOrientation;
+                setDefaultOrientation(orient);
+                try {
+                  const result = await updatePixelPetPreferences({ defaultOrientation: orient });
+                  if (!result.success) {
+                    setDefaultOrientation(prev ?? 0);
+                    toast.error(result.error.message ?? "Failed to save front direction");
+                  }
+                } catch (error) {
+                  console.error("Failed to save front direction:", error);
+                  setDefaultOrientation(prev ?? 0);
+                  toast.error("Failed to save front direction");
+                }
+              }}
+            >
+              <SelectTrigger className="h-11 rounded-xl">
+                <SelectValue placeholder="Front (0°)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Front (0°)</SelectItem>
+                <SelectItem value="45">45°</SelectItem>
+                <SelectItem value="90">Right (90°)</SelectItem>
+                <SelectItem value="135">135°</SelectItem>
+                <SelectItem value="180">Back (180°)</SelectItem>
+                <SelectItem value="225">225°</SelectItem>
+                <SelectItem value="270">Left (270°)</SelectItem>
+                <SelectItem value="315">315°</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Which side of your pet faces the camera when idle. The pet will rotate toward movement direction when walking.
+            </p>
           </div>
 
           <div className="space-y-3">

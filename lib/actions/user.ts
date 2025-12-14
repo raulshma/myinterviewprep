@@ -325,6 +325,8 @@ export interface UpdatePixelPetInput {
   offset?: Partial<PixelPetOffset>;
   size?: number;
   position?: PixelPetPosition;
+  defaultAnimation?: string;
+  defaultOrientation?: number;
 }
 
 /**
@@ -375,6 +377,8 @@ export async function updatePixelPetPreferences(
       ...(input.offset !== undefined ? { offset: input.offset } : {}),
       ...(input.size !== undefined ? { size: input.size } : {}),
       ...(input.position !== undefined ? { position: input.position } : {}),
+      ...(input.defaultAnimation !== undefined ? { defaultAnimation: input.defaultAnimation } : {}),
+      ...(input.defaultOrientation !== undefined ? { defaultOrientation: input.defaultOrientation } : {}),
     };
 
     const updatedUser = await userRepository.updatePixelPetPreferences(clerkId, update);

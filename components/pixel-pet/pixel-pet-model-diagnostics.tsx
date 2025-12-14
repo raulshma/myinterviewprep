@@ -23,9 +23,11 @@ type ModelCheck =
 export function PixelPetModelDiagnostics({
   fileName,
   modelScale,
+  hasAnimations = false,
 }: {
   fileName: string;
   modelScale: number;
+  hasAnimations?: boolean;
 }) {
   const url = `/api/pixel-pets/${fileName}`;
   const [check, setCheck] = React.useState<ModelCheck>({ state: "idle" });
@@ -117,7 +119,7 @@ export function PixelPetModelDiagnostics({
             <directionalLight position={[3, 6, 5]} intensity={0.7} />
             <React.Suspense fallback={null}>
               <Center>
-                <PixelPetModel fileName={fileName} modelScale={modelScale} />
+                <PixelPetModel fileName={fileName} modelScale={modelScale} hasAnimations={hasAnimations} />
               </Center>
             </React.Suspense>
           </Canvas>
