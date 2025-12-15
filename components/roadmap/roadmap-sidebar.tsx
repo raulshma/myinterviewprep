@@ -367,7 +367,10 @@ function NodeItem({
                         href={`/roadmaps/${roadmapSlug}/learn/${node.id}/${objectiveSlug}`}
                         objectiveTitle={objectiveTitle}
                         xpRewards={info.xpRewards}
-                        onNavigate={() => onLessonNavigate?.(objectiveSlug, objectiveTitle)}
+                        onNavigate={() => {
+                          onSelect();
+                          onLessonNavigate?.(objectiveSlug, objectiveTitle);
+                        }}
                       />
                     ) : (
                       <div className="flex items-center gap-2 py-1.5 px-2 rounded-lg text-xs text-muted-foreground/60">
