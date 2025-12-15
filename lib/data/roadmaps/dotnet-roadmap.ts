@@ -394,9 +394,9 @@ export const dotnetRoadmap: CreateRoadmap = {
       type: 'topic',
       position: { x: 200, y: 960 },
       learningObjectives: [
-        { title: 'In-Memory Caching', lessonId: 'caching/memory-caching' },
-        { title: 'Distributed Caching (Redis)', lessonId: 'caching/redis-caching' },
-        { title: 'Response Caching', lessonId: 'caching/response-caching' },
+        { title: 'In-Memory Caching', lessonId: 'memory-caching' },
+        { title: 'Distributed Caching (Redis)', lessonId: 'redis-caching' },
+        { title: 'Response Caching', lessonId: 'response-caching' },
       ],
       resources: [
         {

@@ -136,21 +136,48 @@ export async function getLessonsForMilestone(milestoneId: string) {
 export async function findLessonPath(milestoneId: string, objective: LearningObjective): Promise<string | null> {
   const objectiveTitle = getObjectiveTitle(objective);
   const lessonId = getObjectiveLessonId(objective);
-  
-  // First try with explicit lessonId
-  const possiblePath = `${milestoneId}/${lessonId}`;
-  
-  if (await lessonExists(possiblePath)) {
-    return possiblePath;
+
+  const candidatePaths: string[] = [];
+  const seenPaths = new Set<string>();
+  const addPath = (path?: string) => {
+    if (!path) return;
+    if (seenPaths.has(path)) return;
+    seenPaths.add(path);
+    candidatePaths.push(path);
+  };
+
+  const slugParts = lessonId.split('/').filter(Boolean);
+  addPath(lessonId);
+
+  if (!lessonId.startsWith(`${milestoneId}/`)) {
+    addPath(`${milestoneId}/${lessonId}`);
   }
-  
+
+  if (slugParts.length > 1) {
+    const trailing = slugParts.slice(1).join('/');
+    addPath(trailing);
+    addPath(`${milestoneId}/${trailing}`);
+  }
+
+  const finalSlug = slugParts[slugParts.length - 1];
+  if (finalSlug) {
+    addPath(`${milestoneId}/${finalSlug}`);
+  }
+
+  for (const candidate of candidatePaths) {
+    if (await lessonExists(candidate)) {
+      return candidate;
+    }
+  }
+
   // Try to find by listing lessons
   const lessons = await getLessonsForMilestone(milestoneId);
-  const matchingLesson = lessons.find(l => 
-    l.title.toLowerCase() === objectiveTitle.toLowerCase() ||
-    l.id === lessonId
+  const matchingLesson = lessons.find(
+    (l) =>
+      l.title.toLowerCase() === objectiveTitle.toLowerCase() ||
+      l.id === lessonId
   );
-  
+
   return matchingLesson?.path || null;
 }
 

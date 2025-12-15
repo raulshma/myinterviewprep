@@ -201,6 +201,7 @@ import { DbContextVisualizer } from '@/components/learn/interactive/dotnet/DbCon
 import { DapperQueryVisualizer } from '@/components/learn/interactive/dotnet/DapperQueryVisualizer';
 import { DapperCommandVisualizer } from '@/components/learn/interactive/dotnet/DapperCommandVisualizer';
 import { DapperMultiMappingVisualizer } from '@/components/learn/interactive/dotnet/DapperMultiMappingVisualizer';
+import { BlazorHostingVisualizer } from '@/components/learn/interactive/blazor/BlazorHostingVisualizer';
 
 // CI/CD Lesson Components
 import { GitHubActionsVisualizer } from '@/components/learn/interactive/dotnet/GitHubActionsVisualizer';
@@ -431,6 +432,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     DapperMultiMappingVisualizer,
 
     // Blazor Lesson Components
+    BlazorHostingVisualizer,
     HostingTypeSelector,
     InteractiveCodeEditor: dynamic(() => import('@/components/learn/interactive/blazor/InteractiveCodeEditor').then(mod => mod.InteractiveCodeEditor), { ssr: false }),
     ComponentVisualizer: dynamic(() => import('@/components/learn/interactive/blazor/ComponentVisualizer').then(mod => mod.ComponentVisualizer), { ssr: false }),
