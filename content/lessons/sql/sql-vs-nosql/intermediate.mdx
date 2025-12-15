@@ -84,27 +84,33 @@ db.orders.aggregate([
 
 ### SQL (Vertical First, Then Sharding)
 
+```mermaid
+flowchart LR
+    subgraph ScaleUp["Scale Up"]
+        SU["More CPU<br/>More RAM<br/>Faster SSD"]
+    end
+    ScaleUp -->|Then| ScaleOut
+    subgraph ScaleOut["Scale Out (Hard)"]
+        S1["Shard 1<br/>A-M"]
+        S2["Shard 2<br/>N-Z"]
+    end
 ```
-    Scale Up                  Scale Out (Hard)
 
-┌──────────────┐         ┌────────┐ ┌────────┐
-│   More CPU   │         │ Shard1 │ │ Shard2 │
-│   More RAM   │    →    │ A-M    │ │ N-Z    │
-│   Faster SSD │         └────────┘ └────────┘
-└──────────────┘         Cross-shard queries complex
-```
+Cross-shard queries are complex!
 
 ### NoSQL (Designed for Scale Out)
 
+```mermaid
+flowchart TB
+    subgraph Cluster["Built-in Horizontal Scaling"]
+        N1[Node 1]
+        N2[Node 2]
+        N3[Node 3]
+        N4[Node 4]
+    end
 ```
-     Built-in Horizontal Scaling
 
-┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
-│ Node 1 │ │ Node 2 │ │ Node 3 │ │ Node 4 │
-│  ⬡⬡⬡  │ │  ⬡⬡⬡  │ │  ⬡⬡⬡  │ │  ⬡⬡⬡  │
-└────────┘ └────────┘ └────────┘ └────────┘
-      Automatic partitioning & replication
-```
+Automatic partitioning & replication
 
 ## Consistency Models
 

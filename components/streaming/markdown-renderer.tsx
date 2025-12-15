@@ -7,9 +7,11 @@
  *
  * OPTIMIZED: Only loads required themes and common languages
  * to prevent page slowdown during streaming
+ * 
+ * MERMAID SUPPORT: Automatically detects and renders mermaid diagrams
  */
 
-import { memo, useMemo, useState, useCallback } from "react";
+import { memo, useMemo, useState, useCallback, lazy, Suspense } from "react";
 import type { CodeToHtmlOptions } from "@llm-ui/code";
 import {
   codeBlockLookBack,
@@ -27,6 +29,11 @@ import { getHighlighterCore } from "shiki/core";
 import getWasm from "shiki/wasm";
 import { cn } from "@/lib/utils";
 import { Check, Copy } from "lucide-react";
+
+// Lazy load MermaidDiagram for performance
+const MermaidDiagram = lazy(() => 
+  import("@/components/ui/mermaid-diagram").then(mod => ({ default: mod.MermaidDiagram }))
+);
 
 // Import only required themes (2 vs 40+)
 import githubDark from "shiki/themes/github-dark.mjs";
@@ -161,8 +168,47 @@ const languageDisplayNames: Record<string, string> = {
 // QoL: Line count threshold for collapsible code blocks
 const COLLAPSE_THRESHOLD = 20;
 
-// Memoized Code block component with Shiki syntax highlighting
-const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
+// Check if a code block is a mermaid diagram
+function isMermaidBlock(markdownCodeBlock: string): boolean {
+  const lang = extractLanguage(markdownCodeBlock);
+  return lang?.toLowerCase() === "mermaid";
+}
+
+// Extract code content from markdown code block
+function extractCodeContent(markdownCodeBlock: string): string {
+  // Remove opening ```lang and closing ```
+  return markdownCodeBlock
+    .replace(/^```\w*\n?/, "")
+    .replace(/\n?```$/, "")
+    .trim();
+}
+
+// Mermaid loading skeleton
+const MermaidSkeleton = memo(function MermaidSkeleton() {
+  return (
+    <div className="my-4 rounded-xl border border-border/40 bg-background/50 p-8">
+      <div className="flex items-center justify-center min-h-[150px]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-secondary/50 animate-pulse" />
+          <div className="h-3 w-24 bg-secondary/40 rounded animate-pulse" />
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Mermaid block wrapper component
+const MermaidBlock: LLMOutputComponent = memo(function MermaidBlock({ blockMatch }) {
+  const chartContent = extractCodeContent(blockMatch.output);
+  return (
+    <Suspense fallback={<MermaidSkeleton />}>
+      <MermaidDiagram chart={chartContent} showToolbar={true} />
+    </Suspense>
+  );
+});
+
+// Shiki code block component (non-mermaid)
+const ShikiCodeBlock: LLMOutputComponent = memo(function ShikiCodeBlock({ blockMatch }) {
   const { html, code } = useCodeBlockToHtml({
     markdownCodeBlock: blockMatch.output,
     highlighter,
@@ -272,6 +318,16 @@ const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
       )}
     </div>
   );
+});
+
+ShikiCodeBlock.displayName = "ShikiCodeBlock";
+
+// Wrapper component that delegates to Mermaid or Shiki based on language
+const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
+  if (isMermaidBlock(blockMatch.output)) {
+    return <MermaidBlock blockMatch={blockMatch} />;
+  }
+  return <ShikiCodeBlock blockMatch={blockMatch} />;
 });
 
 CodeBlock.displayName = "CodeBlock";

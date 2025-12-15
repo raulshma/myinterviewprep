@@ -44,9 +44,26 @@ Here's what happens when someone visits your website:
 
 The request goes IN through middleware, and the response comes OUT through the same middleware in reverse:
 
+```mermaid
+flowchart LR
+    subgraph Request Flow
+        direction LR
+        R[Request] --> M1[Middleware 1]
+        M1 --> M2[Middleware 2]
+        M2 --> M3[Middleware 3]
+        M3 --> C[Your Code]
+    end
 ```
-Request  →  Middleware 1  →  Middleware 2  →  Middleware 3  →  Your Code
-Response ←  Middleware 1  ←  Middleware 2  ←  Middleware 3  ←  Your Code
+
+```mermaid
+flowchart RL
+    subgraph Response Flow
+        direction RL
+        C2[Your Code] --> M3b[Middleware 3]
+        M3b --> M2b[Middleware 2]
+        M2b --> M1b[Middleware 1]
+        M1b --> Res[Response]
+    end
 ```
 
 ### Simple Example

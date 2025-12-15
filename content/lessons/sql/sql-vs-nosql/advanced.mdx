@@ -123,28 +123,21 @@ Single database supporting multiple paradigms:
 
 ### Polyglot Persistence
 
-```
-┌─────────────────────────────────────────────────────┐
-│                   Application Layer                  │
-└──────────────┬───────────────────┬──────────────────┘
-               │                   │
-    ┌──────────▼─────────┐ ┌──────▼───────────┐
-    │    PostgreSQL      │ │     MongoDB      │
-    │   (Transactions)   │ │ (User Profiles)  │
-    └────────────────────┘ └──────────────────┘
-               │                   │
-    ┌──────────▼─────────┐ ┌──────▼───────────┐
-    │       Redis        │ │  Elasticsearch   │
-    │     (Caching)      │ │    (Search)      │
-    └────────────────────┘ └──────────────────┘
+```mermaid
+flowchart TB
+    AL[Application Layer]
+    AL --> PG["PostgreSQL<br/>(Transactions)"]
+    AL --> MDB["MongoDB<br/>(User Profiles)"]
+    AL --> RD["Redis<br/>(Caching)"]
+    AL --> ES["Elasticsearch<br/>(Search)"]
 ```
 
 ### Event Sourcing with SQL + NoSQL
 
-```
-Commands → Event Store (append-only, NoSQL optimized)
-              ↓ Projections
-         Read Models (SQL for queries)
+```mermaid
+flowchart LR
+    CMD[Commands] --> ES["Event Store<br/>(append-only, NoSQL)"]
+    ES -->|Projections| RM["Read Models<br/>(SQL for queries)"]
 ```
 
 ## Making the Decision

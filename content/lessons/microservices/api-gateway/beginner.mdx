@@ -28,37 +28,59 @@ Imagine you're staying at a fancy hotel. Do you call the kitchen directly for fo
 ### 1. Routing (Traffic Cop)
 Sends each request to the right service:
 
-```
-Client: "I want products"     → Gateway → Catalog Service
-Client: "I want my orders"    → Gateway → Order Service
-Client: "I want to pay"       → Gateway → Payment Service
+```mermaid
+flowchart LR
+    C1[Client: Products] --> G[API Gateway]
+    C2[Client: Orders] --> G
+    C3[Client: Payment] --> G
+    G --> CS[Catalog Service]
+    G --> OS[Order Service]
+    G --> PS[Payment Service]
 ```
 
 ### 2. Authentication (Security Guard)
 Checks if you're allowed in **before** bothering the services:
 
-```
-Client: "Here's my ID badge" 
-Gateway: "Valid! Come in."
-Gateway → Forwards requests to services
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as Gateway
+    participant S as Services
+    C->>G: Here's my ID badge
+    G->>G: Validate credentials
+    G-->>C: Valid! Come in.
+    G->>S: Forward request
+    S-->>G: Response
+    G-->>C: Response
 ```
 
 ### 3. Rate Limiting (Bouncer)
 Prevents too many requests from overwhelming services:
 
-```
-Client: 100 requests per second
-Gateway: "Slow down. Max 10/second please."
+```mermaid
+flowchart LR
+    C[Client: 100 req/s] --> G{Gateway}
+    G -->|Allowed: 10/s| S[Services]
+    G -->|Rejected: 90/s| X[429 Too Many Requests]
 ```
 
 ### 4. Request Aggregation (Personal Shopper)
 Gets data from multiple services in one call:
 
-```
-Client: "I need my profile AND my orders"
-Gateway → User Service (gets profile)
-       → Order Service (gets orders)
-Gateway: "Here's everything in one response!"
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as Gateway
+    participant U as User Service
+    participant O as Order Service
+    C->>G: I need profile AND orders
+    par Parallel Requests
+        G->>U: Get profile
+        G->>O: Get orders
+    end
+    U-->>G: Profile data
+    O-->>G: Orders data
+    G-->>C: Combined response
 ```
 
 <ProgressCheckpoint section="ag-gateway-features" xpReward={9} />
@@ -70,21 +92,28 @@ Gateway: "Here's everything in one response!"
 ### Without vs With API Gateway
 
 **Without Gateway:**
+
+```mermaid
+flowchart LR
+    App[Mobile App] --> US[User Service]
+    App --> OS[Order Service]
+    App --> CS[Catalog Service]
+    App --> PS[Payment Service]
 ```
-Mobile App ──────► User Service
-          └─────► Order Service
-          └─────► Catalog Service
-          └─────► Payment Service
-```
+
 Problems: App needs 4 different URLs, each service needs its own security
 
 **With Gateway:**
+
+```mermaid
+flowchart LR
+    App[Mobile App] --> G[API Gateway]
+    G --> US[User Service]
+    G --> OS[Order Service]
+    G --> CS[Catalog Service]
+    G --> PS[Payment Service]
 ```
-Mobile App ──────► API Gateway ──────► User Service
-                              └─────► Order Service
-                              └─────► Catalog Service
-                              └─────► Payment Service
-```
+
 Benefits: App needs only 1 URL, security handled once
 
 ### Real-World Examples

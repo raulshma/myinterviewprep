@@ -56,18 +56,19 @@ When you need **Partition Tolerance**, you must sacrifice:
 
 ### Scaling Patterns
 
-```
-Traditional RDBMS Scaling:
-          ┌────────────────┐
-          │   Primary DB   │ ← All Writes
-          │  (Read/Write)  │
-          └───────┬────────┘
-                  │ Replication
-     ┌────────────┼────────────┐
-     ▼            ▼            ▼
-┌─────────┐  ┌─────────┐  ┌─────────┐
-│ Replica │  │ Replica │  │ Replica │ ← Reads
-└─────────┘  └─────────┘  └─────────┘
+```mermaid
+flowchart TB
+    subgraph Primary["Primary DB (Read/Write)"]
+        P[All Writes]
+    end
+    Primary -->|Replication| R1[Replica 1]
+    Primary -->|Replication| R2[Replica 2]
+    Primary -->|Replication| R3[Replica 3]
+    subgraph Reads["Read Replicas"]
+        R1
+        R2
+        R3
+    end
 ```
 
 **Sharding challenges**:
@@ -116,17 +117,12 @@ Services like **Aurora**, **Cloud SQL**, and **Azure SQL** provide:
 
 Modern architectures often combine storage types:
 
-```
-                  ┌─────────────┐
-                  │   Service   │
-                  └──────┬──────┘
-         ┌───────────────┼───────────────┐
-         ▼               ▼               ▼
-   ┌──────────┐   ┌──────────┐   ┌──────────┐
-   │ PostgreSQL│   │   Redis  │   │  ElasticSearch│
-   │ (Source   │   │ (Cache)  │   │  (Search)     │
-   │  of Truth)│   └──────────┘   └──────────┘
-   └──────────┘
+```mermaid
+flowchart TB
+    S[Service Layer]
+    S --> PG["PostgreSQL<br/>(Source of Truth)"]
+    S --> RD["Redis<br/>(Cache)"]
+    S --> ES["Elasticsearch<br/>(Search)"]
 ```
 
 RDBMS remains the **source of truth** while specialized stores handle specific workloads.

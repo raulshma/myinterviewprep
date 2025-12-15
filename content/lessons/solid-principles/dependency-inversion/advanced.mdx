@@ -8,23 +8,25 @@ At the advanced level, we explore DIP through **Clean Architecture**, **composit
 
 Clean Architecture (Robert C. Martin) is built entirely on DIP:
 
+```mermaid
+flowchart TB
+    subgraph FD["Framework & Drivers"]
+        subgraph IA["Interface Adapters"]
+            subgraph AL["Application Layer"]
+                subgraph DE["Domain/Entities"]
+                    Core["★ NOTHING DEPENDS INWARD ★"]
+                end
+            end
+        end
+    end
+    
+    style DE fill:#4ade80,stroke:#22c55e
+    style AL fill:#60a5fa,stroke:#3b82f6
+    style IA fill:#f472b6,stroke:#ec4899
+    style FD fill:#a78bfa,stroke:#8b5cf6
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Framework & Drivers                        │
-│  ┌─────────────────────────────────────────────────────────────┐ │
-│  │                     Interface Adapters                       │ │
-│  │  ┌───────────────────────────────────────────────────────┐  │ │
-│  │  │                  Application Layer                     │  │ │
-│  │  │  ┌─────────────────────────────────────────────────┐  │  │ │
-│  │  │  │               Domain/Entities                   │  │  │ │
-│  │  │  │        ★ NOTHING DEPENDS INWARD ★              │  │  │ │
-│  │  │  └─────────────────────────────────────────────────┘  │  │ │
-│  │  └───────────────────────────────────────────────────────┘  │ │
-│  └─────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
 
 Dependencies flow INWARD. Inner layers NEVER know about outer layers.
-```
 
 <InfoBox type="important">
 **Core Insight:** The domain (innermost layer) defines interfaces. Infrastructure implements them. The domain doesn't know about SQL, HTTP, or any framework.

@@ -12,39 +12,42 @@ An API Gateway acts as a reverse proxy that routes requests from clients to serv
 
 The gateway routes incoming requests to appropriate backend services:
 
-```
-Client Request                    Gateway                    Services
-─────────────────────────────────────────────────────────────────────
-GET /api/products/123      →     Route matching      →     Catalog Service
-POST /api/orders           →     Route matching      →     Order Service
-GET /api/users/me          →     Route matching      →     User Service
+```mermaid
+flowchart LR
+    subgraph Clients
+        R1["GET /api/products/123"]
+        R2["POST /api/orders"]
+        R3["GET /api/users/me"]
+    end
+    subgraph Gateway
+        RM[Route Matching]
+    end
+    subgraph Services
+        CS[Catalog Service]
+        OS[Order Service]
+        US[User Service]
+    end
+    R1 --> RM --> CS
+    R2 --> RM --> OS
+    R3 --> RM --> US
 ```
 
 ### Authentication & Authorization
 
 Centralized security handling:
 
-```
-┌─────────────┐
-│   Client    │
-│  (with JWT) │
-└──────┬──────┘
-       │
-       ▼
-┌──────────────────────────────────────┐
-│            API Gateway               │
-│  ┌────────────────────────────────┐  │
-│  │   1. Extract JWT token         │  │
-│  │   2. Validate signature        │  │
-│  │   3. Check expiration          │  │
-│  │   4. Verify permissions        │  │
-│  └────────────────────────────────┘  │
-└──────────────────┬───────────────────┘
-                   │ (if valid)
-                   ▼
-          ┌─────────────────┐
-          │    Microservice │
-          └─────────────────┘
+```mermaid
+flowchart TB
+    C["Client<br/>(with JWT)"] --> G
+    subgraph G[API Gateway]
+        direction TB
+        E[1. Extract JWT token]
+        V[2. Validate signature]
+        X[3. Check expiration]
+        P[4. Verify permissions]
+        E --> V --> X --> P
+    end
+    G -->|if valid| M[Microservice]
 ```
 
 <ProgressCheckpoint section="ag-what-is-gateway" xpReward={15} />
@@ -68,41 +71,53 @@ Protect services from being overwhelmed:
 
 Combine multiple service calls into one:
 
-```
-Client Request: GET /api/dashboard
-
-Gateway internally calls:
-  → User Service:    GET /api/users/123
-  → Order Service:   GET /api/orders?userId=123&limit=5
-  → Catalog Service: GET /api/recommendations/123
-
-Gateway Response: {
-  "user": { ... },
-  "recentOrders": [ ... ],
-  "recommendations": [ ... ]
-}
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as API Gateway
+    participant U as User Service
+    participant O as Order Service
+    participant Cat as Catalog Service
+    
+    C->>G: GET /api/dashboard
+    par Parallel Calls
+        G->>U: GET /api/users/123
+        G->>O: GET /api/orders?userId=123
+        G->>Cat: GET /api/recommendations/123
+    end
+    U-->>G: user data
+    O-->>G: orders data
+    Cat-->>G: recommendations
+    G-->>C: Combined JSON response
 ```
 
 ### BFF Pattern (Backend for Frontend)
 
 Different clients have different needs:
 
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│  Mobile App │    │   Web App   │    │  Admin App  │
-└──────┬──────┘    └──────┬──────┘    └──────┬──────┘
-       │                  │                  │
-       ▼                  ▼                  ▼
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│ Mobile BFF  │    │   Web BFF   │    │  Admin BFF  │
-│  (compact)  │    │   (rich)    │    │  (full)     │
-└─────────────┘    └─────────────┘    └─────────────┘
-       │                  │                  │
-       └──────────────────┼──────────────────┘
-                          ▼
-            ┌───────────────────────┐
-            │     Microservices     │
-            └───────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Clients
+        MA[Mobile App]
+        WA[Web App]
+        AA[Admin App]
+    end
+    subgraph BFFs["Backend for Frontend Layer"]
+        MB["Mobile BFF<br/>(compact)"]
+        WB["Web BFF<br/>(rich)"]
+        AB["Admin BFF<br/>(full)"]
+    end
+    subgraph Services[Microservices]
+        S1[Service 1]
+        S2[Service 2]
+        S3[Service 3]
+    end
+    MA --> MB
+    WA --> WB
+    AA --> AB
+    MB --> Services
+    WB --> Services
+    AB --> Services
 ```
 
 <ProgressCheckpoint section="ag-gateway-features" xpReward={15} />
@@ -127,11 +142,13 @@ Different clients have different needs:
 **Overloaded Gateway** - Don't put business logic in the gateway!
 
 **Single Point of Failure** - Run multiple gateway instances:
-```
-Load Balancer
-    ├── Gateway Instance 1
-    ├── Gateway Instance 2
-    └── Gateway Instance 3
+
+```mermaid
+flowchart TB
+    LB[Load Balancer]
+    LB --> G1[Gateway Instance 1]
+    LB --> G2[Gateway Instance 2]
+    LB --> G3[Gateway Instance 3]
 ```
 
 ### Key Takeaways

@@ -54,18 +54,23 @@ Every time you **modify** existing code:
 
 Instead of modifying, we **extend**:
 
+**OLD WAY (Modification):**
+```mermaid
+flowchart TB
+    PS["Payment System<br/>if CreditCard...<br/>else if PayPal...<br/>else if Bitcoin...<br/>(ADD MORE IFS!)"]
+    style PS fill:#fca5a5,stroke:#ef4444
 ```
-     OLD WAY (Modification)              NEW WAY (Extension)
-     ┌─────────────────────┐            ┌─────────────────────┐
-     │   Payment System    │            │   Payment System    │
-     ├─────────────────────┤            │   (Uses Interface)  │
-     │ if Credit Card...   │            └──────────┬──────────┘
-     │ else if PayPal...   │                       │
-     │ else if Bitcoin...  │  ──────>   ┌──────────┼──────────┐
-     │ (ADD MORE IFS!)     │            │          │          │
-     └─────────────────────┘            ▼          ▼          ▼
-                                    [CreditCard] [PayPal] [Bitcoin]
-                                        (Just add new ones!)
+
+**NEW WAY (Extension):**
+```mermaid
+flowchart TB
+    PS["Payment System<br/>(Uses Interface)"]
+    PS --> CC[CreditCard]
+    PS --> PP[PayPal]
+    PS --> BT[Bitcoin]
+    PS -.->|Just add new ones!| NEW[New Payment Method]
+    style PS fill:#86efac,stroke:#22c55e
+    style NEW fill:#fde68a,stroke:#f59e0b,stroke-dasharray: 5 5
 ```
 
 <ProgressCheckpoint section="ocp-understanding" xpReward={9} />

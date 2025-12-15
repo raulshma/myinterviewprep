@@ -36,22 +36,19 @@ When your code directly creates and uses specific classes, it's "hardwired":
 
 ### Direct Connection = Problems
 
+```mermaid
+flowchart TB
+    OS["OrderService<br/>(High-Level)"]
+    OS -->|Directly creates| SQL["SqlDatabase<br/>(Low-Level)"]
+    
+    style OS fill:#fca5a5,stroke:#ef4444
+    style SQL fill:#fca5a5,stroke:#ef4444
 ```
-     ┌─────────────────────────────────────────────┐
-     │          OrderService (High-Level)          │
-     └───────────────────┬─────────────────────────┘
-                         │
-                         │ Directly creates
-                         ▼
-     ┌─────────────────────────────────────────────┐
-     │          SqlDatabase (Low-Level)            │
-     └─────────────────────────────────────────────┘
-     
-     Problems:
-     • Can't test OrderService without a real database!
-     • Want to use MongoDB? Rewrite OrderService!
-     • OrderService "knows too much" about database details
-```
+
+**Problems:**
+- ❌ Can't test OrderService without a real database!
+- ❌ Want to use MongoDB? Rewrite OrderService!
+- ❌ OrderService "knows too much" about database details
 
 <ProgressCheckpoint section="dip-understanding" xpReward={9} />
 
@@ -59,24 +56,18 @@ When your code directly creates and uses specific classes, it's "hardwired":
 
 ## Section 3: The Solution - Program to an Interface
 
+```mermaid
+flowchart TB
+    OS["OrderService (High-Level)<br/>depends on: IDatabase"]
+    OS --> IDB["IDatabase (Interface)<br/>🔌 The Wall Outlet"]
+    IDB --> SQL["SQL Database"]
+    IDB --> MDB["MongoDB Database"]
+    
+    style OS fill:#86efac,stroke:#22c55e
+    style IDB fill:#93c5fd,stroke:#3b82f6
+    style SQL fill:#fde68a,stroke:#f59e0b
+    style MDB fill:#fde68a,stroke:#f59e0b
 ```
-     ┌─────────────────────────────────────────────┐
-     │          OrderService (High-Level)          │
-     │          depends on: IDatabase              │
-     └───────────────────┬─────────────────────────┘
-                         │
-                         ▼
-     ┌─────────────────────────────────────────────┐
-     │               IDatabase (Interface)          │
-     │               "The Wall Outlet"              │
-     └───────────────────┬─────────────────────────┘
-                         │
-           ┌─────────────┴─────────────┐
-           ▼                           ▼
-     ┌───────────┐               ┌───────────┐
-     │   SQL     │               │  MongoDB  │
-     │ Database  │               │ Database  │
-     └───────────┘               └───────────┘
      
      Now you can swap databases without touching OrderService!
 ```
