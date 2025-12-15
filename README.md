@@ -34,6 +34,13 @@ Specialized interactive components for various topics:
 - **Build Tools**: Webpack configuration visualizer, Bundler pipeline demos, Esbuild speed comparisons
 - **Testing**: Unit testing with Vitest, Component testing, E2E testing with Playwright
 - **Web Fundamentals**: HTTP conversation simulator, DNS lookup visualization, Domain name resolver
+- **.NET & Backend**: 
+  - **Core Framework**: Dependency Injection visualizer, Middleware pipeline builder, Configuration explorer, ASP.NET Core request lifecycle
+  - **Data Access**: Entity Framework Core visualizers, Dapper query/command mapping, Migration visualizers, Database design and SQL explorers
+  - **API Development**: Minimal API builder, Controller visualizer, Model binding explorer, Routing attribute interactive guide
+  - **Authentication & Security**: Identity architecture visualizer, JWT token inspector, OAuth flow diagrams, Policy-based authorization builder
+  - **Microservices & Cloud**: Microservices architecture diagrams, gRPC streaming visualizers, Docker & Kubernetes cluster explorers, Azure App Service & DevOps pipeline builders
+  - **Blazor**: Hosting model visualizers, Component lifecycle interactive demos, JS Interop bridges
 
 ### AI-Powered Chat Assistant
 
@@ -227,12 +234,15 @@ mylearningprep/
 
 Lessons are organized in the `content/lessons/` directory by topic:
 
-- `css/` - CSS selectors, Flexbox, Grid, animations, etc.
-- `javascript/` - Variables, functions, async/await, etc.
-- `react/` - Components, hooks, state management, etc.
-- `html/` - Semantic HTML, forms, accessibility
-- `testing/` - Unit testing, component testing, E2E testing
-- `http/`, `dns/`, `domain/` - Web fundamentals
+- `css/`, `html/` - Frontend fundamentals
+- `javascript/`, `typescript/`, `react/` - Frontend development
+- `csharp-basics/`, `aspnet-core-basics/` - .NET Core framework
+- `databases/`, `entity-framework-core/`, `dapper/` - Data access & persistence
+- `authentication/`, `middleware/`, `web-apis/` - Backend APIs & Security
+- `microservices/`, `grpc/`, `signalr/` - Distributed systems
+- `deployment/`, `cicd/`, `build-tools/` - Infrastructure & DevOps
+- `testing/` - Unit, Component, and E2E testing
+- `internet/` - Web fundamentals (HTTP, DNS, Browsers)
 
 Each lesson contains:
 - MDX content with interactive components
