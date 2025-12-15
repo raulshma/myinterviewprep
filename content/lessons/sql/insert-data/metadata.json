@@ -4,12 +4,30 @@
   "description": "Master the INSERT statement to add new records to database tables.",
   "milestone": "dml",
   "order": 4,
-  "sections": ["insert-basics", "insert-patterns", "bulk-insert"],
+  "sections": [
+    "insert-data-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 20, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["groupby-having"],
-  "tags": ["sql", "insert", "dml", "add-data"]
+  "prerequisites": [
+    "groupby-having"
+  ],
+  "tags": [
+    "sql",
+    "insert",
+    "dml",
+    "add-data"
+  ]
 }

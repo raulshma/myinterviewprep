@@ -4,12 +4,31 @@
   "description": "Access previous and next row values.",
   "milestone": "advanced-sql",
   "order": 3,
-  "sections": ["lag-basics", "lead-basics", "comparisons"],
+  "sections": [
+    "lag-lead-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["row-number-rank"],
-  "tags": ["sql", "advanced", "window-functions", "lag", "lead"]
+  "prerequisites": [
+    "row-number-rank"
+  ],
+  "tags": [
+    "sql",
+    "advanced",
+    "window-functions",
+    "lag",
+    "lead"
+  ]
 }

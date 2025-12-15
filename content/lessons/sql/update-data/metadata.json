@@ -4,12 +4,30 @@
   "description": "Learn to safely modify existing records in database tables.",
   "milestone": "dml",
   "order": 5,
-  "sections": ["update-basics", "update-patterns", "safe-updates"],
+  "sections": [
+    "update-data-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 20, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["insert-data"],
-  "tags": ["sql", "update", "dml", "modify-data"]
+  "prerequisites": [
+    "insert-data"
+  ],
+  "tags": [
+    "sql",
+    "update",
+    "dml",
+    "modify-data"
+  ]
 }

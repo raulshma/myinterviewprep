@@ -4,12 +4,30 @@
   "description": "Keep all rows from the right table, match from left.",
   "milestone": "join-queries",
   "order": 3,
-  "sections": ["right-basics", "vs-left", "use-cases"],
+  "sections": [
+    "right-join-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
-    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
-    "advanced": { "estimatedMinutes": 15, "xpReward": 40 }
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "advanced": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    }
   },
-  "prerequisites": ["left-join"],
-  "tags": ["sql", "join", "right-join", "outer-join"]
+  "prerequisites": [
+    "left-join"
+  ],
+  "tags": [
+    "sql",
+    "join",
+    "right-join",
+    "outer-join"
+  ]
 }

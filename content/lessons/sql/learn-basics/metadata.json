@@ -5,9 +5,7 @@
   "milestone": "sql",
   "order": 1,
   "sections": [
-    "what-is-rdbms",
-    "rdbms-benefits",
-    "sql-vs-nosql"
+    "learn-basics-complete"
   ],
   "levels": {
     "beginner": {
@@ -24,5 +22,10 @@
     }
   },
   "prerequisites": [],
-  "tags": ["sql", "database", "rdbms", "introduction"]
+  "tags": [
+    "sql",
+    "database",
+    "rdbms",
+    "introduction"
+  ]
 }

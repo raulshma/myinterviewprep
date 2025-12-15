@@ -4,12 +4,30 @@
   "description": "Number and rank rows within partitions.",
   "milestone": "advanced-sql",
   "order": 2,
-  "sections": ["row-number", "rank", "dense-rank"],
+  "sections": [
+    "row-number-rank-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["window-functions-intro"],
-  "tags": ["sql", "advanced", "window-functions", "ranking"]
+  "prerequisites": [
+    "window-functions-intro"
+  ],
+  "tags": [
+    "sql",
+    "advanced",
+    "window-functions",
+    "ranking"
+  ]
 }

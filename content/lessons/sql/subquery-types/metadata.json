@@ -4,12 +4,29 @@
   "description": "Understand scalar, column, row, and table subqueries.",
   "milestone": "subqueries",
   "order": 3,
-  "sections": ["scalar", "column-row", "table"],
+  "sections": [
+    "subquery-types-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 35 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 45 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 35
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    }
   },
-  "prerequisites": ["correlated-subqueries"],
-  "tags": ["sql", "subquery", "types"]
+  "prerequisites": [
+    "correlated-subqueries"
+  ],
+  "tags": [
+    "sql",
+    "subquery",
+    "types"
+  ]
 }

@@ -4,12 +4,30 @@
   "description": "Learn the essential SQL keywords that form the foundation of every database query.",
   "milestone": "basic-sql-syntax",
   "order": 1,
-  "sections": ["reserved-words", "clause-keywords", "common-keywords"],
+  "sections": [
+    "sql-keywords-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
-    "intermediate": { "estimatedMinutes": 12, "xpReward": 35 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 35
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["sql-vs-nosql"],
-  "tags": ["sql", "keywords", "syntax", "fundamentals"]
+  "prerequisites": [
+    "sql-vs-nosql"
+  ],
+  "tags": [
+    "sql",
+    "keywords",
+    "syntax",
+    "fundamentals"
+  ]
 }

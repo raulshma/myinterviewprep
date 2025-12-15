@@ -5,9 +5,7 @@
   "milestone": "sql",
   "order": 5,
   "sections": [
-    "primary-key",
-    "foreign-key",
-    "unique-notnull-check"
+    "data-constraints-complete"
   ],
   "levels": {
     "beginner": {
@@ -23,6 +21,14 @@
       "xpReward": 80
     }
   },
-  "prerequisites": ["ddl"],
-  "tags": ["sql", "constraints", "primary-key", "foreign-key", "data-integrity"]
+  "prerequisites": [
+    "ddl"
+  ],
+  "tags": [
+    "sql",
+    "constraints",
+    "primary-key",
+    "foreign-key",
+    "data-integrity"
+  ]
 }

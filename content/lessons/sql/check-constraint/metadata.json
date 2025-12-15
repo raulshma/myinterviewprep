@@ -4,12 +4,30 @@
   "description": "Validate data with custom business rules.",
   "milestone": "data-constraints",
   "order": 4,
-  "sections": ["check-basics", "complex-checks", "use-cases"],
+  "sections": [
+    "check-constraint-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
-    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
-    "advanced": { "estimatedMinutes": 15, "xpReward": 40 }
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "advanced": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    }
   },
-  "prerequisites": ["unique-constraint"],
-  "tags": ["sql", "constraints", "check", "validation"]
+  "prerequisites": [
+    "unique-constraint"
+  ],
+  "tags": [
+    "sql",
+    "constraints",
+    "check",
+    "validation"
+  ]
 }

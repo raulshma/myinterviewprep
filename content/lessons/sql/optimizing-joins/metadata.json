@@ -4,12 +4,30 @@
   "description": "Write efficient JOINs for better performance.",
   "milestone": "performance",
   "order": 3,
-  "sections": ["join-types", "join-order", "join-algorithms"],
+  "sections": [
+    "optimizing-joins-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["using-indexes"],
-  "tags": ["sql", "performance", "joins", "optimization"]
+  "prerequisites": [
+    "using-indexes"
+  ],
+  "tags": [
+    "sql",
+    "performance",
+    "joins",
+    "optimization"
+  ]
 }

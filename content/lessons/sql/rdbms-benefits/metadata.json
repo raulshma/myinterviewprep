@@ -5,9 +5,7 @@
   "milestone": "learn-basics",
   "order": 2,
   "sections": [
-    "benefits",
-    "limitations",
-    "when-to-use"
+    "rdbms-benefits-complete"
   ],
   "levels": {
     "beginner": {
@@ -23,6 +21,14 @@
       "xpReward": 55
     }
   },
-  "prerequisites": ["what-is-rdbms"],
-  "tags": ["sql", "database", "rdbms", "benefits", "limitations"]
+  "prerequisites": [
+    "what-is-rdbms"
+  ],
+  "tags": [
+    "sql",
+    "database",
+    "rdbms",
+    "benefits",
+    "limitations"
+  ]
 }

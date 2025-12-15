@@ -4,12 +4,30 @@
   "description": "Control how transactions interact with each other.",
   "milestone": "transactions",
   "order": 6,
-  "sections": ["levels-overview", "phenomena", "choosing-level"],
+  "sections": [
+    "isolation-levels-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
-    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
-    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["savepoint"],
-  "tags": ["sql", "transactions", "isolation", "locking"]
+  "prerequisites": [
+    "savepoint"
+  ],
+  "tags": [
+    "sql",
+    "transactions",
+    "isolation",
+    "locking"
+  ]
 }

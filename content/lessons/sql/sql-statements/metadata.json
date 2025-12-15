@@ -4,12 +4,33 @@
   "description": "Learn the four main SQL statement types: SELECT, INSERT, UPDATE, and DELETE.",
   "milestone": "basic-sql-syntax",
   "order": 4,
-  "sections": ["select", "insert", "update", "delete"],
+  "sections": [
+    "sql-statements-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 20, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["sql-operators"],
-  "tags": ["sql", "statements", "crud", "select", "insert", "update", "delete"]
+  "prerequisites": [
+    "sql-operators"
+  ],
+  "tags": [
+    "sql",
+    "statements",
+    "crud",
+    "select",
+    "insert",
+    "update",
+    "delete"
+  ]
 }

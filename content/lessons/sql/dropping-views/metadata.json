@@ -4,12 +4,30 @@
   "description": "Remove views safely from your database.",
   "milestone": "views",
   "order": 3,
-  "sections": ["drop-syntax", "dependencies", "safety"],
+  "sections": [
+    "dropping-views-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 6, "xpReward": 15 },
-    "intermediate": { "estimatedMinutes": 10, "xpReward": 25 },
-    "advanced": { "estimatedMinutes": 12, "xpReward": 35 }
+    "beginner": {
+      "estimatedMinutes": 6,
+      "xpReward": 15
+    },
+    "intermediate": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "advanced": {
+      "estimatedMinutes": 12,
+      "xpReward": 35
+    }
   },
-  "prerequisites": ["modifying-views"],
-  "tags": ["sql", "views", "drop", "delete"]
+  "prerequisites": [
+    "modifying-views"
+  ],
+  "tags": [
+    "sql",
+    "views",
+    "drop",
+    "delete"
+  ]
 }

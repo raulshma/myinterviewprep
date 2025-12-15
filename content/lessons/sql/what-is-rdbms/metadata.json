@@ -5,9 +5,7 @@
   "milestone": "learn-basics",
   "order": 1,
   "sections": [
-    "introduction",
-    "tables-and-relations",
-    "rdbms-concepts"
+    "what-is-rdbms-complete"
   ],
   "levels": {
     "beginner": {
@@ -24,5 +22,11 @@
     }
   },
   "prerequisites": [],
-  "tags": ["sql", "database", "rdbms", "tables", "fundamentals"]
+  "tags": [
+    "sql",
+    "database",
+    "rdbms",
+    "tables",
+    "fundamentals"
+  ]
 }

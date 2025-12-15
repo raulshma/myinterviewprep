@@ -4,12 +4,30 @@
   "description": "Create virtual tables with SQL views.",
   "milestone": "views",
   "order": 1,
-  "sections": ["view-basics", "syntax", "use-cases"],
+  "sections": [
+    "creating-views-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["datepart-dateadd"],
-  "tags": ["sql", "views", "create", "virtual-table"]
+  "prerequisites": [
+    "datepart-dateadd"
+  ],
+  "tags": [
+    "sql",
+    "views",
+    "create",
+    "virtual-table"
+  ]
 }

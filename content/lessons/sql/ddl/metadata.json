@@ -5,10 +5,7 @@
   "milestone": "sql",
   "order": 4,
   "sections": [
-    "create-table",
-    "alter-table",
-    "drop-table",
-    "truncate-table"
+    "ddl-complete"
   ],
   "levels": {
     "beginner": {
@@ -24,6 +21,15 @@
       "xpReward": 85
     }
   },
-  "prerequisites": ["basic-sql-syntax"],
-  "tags": ["sql", "ddl", "create", "alter", "drop", "schema"]
+  "prerequisites": [
+    "basic-sql-syntax"
+  ],
+  "tags": [
+    "sql",
+    "ddl",
+    "create",
+    "alter",
+    "drop",
+    "schema"
+  ]
 }

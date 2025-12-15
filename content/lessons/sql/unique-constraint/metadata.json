@@ -4,12 +4,29 @@
   "description": "Prevent duplicate values in columns.",
   "milestone": "data-constraints",
   "order": 3,
-  "sections": ["unique-basics", "vs-primary-key", "composite-unique"],
+  "sections": [
+    "unique-constraint-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
-    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
-    "advanced": { "estimatedMinutes": 15, "xpReward": 45 }
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "advanced": {
+      "estimatedMinutes": 15,
+      "xpReward": 45
+    }
   },
-  "prerequisites": ["foreign-key"],
-  "tags": ["sql", "constraints", "unique"]
+  "prerequisites": [
+    "foreign-key"
+  ],
+  "tags": [
+    "sql",
+    "constraints",
+    "unique"
+  ]
 }

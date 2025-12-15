@@ -5,9 +5,7 @@
   "milestone": "sql",
   "order": 6,
   "sections": [
-    "sum-count",
-    "avg-min-max",
-    "group-by-having"
+    "aggregate-queries-complete"
   ],
   "levels": {
     "beginner": {
@@ -23,6 +21,15 @@
       "xpReward": 85
     }
   },
-  "prerequisites": ["dml"],
-  "tags": ["sql", "aggregate", "sum", "count", "avg", "group-by"]
+  "prerequisites": [
+    "dml"
+  ],
+  "tags": [
+    "sql",
+    "aggregate",
+    "sum",
+    "count",
+    "avg",
+    "group-by"
+  ]
 }

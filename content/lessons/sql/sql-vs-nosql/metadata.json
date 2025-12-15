@@ -5,9 +5,7 @@
   "milestone": "learn-basics",
   "order": 3,
   "sections": [
-    "comparison",
-    "use-cases",
-    "choosing"
+    "sql-vs-nosql-complete"
   ],
   "levels": {
     "beginner": {
@@ -23,6 +21,16 @@
       "xpReward": 65
     }
   },
-  "prerequisites": ["what-is-rdbms", "rdbms-benefits"],
-  "tags": ["sql", "nosql", "database", "comparison", "mongodb", "redis"]
+  "prerequisites": [
+    "what-is-rdbms",
+    "rdbms-benefits"
+  ],
+  "tags": [
+    "sql",
+    "nosql",
+    "database",
+    "comparison",
+    "mongodb",
+    "redis"
+  ]
 }

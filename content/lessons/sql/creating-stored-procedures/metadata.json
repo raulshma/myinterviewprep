@@ -4,12 +4,29 @@
   "description": "Create reusable SQL code blocks in the database.",
   "milestone": "stored-procedures",
   "order": 1,
-  "sections": ["procedure-basics", "syntax", "execution"],
+  "sections": [
+    "creating-stored-procedures-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
-    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
-    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["integrity-constraints"],
-  "tags": ["sql", "stored-procedures", "procedures"]
+  "prerequisites": [
+    "integrity-constraints"
+  ],
+  "tags": [
+    "sql",
+    "stored-procedures",
+    "procedures"
+  ]
 }

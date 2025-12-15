@@ -4,12 +4,30 @@
   "description": "Work with timestamps and handle time zones.",
   "milestone": "date-time",
   "order": 2,
-  "sections": ["timestamp-basics", "timezone", "comparison"],
+  "sections": [
+    "timestamp-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["date-time-types"],
-  "tags": ["sql", "timestamp", "timezone", "datetime"]
+  "prerequisites": [
+    "date-time-types"
+  ],
+  "tags": [
+    "sql",
+    "timestamp",
+    "timezone",
+    "datetime"
+  ]
 }

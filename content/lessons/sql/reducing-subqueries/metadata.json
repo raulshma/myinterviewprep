@@ -4,12 +4,30 @@
   "description": "Optimize or eliminate expensive subqueries.",
   "milestone": "performance",
   "order": 4,
-  "sections": ["subquery-analysis", "join-alternatives", "cte-optimization"],
+  "sections": [
+    "reducing-subqueries-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["optimizing-joins"],
-  "tags": ["sql", "performance", "subqueries", "optimization"]
+  "prerequisites": [
+    "optimizing-joins"
+  ],
+  "tags": [
+    "sql",
+    "performance",
+    "subqueries",
+    "optimization"
+  ]
 }

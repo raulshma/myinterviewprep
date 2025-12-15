@@ -4,12 +4,30 @@
   "description": "Join a table to itself for hierarchical and comparative queries.",
   "milestone": "join-queries",
   "order": 5,
-  "sections": ["self-basics", "hierarchies", "comparisons"],
+  "sections": [
+    "self-join-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["full-outer-join"],
-  "tags": ["sql", "join", "self-join", "hierarchy"]
+  "prerequisites": [
+    "full-outer-join"
+  ],
+  "tags": [
+    "sql",
+    "join",
+    "self-join",
+    "hierarchy"
+  ]
 }

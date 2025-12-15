@@ -5,12 +5,7 @@
   "milestone": "sql",
   "order": 3,
   "sections": [
-    "select-queries",
-    "from-where-orderby", 
-    "groupby-having",
-    "insert-data",
-    "update-data",
-    "delete-data"
+    "dml-complete"
   ],
   "levels": {
     "beginner": {
@@ -26,6 +21,16 @@
       "xpReward": 100
     }
   },
-  "prerequisites": ["basic-sql-syntax"],
-  "tags": ["sql", "dml", "select", "insert", "update", "delete", "crud"]
+  "prerequisites": [
+    "basic-sql-syntax"
+  ],
+  "tags": [
+    "sql",
+    "dml",
+    "select",
+    "insert",
+    "update",
+    "delete",
+    "crud"
+  ]
 }

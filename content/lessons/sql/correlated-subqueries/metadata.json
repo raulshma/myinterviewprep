@@ -4,12 +4,30 @@
   "description": "Learn subqueries that reference the outer query.",
   "milestone": "subqueries",
   "order": 2,
-  "sections": ["correlation", "exists", "performance"],
+  "sections": [
+    "correlated-subqueries-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
-    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
-    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["nested-subqueries"],
-  "tags": ["sql", "subquery", "correlated", "exists"]
+  "prerequisites": [
+    "nested-subqueries"
+  ],
+  "tags": [
+    "sql",
+    "subquery",
+    "correlated",
+    "exists"
+  ]
 }

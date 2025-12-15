@@ -4,12 +4,29 @@
   "description": "Group rows for aggregate calculations.",
   "milestone": "aggregate-queries",
   "order": 4,
-  "sections": ["group-basics", "multi-column", "null-handling"],
+  "sections": [
+    "groupby-clause-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 20, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["avg-min-max"],
-  "tags": ["sql", "aggregate", "groupby"]
+  "prerequisites": [
+    "avg-min-max"
+  ],
+  "tags": [
+    "sql",
+    "aggregate",
+    "groupby"
+  ]
 }

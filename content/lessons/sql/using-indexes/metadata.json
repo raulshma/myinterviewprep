@@ -4,12 +4,30 @@
   "description": "Maximize query performance with proper index usage.",
   "milestone": "performance",
   "order": 2,
-  "sections": ["index-selection", "avoiding-scans", "covering-indexes"],
+  "sections": [
+    "using-indexes-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["query-analysis"],
-  "tags": ["sql", "performance", "indexes", "optimization"]
+  "prerequisites": [
+    "query-analysis"
+  ],
+  "tags": [
+    "sql",
+    "performance",
+    "indexes",
+    "optimization"
+  ]
 }

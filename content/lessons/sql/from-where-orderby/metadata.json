@@ -4,12 +4,31 @@
   "description": "Learn to filter and sort your query results.",
   "milestone": "dml",
   "order": 2,
-  "sections": ["from-clause", "where-filtering", "order-by-sorting"],
+  "sections": [
+    "from-where-orderby-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
-    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
-    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["select-querying"],
-  "tags": ["sql", "where", "orderby", "filtering", "sorting"]
+  "prerequisites": [
+    "select-querying"
+  ],
+  "tags": [
+    "sql",
+    "where",
+    "orderby",
+    "filtering",
+    "sorting"
+  ]
 }

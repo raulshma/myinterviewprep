@@ -4,12 +4,29 @@
   "description": "Pass data in and out of stored procedures.",
   "milestone": "stored-procedures",
   "order": 3,
-  "sections": ["input-params", "output-params", "default-values"],
+  "sections": [
+    "procedure-parameters-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["user-defined-functions"],
-  "tags": ["sql", "stored-procedures", "parameters"]
+  "prerequisites": [
+    "user-defined-functions"
+  ],
+  "tags": [
+    "sql",
+    "stored-procedures",
+    "parameters"
+  ]
 }

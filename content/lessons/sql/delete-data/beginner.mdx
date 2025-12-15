@@ -98,4 +98,4 @@ DELETE FROM logs WHERE created_at < DATEADD(day, -30, GETDATE());
 DELETE FROM orders WHERE status = 'draft' AND customer_id IS NULL;
 ```
 
-<ProgressCheckpoint section="delete-basics" xpReward={25} />
+<ProgressCheckpoint section="delete-data-complete" xpReward={25} />

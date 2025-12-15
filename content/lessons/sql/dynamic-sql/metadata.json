@@ -4,12 +4,30 @@
   "description": "Build and execute SQL at runtime.",
   "milestone": "advanced-sql",
   "order": 7,
-  "sections": ["basics", "security", "patterns"],
+  "sections": [
+    "dynamic-sql-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
-    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
-    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["pivot-unpivot"],
-  "tags": ["sql", "advanced", "dynamic", "runtime"]
+  "prerequisites": [
+    "pivot-unpivot"
+  ],
+  "tags": [
+    "sql",
+    "advanced",
+    "dynamic",
+    "runtime"
+  ]
 }

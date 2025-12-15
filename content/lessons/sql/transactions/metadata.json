@@ -5,10 +5,7 @@
   "milestone": "sql",
   "order": 9,
   "sections": [
-    "acid-properties",
-    "begin-commit",
-    "rollback-savepoint",
-    "isolation-levels"
+    "transactions-complete"
   ],
   "levels": {
     "beginner": {
@@ -24,6 +21,14 @@
       "xpReward": 85
     }
   },
-  "prerequisites": ["dml-operations"],
-  "tags": ["sql", "transactions", "acid", "commit", "rollback"]
+  "prerequisites": [
+    "dml-operations"
+  ],
+  "tags": [
+    "sql",
+    "transactions",
+    "acid",
+    "commit",
+    "rollback"
+  ]
 }

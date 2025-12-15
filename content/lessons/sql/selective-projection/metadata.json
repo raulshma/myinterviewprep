@@ -4,12 +4,30 @@
   "description": "Select only the columns you need for better performance.",
   "milestone": "performance",
   "order": 5,
-  "sections": ["select-star", "column-selection", "covering-queries"],
+  "sections": [
+    "selective-projection-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
-    "intermediate": { "estimatedMinutes": 12, "xpReward": 35 },
-    "advanced": { "estimatedMinutes": 15, "xpReward": 45 }
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 35
+    },
+    "advanced": {
+      "estimatedMinutes": 15,
+      "xpReward": 45
+    }
   },
-  "prerequisites": ["reducing-subqueries"],
-  "tags": ["sql", "performance", "projection", "optimization"]
+  "prerequisites": [
+    "reducing-subqueries"
+  ],
+  "tags": [
+    "sql",
+    "performance",
+    "projection",
+    "optimization"
+  ]
 }

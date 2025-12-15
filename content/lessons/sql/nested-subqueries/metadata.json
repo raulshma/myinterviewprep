@@ -4,12 +4,29 @@
   "description": "Use queries within queries for complex data retrieval.",
   "milestone": "subqueries",
   "order": 1,
-  "sections": ["subquery-basics", "scalar-subqueries", "in-subqueries"],
+  "sections": [
+    "nested-subqueries-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
-    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
-    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["having-clause"],
-  "tags": ["sql", "subquery", "nested"]
+  "prerequisites": [
+    "having-clause"
+  ],
+  "tags": [
+    "sql",
+    "subquery",
+    "nested"
+  ]
 }

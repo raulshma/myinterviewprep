@@ -4,12 +4,30 @@
   "description": "Protect your database from common threats.",
   "milestone": "security",
   "order": 2,
-  "sections": ["sql-injection", "encryption", "auditing"],
+  "sections": [
+    "security-best-practices-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
-    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
-    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["grant-revoke"],
-  "tags": ["sql", "security", "best-practices", "sql-injection"]
+  "prerequisites": [
+    "grant-revoke"
+  ],
+  "tags": [
+    "sql",
+    "security",
+    "best-practices",
+    "sql-injection"
+  ]
 }

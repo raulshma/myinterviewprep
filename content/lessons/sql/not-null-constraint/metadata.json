@@ -4,12 +4,30 @@
   "description": "Ensure columns always have values with NOT NULL.",
   "milestone": "data-constraints",
   "order": 2,
-  "sections": ["not-null-basics", "adding-constraint", "modifying-tables"],
+  "sections": [
+    "not-null-constraint-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
-    "intermediate": { "estimatedMinutes": 12, "xpReward": 35 },
-    "advanced": { "estimatedMinutes": 15, "xpReward": 45 }
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 35
+    },
+    "advanced": {
+      "estimatedMinutes": 15,
+      "xpReward": 45
+    }
   },
-  "prerequisites": ["primary-key"],
-  "tags": ["sql", "constraints", "not-null", "validation"]
+  "prerequisites": [
+    "primary-key"
+  ],
+  "tags": [
+    "sql",
+    "constraints",
+    "not-null",
+    "validation"
+  ]
 }

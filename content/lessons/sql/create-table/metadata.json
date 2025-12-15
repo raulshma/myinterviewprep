@@ -4,12 +4,30 @@
   "description": "Learn to create new database tables with columns, data types, and constraints.",
   "milestone": "ddl",
   "order": 1,
-  "sections": ["table-basics", "column-definitions", "constraints"],
+  "sections": [
+    "create-table-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
-    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
-    "advanced": { "estimatedMinutes": 25, "xpReward": 60 }
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
   },
-  "prerequisites": ["delete-data"],
-  "tags": ["sql", "ddl", "create-table", "schema"]
+  "prerequisites": [
+    "delete-data"
+  ],
+  "tags": [
+    "sql",
+    "ddl",
+    "create-table",
+    "schema"
+  ]
 }

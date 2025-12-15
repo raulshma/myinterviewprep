@@ -4,12 +4,30 @@
   "description": "Ensure data quality with database constraints.",
   "milestone": "security",
   "order": 3,
-  "sections": ["constraint-types", "referential-integrity", "enforcement"],
+  "sections": [
+    "integrity-constraints-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["security-best-practices"],
-  "tags": ["sql", "constraints", "integrity", "validation"]
+  "prerequisites": [
+    "security-best-practices"
+  ],
+  "tags": [
+    "sql",
+    "constraints",
+    "integrity",
+    "validation"
+  ]
 }

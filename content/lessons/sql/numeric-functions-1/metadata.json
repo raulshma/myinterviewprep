@@ -4,12 +4,30 @@
   "description": "ROUND, CEILING, FLOOR, ABS, and basic math operations.",
   "milestone": "advanced-functions",
   "order": 1,
-  "sections": ["rounding", "absolute", "math-operations"],
+  "sections": [
+    "numeric-functions-1-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["isolation-levels"],
-  "tags": ["sql", "functions", "numeric", "math"]
+  "prerequisites": [
+    "isolation-levels"
+  ],
+  "tags": [
+    "sql",
+    "functions",
+    "numeric",
+    "math"
+  ]
 }

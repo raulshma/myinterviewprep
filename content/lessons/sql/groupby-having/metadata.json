@@ -4,12 +4,30 @@
   "description": "Aggregate data into groups and filter grouped results.",
   "milestone": "dml",
   "order": 3,
-  "sections": ["grouping-basics", "aggregate-functions", "having-filter"],
+  "sections": [
+    "groupby-having-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
-    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
-    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["from-where-orderby"],
-  "tags": ["sql", "groupby", "having", "aggregate"]
+  "prerequisites": [
+    "from-where-orderby"
+  ],
+  "tags": [
+    "sql",
+    "groupby",
+    "having",
+    "aggregate"
+  ]
 }

@@ -5,9 +5,7 @@
   "milestone": "sql",
   "order": 18,
   "sections": [
-    "row-number-rank",
-    "lag-lead",
-    "aggregate-over"
+    "window-functions-complete"
   ],
   "levels": {
     "beginner": {
@@ -23,6 +21,15 @@
       "xpReward": 95
     }
   },
-  "prerequisites": ["aggregate-functions", "subqueries"],
-  "tags": ["sql", "window-functions", "analytics", "rank", "partition"]
+  "prerequisites": [
+    "aggregate-functions",
+    "subqueries"
+  ],
+  "tags": [
+    "sql",
+    "window-functions",
+    "analytics",
+    "rank",
+    "partition"
+  ]
 }

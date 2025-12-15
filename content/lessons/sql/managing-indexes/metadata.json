@@ -4,12 +4,30 @@
   "description": "Create, modify, and drop indexes to optimize queries.",
   "milestone": "indexes",
   "order": 1,
-  "sections": ["index-basics", "create-drop", "types"],
+  "sections": [
+    "managing-indexes-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
-    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
-    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["dropping-views"],
-  "tags": ["sql", "indexes", "performance", "optimization"]
+  "prerequisites": [
+    "dropping-views"
+  ],
+  "tags": [
+    "sql",
+    "indexes",
+    "performance",
+    "optimization"
+  ]
 }

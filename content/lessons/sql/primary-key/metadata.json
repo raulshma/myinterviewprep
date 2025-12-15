@@ -4,12 +4,30 @@
   "description": "Learn how primary keys uniquely identify each row in a table.",
   "milestone": "data-constraints",
   "order": 1,
-  "sections": ["pk-basics", "auto-increment", "composite-keys"],
+  "sections": [
+    "primary-key-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 20, "xpReward": 55 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 55
+    }
   },
-  "prerequisites": ["truncate-table"],
-  "tags": ["sql", "constraints", "primary-key", "identity"]
+  "prerequisites": [
+    "truncate-table"
+  ],
+  "tags": [
+    "sql",
+    "constraints",
+    "primary-key",
+    "identity"
+  ]
 }

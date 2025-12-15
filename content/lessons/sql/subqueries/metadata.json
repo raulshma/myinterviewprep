@@ -5,9 +5,7 @@
   "milestone": "sql",
   "order": 7,
   "sections": [
-    "nested-subqueries",
-    "correlated-subqueries",
-    "subquery-types"
+    "subqueries-complete"
   ],
   "levels": {
     "beginner": {
@@ -23,6 +21,13 @@
       "xpReward": 85
     }
   },
-  "prerequisites": ["dml-operations"],
-  "tags": ["sql", "subqueries", "nested", "correlated"]
+  "prerequisites": [
+    "dml-operations"
+  ],
+  "tags": [
+    "sql",
+    "subqueries",
+    "nested",
+    "correlated"
+  ]
 }

@@ -4,12 +4,29 @@
   "description": "Permanently save transaction changes to the database.",
   "milestone": "transactions",
   "order": 3,
-  "sections": ["commit-basics", "when-to-commit", "patterns"],
+  "sections": [
+    "commit-transaction-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 6, "xpReward": 15 },
-    "intermediate": { "estimatedMinutes": 10, "xpReward": 25 },
-    "advanced": { "estimatedMinutes": 12, "xpReward": 35 }
+    "beginner": {
+      "estimatedMinutes": 6,
+      "xpReward": 15
+    },
+    "intermediate": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "advanced": {
+      "estimatedMinutes": 12,
+      "xpReward": 35
+    }
   },
-  "prerequisites": ["begin-transaction"],
-  "tags": ["sql", "transactions", "commit"]
+  "prerequisites": [
+    "begin-transaction"
+  ],
+  "tags": [
+    "sql",
+    "transactions",
+    "commit"
+  ]
 }

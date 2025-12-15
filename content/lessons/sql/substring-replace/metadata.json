@@ -4,12 +4,31 @@
   "description": "Extract parts of strings and replace text.",
   "milestone": "string-functions",
   "order": 2,
-  "sections": ["substring", "replace", "patterns"],
+  "sections": [
+    "substring-replace-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["concat-length"],
-  "tags": ["sql", "functions", "string", "substring", "replace"]
+  "prerequisites": [
+    "concat-length"
+  ],
+  "tags": [
+    "sql",
+    "functions",
+    "string",
+    "substring",
+    "replace"
+  ]
 }

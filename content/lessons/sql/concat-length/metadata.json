@@ -4,12 +4,31 @@
   "description": "Combine strings and measure their length.",
   "milestone": "string-functions",
   "order": 1,
-  "sections": ["concat", "length", "combining"],
+  "sections": [
+    "concat-length-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["nullif-coalesce"],
-  "tags": ["sql", "functions", "string", "concat", "length"]
+  "prerequisites": [
+    "nullif-coalesce"
+  ],
+  "tags": [
+    "sql",
+    "functions",
+    "string",
+    "concat",
+    "length"
+  ]
 }

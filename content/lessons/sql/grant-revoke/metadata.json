@@ -4,12 +4,31 @@
   "description": "Control database access with permission commands.",
   "milestone": "security",
   "order": 1,
-  "sections": ["grant-basics", "revoke", "roles"],
+  "sections": [
+    "grant-revoke-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["index-optimization"],
-  "tags": ["sql", "security", "grant", "revoke", "permissions"]
+  "prerequisites": [
+    "index-optimization"
+  ],
+  "tags": [
+    "sql",
+    "security",
+    "grant",
+    "revoke",
+    "permissions"
+  ]
 }

@@ -5,11 +5,7 @@
   "milestone": "sql",
   "order": 8,
   "sections": [
-    "inner-join",
-    "left-join",
-    "right-join",
-    "full-outer-join",
-    "self-cross-join"
+    "join-queries-complete"
   ],
   "levels": {
     "beginner": {
@@ -25,6 +21,15 @@
       "xpReward": 85
     }
   },
-  "prerequisites": ["dml-operations"],
-  "tags": ["sql", "joins", "inner", "left", "right", "outer"]
+  "prerequisites": [
+    "dml-operations"
+  ],
+  "tags": [
+    "sql",
+    "joins",
+    "inner",
+    "left",
+    "right",
+    "outer"
+  ]
 }

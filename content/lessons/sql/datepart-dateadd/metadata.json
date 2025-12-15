@@ -4,12 +4,31 @@
   "description": "Extract date parts and perform date arithmetic.",
   "milestone": "date-time",
   "order": 3,
-  "sections": ["datepart", "dateadd", "datediff"],
+  "sections": [
+    "datepart-dateadd-complete"
+  ],
   "levels": {
-    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
-    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
-    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
   },
-  "prerequisites": ["timestamp"],
-  "tags": ["sql", "date", "datepart", "dateadd", "datediff"]
+  "prerequisites": [
+    "timestamp"
+  ],
+  "tags": [
+    "sql",
+    "date",
+    "datepart",
+    "dateadd",
+    "datediff"
+  ]
 }
