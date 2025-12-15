@@ -246,7 +246,7 @@ function NodeItem({
   const totalObjectives = node.learningObjectives?.length || 0;
   
   return (
-    <li>
+    <li id={`sidebar-node-${node.id}`}>
       <div
         className={cn(
           'w-full flex items-center gap-3 px-3 rounded-xl transition-colors text-left',
@@ -383,6 +383,22 @@ function NodeItem({
       </AnimatePresence>
     </li>
   );
+}
+
+function ScrollToSelectedNode({ selectedNodeId }: { selectedNodeId: string | null }) {
+  useEffect(() => {
+    if (selectedNodeId) {
+      // Small timeout to allow for expansion animation or layout to settle
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`sidebar-node-${selectedNodeId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedNodeId]);
+  return null;
 }
 
 export function RoadmapSidebar({
@@ -621,6 +637,10 @@ export function RoadmapSidebar({
           </ul>
         </div>
       )}
+      
+      {/* Scroll to selected node effect */}
+      {/* We use a hidden ref to trigger the scroll effect cleanly */}
+      <ScrollToSelectedNode selectedNodeId={selectedNodeId} />
       
       {/* Progress Overview */}
       <div className="p-6 border-b border-border">
