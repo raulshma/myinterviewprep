@@ -14,6 +14,7 @@ interface SidebarPageWrapperProps {
  */
 const paddingConfig = {
   none: "pr-0 py-0", // No padding
+  small: "p-1 md:p-2 lg:p-4",
   default: "p-4 md:p-6 lg:p-8", // All-around padding for other pages
 } as const;
 
@@ -21,10 +22,15 @@ export function SidebarPageWrapper({ children }: SidebarPageWrapperProps) {
   const pathname = usePathname();
 
   // Determine padding based on current route
-  const paddingClass =
-    pathname === "/ai-chat" || pathname?.includes("/ai-chat")
-      ? paddingConfig.none
-      : paddingConfig.default;
+  let paddingClass: string = paddingConfig.default;
+
+  if (pathname === "/ai-chat" || pathname?.includes("/ai-chat")) {
+    paddingClass = paddingConfig.none;
+  } else if (pathname && /^\/roadmaps\/[^/]+$/.test(pathname)) {
+    // Apply small padding ONLY to the roadmap ID page (viewer + sidebar layout)
+    // This excludes nested routes like /roadmaps/[slug]/learn/...
+    paddingClass = paddingConfig.small;
+  }
 
   return (
     <main className="flex-1 relative min-w-0 max-w-full z-10">

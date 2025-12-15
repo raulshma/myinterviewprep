@@ -89,7 +89,7 @@ export default async function LearnObjectivePage({
   const adjacentLessons = await getAdjacentLessons(lessonPath);
 
   return (
-    <div className="container py-8">
+    <div className="container">
       <LessonPageClient
         lessonId={lessonPath}
         lessonTitle={metadata.title}

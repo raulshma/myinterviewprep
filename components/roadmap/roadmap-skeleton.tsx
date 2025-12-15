@@ -383,14 +383,14 @@ function RoadmapTopicDetailSkeleton() {
 export function RoadmapPageSkeleton() {
   return (
     <div className="h-[calc(100vh-4rem)]">
-      <div className="flex flex-col md:flex-row gap-6 min-h-full">
+      <div className="flex flex-col md:flex-row gap-2 min-h-full">
         {/* Left Sidebar */}
         <div className="md:w-80 shrink-0">
           <RoadmapSidebarSkeleton />
         </div>
         
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col lg:flex-row gap-6 min-w-0">
+        <div className="flex-1 flex flex-col lg:flex-row gap-2 min-w-0">
           {/* Roadmap Viewer */}
           <div className="flex-1 min-w-0">
             <RoadmapViewerSkeleton />
@@ -411,104 +411,129 @@ export function RoadmapPageSkeleton() {
  */
 export function LessonPageSkeleton() {
   return (
-    <div className="container py-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-2 mb-4">
-            <Skeleton className="w-4 h-4 rounded" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Skeleton className="w-5 h-5 rounded" />
-                <Skeleton className="h-4 w-24" />
+    <div className="container">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
+          {/* Main content */}
+          <div className="min-w-0">
+            {/* Header */}
+            <div className="mb-8">
+              {/* Breadcrumb */}
+              <div className="flex items-center gap-2 mb-4">
+                <Skeleton className="w-4 h-4 rounded" />
+                <Skeleton className="h-4 w-32" />
               </div>
-              <Skeleton className="h-8 w-64" />
-            </div>
 
-            {/* XP Display */}
-            <Skeleton className="w-24 h-12 rounded-xl" />
-          </div>
-        </div>
-
-        {/* Experience Level Selector */}
-        <div className="mb-6">
-          <div className="flex gap-2 p-1 bg-secondary/30 rounded-xl w-fit">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-10 w-28 rounded-lg" />
-            ))}
-          </div>
-        </div>
-
-        {/* Progress Tracker */}
-        <div className="mb-8 p-4 rounded-2xl border border-border bg-card">
-          <div className="flex items-center justify-between mb-3">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-10" />
-          </div>
-          <Skeleton className="h-2 w-full rounded-full mb-4" />
-          <div className="flex gap-2 flex-wrap">
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-6 w-20 rounded-full" />
-            ))}
-          </div>
-        </div>
-
-        {/* MDX Content Area */}
-        <article className="prose prose-lg dark:prose-invert max-w-none">
-          {/* Content placeholder */}
-          <div className="space-y-6">
-            {/* Heading */}
-            <Skeleton className="h-8 w-3/4" />
-            
-            {/* Paragraph */}
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-2/3" />
-            </div>
-            
-            {/* Code block */}
-            <Skeleton className="h-32 w-full rounded-lg" />
-            
-            {/* Another paragraph */}
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-5/6" />
-            </div>
-            
-            {/* Interactive element */}
-            <Skeleton className="h-48 w-full rounded-xl" />
-            
-            {/* More content */}
-            <Skeleton className="h-6 w-1/2" />
-            <div className="space-y-3">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-full" />
-            </div>
-            
-            {/* Progress checkpoint */}
-            <div className="p-4 rounded-xl border border-border bg-secondary/20">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Skeleton className="w-6 h-6 rounded-full" />
-                  <Skeleton className="h-4 w-32" />
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="w-5 h-5 rounded" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                  <Skeleton className="h-8 w-64" />
                 </div>
-                <Skeleton className="h-8 w-24 rounded-lg" />
+
+                {/* XP Display */}
+                <Skeleton className="w-24 h-12 rounded-xl" />
+              </div>
+            </div>
+
+            {/* Experience Level Selector */}
+            <div className="mb-6">
+              <div className="flex gap-2 p-1 bg-secondary/30 rounded-xl w-fit">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-10 w-28 rounded-lg" />
+                ))}
+              </div>
+            </div>
+
+            {/* Progress Tracker */}
+            <div className="mb-8 p-4 rounded-2xl border border-border bg-card">
+              <div className="flex items-center justify-between mb-3">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-10" />
+              </div>
+              <Skeleton className="h-2 w-full rounded-full mb-4" />
+              <div className="flex gap-2 flex-wrap">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-6 w-20 rounded-full" />
+                ))}
+              </div>
+            </div>
+
+            {/* MDX Content Area */}
+            <article className="prose prose-lg dark:prose-invert max-w-none">
+              {/* Content placeholder */}
+              <div className="space-y-6">
+                {/* Heading */}
+                <Skeleton className="h-8 w-3/4" />
+                
+                {/* Paragraph */}
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+                
+                {/* Code block */}
+                <Skeleton className="h-32 w-full rounded-lg" />
+                
+                {/* Another paragraph */}
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                </div>
+                
+                {/* Interactive element */}
+                <Skeleton className="h-48 w-full rounded-xl" />
+                
+                {/* More content */}
+                <Skeleton className="h-6 w-1/2" />
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                </div>
+                
+                {/* Progress checkpoint */}
+                <div className="p-4 rounded-xl border border-border bg-secondary/20">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="w-6 h-6 rounded-full" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <Skeleton className="h-8 w-24 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            </article>
+
+            {/* Navigation */}
+            <div className="mt-12 pt-8 border-t border-border">
+              <div className="flex justify-between">
+                <Skeleton className="h-10 w-36 rounded-lg" />
               </div>
             </div>
           </div>
-        </article>
 
-        {/* Navigation */}
-        <div className="mt-12 pt-8 border-t border-border">
-          <div className="flex justify-between">
-            <Skeleton className="h-10 w-36 rounded-lg" />
+          {/* Section Sidebar Skeleton */}
+          <div className="hidden lg:block w-[280px]">
+            <div className="sticky top-24 space-y-4">
+               {/* Sidebar header */}
+               <div className="flex items-center justify-between mb-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-8" />
+               </div>
+               {/* Sections list */}
+               <div className="space-y-2">
+                 {[...Array(6)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-2 rounded-lg">
+                      <Skeleton className="w-4 h-4 rounded-full" />
+                      <Skeleton className="h-4 flex-1" />
+                    </div>
+                 ))}
+               </div>
+            </div>
           </div>
         </div>
       </div>

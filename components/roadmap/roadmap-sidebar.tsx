@@ -39,6 +39,7 @@ interface RoadmapSidebarProps {
   onNodeSelect: (nodeId: string) => void;
   initialLessonAvailability: Record<string, ObjectiveLessonInfo[]>;
   parentRoadmap?: Roadmap | null;
+  onClearSelection?: () => void;
 }
 
 // Storage key for persisting expanded nodes
@@ -385,21 +386,7 @@ function NodeItem({
   );
 }
 
-function ScrollToSelectedNode({ selectedNodeId }: { selectedNodeId: string | null }) {
-  useEffect(() => {
-    if (selectedNodeId) {
-      // Small timeout to allow for expansion animation or layout to settle
-      const timer = setTimeout(() => {
-        const el = document.getElementById(`sidebar-node-${selectedNodeId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [selectedNodeId]);
-  return null;
-}
+// Removed ScrollToSelectedNode component
 
 export function RoadmapSidebar({
   roadmap,
@@ -408,6 +395,7 @@ export function RoadmapSidebar({
   onNodeSelect,
   initialLessonAvailability = {},
   parentRoadmap,
+  onClearSelection,
 }: RoadmapSidebarProps) {
   const nodesCompleted = progress?.nodesCompleted || 0;
   const totalNodes = roadmap.nodes.length;
@@ -426,6 +414,19 @@ export function RoadmapSidebar({
     const nodeProgress = progress.nodeProgress.find(np => np.nodeId === nodeId);
     return nodeProgress?.status || 'locked';
   };
+  
+  // Auto-scroll to selected node
+  useEffect(() => {
+    if (selectedNodeId) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`sidebar-node-${selectedNodeId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedNodeId]);
   
   // Removed client-side fetching effect
   /* 
@@ -601,6 +602,31 @@ export function RoadmapSidebar({
             <h2 className="font-semibold text-foreground truncate">{roadmap.title}</h2>
             <p className="text-xs text-muted-foreground">{totalNodes} topics</p>
           </div>
+          
+          {/* Selection Actions */}
+          {selectedNodeId && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => {
+                   const el = document.getElementById(`sidebar-node-${selectedNodeId}`);
+                   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }}
+                className="p-1.5 rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                title="Locate selected"
+              >
+                <Target className="w-4 h-4" />
+              </button>
+              {onClearSelection && (
+                <button
+                  onClick={onClearSelection}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                  title="Clear selection"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
       
@@ -638,9 +664,12 @@ export function RoadmapSidebar({
         </div>
       )}
       
-      {/* Scroll to selected node effect */}
-      {/* We use a hidden ref to trigger the scroll effect cleanly */}
-      <ScrollToSelectedNode selectedNodeId={selectedNodeId} />
+      {/* Scroll to selected node Effect & Actions */}
+      {/* We run this effect to auto-scroll on mount/change, and expose controls */}
+      {(() => {
+        // We can't use hooks inside this IIFE, so we put the logic in the main body
+        return null;
+      })()}
       
       {/* Progress Overview */}
       <div className="p-6 border-b border-border">
