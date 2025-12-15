@@ -2,9 +2,24 @@
 
 Advanced service communication involves implementing robust patterns for reliability, observability, and scalability in distributed systems.
 
-## Interactive Demo
+---
+
+## Section 1: Sync vs Async at Scale
 
 <ServiceCommunicationDemo mode="advanced" />
+
+| Pattern | Sync | Async |
+| :--- | :--- | :--- |
+| **Latency** | Immediate response | Eventually consistent |
+| **Reliability** | Depends on availability | Guaranteed delivery |
+| **Complexity** | Lower | Higher |
+| **Scalability** | Limited by slowest service | Independent scaling |
+
+<ProgressCheckpoint section="sc-sync-vs-async" xpReward={25} />
+
+---
+
+## Section 2: Communication Patterns
 
 ## gRPC Implementation in .NET
 
@@ -346,13 +361,58 @@ public static class ResiliencePolicies
 }
 ```
 
-## Key Takeaways
+<ProgressCheckpoint section="sc-communication-patterns" xpReward={25} />
 
-- ⚡ **gRPC** provides high-performance, strongly-typed service communication
-- 📨 **MassTransit** simplifies message-based communication with RabbitMQ
-- 📤 **Outbox Pattern** ensures reliable event publishing
-- 🔍 **OpenTelemetry** enables distributed tracing across services
-- 🛡️ **Polly** provides comprehensive resilience policies
-- 🔄 Combine **retries**, **circuit breakers**, and **timeouts** for robust communication
+---
 
-<ProgressCheckpoint section="sc-implementation" xpReward={75} />
+## Section 3: Implementation Patterns
+
+### Distributed Tracing with OpenTelemetry
+
+```csharp
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddSource("OrderService")
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddGrpcClientInstrumentation()
+            .AddMassTransitInstrumentation()
+            .AddOtlpExporter(options =>
+            {
+                options.Endpoint = new Uri("http://jaeger:4317");
+            });
+    });
+```
+
+### Resilience Patterns with Polly
+
+```csharp
+public static IAsyncPolicy<HttpResponseMessage> GetCombinedPolicy()
+{
+    var retryPolicy = Policy
+        .HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
+        .WaitAndRetryAsync(3, attempt => 
+            TimeSpan.FromSeconds(Math.Pow(2, attempt)));
+
+    var circuitBreakerPolicy = Policy
+        .HandleResult<HttpResponseMessage>(r => !r.IsSuccessStatusCode)
+        .CircuitBreakerAsync(
+            handledEventsAllowedBeforeBreaking: 5,
+            durationOfBreak: TimeSpan.FromSeconds(30));
+
+    return Policy.WrapAsync(retryPolicy, circuitBreakerPolicy);
+}
+```
+
+### Key Takeaways
+
+- **gRPC** provides high-performance, strongly-typed service communication
+- **MassTransit** simplifies message-based communication with RabbitMQ
+- **Outbox Pattern** ensures reliable event publishing
+- **OpenTelemetry** enables distributed tracing across services
+- **Polly** provides comprehensive resilience policies
+- Combine **retries**, **circuit breakers**, and **timeouts** for robust communication
+
+<ProgressCheckpoint section="sc-implementation" xpReward={25} />

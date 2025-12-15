@@ -1,12 +1,16 @@
 # Microservices Principles
 
-Imagine you're planning a city. Would you put everything—homes, shops, hospitals, schools—in one giant skyscraper? 🏢 Or would you create specialized neighborhoods where each area does its job best? **That's the difference between monoliths and microservices!**
+Imagine you're planning a city. Would you put everything in one giant skyscraper? Or would you create specialized neighborhoods where each area does its job best? **That's the difference between monoliths and microservices!**
 
-## The City Planning Analogy 🏙️
+---
+
+## Section 1: What Are Microservices?
+
+### The City Planning Analogy
 
 Think of building software like city planning:
 
-| **Monolith** 🏢 | **Microservices** 🏘️ |
+| **Monolith** | **Microservices** |
 | :--- | :--- |
 | One massive building | Specialized neighborhoods |
 | If elevator breaks, everyone stuck | One area can close for repairs |
@@ -17,45 +21,59 @@ Think of building software like city planning:
   **Microservices = Many small, independent services** that work together like a well-planned city!
 </InfoBox>
 
-## See the Difference
+### See the Difference
 
 <MicroservicesArchitectureVisualizer mode="beginner" />
 
 Click the button above to switch between views and see how a monolith differs from microservices!
 
-## Core Principles (The Simple Version)
+<ProgressCheckpoint section="ms-what-are-microservices" xpReward={10} />
 
-### 1. 🎯 Single Purpose
+---
+
+## Section 2: Core Principles
+
+### 1. Single Purpose
 Each microservice does **one thing well**. Like a bakery that only makes bread, not also repairs cars!
 
-### 2. 🏠 Independence
+### 2. Independence
 Services can be updated, deployed, and scaled **on their own**. The bakery can expand without affecting the bookstore next door.
 
-### 3. 📦 Own Your Data
+### 3. Own Your Data
 Each service has its **own database**. The bakery doesn't share its recipe book with the pizza shop!
 
-## When to Use Microservices
+| Principle | What It Means | Example |
+| :--- | :--- | :--- |
+| Single Purpose | One job per service | UserService only handles users |
+| Independence | Deploy separately | Update payments without touching orders |
+| Data Ownership | Own database | Each service has its own DB |
+
+<ProgressCheckpoint section="ms-core-principles" xpReward={10} />
+
+---
+
+## Section 3: When to Use Microservices
 
 <InfoBox type="warning">
   Microservices add complexity! Start simple (monolith) and split later when needed.
 </InfoBox>
 
-**Good for:**
+### Good for:
 - Large teams working on different features
 - Parts of your app that need different scaling
 - Different parts needing different technologies
 
-**Maybe too much for:**
+### Maybe too much for:
 - Small projects or teams
 - Startups finding product-market fit
 - When you're just starting out
 
-## Key Takeaways
+### Key Takeaways
 
-- 🏘️ **Microservices = city of specialized neighborhoods**
-- 🎯 Each service has **one job** (Single Responsibility)
-- 🔒 Each service **owns its data** (No shared databases)
-- 🚀 Services can be **deployed independently**
-- ⚠️ **Start with a monolith** unless you have a good reason not to
+- Microservices = city of specialized neighborhoods
+- Each service has **one job** (Single Responsibility)
+- Each service **owns its data** (No shared databases)
+- Services can be **deployed independently**
+- **Start with a monolith** unless you have a good reason not to
 
-<ProgressCheckpoint section="ms-what-are-microservices" xpReward={30} />
+<ProgressCheckpoint section="ms-when-to-use" xpReward={10} />

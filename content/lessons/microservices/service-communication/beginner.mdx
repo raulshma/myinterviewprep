@@ -1,14 +1,16 @@
 # Service Communication
 
-When microservices need to talk to each other, how do they do it? 🤔 Just like people, services can communicate in different ways!
+When microservices need to talk to each other, how do they do it? Just like people, services can communicate in different ways!
 
-## The Phone vs Email Analogy 📞📧
+---
+
+## Section 1: Sync vs Async Communication
 
 <ServiceCommunicationDemo mode="beginner" />
 
 Think about how you communicate with friends:
 
-| **Phone Call (Synchronous)** 📞 | **Email (Asynchronous)** 📧 |
+| **Phone Call (Synchronous)** | **Email (Asynchronous)** |
 | :--- | :--- |
 | You call and **wait** for them to answer | You send and **continue your day** |
 | Both people engaged at the same time | Reply comes when they're ready |
@@ -20,7 +22,13 @@ Think about how you communicate with friends:
   **Asynchronous** = You don't wait (like an email)
 </InfoBox>
 
-## Synchronous Communication (Phone Call) 📞
+<ProgressCheckpoint section="sc-sync-vs-async" xpReward={10} />
+
+---
+
+## Section 2: Communication Patterns
+
+### Synchronous Communication (Phone Call)
 
 When Service A calls Service B and **waits for a response**:
 
@@ -39,10 +47,10 @@ Order Service                    Payment Service
 - Validating data immediately
 
 **The risk:**
-- If Payment Service is slow → Order Service is slow
-- If Payment Service is down → Order Service can't work 😱
+- If Payment Service is slow, Order Service is slow
+- If Payment Service is down, Order Service can't work
 
-## Asynchronous Communication (Email) 📧
+### Asynchronous Communication (Email)
 
 Service A sends a message and **continues working**:
 
@@ -64,9 +72,15 @@ Order Service                Message Queue              Payment Service
 **Benefits:**
 - Order Service never waits
 - If Payment is busy, messages wait in queue
-- Services are more resilient! 💪
+- Services are more resilient
 
-## Real-World Example: Pizza Order 🍕
+<ProgressCheckpoint section="sc-communication-patterns" xpReward={10} />
+
+---
+
+## Section 3: Choosing the Right Pattern
+
+### Real-World Example: Pizza Order
 
 | Step | Type | Why? |
 | :--- | :--- | :--- |
@@ -75,12 +89,12 @@ Order Service                Message Queue              Payment Service
 | Send receipt email | **Async** | Can happen in background |
 | Notify delivery driver | **Async** | No rush, driver will see it |
 
-## Key Takeaways
+### Key Takeaways
 
-- 📞 **Synchronous** = Wait for response (HTTP calls)
-- 📧 **Asynchronous** = Send and continue (Message queues)
-- 🔄 **Sync is simpler** but creates dependencies
-- ⚡ **Async is resilient** but more complex
-- 🎯 **Choose based on the situation!**
+- **Synchronous** = Wait for response (HTTP calls)
+- **Asynchronous** = Send and continue (Message queues)
+- **Sync is simpler** but creates dependencies
+- **Async is resilient** but more complex
+- **Choose based on the situation!**
 
-<ProgressCheckpoint section="sc-sync-vs-async" xpReward={30} />
+<ProgressCheckpoint section="sc-implementation" xpReward={10} />

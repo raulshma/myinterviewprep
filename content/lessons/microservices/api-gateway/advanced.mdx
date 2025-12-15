@@ -2,9 +2,27 @@
 
 This lesson covers production-ready API Gateway implementation using Ocelot and YARP in .NET, including configuration, authentication integration, and Kubernetes deployment.
 
-## Gateway Demo
+---
+
+## Section 1: What is an API Gateway?
 
 <ApiGatewaySimulator mode="advanced" />
+
+### Gateway Architecture Overview
+
+| Component | Purpose |
+| :--- | :--- |
+| **Reverse Proxy** | Routes requests to backend services |
+| **Authentication** | Validates JWT tokens centrally |
+| **Rate Limiting** | Protects services from overload |
+| **Load Balancing** | Distributes traffic across instances |
+| **Circuit Breaker** | Prevents cascading failures |
+
+<ProgressCheckpoint section="ag-what-is-gateway" xpReward={20} />
+
+---
+
+## Section 2: Gateway Features
 
 ## Ocelot Implementation
 
@@ -393,13 +411,75 @@ spec:
               number: 80
 ```
 
-## Key Takeaways
+<ProgressCheckpoint section="ag-gateway-features" xpReward={22} />
 
-- 🔧 **Ocelot** provides feature-rich API Gateway for .NET
-- 🚀 **YARP** is Microsoft's modern, high-performance reverse proxy
-- 📝 Configure routes with **authentication**, **rate limiting**, and **caching**
-- 🔍 Add **correlation IDs** for distributed tracing
-- ☸️ Deploy with **multiple replicas** in Kubernetes
-- 🌐 Use **Ingress** for external traffic, gateway for internal routing
+---
 
-<ProgressCheckpoint section="ag-implementation" xpReward={65} />
+## Section 3: Implementation
+
+### Kubernetes Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+      - name: api-gateway
+        image: myregistry/api-gateway:latest
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+```
+
+### Ingress Configuration
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+spec:
+  tls:
+  - hosts:
+    - api.myapp.com
+    secretName: api-tls-secret
+  rules:
+  - host: api.myapp.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 80
+```
+
+### Key Takeaways
+
+- **Ocelot** provides feature-rich API Gateway for .NET
+- **YARP** is Microsoft's modern, high-performance reverse proxy
+- Configure routes with **authentication**, **rate limiting**, and **caching**
+- Add **correlation IDs** for distributed tracing
+- Deploy with **multiple replicas** in Kubernetes
+- Use **Ingress** for external traffic, gateway for internal routing
+
+<ProgressCheckpoint section="ag-implementation" xpReward={23} />

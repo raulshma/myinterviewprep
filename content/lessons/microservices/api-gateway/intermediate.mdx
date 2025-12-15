@@ -2,13 +2,13 @@
 
 An API Gateway acts as a reverse proxy that routes requests from clients to services, handling cross-cutting concerns like authentication, rate limiting, and request aggregation.
 
-## Interactive Gateway Visualization
+---
+
+## Section 1: What is an API Gateway?
 
 <ApiGatewaySimulator mode="intermediate" />
 
-## Gateway Responsibilities
-
-### 1. Request Routing
+### Request Routing
 
 The gateway routes incoming requests to appropriate backend services:
 
@@ -20,7 +20,7 @@ POST /api/orders           →     Route matching      →     Order Service
 GET /api/users/me          →     Route matching      →     User Service
 ```
 
-### 2. Authentication & Authorization
+### Authentication & Authorization
 
 Centralized security handling:
 
@@ -44,11 +44,16 @@ Centralized security handling:
                    ▼
           ┌─────────────────┐
           │    Microservice │
-          │  (trusts gateway)│
           └─────────────────┘
 ```
 
-### 3. Rate Limiting
+<ProgressCheckpoint section="ag-what-is-gateway" xpReward={15} />
+
+---
+
+## Section 2: Gateway Features
+
+### Rate Limiting
 
 Protect services from being overwhelmed:
 
@@ -59,7 +64,7 @@ Protect services from being overwhelmed:
 | Token Bucket | Allows bursts up to limit | Handling traffic spikes |
 | Leaky Bucket | Processes at fixed rate | Consistent throughput |
 
-### 4. Request Aggregation
+### Request Aggregation
 
 Combine multiple service calls into one:
 
@@ -78,9 +83,9 @@ Gateway Response: {
 }
 ```
 
-## BFF Pattern (Backend for Frontend)
+### BFF Pattern (Backend for Frontend)
 
-Different clients have different needs. The BFF pattern creates specialized gateways:
+Different clients have different needs:
 
 ```
 ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
@@ -100,23 +105,13 @@ Different clients have different needs. The BFF pattern creates specialized gate
             └───────────────────────┘
 ```
 
-**Benefits:**
-- Mobile BFF returns minimal data (bandwidth)
-- Web BFF returns rich data (better UX)
-- Each BFF can be maintained by its frontend team
+<ProgressCheckpoint section="ag-gateway-features" xpReward={15} />
 
-## Common Gateway Features
+---
 
-| Feature | Description |
-| :--- | :--- |
-| **SSL Termination** | Gateway handles HTTPS, internal traffic is HTTP |
-| **Load Balancing** | Distributes requests across service instances |
-| **Caching** | Reduces calls to backend services |
-| **Request/Response Transform** | Modify headers, body format |
-| **Circuit Breaker** | Prevents cascading failures |
-| **Logging & Monitoring** | Centralized observability |
+## Section 3: Implementation Considerations
 
-## Gateway Technologies Comparison
+### Gateway Technologies Comparison
 
 | Gateway | Type | Best For |
 | :--- | :--- | :--- |
@@ -127,36 +122,25 @@ Different clients have different needs. The BFF pattern creates specialized gate
 | **Azure API Management** | Cloud Service | Enterprise/Azure |
 | **NGINX** | Reverse Proxy | High performance |
 
-## Gateway Anti-Patterns
+### Gateway Anti-Patterns
 
-### ❌ Overloaded Gateway
-Don't put business logic in the gateway!
+**Overloaded Gateway** - Don't put business logic in the gateway!
 
+**Single Point of Failure** - Run multiple gateway instances:
 ```
-// BAD - Business logic in gateway
-if (order.Total > 1000) {
-    applyDiscount(order, 0.1);
-}
-```
-
-### ❌ Single Point of Failure
-Don't run just one gateway instance!
-
-```
-// GOOD - Multiple gateway instances behind load balancer
 Load Balancer
     ├── Gateway Instance 1
     ├── Gateway Instance 2
     └── Gateway Instance 3
 ```
 
-## Key Takeaways
+### Key Takeaways
 
-- 🚪 Gateway is the **single entry point** for external clients
-- 🔐 Centralizes **authentication and authorization**
-- 🚦 Handles **rate limiting** to protect services
-- 📦 **BFF Pattern** provides client-specific gateways
-- ⚠️ Don't put **business logic** in the gateway
-- 🔄 Run **multiple instances** for high availability
+- Gateway is the **single entry point** for external clients
+- Centralizes **authentication and authorization**
+- Handles **rate limiting** to protect services
+- **BFF Pattern** provides client-specific gateways
+- Don't put **business logic** in the gateway
+- Run **multiple instances** for high availability
 
-<ProgressCheckpoint section="ag-gateway-features" xpReward={45} />
+<ProgressCheckpoint section="ag-implementation" xpReward={15} />

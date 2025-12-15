@@ -356,8 +356,9 @@ function NodeItem({
                 const objectiveTitle = info.objective;
                 const objectiveSlug = info.lessonId;
                 const hasLesson = info.hasLesson;
-                // Full lessonId format matches how it's stored in gamification: "roadmapSlug/lessonSlug"
-                const fullLessonId = `${roadmapSlug}/${objectiveSlug}`;
+                // Use lessonPath (full path like "dotnet/csharp-basics/variables-data-types") for key consistency
+                const fullLessonId = info.lessonPath || info.lessonId;
+                const nodeIdForKey = fullLessonId.split('/')[0];
                 
                 return (
                   <motion.li
@@ -371,7 +372,7 @@ function NodeItem({
                         href={`/roadmaps/${roadmapSlug}/learn/${node.id}/${objectiveSlug}`}
                         objectiveTitle={objectiveTitle}
                         xpRewards={info.xpRewards}
-                        isComplete={!!getObjectiveProgress(roadmapSlug, fullLessonId)?.completedAt}
+                        isComplete={!!getObjectiveProgress(nodeIdForKey, fullLessonId)?.completedAt}
                         onNavigate={() => {
                           onSelect();
                           onLessonNavigate?.(objectiveSlug, objectiveTitle);
@@ -452,13 +453,15 @@ export function RoadmapSidebar({
 
     let completed = 0;
     for (const obj of objectives) {
-      // Use roadmap.slug and full lessonId format for key consistency
-      const fullLessonId = `${roadmap.slug}/${obj.lessonId}`;
-      const stored = getObjectiveProgress(roadmap.slug, fullLessonId);
+      // Use lessonPath (full path like "dotnet/csharp-basics/variables-data-types") for key consistency
+      // The first segment of lessonPath is the roadmapSlug used as nodeId in the storage key
+      const fullLessonId = obj.lessonPath || obj.lessonId;
+      const nodeIdForKey = fullLessonId.split('/')[0];
+      const stored = getObjectiveProgress(nodeIdForKey, fullLessonId);
       if (stored?.completedAt) completed += 1;
     }
     return { completed, total: objectives.length };
-  }, [nodeObjectivesInfo, roadmap.slug]);
+  }, [nodeObjectivesInfo]);
 
   // Initial computation
   const [objectiveCompletionByNode, setObjectiveCompletionByNode] = useState<Record<string, { completed: number; total: number }>>(() => {
@@ -470,9 +473,10 @@ export function RoadmapSidebar({
                 const objectives = initialLessonAvailability[node.id] || [];
                 let completed = 0;
                 for (const obj of objectives) {
-                   // Use roadmap.slug and full lessonId format for key consistency
-                   const fullLessonId = `${roadmap.slug}/${obj.lessonId}`;
-                   const stored = getObjectiveProgress(roadmap.slug, fullLessonId);
+                   // Use lessonPath (full path like "dotnet/csharp-basics/variables-data-types") for key consistency
+                   const fullLessonId = obj.lessonPath || obj.lessonId;
+                   const nodeIdForKey = fullLessonId.split('/')[0];
+                   const stored = getObjectiveProgress(nodeIdForKey, fullLessonId);
                    if (stored?.completedAt) completed += 1;
                 }
                 initial[node.id] = { completed, total: objectives.length };
@@ -656,9 +660,12 @@ export function RoadmapSidebar({
           </h3>
           <ul className="space-y-1">
             {recentLessons.filter(l => l.roadmapSlug === roadmap.slug).map((lesson, i) => {
-               // Check if completed - use roadmapSlug and full lessonId format for key consistency
-               const fullLessonId = `${lesson.roadmapSlug}/${lesson.lessonId}`;
-               const isCompleted = getObjectiveProgress(lesson.roadmapSlug, fullLessonId)?.completedAt;
+               // Find the full lessonPath from nodeObjectivesInfo for proper key lookup
+               const nodeInfo = nodeObjectivesInfo[lesson.nodeId] || [];
+               const objInfo = nodeInfo.find(o => o.lessonId === lesson.lessonId);
+               const fullLessonId = objInfo?.lessonPath || lesson.lessonId;
+               const nodeIdForKey = fullLessonId.split('/')[0];
+               const isCompleted = getObjectiveProgress(nodeIdForKey, fullLessonId)?.completedAt;
                
                return (
                 <li key={`${lesson.nodeId}-${lesson.lessonId}-${i}`}>

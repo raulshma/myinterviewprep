@@ -1,12 +1,14 @@
 # API Gateway Pattern
 
-Imagine you're staying at a fancy hotel. Do you call the kitchen directly for food, the housekeeping for towels, and the valet for your car? 🤔 No! You call the **concierge** who handles everything for you!
+Imagine you're staying at a fancy hotel. Do you call the kitchen directly for food, the housekeeping for towels, and the valet for your car? No! You call the **concierge** who handles everything for you!
 
-## The Hotel Concierge Analogy 🛎️
+---
+
+## Section 1: What is an API Gateway?
 
 <ApiGatewaySimulator mode="beginner" />
 
-| **Without API Gateway** 😰 | **With API Gateway** 😊 |
+| **Without API Gateway** | **With API Gateway** |
 | :--- | :--- |
 | Client calls every service directly | Client calls ONE gateway |
 | Client needs to know all addresses | Gateway knows where everything is |
@@ -17,9 +19,13 @@ Imagine you're staying at a fancy hotel. Do you call the kitchen directly for fo
   **API Gateway = Hotel Concierge** — One person (or service) who directs all your requests to the right place!
 </InfoBox>
 
-## What Does an API Gateway Do?
+<ProgressCheckpoint section="ag-what-is-gateway" xpReward={8} />
 
-### 1. 🚦 Routing (Traffic Cop)
+---
+
+## Section 2: Gateway Features
+
+### 1. Routing (Traffic Cop)
 Sends each request to the right service:
 
 ```
@@ -28,24 +34,24 @@ Client: "I want my orders"    → Gateway → Order Service
 Client: "I want to pay"       → Gateway → Payment Service
 ```
 
-### 2. 🔐 Authentication (Security Guard)
+### 2. Authentication (Security Guard)
 Checks if you're allowed in **before** bothering the services:
 
 ```
 Client: "Here's my ID badge" 
-Gateway: "✅ Valid! Come in."
+Gateway: "Valid! Come in."
 Gateway → Forwards requests to services
 ```
 
-### 3. 🚫 Rate Limiting (Bouncer)
+### 3. Rate Limiting (Bouncer)
 Prevents too many requests from overwhelming services:
 
 ```
 Client: 100 requests per second
-Gateway: "Whoa! Slow down. Max 10/second please."
+Gateway: "Slow down. Max 10/second please."
 ```
 
-### 4. 🧲 Request Aggregation (Personal Shopper)
+### 4. Request Aggregation (Personal Shopper)
 Gets data from multiple services in one call:
 
 ```
@@ -55,37 +61,33 @@ Gateway → User Service (gets profile)
 Gateway: "Here's everything in one response!"
 ```
 
-## Without vs With API Gateway
+<ProgressCheckpoint section="ag-gateway-features" xpReward={9} />
 
-### ❌ Without Gateway
+---
 
+## Section 3: Implementation Overview
+
+### Without vs With API Gateway
+
+**Without Gateway:**
 ```
 Mobile App ──────► User Service
           └─────► Order Service
           └─────► Catalog Service
           └─────► Payment Service
-
-Problems:
-- App needs 4 different URLs
-- Each service needs its own security
-- Hard to change services later
 ```
+Problems: App needs 4 different URLs, each service needs its own security
 
-### ✅ With Gateway
-
+**With Gateway:**
 ```
 Mobile App ──────► API Gateway ──────► User Service
                               └─────► Order Service
                               └─────► Catalog Service
                               └─────► Payment Service
-
-Benefits:
-- App needs only 1 URL
-- Security handled once
-- Easy to change services
 ```
+Benefits: App needs only 1 URL, security handled once
 
-## Real-World Examples
+### Real-World Examples
 
 | Gateway | Used By | Purpose |
 | :--- | :--- | :--- |
@@ -94,12 +96,12 @@ Benefits:
 | Ocelot | .NET apps | Built for .NET microservices |
 | NGINX | Everywhere | Web server + gateway |
 
-## Key Takeaways
+### Key Takeaways
 
-- 🛎️ **API Gateway = Single entry point** for all client requests
-- 🚦 **Routes** requests to the correct microservice
-- 🔐 **Handles security** so services don't have to
-- 🚫 **Rate limiting** protects services from overload
-- 💡 Makes life **easier for clients** (like a concierge!)
+- **API Gateway = Single entry point** for all client requests
+- **Routes** requests to the correct microservice
+- **Handles security** so services don't have to
+- **Rate limiting** protects services from overload
+- Makes life **easier for clients** (like a concierge!)
 
-<ProgressCheckpoint section="ag-what-is-gateway" xpReward={25} />
+<ProgressCheckpoint section="ag-implementation" xpReward={8} />

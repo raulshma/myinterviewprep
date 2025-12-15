@@ -2,7 +2,9 @@
 
 Microservices architecture structures an application as a collection of loosely coupled, independently deployable services. Each service is owned by a small team and implements a specific business capability.
 
-## Monolith vs Microservices Architecture
+---
+
+## Section 1: What Are Microservices?
 
 <MicroservicesArchitectureVisualizer mode="intermediate" />
 
@@ -22,18 +24,20 @@ In a microservices architecture:
 - Services are deployed independently
 - Services communicate over the network
 
-## Core Microservices Principles
+<ProgressCheckpoint section="ms-what-are-microservices" xpReward={15} />
+
+---
+
+## Section 2: Core Principles
 
 ### 1. Single Responsibility Principle
 
 Each microservice should focus on **one business capability**:
 
 ```
-✅ UserService       → Authentication, profiles, preferences
-✅ OrderService      → Order creation, status, history
-✅ PaymentService    → Payment processing, refunds
-
-❌ EverythingService → Users + Orders + Payments + Products
+UserService       → Authentication, profiles, preferences
+OrderService      → Order creation, status, history
+PaymentService    → Payment processing, refunds
 ```
 
 ### 2. Bounded Context (DDD)
@@ -41,7 +45,7 @@ Each microservice should focus on **one business capability**:
 From Domain-Driven Design (DDD), each service represents a **bounded context**—a logical boundary where specific terms and rules apply:
 
 ```
-📦 Ordering Context           📦 Shipping Context
+Ordering Context              Shipping Context
 ├── Order (Id, Items, Total)  ├── Shipment (Id, TrackingNo)
 ├── LineItem                  ├── Package
 └── Customer (just an ID)     └── Address
@@ -78,23 +82,29 @@ Each service can be:
 - **Scaled** based on its own resource needs
 - **Updated** with different release cycles
 
-## Decomposition Strategies
+<ProgressCheckpoint section="ms-core-principles" xpReward={20} />
+
+---
+
+## Section 3: When to Use Microservices
+
+### Decomposition Strategies
 
 How do you split a monolith into microservices?
 
-### By Business Capability
+#### By Business Capability
 Split based on what the business does:
 - `InventoryService` - tracking stock
 - `OrderService` - processing orders
 - `ShippingService` - logistics
 
-### By Subdomain (DDD)
+#### By Subdomain (DDD)
 Identify core, supporting, and generic subdomains:
 - **Core**: Your competitive advantage
 - **Supporting**: Necessary but not differentiating
 - **Generic**: Common problems (auth, email)
 
-## Real-World Example: eShopOnContainers
+### Real-World Example: eShopOnContainers
 
 Microsoft's reference application demonstrates microservices:
 
@@ -110,12 +120,12 @@ Microsoft's reference application demonstrates microservices:
    └───────┘       └───────┘       └───────┘
 ```
 
-## Key Takeaways
+### Key Takeaways
 
-- 📦 Each service = one **bounded context** with clear boundaries
-- 🔒 Services **own their data** (no shared databases)
-- 🚀 Services are **independently deployable**
-- 🔀 Communication happens over **well-defined APIs**
-- 📊 Split by **business capability** or **DDD subdomain**
+- Each service = one **bounded context** with clear boundaries
+- Services **own their data** (no shared databases)
+- Services are **independently deployable**
+- Communication happens over **well-defined APIs**
+- Split by **business capability** or **DDD subdomain**
 
-<ProgressCheckpoint section="ms-core-principles" xpReward={50} />
+<ProgressCheckpoint section="ms-when-to-use" xpReward={15} />

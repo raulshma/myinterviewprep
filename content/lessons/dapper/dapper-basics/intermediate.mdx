@@ -2,13 +2,21 @@
 
 Welcome back! You've mastered the fundamentals of Dapper. Now let's dive deeper into advanced querying techniques, dynamic mapping, and performance optimization strategies that will make you a more proficient .NET developer.
 
+---
+
+## Section 1: Introduction
+
 <InfoBox type="tip" title="Level Up Your Skills">
 This lesson covers dynamic queries, custom type handlers, buffered vs unbuffered queries, and advanced parameter techniques—topics essential for building production-ready applications.
 </InfoBox>
 
 <ProgressCheckpoint section="introduction" xpReward={8} />
 
-## Dynamic Queries and Result Sets
+---
+
+## Section 2: What is Dapper (Advanced)?
+
+### Dynamic Queries and Result Sets
 
 Sometimes you don't know the exact structure of your result set at compile time. Dapper supports dynamic typing for maximum flexibility:
 
@@ -32,6 +40,10 @@ foreach (var row in results)
 ```
 
 <ProgressCheckpoint section="what-is-dapper" xpReward={8} />
+
+---
+
+## Section 3: Installation & Setup
 
 ### When to Use Dynamic Queries
 
@@ -77,7 +89,11 @@ Console.WriteLine($"Total: {stats.TotalOrders}, Revenue: ${stats.Revenue:N2}");
 
 <ProgressCheckpoint section="installation" xpReward={8} />
 
-## Advanced Parameter Techniques
+---
+
+## Section 4: First Query (Advanced)
+
+### Advanced Parameter Techniques
 
 ### Anonymous Objects vs DynamicParameters
 
@@ -142,7 +158,11 @@ Console.WriteLine($"Retrieved {orders.Count} orders. Total in DB: {totalOrders}"
 
 <ProgressCheckpoint section="first-query" xpReward={8} />
 
-## Custom Type Handlers
+---
+
+## Section 5: Parameterized Queries (Advanced)
+
+### Custom Type Handlers
 
 Dapper automatically maps most .NET types, but sometimes you need custom mapping logic. Type handlers let you control how specific types are read from and written to the database:
 
@@ -210,7 +230,11 @@ SqlMapper.AddTypeHandler(new UtcDateTimeOffsetHandler());
 
 <ProgressCheckpoint section="parameterized-queries" xpReward={8} />
 
-## Buffered vs Unbuffered Queries
+---
+
+## Section 6: Best Practices
+
+### Buffered vs Unbuffered Queries
 
 By default, Dapper uses **buffered** queries. Understanding the difference is crucial for performance:
 
@@ -286,9 +310,7 @@ Use **unbuffered** for:
 - Stream processing scenarios
 </KeyConcept>
 
-<ProgressCheckpoint section="best-practices" xpReward={8} />
-
-## Performance Optimization Techniques
+### Performance Optimization Techniques
 
 ### 1. Query Plan Caching
 
@@ -369,7 +391,7 @@ public async Task<IActionResult> GetProducts(int categoryId)
 
 <DapperQueryVisualizer />
 
-<InfoBox type="success" title="Intermediate Mastery Achieved! 🚀">
+<InfoBox type="success" title="Intermediate Mastery Achieved!">
 You've learned:
 - Dynamic queries for flexible data access
 - Advanced parameter techniques with DynamicParameters
@@ -379,6 +401,8 @@ You've learned:
 
 You're now equipped to handle complex data access scenarios efficiently. Ready for the advanced lesson to push your skills even further?
 </InfoBox>
+
+<ProgressCheckpoint section="best-practices" xpReward={10} />
 
 ## Best Practices Summary
 

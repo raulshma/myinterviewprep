@@ -2,51 +2,48 @@
 
 Microservices communicate over the network using various protocols and patterns. Choosing the right communication style impacts your system's reliability, performance, and complexity.
 
-## Communication Patterns
+---
+
+## Section 1: Sync vs Async Communication
 
 <ServiceCommunicationDemo mode="intermediate" />
 
-## Synchronous Communication
+| Aspect | Synchronous | Asynchronous |
+| :--- | :--- | :--- |
+| **Behavior** | Caller waits for response | Caller continues immediately |
+| **Coupling** | Temporal (both must be up) | Loose (decoupled) |
+| **Complexity** | Lower | Higher |
+| **Use Case** | Real-time queries | Background processing |
+
+<ProgressCheckpoint section="sc-sync-vs-async" xpReward={15} />
+
+---
+
+## Section 2: Communication Patterns
 
 ### HTTP REST
 
 The most common approach for service-to-service communication:
 
 ```csharp
-// OrderService calling PaymentService
 public class PaymentClient
 {
     private readonly HttpClient _httpClient;
 
     public async Task<PaymentResult> ProcessPaymentAsync(PaymentRequest request)
     {
-        var response = await _httpClient.PostAsJsonAsync(
-            "api/payments",
-            request
-        );
-        
+        var response = await _httpClient.PostAsJsonAsync("api/payments", request);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<PaymentResult>();
     }
 }
 ```
 
-**Pros:**
-- Simple, well-understood
-- Wide tooling support
-- Human-readable (JSON)
-
-**Cons:**
-- Temporal coupling (both services must be up)
-- Higher latency for large payloads
-- Text-based serialization overhead
-
 ### gRPC
 
 High-performance RPC framework using Protocol Buffers:
 
 ```protobuf
-// payment.proto
 syntax = "proto3";
 
 service PaymentService {
@@ -58,15 +55,9 @@ message PaymentRequest {
   double amount = 2;
   string currency = 3;
 }
-
-message PaymentResponse {
-  bool success = 1;
-  string transaction_id = 2;
-}
 ```
 
 ```csharp
-// gRPC client call
 var response = await _paymentClient.ProcessPaymentAsync(new PaymentRequest
 {
     OrderId = orderId,
@@ -74,18 +65,6 @@ var response = await _paymentClient.ProcessPaymentAsync(new PaymentRequest
     Currency = "USD"
 });
 ```
-
-**Pros:**
-- Much faster than REST (binary protocol)
-- Strongly typed contracts
-- Bi-directional streaming
-
-**Cons:**
-- Not human-readable
-- Browser support requires gRPC-Web
-- More complex than REST
-
-## Asynchronous Communication
 
 ### Message Queues (RabbitMQ)
 
@@ -107,55 +86,12 @@ public class OrderCreatedPublisher
         });
 
         var body = Encoding.UTF8.GetBytes(message);
-        
-        _channel.BasicPublish(
-            exchange: "orders",
-            routingKey: "order.created",
-            body: body
-        );
+        _channel.BasicPublish(exchange: "orders", routingKey: "order.created", body: body);
     }
 }
 ```
 
-```csharp
-// Consumer (PaymentService)
-public class OrderCreatedConsumer : BackgroundService
-{
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        var consumer = new EventingBasicConsumer(_channel);
-        
-        consumer.Received += async (model, ea) =>
-        {
-            var message = Encoding.UTF8.GetString(ea.Body.ToArray());
-            var @event = JsonSerializer.Deserialize<OrderCreatedEvent>(message);
-            
-            await ProcessPaymentAsync(@event);
-            
-            _channel.BasicAck(ea.DeliveryTag, false);
-        };
-
-        _channel.BasicConsume(queue: "payment-orders", consumer: consumer);
-    }
-}
-```
-
-### Event-Driven Architecture
-
-Services publish events when something happens; interested services subscribe:
-
-```
-┌─────────────┐       ┌─────────────┐       ┌─────────────┐
-│   Order     │       │   Event     │       │  Payment    │
-│   Service   │──────►│    Bus      │──────►│   Service   │
-└─────────────┘       │             │       └─────────────┘
-                      │             │       ┌─────────────┐
-                      │             │──────►│   Email     │
-                      │             │       │   Service   │
-                      └─────────────┘       └─────────────┘
-```
-
-## Comparison Table
+### Comparison Table
 
 | Aspect | HTTP REST | gRPC | Message Queue |
 | :--- | :--- | :--- | :--- |
@@ -163,10 +99,13 @@ Services publish events when something happens; interested services subscribe:
 | **Format** | JSON/XML | Protocol Buffers | Any |
 | **Speed** | Moderate | Fast | Depends |
 | **Coupling** | Temporal | Temporal | Loose |
-| **Complexity** | Low | Medium | High |
 | **Use Case** | CRUD APIs | Service-to-Service | Background Jobs |
 
-## Handling Failures
+<ProgressCheckpoint section="sc-communication-patterns" xpReward={20} />
+
+---
+
+## Section 3: Implementation Patterns
 
 ### Retry with Exponential Backoff
 
@@ -193,12 +132,25 @@ services.AddHttpClient<IPaymentClient, PaymentClient>()
     );
 ```
 
-## Key Takeaways
+### Event-Driven Architecture
 
-- 🔄 **HTTP REST** - Simple, universal, good for most cases
-- ⚡ **gRPC** - High performance, strongly typed, for internal services
-- 📨 **Message Queues** - Loose coupling, reliability, background processing
-- 🔁 Always implement **retries** and **circuit breakers**
-- 🎯 Choose based on latency requirements and coupling tolerance
+```
+┌─────────────┐       ┌─────────────┐       ┌─────────────┐
+│   Order     │       │   Event     │       │  Payment    │
+│   Service   │──────►│    Bus      │──────►│   Service   │
+└─────────────┘       │             │       └─────────────┘
+                      │             │       ┌─────────────┐
+                      │             │──────►│   Email     │
+                      │             │       │   Service   │
+                      └─────────────┘       └─────────────┘
+```
 
-<ProgressCheckpoint section="sc-communication-patterns" xpReward={50} />
+### Key Takeaways
+
+- **HTTP REST** - Simple, universal, good for most cases
+- **gRPC** - High performance, strongly typed, for internal services
+- **Message Queues** - Loose coupling, reliability, background processing
+- Always implement **retries** and **circuit breakers**
+- Choose based on latency requirements and coupling tolerance
+
+<ProgressCheckpoint section="sc-implementation" xpReward={15} />

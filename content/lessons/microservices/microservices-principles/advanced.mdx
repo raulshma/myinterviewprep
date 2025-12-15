@@ -2,11 +2,13 @@
 
 Advanced microservice architectures go beyond simple service decomposition. This lesson covers production patterns, migration strategies, and architectural considerations for large-scale distributed systems.
 
-## Architecture Visualization
+---
+
+## Section 1: What Are Microservices at Scale?
 
 <MicroservicesArchitectureVisualizer mode="advanced" />
 
-## The Strangler Fig Pattern
+### The Strangler Fig Pattern
 
 When migrating from a monolith, the **Strangler Fig Pattern** allows incremental decomposition:
 
@@ -39,11 +41,17 @@ Phase 3: Continue Extraction
                               └─────────────┘
 ```
 
-## Saga Pattern for Distributed Transactions
+<ProgressCheckpoint section="ms-what-are-microservices" xpReward={25} />
+
+---
+
+## Section 2: Core Principles in Practice
+
+### Saga Pattern for Distributed Transactions
 
 Since microservices can't use traditional ACID transactions across databases, the **Saga Pattern** coordinates distributed transactions:
 
-### Choreography-Based Saga
+#### Choreography-Based Saga
 
 Services react to events without a central coordinator:
 
@@ -76,7 +84,7 @@ public class ReserveInventoryCommandHandler
 }
 ```
 
-### Orchestration-Based Saga
+#### Orchestration-Based Saga
 
 A central orchestrator coordinates the transaction:
 
@@ -116,7 +124,7 @@ public class CreateOrderSaga : Saga<CreateOrderSagaData>
 }
 ```
 
-## CQRS (Command Query Responsibility Segregation)
+### CQRS (Command Query Responsibility Segregation)
 
 Separate read and write models for optimal performance:
 
@@ -140,17 +148,16 @@ public class OrderCommandHandler
 // Read Model (Queries)
 public class OrderQueryHandler
 {
-    private readonly IOrderReadRepository _readRepo; // Denormalized for reads
+    private readonly IOrderReadRepository _readRepo;
 
     public async Task<OrderDetailsDto> Handle(GetOrderQuery query)
     {
-        // Optimized read from denormalized store
         return await _readRepo.GetOrderDetailsAsync(query.OrderId);
     }
 }
 ```
 
-### CQRS Architecture
+#### CQRS Architecture
 
 ```
 ┌─────────────┐    Commands    ┌─────────────────┐
@@ -165,7 +172,13 @@ public class OrderQueryHandler
                                └─────────────────┘
 ```
 
-## Service Mesh & Sidecar Pattern
+<ProgressCheckpoint section="ms-core-principles" xpReward={25} />
+
+---
+
+## Section 3: When to Use Advanced Patterns
+
+### Service Mesh & Sidecar Pattern
 
 Modern microservices use service meshes for cross-cutting concerns:
 
@@ -179,7 +192,7 @@ spec:
   template:
     metadata:
       annotations:
-        sidecar.istio.io/inject: "true"  # Inject Envoy proxy
+        sidecar.istio.io/inject: "true"
     spec:
       containers:
       - name: order-service
@@ -193,8 +206,6 @@ spec:
 - Traffic management and load balancing
 - Observability (metrics, tracing, logging)
 - Circuit breakers and retries
-
-## Key Architecture Decisions
 
 ### Database per Service
 
@@ -229,28 +240,21 @@ public class OrdersController : ControllerBase
 }
 ```
 
-## Anti-Patterns to Avoid
+### Anti-Patterns to Avoid
 
-### ❌ Distributed Monolith
-Services that must be deployed together aren't really microservices.
+| Anti-Pattern | Problem |
+| :--- | :--- |
+| Distributed Monolith | Services that must be deployed together |
+| Shared Database | Tight coupling between services |
+| Nanoservices | Too fine-grained, excessive network overhead |
 
-### ❌ Shared Database
-```
-Service A ──┐
-            ├──► Shared Database  ❌ Tight coupling!
-Service B ──┘
-```
+### Key Takeaways
 
-### ❌ Too Fine-Grained
-Creating services for every small function leads to "nanoservices" with excessive network overhead.
+- Use **Strangler Fig Pattern** for gradual migration
+- Implement **Saga Pattern** for distributed transactions
+- Consider **CQRS** for complex domains with different read/write patterns
+- Use **Service Mesh** for cross-cutting concerns at scale
+- Avoid **distributed monoliths** and **shared databases**
+- Right-size your services—not too big, not too small
 
-## Key Takeaways
-
-- 🔄 Use **Strangler Fig Pattern** for gradual migration
-- 💰 Implement **Saga Pattern** for distributed transactions
-- 📊 Consider **CQRS** for complex domains with different read/write patterns
-- 🕸️ Use **Service Mesh** for cross-cutting concerns at scale
-- ⚠️ Avoid **distributed monoliths** and **shared databases**
-- 📐 Right-size your services—not too big, not too small
-
-<ProgressCheckpoint section="ms-when-to-use" xpReward={75} />
+<ProgressCheckpoint section="ms-when-to-use" xpReward={25} />

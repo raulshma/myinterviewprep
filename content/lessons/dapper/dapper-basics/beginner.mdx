@@ -1,14 +1,16 @@
 # Dapper Basics
 
-Welcome to the world of Dapper! If you've worked with databases in .NET, you know that writing code to fetch and save data can get repetitive and tedious. That's where Dapper comes to the rescue! 🚀
+Welcome to the world of Dapper! If you've worked with databases in .NET, you know that writing code to fetch and save data can get repetitive and tedious. That's where Dapper comes to the rescue!
+
+---
+
+## Section 1: Introduction
 
 <InfoBox type="tip" title="What You'll Learn">
 In this lesson, you'll discover how Dapper makes database access simple, fast, and enjoyable. No more writing endless lines of boilerplate code!
 </InfoBox>
 
-<ProgressCheckpoint section="introduction" xpReward={5} />
-
-## What is Dapper?
+### What is Dapper?
 
 Imagine you're at a restaurant. You could go to the kitchen, gather ingredients, cook your meal, and clean up afterward. Or, you could simply tell the waiter what you want, and the meal arrives at your table! **Dapper is like that waiter for your database.**
 
@@ -26,14 +28,18 @@ Dapper is a **micro ORM** (Object-Relational Mapper) created by the Stack Overfl
 Think of it like this: Dapper is a bicycle (fast, simple, you control everything). Entity Framework is a car (more features, automatic, but heavier).
 </KeyConcept>
 
-<ProgressCheckpoint section="what-is-dapper" xpReward={5} />
+<ProgressCheckpoint section="introduction" xpReward={5} />
 
-## Why Use Dapper?
+---
+
+## Section 2: What is Dapper?
+
+### Why Use Dapper?
 
 Let's see the difference! Here's how you'd fetch data **without** Dapper:
 
 ```csharp
-// The OLD way - lots of repetitive code! 😫
+// The OLD way - lots of repetitive code
 var products = new List<Product>();
 using (var connection = new SqlConnection(connectionString))
 {
@@ -61,7 +67,7 @@ using (var connection = new SqlConnection(connectionString))
 Now, here's the **same thing with Dapper**:
 
 ```csharp
-// The Dapper way - clean and simple! ✨
+// The Dapper way - clean and simple
 using (var connection = new SqlConnection(connectionString))
 {
     var products = connection.Query<Product>("SELECT * FROM Products").ToList();
@@ -74,9 +80,11 @@ using (var connection = new SqlConnection(connectionString))
 - Maps each row to a `Product` object
 - Handles all the boilerplate
 
-<ProgressCheckpoint section="installation" xpReward={5} />
+<ProgressCheckpoint section="what-is-dapper" xpReward={5} />
 
-## Installing Dapper
+---
+
+## Section 3: Installation
 
 Getting Dapper into your project is super easy! Just like adding a new ingredient to your recipe:
 
@@ -103,11 +111,13 @@ using Dapper;
 using System.Data.SqlClient; // or your database provider
 ```
 
-That's all! You're ready to use Dapper! 🎉
+That's all! You're ready to use Dapper!
 
-<ProgressCheckpoint section="first-query" xpReward={5} />
+<ProgressCheckpoint section="installation" xpReward={5} />
 
-## Your First Dapper Query
+---
+
+## Section 4: Your First Query
 
 Let's write your first Dapper query step by step. Imagine you have a `Customers` table with columns: `Id`, `Name`, and `Email`.
 
@@ -137,7 +147,7 @@ string connectionString = "Server=myServer;Database=myDB;User Id=myUser;Password
 // Create connection and query
 using (var connection = new SqlConnection(connectionString))
 {
-    // Dapper's magic happens here! ✨
+    // Dapper's magic happens here
     var customers = connection.Query<Customer>("SELECT * FROM Customers").ToList();
     
     // Use your data!
@@ -156,13 +166,15 @@ using (var connection = new SqlConnection(connectionString))
 When you call `Query<Customer>()`, Dapper looks at the `Customer` class and sees it has `Id`, `Name`, and `Email` properties. It then takes each row from your SQL result and creates a new `Customer` object, filling in the properties with the matching columns. It's like filling out a form automatically!
 </KeyConcept>
 
-<ProgressCheckpoint section="parameterized-queries" xpReward={5} />
+<ProgressCheckpoint section="first-query" xpReward={5} />
 
-## Parameterized Queries: Staying Safe
+---
 
-**Important Security Tip! 🔒** Never put user input directly into your SQL! That's like leaving your front door wide open for burglars. Always use **parameters**.
+## Section 5: Parameterized Queries
 
-### ❌ Dangerous (SQL Injection Risk):
+**Important Security Tip:** Never put user input directly into your SQL! That's like leaving your front door wide open for burglars. Always use **parameters**.
+
+### Dangerous (SQL Injection Risk):
 
 ```csharp
 // NEVER DO THIS!
@@ -171,10 +183,10 @@ var sql = $"SELECT * FROM Customers WHERE Name = '{userInput}'";
 var result = connection.Query<Customer>(sql);
 ```
 
-### ✅ Safe (Using Parameters):
+### Safe (Using Parameters):
 
 ```csharp
-// This is the RIGHT way! 🛡️
+// This is the RIGHT way
 var sql = "SELECT * FROM Customers WHERE Name = @name";
 var result = connection.Query<Customer>(sql, new { name = userInput });
 ```
@@ -216,41 +228,43 @@ var filteredProducts = connection.Query<Product>(
 Parameters aren't just for security—they also help database performance by allowing query plan reuse!
 </InfoBox>
 
-<ProgressCheckpoint section="best-practices" xpReward={5} />
+<ProgressCheckpoint section="parameterized-queries" xpReward={5} />
 
-## Best Practices for Beginners
+---
+
+## Section 6: Best Practices
 
 Here are some golden rules when starting with Dapper:
 
-### 1. **Always Use `using` Statements**
+### 1. Always Use `using` Statements
 
 ```csharp
-// Good! Connection is automatically closed 👍
+// Good - Connection is automatically closed
 using (var connection = new SqlConnection(connectionString))
 {
     var data = connection.Query<Customer>("SELECT * FROM Customers");
 }
 
-// Bad! You might forget to close it 👎
+// Bad - You might forget to close it
 var connection = new SqlConnection(connectionString);
 var data = connection.Query<Customer>("SELECT * FROM Customers");
 // Oops, forgot to close!
 ```
 
-### 2. **Match Property Names to Column Names**
+### 2. Match Property Names to Column Names
 
 ```csharp
 // If your database has "CustomerName", your class should have:
 public class Customer
 {
-    public string CustomerName { get; set; } // ✅ Matches!
+    public string CustomerName { get; set; } // Matches!
 }
 
 // Or use aliases in SQL if needed:
 var sql = "SELECT CustomerName AS Name FROM Customers";
 public class Customer
 {
-    public string Name { get; set; } // ✅ Also works!
+    public string Name { get; set; } // Also works!
 }
 ```
 
@@ -270,7 +284,7 @@ public class Product
 }
 ```
 
-<InfoBox type="success" title="You Did It! 🎉">
+<InfoBox type="success" title="You Did It!">
 Congratulations! You now know the basics of Dapper. You can:
 - Install and set up Dapper
 - Query data and map it to C# objects automatically
@@ -279,6 +293,8 @@ Congratulations! You now know the basics of Dapper. You can:
 
 Next, you'll learn about different query methods, commands for INSERT/UPDATE/DELETE, and more advanced features!
 </InfoBox>
+
+<ProgressCheckpoint section="best-practices" xpReward={5} />
 
 ## Quick Reference
 
