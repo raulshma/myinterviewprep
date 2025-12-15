@@ -1,0 +1,83 @@
+# Modifying Views: Updating Virtual Tables
+
+Learn to change views after creation!
+
+## 🔄 ALTER VIEW
+
+Update an existing view's definition:
+
+```sql
+-- SQL Server
+ALTER VIEW active_customers AS
+SELECT id, name, email, created_at  -- Added column
+FROM customers
+WHERE status = 'active';
+```
+
+## 🆕 CREATE OR REPLACE
+
+Create if new, replace if exists:
+
+```sql
+-- PostgreSQL / MySQL
+CREATE OR REPLACE VIEW active_customers AS
+SELECT id, name, email, phone  -- Updated columns
+FROM customers
+WHERE status = 'active';
+```
+
+## 📝 Syntax Comparison
+
+```sql
+-- SQL Server
+ALTER VIEW view_name AS
+SELECT ...;
+
+-- PostgreSQL / MySQL
+CREATE OR REPLACE VIEW view_name AS
+SELECT ...;
+
+-- Oracle
+CREATE OR REPLACE VIEW view_name AS
+SELECT ...;
+```
+
+## 🎯 When to Modify Views
+
+1. **Add columns** - Include more data
+2. **Change logic** - Update filters or calculations
+3. **Fix bugs** - Correct the query
+4. **Improve performance** - Optimize the query
+
+## ⚠️ Important Considerations
+
+```sql
+-- Modifications affect all users of the view immediately
+-- Test changes before applying to production!
+
+-- Check who depends on the view
+SELECT * FROM information_schema.view_table_usage;
+```
+
+## 📊 Before vs After Example
+
+```sql
+-- Original view
+CREATE VIEW sales_summary AS
+SELECT product_id, SUM(quantity) AS total
+FROM sales GROUP BY product_id;
+
+-- Modified view with more columns
+ALTER VIEW sales_summary AS
+SELECT
+    product_id,
+    SUM(quantity) AS total,
+    COUNT(*) AS transaction_count,  -- NEW
+    AVG(price) AS avg_price         -- NEW
+FROM sales
+GROUP BY product_id;
+```
+
+<ViewBuilder mode="beginner" />
+
+<ProgressCheckpoint section="modifying-views-basics" xpReward={20} />

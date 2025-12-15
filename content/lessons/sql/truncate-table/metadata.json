@@ -1,0 +1,15 @@
+{
+  "id": "truncate-table",
+  "title": "TRUNCATE TABLE",
+  "description": "Quickly remove all data from a table while preserving its structure.",
+  "milestone": "ddl",
+  "order": 4,
+  "sections": ["truncate-basics", "vs-delete", "use-cases"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 15, "xpReward": 45 }
+  },
+  "prerequisites": ["drop-table"],
+  "tags": ["sql", "ddl", "truncate"]
+}

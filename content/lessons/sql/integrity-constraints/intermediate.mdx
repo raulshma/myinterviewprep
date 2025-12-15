@@ -1,0 +1,109 @@
+# Integrity Constraints: Practical Patterns
+
+Advanced constraint usage and referential actions.
+
+## Cascading Actions
+
+```sql
+-- When parent is deleted, delete children
+CREATE TABLE order_items (
+    id INT PRIMARY KEY,
+    order_id INT REFERENCES orders(id) ON DELETE CASCADE,
+    product_id INT REFERENCES products(id) ON DELETE SET NULL
+);
+
+-- Options:
+-- ON DELETE CASCADE   - Delete child rows
+-- ON DELETE SET NULL  - Set FK to NULL
+-- ON DELETE SET DEFAULT - Set to default value
+-- ON DELETE RESTRICT  - Prevent deletion (default)
+-- ON UPDATE CASCADE   - Update FK when parent changes
+```
+
+## Named Constraints
+
+```sql
+-- Name constraints for easier management
+CREATE TABLE employees (
+    id INT,
+    email VARCHAR(100),
+    department_id INT,
+    salary DECIMAL(12,2),
+
+    CONSTRAINT PK_employees PRIMARY KEY (id),
+    CONSTRAINT UQ_employees_email UNIQUE (email),
+    CONSTRAINT FK_employees_dept FOREIGN KEY (department_id) REFERENCES departments(id),
+    CONSTRAINT CK_employees_salary CHECK (salary > 0)
+);
+
+-- Drop by name
+ALTER TABLE employees DROP CONSTRAINT CK_employees_salary;
+```
+
+## Adding Constraints to Existing Tables
+
+```sql
+-- Add primary key
+ALTER TABLE users ADD CONSTRAINT PK_users PRIMARY KEY (id);
+
+-- Add foreign key
+ALTER TABLE orders ADD CONSTRAINT FK_orders_customer
+    FOREIGN KEY (customer_id) REFERENCES customers(id);
+
+-- Add check constraint
+ALTER TABLE products ADD CONSTRAINT CK_products_price
+    CHECK (price >= 0);
+
+-- Add unique constraint
+ALTER TABLE users ADD CONSTRAINT UQ_users_email UNIQUE (email);
+```
+
+## Disabling Constraints
+
+```sql
+-- Disable for bulk operations
+ALTER TABLE orders NOCHECK CONSTRAINT FK_orders_customer;
+
+-- Bulk insert without FK checks...
+
+-- Re-enable and verify
+ALTER TABLE orders WITH CHECK CHECK CONSTRAINT FK_orders_customer;
+```
+
+## Multi-Column Constraints
+
+```sql
+-- Unique combination
+CREATE TABLE class_enrollment (
+    student_id INT,
+    class_id INT,
+    semester VARCHAR(20),
+    CONSTRAINT UQ_enrollment UNIQUE (student_id, class_id, semester)
+);
+
+-- Complex check constraint
+CREATE TABLE events (
+    start_date DATE,
+    end_date DATE,
+    CONSTRAINT CK_dates CHECK (end_date >= start_date)
+);
+```
+
+## View Existing Constraints
+
+```sql
+-- SQL Server
+SELECT
+    c.name AS constraint_name,
+    c.type_desc,
+    OBJECT_NAME(c.parent_object_id) AS table_name
+FROM sys.objects c
+WHERE type IN ('PK', 'UQ', 'F', 'C')
+AND OBJECT_NAME(parent_object_id) = 'users';
+
+-- PostgreSQL
+SELECT * FROM information_schema.table_constraints
+WHERE table_name = 'users';
+```
+
+<ProgressCheckpoint section="integrity-practical" xpReward={40} />

@@ -1,0 +1,71 @@
+# COMMIT: Saving Your Changes
+
+Make your transaction changes permanent!
+
+## ✅ What is COMMIT?
+
+COMMIT saves all changes made during the transaction:
+
+```sql
+BEGIN TRANSACTION;
+    UPDATE accounts SET balance = 1000 WHERE id = 1;
+COMMIT;  -- Changes are now permanent!
+```
+
+## 📝 Syntax
+
+```sql
+-- All equivalent
+COMMIT;
+COMMIT TRANSACTION;
+COMMIT WORK;
+COMMIT TRAN;  -- SQL Server shorthand
+```
+
+## 🔒 What COMMIT Does
+
+1. **Makes changes permanent** - Survives crashes
+2. **Releases locks** - Other transactions can access data
+3. **Ends transaction** - Returns to auto-commit mode
+4. **Cannot be undone** - No going back after COMMIT!
+
+## 🎯 Complete Example
+
+```sql
+BEGIN TRANSACTION;
+    -- Insert a new order
+    INSERT INTO orders (customer_id, total) VALUES (5, 99.99);
+
+    -- Update customer's order count
+    UPDATE customers SET order_count = order_count + 1 WHERE id = 5;
+
+    -- Update inventory
+    UPDATE products SET stock = stock - 1 WHERE id = 10;
+COMMIT;  -- All three changes saved together
+```
+
+## ⚠️ After COMMIT
+
+```sql
+BEGIN TRANSACTION;
+    DELETE FROM old_logs WHERE log_date < '2020-01-01';
+COMMIT;
+
+-- CANNOT UNDO! The DELETE is permanent.
+-- Only way to recover: restore from backup
+```
+
+## 💡 Best Practice
+
+Always explicitly end your transactions:
+
+```sql
+BEGIN TRANSACTION;
+    -- Work...
+    IF @success = 1
+        COMMIT;      -- Success path
+    ELSE
+        ROLLBACK;    -- Failure path
+```
+
+<ProgressCheckpoint section="commit-basics" xpReward={15} />

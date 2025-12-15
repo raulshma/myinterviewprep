@@ -1,0 +1,153 @@
+# Correlated Subqueries and Advanced Patterns
+
+Let&apos;s explore subqueries that reference the outer query and more complex patterns.
+
+## Correlated vs Non-Correlated Subqueries
+
+### Non-Correlated (Independent)
+
+The inner query runs **once**, independent of outer query:
+
+```sql
+-- Find products above overall average price
+SELECT ProductName, UnitPrice
+FROM Products
+WHERE UnitPrice > (SELECT AVG(UnitPrice) FROM Products);
+-- The average is calculated ONCE and reused
+```
+
+### Correlated (Dependent)
+
+The inner query runs **once per outer row**, referencing outer values:
+
+```sql
+-- Find products above their CATEGORY's average price
+SELECT p.ProductName, p.UnitPrice, p.CategoryID
+FROM Products p
+WHERE p.UnitPrice > (
+    SELECT AVG(UnitPrice)
+    FROM Products
+    WHERE CategoryID = p.CategoryID  -- References outer query!
+);
+```
+
+<SubqueryPlayground mode="intermediate" />
+
+## EXISTS vs IN
+
+### Using EXISTS for Efficiency
+
+```sql
+-- Find customers who have placed orders
+SELECT CustomerID, CompanyName
+FROM Customers c
+WHERE EXISTS (
+    SELECT 1
+    FROM Orders o
+    WHERE o.CustomerID = c.CustomerID
+);
+-- EXISTS stops searching once it finds ONE match
+```
+
+### Using NOT EXISTS
+
+```sql
+-- Find products that have NEVER been ordered
+SELECT ProductID, ProductName
+FROM Products p
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM [Order Details] od
+    WHERE od.ProductID = p.ProductID
+);
+```
+
+### IN vs EXISTS Performance
+
+| Scenario                            | Better Choice  |
+| :---------------------------------- | :------------- |
+| Small subquery result set           | IN             |
+| Large subquery, indexed outer table | EXISTS         |
+| Need to check for non-existence     | NOT EXISTS     |
+| Subquery might return NULLs         | EXISTS (safer) |
+
+## Subquery Types
+
+### Scalar Subquery (Returns ONE value)
+
+```sql
+SELECT ProductName,
+       UnitPrice,
+       (SELECT MAX(UnitPrice) FROM Products) AS MaxPrice
+FROM Products;
+```
+
+### Row Subquery (Returns ONE row)
+
+```sql
+-- Get the most expensive product
+SELECT * FROM Products
+WHERE (CategoryID, UnitPrice) = (
+    SELECT CategoryID, MAX(UnitPrice)
+    FROM Products
+    GROUP BY CategoryID
+    ORDER BY MAX(UnitPrice) DESC
+    LIMIT 1
+);
+```
+
+### Table Subquery (Returns multiple rows/columns)
+
+```sql
+-- Join with a derived table
+SELECT c.CategoryName, stats.AvgPrice, stats.ProductCount
+FROM Categories c
+JOIN (
+    SELECT CategoryID,
+           AVG(UnitPrice) AS AvgPrice,
+           COUNT(*) AS ProductCount
+    FROM Products
+    GROUP BY CategoryID
+) stats ON c.CategoryID = stats.CategoryID;
+```
+
+## Practical Northwind Patterns
+
+### Find Top Seller per Category
+
+```sql
+SELECT p.CategoryID, p.ProductName, p.SalesTotal
+FROM (
+    SELECT
+        p.CategoryID,
+        p.ProductName,
+        SUM(od.Quantity * od.UnitPrice) AS SalesTotal,
+        ROW_NUMBER() OVER (PARTITION BY p.CategoryID ORDER BY SUM(od.Quantity * od.UnitPrice) DESC) AS rn
+    FROM Products p
+    JOIN [Order Details] od ON p.ProductID = od.ProductID
+    GROUP BY p.CategoryID, p.ProductID, p.ProductName
+) p
+WHERE rn = 1;
+```
+
+### Customers Who Ordered Every Product in a Category
+
+```sql
+-- Customers who ordered ALL beverages
+SELECT c.CustomerID, c.CompanyName
+FROM Customers c
+WHERE NOT EXISTS (
+    SELECT p.ProductID
+    FROM Products p
+    WHERE p.CategoryID = 1  -- Beverages
+    AND NOT EXISTS (
+        SELECT 1
+        FROM Orders o
+        JOIN [Order Details] od ON o.OrderID = od.OrderID
+        WHERE o.CustomerID = c.CustomerID
+        AND od.ProductID = p.ProductID
+    )
+);
+```
+
+<ProgressCheckpoint section="correlated-subqueries" xpReward={55} />

@@ -1,0 +1,87 @@
+# FULL OUTER JOIN: Practical Patterns
+
+Master FULL OUTER JOIN for data comparison and reconciliation.
+
+## Merge Two Data Sources
+
+```sql
+-- Combine data from two systems
+SELECT
+    COALESCE(a.product_id, b.product_id) AS product_id,
+    a.inventory AS warehouse_a,
+    b.inventory AS warehouse_b,
+    COALESCE(a.inventory, 0) + COALESCE(b.inventory, 0) AS total
+FROM warehouse_a a
+FULL OUTER JOIN warehouse_b b ON a.product_id = b.product_id;
+```
+
+## Before/After Comparison
+
+```sql
+-- Compare snapshots
+SELECT
+    COALESCE(before.id, after.id) AS id,
+    before.value AS old_value,
+    after.value AS new_value,
+    CASE
+        WHEN before.id IS NULL THEN 'ADDED'
+        WHEN after.id IS NULL THEN 'DELETED'
+        WHEN before.value <> after.value THEN 'CHANGED'
+        ELSE 'UNCHANGED'
+    END AS change_type
+FROM snapshot_before before
+FULL OUTER JOIN snapshot_after after ON before.id = after.id
+WHERE NOT (before.value = after.value OR (before.value IS NULL AND after.value IS NULL));
+```
+
+## Three-Way Comparison
+
+```sql
+WITH combined AS (
+    SELECT
+        COALESCE(a.key, b.key, c.key) AS key,
+        a.value AS system_a,
+        b.value AS system_b,
+        c.value AS system_c
+    FROM system_a a
+    FULL OUTER JOIN system_b b ON a.key = b.key
+    FULL OUTER JOIN system_c c ON COALESCE(a.key, b.key) = c.key
+)
+SELECT * FROM combined
+WHERE NOT (system_a = system_b AND system_b = system_c);
+```
+
+## Simulating FULL OUTER JOIN
+
+MySQL doesn't support FULL OUTER JOIN directly:
+
+```sql
+-- MySQL workaround using UNION
+SELECT a.*, b.* FROM a LEFT JOIN b ON a.id = b.a_id
+UNION
+SELECT a.*, b.* FROM a RIGHT JOIN b ON a.id = b.a_id;
+
+-- Or with UNION ALL + deduplication
+SELECT * FROM (
+    SELECT a.*, b.*, 'left' AS source FROM a LEFT JOIN b ON a.id = b.a_id
+    UNION ALL
+    SELECT a.*, b.*, 'right' FROM a RIGHT JOIN b ON a.id = b.a_id
+    WHERE a.id IS NULL
+) combined;
+```
+
+## With Aggregates
+
+```sql
+-- Complete sales comparison
+SELECT
+    COALESCE(current.product_id, previous.product_id) AS product_id,
+    COALESCE(current.sales, 0) AS current_sales,
+    COALESCE(previous.sales, 0) AS previous_sales,
+    COALESCE(current.sales, 0) - COALESCE(previous.sales, 0) AS difference
+FROM (SELECT product_id, SUM(amount) AS sales FROM this_year GROUP BY product_id) current
+FULL OUTER JOIN (SELECT product_id, SUM(amount) AS sales FROM last_year GROUP BY product_id) previous
+ON current.product_id = previous.product_id;
+```
+
+<ProgressCheckpoint section="full-outer-practical" xpReward={30} />

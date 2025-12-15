@@ -1,0 +1,15 @@
+{
+  "id": "lag-lead",
+  "title": "LAG and LEAD Functions",
+  "description": "Access previous and next row values.",
+  "milestone": "advanced-sql",
+  "order": 3,
+  "sections": ["lag-basics", "lead-basics", "comparisons"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["row-number-rank"],
+  "tags": ["sql", "advanced", "window-functions", "lag", "lead"]
+}

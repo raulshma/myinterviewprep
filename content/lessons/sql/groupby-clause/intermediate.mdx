@@ -1,0 +1,109 @@
+# GROUP BY: Intermediate Patterns
+
+Master multi-column grouping and common patterns.
+
+## Multi-Column Grouping
+
+```sql
+-- Group by multiple columns
+SELECT
+    YEAR(order_date) AS year,
+    MONTH(order_date) AS month,
+    COUNT(*) AS orders,
+    SUM(total) AS revenue
+FROM orders
+GROUP BY YEAR(order_date), MONTH(order_date)
+ORDER BY year, month;
+```
+
+## Grouping with JOINs
+
+```sql
+SELECT
+    c.name AS category,
+    COUNT(p.id) AS product_count,
+    AVG(p.price) AS avg_price
+FROM categories c
+LEFT JOIN products p ON c.id = p.category_id
+GROUP BY c.id, c.name;
+```
+
+## NULL in GROUP BY
+
+NULLs form their own group:
+
+```sql
+SELECT category, COUNT(*)
+FROM products
+GROUP BY category;
+-- Includes a row where category IS NULL
+
+-- Exclude NULLs if needed
+WHERE category IS NOT NULL
+```
+
+## Grouping with Expressions
+
+```sql
+-- Group by calculated value
+SELECT
+    CASE
+        WHEN price < 10 THEN 'Budget'
+        WHEN price < 50 THEN 'Standard'
+        ELSE 'Premium'
+    END AS price_tier,
+    COUNT(*) AS product_count
+FROM products
+GROUP BY
+    CASE
+        WHEN price < 10 THEN 'Budget'
+        WHEN price < 50 THEN 'Standard'
+        ELSE 'Premium'
+    END;
+
+-- Group by date parts
+SELECT
+    DATEPART(WEEKDAY, order_date) AS day_of_week,
+    COUNT(*) AS orders
+FROM orders
+GROUP BY DATEPART(WEEKDAY, order_date);
+```
+
+## GROUP BY with Aliases
+
+```sql
+-- SQL Server: Must repeat expression
+SELECT YEAR(order_date) AS year, COUNT(*)
+FROM orders
+GROUP BY YEAR(order_date);
+
+-- PostgreSQL/MySQL: Can use column position
+SELECT YEAR(order_date) AS year, COUNT(*)
+FROM orders
+GROUP BY 1;  -- Group by first column
+```
+
+## Common Aggregation Patterns
+
+```sql
+-- Top N per group
+SELECT * FROM (
+    SELECT
+        category,
+        product_name,
+        price,
+        ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) AS rn
+    FROM products
+) ranked
+WHERE rn <= 3;
+
+-- Percentage of total
+SELECT
+    category,
+    COUNT(*) AS cnt,
+    COUNT(*) * 100.0 / SUM(COUNT(*)) OVER () AS percentage
+FROM products
+GROUP BY category;
+```
+
+<ProgressCheckpoint section="groupby-intermediate" xpReward={40} />

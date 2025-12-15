@@ -1,0 +1,86 @@
+# Date/Time Types: Practical Usage
+
+Choose the right type for your needs.
+
+## Type Comparison
+
+```sql
+-- Storage size and precision
+-- SQL Server:
+-- DATE: 3 bytes, day precision
+-- TIME: 3-5 bytes, 100 nanoseconds
+-- DATETIME: 8 bytes, 3.33ms precision
+-- DATETIME2: 6-8 bytes, 100 nanoseconds
+-- DATETIMEOFFSET: 8-10 bytes, with timezone
+```
+
+## When to Use Each
+
+| Scenario     | Recommended Type           |
+| ------------ | -------------------------- |
+| Birthday     | DATE                       |
+| Alarm time   | TIME                       |
+| Order placed | DATETIME/TIMESTAMP         |
+| Global event | DATETIMEOFFSET/TIMESTAMPTZ |
+| Audit log    | DATETIME2 (high precision) |
+
+## Converting Between Types
+
+```sql
+-- CAST/CONVERT
+SELECT CAST(order_datetime AS DATE);  -- Extract date
+SELECT CAST(order_datetime AS TIME);  -- Extract time
+
+-- SQL Server CONVERT with style
+SELECT CONVERT(VARCHAR, GETDATE(), 101);  -- '03/15/2024'
+SELECT CONVERT(VARCHAR, GETDATE(), 23);   -- '2024-03-15'
+```
+
+## String to Date Conversion
+
+```sql
+-- Explicit parsing
+SELECT CAST('2024-03-15' AS DATE);
+SELECT CONVERT(DATETIME, '03/15/2024', 101);
+
+-- PostgreSQL
+SELECT '2024-03-15'::DATE;
+SELECT TO_DATE('15/03/2024', 'DD/MM/YYYY');
+
+-- Be careful with ambiguous formats!
+-- '01/02/2024' - Jan 2 or Feb 1?
+```
+
+## Timezone Handling
+
+```sql
+-- PostgreSQL: AT TIME ZONE
+SELECT created_at AT TIME ZONE 'UTC' AT TIME ZONE 'America/New_York';
+
+-- SQL Server
+SELECT created_at AT TIME ZONE 'Eastern Standard Time';
+
+-- Convert between timezones
+SELECT
+    SWITCHOFFSET(event_time, '+05:30') AS in_india,
+    SWITCHOFFSET(event_time, '+00:00') AS in_utc
+FROM events;
+```
+
+## Default Values
+
+```sql
+-- Automatic timestamp
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    created_at DATETIME DEFAULT GETDATE(),       -- SQL Server
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- MySQL
+);
+
+-- PostgreSQL
+created_at TIMESTAMP DEFAULT NOW()
+```
+
+<DateTimeExplorer mode="intermediate" />
+
+<ProgressCheckpoint section="datetime-types-practical" xpReward={40} />

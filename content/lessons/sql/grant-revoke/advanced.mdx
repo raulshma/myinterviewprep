@@ -1,0 +1,99 @@
+# GRANT and REVOKE: Advanced Topics
+
+Enterprise security patterns and auditing.
+
+## Row-Level Security
+
+```sql
+-- SQL Server: Security policies
+CREATE SECURITY POLICY sales_filter
+ADD FILTER PREDICATE dbo.fn_salesrep_filter(salesrep_id) ON orders
+WITH (STATE = ON);
+
+-- Users see only their own orders
+CREATE FUNCTION dbo.fn_salesrep_filter(@rep_id INT)
+RETURNS TABLE
+WITH SCHEMABINDING
+AS RETURN SELECT 1 AS result
+WHERE @rep_id = USER_ID() OR IS_MEMBER('admin') = 1;
+
+-- PostgreSQL
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+CREATE POLICY sales_own ON orders
+    FOR ALL TO salesrep
+    USING (salesrep_id = current_user_id());
+```
+
+## Dynamic Data Masking
+
+```sql
+-- SQL Server: Mask sensitive data
+ALTER TABLE users
+ALTER COLUMN ssn ADD MASKED WITH (FUNCTION = 'partial(0,"XXX-XX-",4)');
+
+ALTER TABLE users
+ALTER COLUMN email ADD MASKED WITH (FUNCTION = 'email()');
+
+-- Users without UNMASK permission see masked data
+GRANT UNMASK TO privileged_user;
+```
+
+## Permission Auditing
+
+```sql
+-- SQL Server: Track permission changes
+CREATE SERVER AUDIT permission_audit
+TO FILE (FILEPATH = 'C:\Audits');
+
+CREATE DATABASE AUDIT SPECIFICATION db_permission_audit
+FOR SERVER AUDIT permission_audit
+ADD (DATABASE_PERMISSION_CHANGE_GROUP);
+
+-- Query audit logs
+SELECT * FROM sys.fn_get_audit_file('C:\Audits\*.sqlaudit', NULL, NULL);
+```
+
+## Least Privilege Pattern
+
+```sql
+-- Create specific application roles
+CREATE ROLE app_readonly;
+CREATE ROLE app_readwrite;
+CREATE ROLE app_admin;
+
+-- Minimal permissions for each
+GRANT SELECT ON SCHEMA::app TO app_readonly;
+GRANT SELECT, INSERT, UPDATE ON SCHEMA::app TO app_readwrite;
+GRANT SELECT, INSERT, UPDATE, DELETE, EXECUTE ON SCHEMA::app TO app_admin;
+
+-- Application connects with appropriate role
+```
+
+## Service Account Permissions
+
+```sql
+-- Dedicated accounts for applications
+CREATE LOGIN app_service WITH PASSWORD = '...';
+CREATE USER app_service FOR LOGIN app_service;
+
+-- Grant only what's needed
+GRANT EXECUTE ON SCHEMA::api TO app_service;
+DENY SELECT, INSERT, UPDATE, DELETE ON SCHEMA::internal TO app_service;
+```
+
+## Permission Scripting
+
+```sql
+-- Generate GRANT statements for migration
+SELECT 'GRANT ' + permission_name + ' ON ' +
+       QUOTENAME(schema_name) + '.' + QUOTENAME(object_name) +
+       ' TO ' + QUOTENAME(grantee) + ';'
+FROM sys.database_permissions dp
+JOIN sys.objects o ON dp.major_id = o.object_id
+JOIN sys.schemas s ON o.schema_id = s.schema_id
+JOIN sys.database_principals p ON dp.grantee_principal_id = p.principal_id;
+```
+
+<SecurityPermissionDemo mode="advanced" />
+
+<ProgressCheckpoint section="grant-revoke-advanced" xpReward={50} />

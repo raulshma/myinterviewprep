@@ -1,0 +1,15 @@
+{
+  "id": "index-optimization",
+  "title": "Index Optimization",
+  "description": "Tune indexes for maximum query performance.",
+  "milestone": "indexes",
+  "order": 2,
+  "sections": ["analysis", "tuning", "maintenance"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
+    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
+    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+  },
+  "prerequisites": ["managing-indexes"],
+  "tags": ["sql", "indexes", "optimization", "performance"]
+}

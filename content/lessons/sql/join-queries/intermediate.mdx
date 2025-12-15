@@ -1,0 +1,146 @@
+# Advanced JOIN Techniques
+
+Now let&apos;s explore more complex JOIN scenarios and real-world patterns.
+
+## SELF JOIN: Joining a Table to Itself
+
+Sometimes you need to compare rows within the same table. A **SELF JOIN** treats one table as if it were two.
+
+### Example: Find Employees in the Same Department
+
+```sql
+SELECT
+    e1.name AS employee1,
+    e2.name AS employee2,
+    e1.department
+FROM employees e1
+JOIN employees e2
+    ON e1.department = e2.department
+    AND e1.id < e2.id;  -- Avoid duplicates and self-matches
+```
+
+This finds pairs of employees who work together!
+
+### Example: Employee Hierarchy (Manager-Employee)
+
+```sql
+SELECT
+    emp.name AS employee,
+    mgr.name AS manager
+FROM employees emp
+LEFT JOIN employees mgr
+    ON emp.manager_id = mgr.id;
+```
+
+<JoinVisualizer mode="intermediate" />
+
+## CROSS JOIN: Cartesian Product
+
+Returns every possible combination of rows from both tables.
+
+```sql
+SELECT colors.name, sizes.name
+FROM colors
+CROSS JOIN sizes;
+```
+
+| color | size   |
+| :---- | :----- |
+| Red   | Small  |
+| Red   | Medium |
+| Red   | Large  |
+| Blue  | Small  |
+| Blue  | Medium |
+| Blue  | Large  |
+
+**Use cases:**
+
+- Generating all combinations (product variants)
+- Creating date ranges
+- Test data generation
+
+## Multiple Table JOINs
+
+Chain JOINs to combine three or more tables:
+
+```sql
+SELECT
+    customers.name,
+    orders.order_date,
+    products.product_name,
+    order_items.quantity
+FROM customers
+JOIN orders ON customers.id = orders.customer_id
+JOIN order_items ON orders.id = order_items.order_id
+JOIN products ON order_items.product_id = products.id
+WHERE orders.order_date > '2024-01-01';
+```
+
+**Execution order:**
+
+1. `customers` ⋈ `orders`
+2. Result ⋈ `order_items`
+3. Result ⋈ `products`
+4. Apply WHERE filter
+
+## JOIN with Aggregates
+
+Combine JOINs with GROUP BY for powerful analytics:
+
+```sql
+SELECT
+    departments.name,
+    COUNT(employees.id) AS employee_count,
+    AVG(employees.salary) AS avg_salary
+FROM departments
+LEFT JOIN employees
+    ON departments.id = employees.dept_id
+GROUP BY departments.id, departments.name
+HAVING COUNT(employees.id) > 5;
+```
+
+## USING vs ON Clause
+
+When column names match exactly, use `USING` for cleaner syntax:
+
+```sql
+-- Traditional ON clause
+SELECT * FROM employees
+JOIN departments ON employees.dept_id = departments.dept_id;
+
+-- Cleaner USING clause (when column names match)
+SELECT * FROM employees
+JOIN departments USING (dept_id);
+```
+
+## NATURAL JOIN (Use with Caution!)
+
+Automatically joins on all columns with matching names:
+
+```sql
+SELECT * FROM employees
+NATURAL JOIN departments;
+```
+
+⚠️ **Warning:** This can be dangerous if tables share column names you didn&apos;t intend to join on!
+
+## Anti-Join Pattern
+
+Find rows that have **no match** in another table:
+
+```sql
+-- Find customers who have never ordered
+SELECT customers.*
+FROM customers
+LEFT JOIN orders ON customers.id = orders.customer_id
+WHERE orders.id IS NULL;
+
+-- Alternative with NOT EXISTS
+SELECT * FROM customers c
+WHERE NOT EXISTS (
+    SELECT 1 FROM orders o
+    WHERE o.customer_id = c.id
+);
+```
+
+<ProgressCheckpoint section="self-cross-join" xpReward={55} />

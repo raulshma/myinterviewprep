@@ -1,0 +1,94 @@
+# ACID Properties: Implementation Details
+
+How databases actually implement ACID guarantees.
+
+## Atomicity Implementation
+
+### Write-Ahead Logging (WAL)
+
+```sql
+-- Before any change, database writes to log:
+-- 1. "About to change row X from value A to B"
+-- 2. Make actual change
+-- 3. "Row X changed successfully"
+
+-- On crash recovery:
+-- - Incomplete transactions are rolled back
+-- - Complete transactions are re-applied if needed
+```
+
+### Undo Logs
+
+```sql
+-- SQL Server / PostgreSQL track original values
+-- Can "undo" partial transactions
+BEGIN TRANSACTION;
+    UPDATE t SET val = 2 WHERE id = 1;  -- Undo: SET val = 1
+    UPDATE t SET val = 3 WHERE id = 2;  -- Undo: SET val = 2
+    -- If ROLLBACK, apply undo in reverse
+ROLLBACK;
+```
+
+## Consistency Implementation
+
+### Deferred vs Immediate Constraints
+
+```sql
+-- Immediate: Check after each statement
+UPDATE accounts SET balance = balance - 100;  -- Fails immediately if negative
+
+-- Deferred: Check at commit (PostgreSQL)
+SET CONSTRAINTS ALL DEFERRED;
+-- Can temporarily violate, must be valid at COMMIT
+```
+
+### Referential Integrity
+
+```sql
+BEGIN TRANSACTION;
+    INSERT INTO orders (customer_id) VALUES (999);  -- FK violation
+    INSERT INTO customers (id) VALUES (999);        -- Too late!
+COMMIT;  -- Fails - FK was violated
+```
+
+## Isolation Levels
+
+| Level            | Dirty Read | Non-Repeatable Read | Phantom Read |
+| ---------------- | ---------- | ------------------- | ------------ |
+| Read Uncommitted | ✓          | ✓                   | ✓            |
+| Read Committed   | ✗          | ✓                   | ✓            |
+| Repeatable Read  | ✗          | ✗                   | ✓            |
+| Serializable     | ✗          | ✗                   | ✗            |
+
+```sql
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+BEGIN TRANSACTION;
+    -- Other committed changes become visible
+COMMIT;
+```
+
+## Durability Implementation
+
+### Flush to Disk
+
+```sql
+COMMIT;  -- Forces write to persistent storage
+-- Not just memory cache
+
+-- Database waits for:
+-- 1. Log records written to disk
+-- 2. Disk acknowledges write
+-- 3. Only then returns success
+```
+
+### Checkpoints
+
+```sql
+-- Periodic flush of all dirty pages
+CHECKPOINT;
+
+-- After checkpoint, recovery only needs to process
+-- transactions since last checkpoint
+```
+
+<ProgressCheckpoint section="acid-implementation" xpReward={40} />

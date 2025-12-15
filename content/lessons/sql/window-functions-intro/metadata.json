@@ -1,0 +1,15 @@
+{
+  "id": "window-functions-intro",
+  "title": "Introduction to Window Functions",
+  "description": "Perform calculations across rows with window functions.",
+  "milestone": "advanced-sql",
+  "order": 1,
+  "sections": ["basics", "over-clause", "partitioning"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
+    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
+    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+  },
+  "prerequisites": ["query-optimization-techniques"],
+  "tags": ["sql", "advanced", "window-functions", "analytics"]
+}

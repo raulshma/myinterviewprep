@@ -1,0 +1,15 @@
+{
+  "id": "delete-data",
+  "title": "DELETE - Removing Data",
+  "description": "Learn to safely remove records from database tables.",
+  "milestone": "dml",
+  "order": 6,
+  "sections": ["delete-basics", "soft-delete", "safe-patterns"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 20, "xpReward": 55 }
+  },
+  "prerequisites": ["update-data"],
+  "tags": ["sql", "delete", "dml", "remove-data"]
+}

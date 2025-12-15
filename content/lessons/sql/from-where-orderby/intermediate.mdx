@@ -1,0 +1,134 @@
+# FROM, WHERE, ORDER BY: Intermediate Techniques
+
+Master filtering patterns and sorting strategies for real applications.
+
+## Advanced WHERE Patterns
+
+### Range Filtering
+
+```sql
+-- BETWEEN (inclusive on both ends!)
+SELECT * FROM orders
+WHERE order_date BETWEEN '2024-01-01' AND '2024-03-31';
+
+-- Equivalent to:
+WHERE order_date >= '2024-01-01' AND order_date <= '2024-03-31'
+```
+
+### List Matching
+
+```sql
+-- IN - match any value in list
+SELECT * FROM products
+WHERE category IN ('Electronics', 'Computers', 'Phones');
+
+-- NOT IN - exclude values
+SELECT * FROM orders
+WHERE status NOT IN ('cancelled', 'refunded');
+```
+
+### Pattern Matching
+
+```sql
+-- LIKE with wildcards
+WHERE name LIKE 'J%'        -- Starts with J
+WHERE name LIKE '%son'      -- Ends with son
+WHERE name LIKE '%an%'      -- Contains 'an'
+WHERE name LIKE '_ohn'      -- 4 letters, ends in 'ohn'
+WHERE phone LIKE '555-___-____'  -- Specific pattern
+```
+
+### NULL Handling
+
+```sql
+-- Find missing values
+WHERE email IS NULL
+
+-- Find populated values
+WHERE email IS NOT NULL
+
+-- COALESCE in conditions
+WHERE COALESCE(discount, 0) > 0.1
+```
+
+## FROM: Multiple Tables
+
+### Table Aliases
+
+```sql
+-- Use short aliases for readability
+SELECT c.first_name, c.last_name, o.order_date
+FROM customers AS c
+INNER JOIN orders AS o ON c.id = o.customer_id;
+
+-- AS is optional
+FROM customers c INNER JOIN orders o ON c.id = o.customer_id
+```
+
+### Derived Tables (Subqueries)
+
+```sql
+SELECT *
+FROM (
+    SELECT customer_id, COUNT(*) AS order_count
+    FROM orders
+    GROUP BY customer_id
+) AS order_stats
+WHERE order_count > 5;
+```
+
+## ORDER BY: Advanced Sorting
+
+### Expression-Based Sorting
+
+```sql
+-- Sort by calculated value
+ORDER BY price * quantity DESC
+
+-- Sort by function result
+ORDER BY LEN(description)
+
+-- Conditional ordering
+ORDER BY CASE WHEN featured = 1 THEN 0 ELSE 1 END, name
+```
+
+### NULL Positioning
+
+```sql
+-- PostgreSQL: Control NULL position
+ORDER BY column NULLS FIRST
+ORDER BY column NULLS LAST
+
+-- SQL Server: Use CASE
+ORDER BY CASE WHEN column IS NULL THEN 1 ELSE 0 END, column
+```
+
+### Ordering by Column Position
+
+```sql
+-- Order by the 2nd column in SELECT list
+SELECT name, price, category FROM products ORDER BY 2 DESC;
+
+-- Not recommended (fragile), but useful for quick queries
+```
+
+## Combining Complex Conditions
+
+```sql
+SELECT
+    p.product_name,
+    p.price,
+    c.category_name
+FROM products p
+INNER JOIN categories c ON p.category_id = c.id
+WHERE
+    (p.price BETWEEN 50 AND 200)
+    AND (c.category_name IN ('Electronics', 'Gadgets'))
+    AND p.discontinued = 0
+    AND (p.name LIKE '%Pro%' OR p.name LIKE '%Plus%')
+ORDER BY
+    c.category_name,
+    p.price DESC;
+```
+
+<ProgressCheckpoint section="from-where-orderby-intermediate" xpReward={45} />

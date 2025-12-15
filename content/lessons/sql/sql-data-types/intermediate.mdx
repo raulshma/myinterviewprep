@@ -1,0 +1,111 @@
+# SQL Data Types: In-Depth Guide
+
+Let's explore the full range of data types and their practical implications.
+
+## Numeric Types Deep Dive
+
+### Integer Types Comparison
+
+| Type     | Bytes | Signed Range      | Unsigned Range        |
+| -------- | ----- | ----------------- | --------------------- |
+| TINYINT  | 1     | -128 to 127       | 0 to 255              |
+| SMALLINT | 2     | -32,768 to 32,767 | 0 to 65,535           |
+| INT      | 4     | ±2.1 billion      | 0 to 4.3 billion      |
+| BIGINT   | 8     | ±9.2 quintillion  | 0 to 18.4 quintillion |
+
+### Decimal Precision
+
+```sql
+-- DECIMAL(precision, scale)
+-- precision = total digits, scale = digits after decimal
+
+DECIMAL(5, 2)   -- 999.99 (max)
+DECIMAL(10, 4)  -- 999999.9999 (max)
+
+-- For money, always use DECIMAL, not FLOAT!
+price DECIMAL(19, 4)  -- Standard for financial data
+```
+
+### Float vs Decimal
+
+| Aspect    | FLOAT               | DECIMAL             |
+| --------- | ------------------- | ------------------- |
+| Precision | Approximate         | Exact               |
+| Speed     | Faster              | Slower              |
+| Storage   | Less                | More                |
+| Use for   | Science, statistics | Money, exact values |
+
+```sql
+-- FLOAT rounding issue
+SELECT CAST(0.1 + 0.2 AS FLOAT);  -- Might show 0.30000000004!
+
+-- DECIMAL is exact
+SELECT CAST(0.1 AS DECIMAL(2,1)) + CAST(0.2 AS DECIMAL(2,1));  -- 0.3
+```
+
+## String Types Comparison
+
+| Type        | Storage         | Padding          | Use Case           |
+| ----------- | --------------- | ---------------- | ------------------ |
+| CHAR(n)     | Fixed n bytes   | Pads with spaces | Fixed-length codes |
+| VARCHAR(n)  | Variable        | No padding       | Names, emails      |
+| TEXT        | Variable, large | No padding       | Long content       |
+| NVARCHAR(n) | Unicode         | No padding       | International text |
+
+```sql
+-- CHAR pads with spaces
+CHAR(5) storing 'AB' → 'AB   '
+
+-- VARCHAR stores exactly what you give
+VARCHAR(5) storing 'AB' → 'AB'
+```
+
+## Date/Time Types
+
+| Type           | Format           | Storage   | Range                |
+| -------------- | ---------------- | --------- | -------------------- |
+| DATE           | YYYY-MM-DD       | 3 bytes   | 0001 to 9999         |
+| TIME           | HH:MI:SS         | 3 bytes   | 00:00:00 to 23:59:59 |
+| DATETIME       | Date + Time      | 8 bytes   | 1753 to 9999         |
+| DATETIME2      | Higher precision | 6-8 bytes | 0001 to 9999         |
+| DATETIMEOFFSET | With timezone    | 10 bytes  | Timezone aware       |
+
+```sql
+-- Date arithmetic
+SELECT DATEADD(DAY, 7, GETDATE());  -- 7 days from now
+SELECT DATEDIFF(YEAR, '1990-01-01', GETDATE());  -- Years since 1990
+```
+
+## Binary and Special Types
+
+```sql
+-- Binary data
+profile_image VARBINARY(MAX),
+file_hash BINARY(32),
+
+-- GUIDs
+user_guid UNIQUEIDENTIFIER DEFAULT NEWID(),
+
+-- JSON (modern databases)
+preferences JSON,  -- PostgreSQL, MySQL
+settings NVARCHAR(MAX)  -- SQL Server (with JSON functions)
+
+-- XML
+config_xml XML
+```
+
+## Type Conversion
+
+```sql
+-- Implicit conversion (automatic)
+SELECT 5 + '10';  -- Works but avoid!
+
+-- Explicit conversion (preferred)
+SELECT 5 + CAST('10' AS INT);
+SELECT 5 + CONVERT(INT, '10');  -- SQL Server
+
+-- Safe conversion
+SELECT TRY_CAST('abc' AS INT);  -- Returns NULL instead of error
+```
+
+<ProgressCheckpoint section="data-types-depth" xpReward={40} />

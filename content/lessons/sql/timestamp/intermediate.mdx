@@ -1,0 +1,94 @@
+# TIMESTAMP: Timezone Handling
+
+Master timezone conversions and global time handling.
+
+## Timezone-Aware Types
+
+```sql
+-- PostgreSQL: TIMESTAMPTZ (recommended)
+CREATE TABLE events (
+    event_time TIMESTAMPTZ
+);
+-- Stores in UTC, displays in session timezone
+
+-- SQL Server: DATETIMEOFFSET
+CREATE TABLE events (
+    event_time DATETIMEOFFSET
+);
+-- Stores with timezone offset
+```
+
+## Converting Timezones
+
+```sql
+-- PostgreSQL
+SELECT
+    event_time,
+    event_time AT TIME ZONE 'UTC' AS utc_time,
+    event_time AT TIME ZONE 'America/New_York' AS ny_time
+FROM events;
+
+-- SQL Server
+SELECT
+    event_time,
+    event_time AT TIME ZONE 'UTC' AS utc_time,
+    SWITCHOFFSET(event_time, '-05:00') AS est_time
+FROM events;
+```
+
+## Setting Session Timezone
+
+```sql
+-- PostgreSQL
+SET timezone = 'America/New_York';
+
+-- MySQL
+SET time_zone = '-05:00';
+
+-- SQL Server (per-query using AT TIME ZONE)
+```
+
+## UTC Best Practice
+
+```sql
+-- Store in UTC, convert for display
+INSERT INTO events (event_time)
+VALUES (GETUTCDATE());  -- SQL Server
+
+INSERT INTO events (event_time)
+VALUES (NOW() AT TIME ZONE 'UTC');  -- PostgreSQL
+
+-- Query with conversion
+SELECT
+    id,
+    event_time AT TIME ZONE 'America/New_York' AS local_time
+FROM events;
+```
+
+## Epoch Conversions
+
+```sql
+-- To epoch
+SELECT EXTRACT(EPOCH FROM timestamp_col) FROM table;  -- PostgreSQL
+SELECT DATEDIFF(SECOND, '1970-01-01', GETUTCDATE());  -- SQL Server
+
+-- From epoch
+SELECT TO_TIMESTAMP(1710505800);  -- PostgreSQL
+SELECT DATEADD(SECOND, 1710505800, '1970-01-01');  -- SQL Server
+
+-- Milliseconds
+SELECT EXTRACT(EPOCH FROM NOW()) * 1000;
+```
+
+## Daylight Saving Time
+
+```sql
+-- Use named timezones (handle DST automatically)
+SELECT event_time AT TIME ZONE 'America/New_York';  -- Correct
+-- Not fixed offsets:
+SELECT event_time AT TIME ZONE '-05:00';  -- Wrong during DST!
+```
+
+<DateTimeExplorer mode="intermediate" />
+
+<ProgressCheckpoint section="timestamp-timezone" xpReward={40} />

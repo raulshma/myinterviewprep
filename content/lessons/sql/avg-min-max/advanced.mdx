@@ -1,0 +1,131 @@
+# AVG, MIN, MAX: Advanced Techniques
+
+Enterprise patterns for complex aggregation scenarios.
+
+## Statistical Functions
+
+```sql
+SELECT
+    COUNT(*) AS n,
+    AVG(score) AS mean,
+
+    -- Variance and standard deviation
+    VAR(score) AS variance,            -- SQL Server
+    STDEV(score) AS standard_dev,      -- SQL Server
+    VARIANCE(score) AS variance_pg,    -- PostgreSQL
+    STDDEV(score) AS stddev_pg,        -- PostgreSQL
+
+    -- Percentiles
+    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY score) AS q1,
+    PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY score) AS median,
+    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY score) AS q3
+FROM test_scores;
+```
+
+## Window Aggregates
+
+```sql
+SELECT
+    product_id,
+    price,
+
+    -- Relative to all products
+    price - AVG(price) OVER () AS diff_from_avg,
+
+    -- Relative to category
+    price - AVG(price) OVER (PARTITION BY category) AS diff_from_cat_avg,
+
+    -- Percentile rank
+    PERCENT_RANK() OVER (ORDER BY price) AS price_percentile,
+
+    -- Running min/max
+    MIN(price) OVER (ORDER BY created_at ROWS UNBOUNDED PRECEDING) AS min_to_date,
+    MAX(price) OVER (ORDER BY created_at ROWS UNBOUNDED PRECEDING) AS max_to_date
+FROM products;
+```
+
+## Handling Edge Cases
+
+```sql
+-- Empty result sets
+SELECT COALESCE(AVG(price), 0) AS avg_price FROM products WHERE 1=0;
+
+-- All NULLs
+SELECT
+    COALESCE(MIN(value), 'No Data') AS min_val,
+    COALESCE(MAX(value), 'No Data') AS max_val
+FROM table_with_nulls;
+
+-- Single value (no std deviation possible)
+SELECT
+    CASE WHEN COUNT(*) > 1 THEN STDEV(value) ELSE 0 END AS safe_stddev
+FROM single_row_table;
+```
+
+## Time-Based Aggregates
+
+```sql
+-- Average by time bucket
+SELECT
+    DATEADD(HOUR, DATEDIFF(HOUR, 0, timestamp), 0) AS hour_bucket,
+    AVG(value) AS hourly_avg,
+    MIN(value) AS hourly_min,
+    MAX(value) AS hourly_max
+FROM sensor_data
+GROUP BY DATEADD(HOUR, DATEDIFF(HOUR, 0, timestamp), 0);
+
+-- Peak hours
+SELECT TOP 5
+    DATEPART(HOUR, order_time) AS hour,
+    AVG(order_total) AS avg_order,
+    COUNT(*) AS order_count
+FROM orders
+GROUP BY DATEPART(HOUR, order_time)
+ORDER BY avg_order DESC;
+```
+
+## Performance Optimization
+
+```sql
+-- Index for MIN/MAX on ordered data
+-- B-tree index allows O(log n) min/max lookups
+CREATE INDEX IX_products_price ON products(price);
+
+-- This becomes a simple index scan:
+SELECT MIN(price), MAX(price) FROM products;
+
+-- Covering index for filtered aggregates
+CREATE INDEX IX_orders_status ON orders(status) INCLUDE (total);
+
+SELECT AVG(total) FROM orders WHERE status = 'completed';
+-- Index-only scan
+```
+
+## Custom Aggregates
+
+```sql
+-- SQL Server: CLR aggregate
+-- PostgreSQL: CREATE AGGREGATE
+
+-- Simulate custom aggregate with CTE
+WITH RECURSIVE geometric_mean AS (
+    SELECT
+        EXP(SUM(LOG(price)) / COUNT(*)) AS geom_mean
+    FROM products
+    WHERE price > 0
+)
+SELECT geom_mean FROM geometric_mean;
+```
+
+## Aggregates with DISTINCT
+
+```sql
+SELECT
+    COUNT(DISTINCT customer_id) AS unique_customers,
+    AVG(DISTINCT price) AS avg_distinct_prices,  -- Unusual but valid
+    SUM(DISTINCT category_id) AS sum_category_ids  -- Edge case
+FROM orders o
+JOIN products p ON o.product_id = p.id;
+```
+
+<ProgressCheckpoint section="avg-min-max-advanced" xpReward={45} />

@@ -1,0 +1,85 @@
+# ROW_NUMBER and RANK Functions
+
+Number and rank your data rows!
+
+## 🔢 ROW_NUMBER
+
+Assigns a unique number to each row:
+
+```sql
+SELECT name, salary,
+    ROW_NUMBER() OVER (ORDER BY salary DESC) AS row_num
+FROM employees;
+
+-- Result:
+-- Alice, 80000, 1
+-- Bob, 70000, 2
+-- Carol, 60000, 3
+```
+
+## 🏆 RANK
+
+Assigns rank with gaps for ties:
+
+```sql
+SELECT name, score,
+    RANK() OVER (ORDER BY score DESC) AS rank
+FROM students;
+
+-- Result (two tied for 2nd):
+-- Alice, 95, 1
+-- Bob, 90, 2
+-- Carol, 90, 2
+-- Dave, 85, 4  <-- Skips 3!
+```
+
+## 📊 DENSE_RANK
+
+Rank without gaps:
+
+```sql
+SELECT name, score,
+    DENSE_RANK() OVER (ORDER BY score DESC) AS dense_rank
+FROM students;
+
+-- Result:
+-- Alice, 95, 1
+-- Bob, 90, 2
+-- Carol, 90, 2
+-- Dave, 85, 3  <-- No gap!
+```
+
+## 📋 Comparison
+
+| Function   | Ties              | Gaps |
+| ---------- | ----------------- | ---- |
+| ROW_NUMBER | Different numbers | No   |
+| RANK       | Same number       | Yes  |
+| DENSE_RANK | Same number       | No   |
+
+## 🎯 With PARTITION BY
+
+Rank within groups:
+
+```sql
+SELECT department, name, salary,
+    ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS dept_rank
+FROM employees;
+
+-- Ranks restart for each department
+-- Sales: 1, 2, 3...
+-- IT: 1, 2, 3...
+```
+
+## 💡 Practical Use: Top N Per Group
+
+```sql
+-- Top 3 earners per department
+WITH ranked AS (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS rn
+    FROM employees
+)
+SELECT * FROM ranked WHERE rn <= 3;
+```
+
+<ProgressCheckpoint section="ranking-basics" xpReward={25} />

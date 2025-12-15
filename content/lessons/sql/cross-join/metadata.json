@@ -1,0 +1,15 @@
+{
+  "id": "cross-join",
+  "title": "CROSS JOIN",
+  "description": "Create all possible combinations of rows from two tables.",
+  "milestone": "join-queries",
+  "order": 6,
+  "sections": ["cross-basics", "use-cases", "avoiding-accidents"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 15, "xpReward": 40 }
+  },
+  "prerequisites": ["self-join"],
+  "tags": ["sql", "join", "cross-join", "cartesian"]
+}

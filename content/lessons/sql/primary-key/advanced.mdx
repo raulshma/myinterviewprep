@@ -1,0 +1,140 @@
+# Primary Keys: Performance and Architecture
+
+Optimize primary key design for high-performance and distributed systems.
+
+## Clustered Index Impact
+
+In SQL Server, the primary key creates a clustered index by default:
+
+```sql
+-- Primary key = clustered index (default)
+CREATE TABLE orders (
+    id INT PRIMARY KEY,  -- Creates clustered index
+    order_date DATE,
+    total DECIMAL(10,2)
+);
+
+-- Explicit: Non-clustered primary key
+CREATE TABLE logs (
+    id INT PRIMARY KEY NONCLUSTERED,
+    log_date DATE,
+    message VARCHAR(MAX)
+);
+
+-- Clustered on different column
+CREATE CLUSTERED INDEX IX_logs_date ON logs (log_date);
+```
+
+### Choosing Clustered Index Column
+
+| Factor         | Best Choice                      |
+| -------------- | -------------------------------- |
+| Range queries  | Column used in ranges (dates)    |
+| Insert pattern | Ever-increasing (avoid hotspots) |
+| Width          | Narrow columns                   |
+| Uniqueness     | Unique or nearly unique          |
+
+## Sequential vs Random Keys
+
+```sql
+-- Sequential (identity) - Good insert performance
+-- Data appends to end of table
+id INT IDENTITY PRIMARY KEY
+
+-- Random (newid()) - Poor insert performance
+-- Random inserts cause page splits
+id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY
+
+-- Sequential UUID (newsequentialid()) - Better for UUIDs
+id UNIQUEIDENTIFIER DEFAULT NEWSEQUENTIALID() PRIMARY KEY
+```
+
+## Performance Comparison
+
+| Key Type        | Insert Speed | Index Size | Fragmentation |
+| --------------- | ------------ | ---------- | ------------- |
+| INT IDENTITY    | Fastest      | Smallest   | Low           |
+| BIGINT IDENTITY | Fast         | Small      | Low           |
+| Sequential GUID | Medium       | Large      | Low           |
+| Random GUID     | Slow         | Large      | High          |
+| VARCHAR(50)     | Medium       | Medium     | Medium        |
+
+## Distributed System Patterns
+
+### Snowflake ID
+
+```sql
+-- Twitter-style snowflake: timestamp + machine + sequence
+-- 64-bit: time (41) + datacenter (5) + machine (5) + sequence (12)
+CREATE TABLE distributed_orders (
+    id BIGINT PRIMARY KEY,  -- Application generates snowflake
+    data VARCHAR(MAX)
+);
+```
+
+### ULID (Universally Unique Lexicographically Sortable Identifier)
+
+```sql
+-- Sortable like timestamp, unique like UUID
+-- 128-bit: timestamp (48) + randomness (80)
+CREATE TABLE events (
+    id CHAR(26) PRIMARY KEY,  -- ULID as string
+    event_type VARCHAR(50)
+);
+```
+
+## Sequence Objects
+
+```sql
+-- SQL Server: Shared sequence across tables
+CREATE SEQUENCE shared_id_seq
+    START WITH 1
+    INCREMENT BY 1;
+
+CREATE TABLE table1 (
+    id INT PRIMARY KEY DEFAULT NEXT VALUE FOR shared_id_seq
+);
+
+CREATE TABLE table2 (
+    id INT PRIMARY KEY DEFAULT NEXT VALUE FOR shared_id_seq
+);
+
+-- PostgreSQL
+CREATE SEQUENCE shared_id_seq;
+
+ALTER TABLE table1 ALTER COLUMN id SET DEFAULT nextval('shared_id_seq');
+```
+
+## Key Rotation and Reseeding
+
+```sql
+-- SQL Server: Reseed identity
+DBCC CHECKIDENT ('orders', RESEED, 10000);
+
+-- PostgreSQL: Reset sequence
+ALTER SEQUENCE orders_id_seq RESTART WITH 10000;
+
+-- Check for gaps
+SELECT id, id - LAG(id) OVER (ORDER BY id) AS gap
+FROM orders
+WHERE id - LAG(id) OVER (ORDER BY id) > 1;
+```
+
+## Composite Key Performance
+
+```sql
+-- Order matters in composite keys!
+-- Put most selective column first
+
+-- Good: customer_id is more selective
+PRIMARY KEY (customer_id, order_date)
+
+-- Queries that benefit:
+SELECT * FROM orders WHERE customer_id = 123;  -- Uses index
+SELECT * FROM orders WHERE customer_id = 123 AND order_date = '2024-01-01';
+
+-- Query that doesn't:
+SELECT * FROM orders WHERE order_date = '2024-01-01';  -- Scans
+```
+
+<ProgressCheckpoint section="primary-key-advanced" xpReward={55} />

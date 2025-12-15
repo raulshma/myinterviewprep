@@ -1,0 +1,15 @@
+{
+  "id": "select-querying",
+  "title": "SELECT - Querying Data",
+  "description": "Master the SELECT statement to retrieve and display data from database tables.",
+  "milestone": "dml",
+  "order": 1,
+  "sections": ["basic-select", "column-selection", "expressions"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
+    "advanced": { "estimatedMinutes": 25, "xpReward": 60 }
+  },
+  "prerequisites": ["sql-statements"],
+  "tags": ["sql", "select", "query", "dml"]
+}

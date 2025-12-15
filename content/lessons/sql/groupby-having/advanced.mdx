@@ -1,0 +1,179 @@
+# GROUP BY and HAVING: Advanced Techniques
+
+Master advanced aggregation patterns and optimization strategies.
+
+## ROLLUP, CUBE, and GROUPING SETS
+
+### ROLLUP - Hierarchical Subtotals
+
+```sql
+SELECT
+    region,
+    country,
+    city,
+    SUM(sales) AS total_sales
+FROM sales_data
+GROUP BY ROLLUP(region, country, city);
+
+-- Produces:
+-- region, country, city (detail)
+-- region, country, NULL (country subtotal)
+-- region, NULL, NULL (region subtotal)
+-- NULL, NULL, NULL (grand total)
+```
+
+### CUBE - All Combinations
+
+```sql
+SELECT
+    region,
+    product_category,
+    SUM(sales) AS total_sales
+FROM sales_data
+GROUP BY CUBE(region, product_category);
+
+-- Produces all combinations:
+-- region + product
+-- region only
+-- product only
+-- grand total
+```
+
+### GROUPING Function
+
+```sql
+SELECT
+    CASE WHEN GROUPING(region) = 1 THEN 'All Regions' ELSE region END AS region,
+    CASE WHEN GROUPING(product) = 1 THEN 'All Products' ELSE product END AS product,
+    SUM(sales) AS total_sales
+FROM sales_data
+GROUP BY ROLLUP(region, product);
+```
+
+## Window Functions vs GROUP BY
+
+```sql
+-- GROUP BY: One row per group
+SELECT department, AVG(salary) AS dept_avg
+FROM employees
+GROUP BY department;
+
+-- Window: Keep all rows, add aggregate column
+SELECT
+    employee_name,
+    department,
+    salary,
+    AVG(salary) OVER (PARTITION BY department) AS dept_avg,
+    salary - AVG(salary) OVER (PARTITION BY department) AS diff_from_avg
+FROM employees;
+```
+
+## Performance Optimization
+
+### Index Considerations
+
+```sql
+-- Optimal: Index on (group_column, aggregate_column)
+CREATE INDEX IX_orders_customer ON orders (customer_id, total);
+
+-- This query uses the index efficiently:
+SELECT customer_id, SUM(total)
+FROM orders
+GROUP BY customer_id;
+```
+
+### Pre-Aggregation for Large Data
+
+```sql
+-- Materialized view for common aggregations
+CREATE VIEW daily_sales_summary AS
+SELECT
+    CAST(order_date AS DATE) AS sale_date,
+    product_id,
+    SUM(quantity) AS daily_quantity,
+    SUM(total) AS daily_revenue
+FROM orders
+GROUP BY CAST(order_date AS DATE), product_id;
+
+-- Query the summary instead of raw data
+SELECT * FROM daily_sales_summary WHERE sale_date = '2024-01-15';
+```
+
+### Hash vs Stream Aggregation
+
+```sql
+-- SQL Server chooses based on:
+-- • Data volume
+-- • Available memory
+-- • Index availability
+
+-- Force stream aggregate (requires sorted input)
+SELECT category, COUNT(*)
+FROM products WITH (INDEX = IX_products_category)
+GROUP BY category
+OPTION (ORDER GROUP);
+```
+
+## Advanced Aggregate Patterns
+
+### Running Aggregates in GROUP BY
+
+```sql
+WITH monthly_sales AS (
+    SELECT
+        YEAR(order_date) AS year,
+        MONTH(order_date) AS month,
+        SUM(total) AS monthly_total
+    FROM orders
+    GROUP BY YEAR(order_date), MONTH(order_date)
+)
+SELECT
+    year,
+    month,
+    monthly_total,
+    SUM(monthly_total) OVER (ORDER BY year, month) AS running_total,
+    AVG(monthly_total) OVER (ORDER BY year, month ROWS 2 PRECEDING) AS moving_avg
+FROM monthly_sales;
+```
+
+### Top N Per Group
+
+```sql
+WITH ranked AS (
+    SELECT
+        category,
+        product_name,
+        price,
+        ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) AS rank
+    FROM products
+)
+SELECT category, product_name, price
+FROM ranked
+WHERE rank <= 3;  -- Top 3 per category
+```
+
+### Median Calculation
+
+```sql
+-- SQL Server (with PERCENTILE_CONT)
+SELECT
+    category,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price)
+        OVER (PARTITION BY category) AS median_price
+FROM products;
+
+-- Cross-database approach
+SELECT category, AVG(price) AS median_price
+FROM (
+    SELECT
+        category,
+        price,
+        ROW_NUMBER() OVER (PARTITION BY category ORDER BY price) AS rn,
+        COUNT(*) OVER (PARTITION BY category) AS cnt
+    FROM products
+) t
+WHERE rn IN (cnt/2, cnt/2 + 1, (cnt+1)/2)
+GROUP BY category;
+```
+
+<ProgressCheckpoint section="groupby-having-advanced" xpReward={55} />

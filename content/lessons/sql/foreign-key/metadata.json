@@ -1,0 +1,15 @@
+{
+  "id": "foreign-key",
+  "title": "Foreign Key Constraints",
+  "description": "Link tables together with foreign key relationships.",
+  "milestone": "data-constraints",
+  "order": 2,
+  "sections": ["fk-basics", "cascade-options", "many-to-many"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
+    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
+    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+  },
+  "prerequisites": ["primary-key"],
+  "tags": ["sql", "constraints", "foreign-key", "relationships"]
+}

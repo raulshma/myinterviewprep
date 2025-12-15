@@ -1,0 +1,28 @@
+{
+  "id": "subqueries",
+  "title": "SQL Subqueries",
+  "description": "Master nested queries for powerful data retrieval patterns.",
+  "milestone": "sql",
+  "order": 7,
+  "sections": [
+    "nested-subqueries",
+    "correlated-subqueries",
+    "subquery-types"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 55
+    },
+    "advanced": {
+      "estimatedMinutes": 40,
+      "xpReward": 85
+    }
+  },
+  "prerequisites": ["dml-operations"],
+  "tags": ["sql", "subqueries", "nested", "correlated"]
+}

@@ -1,0 +1,104 @@
+# FULL OUTER JOIN: Advanced Patterns
+
+Enterprise patterns for data reconciliation and ETL.
+
+## ETL Reconciliation Pattern
+
+```sql
+-- Complete source-to-target reconciliation
+WITH comparison AS (
+    SELECT
+        COALESCE(s.id, t.id) AS record_id,
+        s.hash AS source_hash,
+        t.hash AS target_hash,
+        CASE
+            WHEN s.id IS NULL THEN 'extra_in_target'
+            WHEN t.id IS NULL THEN 'missing_in_target'
+            WHEN s.hash <> t.hash THEN 'mismatch'
+            ELSE 'match'
+        END AS status
+    FROM source_table s
+    FULL OUTER JOIN target_table t ON s.id = t.id
+)
+SELECT status, COUNT(*) AS record_count
+FROM comparison
+GROUP BY status;
+```
+
+## Change Data Capture
+
+```sql
+-- Detect all types of changes
+INSERT INTO change_log (record_id, change_type, old_data, new_data)
+SELECT
+    COALESCE(curr.id, prev.id) AS record_id,
+    CASE
+        WHEN prev.id IS NULL THEN 'INSERT'
+        WHEN curr.id IS NULL THEN 'DELETE'
+        WHEN curr.hash <> prev.hash THEN 'UPDATE'
+    END AS change_type,
+    prev.data AS old_data,
+    curr.data AS new_data
+FROM current_snapshot curr
+FULL OUTER JOIN previous_snapshot prev ON curr.id = prev.id
+WHERE prev.id IS NULL OR curr.id IS NULL OR curr.hash <> prev.hash;
+```
+
+## Performance Considerations
+
+```sql
+-- FULL OUTER JOIN is typically slower than LEFT/INNER
+-- Requires processing both inputs completely
+
+-- Optimization: Filter early if possible
+SELECT *
+FROM (SELECT * FROM large_a WHERE active = 1) a
+FULL OUTER JOIN (SELECT * FROM large_b WHERE active = 1) b
+ON a.id = b.id;
+
+-- Consider if you really need FULL OUTER
+-- Often LEFT JOIN + UNION is more explicit
+```
+
+## MERGE Statement Alternative
+
+```sql
+-- For synchronization, MERGE might be better
+MERGE INTO target_table t
+USING source_table s ON t.id = s.id
+WHEN MATCHED AND t.hash <> s.hash THEN
+    UPDATE SET t.data = s.data, t.hash = s.hash
+WHEN NOT MATCHED BY TARGET THEN
+    INSERT (id, data, hash) VALUES (s.id, s.data, s.hash)
+WHEN NOT MATCHED BY SOURCE THEN
+    DELETE;
+
+-- MERGE handles all cases FULL OUTER JOIN would show
+```
+
+## Anti-Join from FULL OUTER
+
+```sql
+-- Records in exactly one table
+SELECT COALESCE(a.id, b.id) AS id,
+    CASE WHEN a.id IS NULL THEN 'B only' ELSE 'A only' END AS location
+FROM table_a a
+FULL OUTER JOIN table_b b ON a.id = b.id
+WHERE a.id IS NULL OR b.id IS NULL;
+```
+
+## Complex Key Matching
+
+```sql
+-- FULL OUTER with composite keys
+SELECT
+    COALESCE(a.key1, b.key1) AS key1,
+    COALESCE(a.key2, b.key2) AS key2,
+    a.value AS a_value,
+    b.value AS b_value
+FROM system_a a
+FULL OUTER JOIN system_b b
+    ON a.key1 = b.key1 AND a.key2 = b.key2;
+```
+
+<ProgressCheckpoint section="full-outer-advanced" xpReward={40} />

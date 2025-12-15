@@ -1,0 +1,82 @@
+# Unique Constraints: No Duplicates Allowed
+
+Learn to prevent duplicate values in your columns!
+
+## 🎯 What is UNIQUE?
+
+A UNIQUE constraint ensures no duplicate values in a column:
+
+```sql
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    email VARCHAR(100) UNIQUE,  -- No two users can have same email
+    name VARCHAR(100)
+);
+```
+
+## 📝 Enforcement in Action
+
+```sql
+INSERT INTO users VALUES (1, 'alice@email.com', 'Alice');  -- OK
+INSERT INTO users VALUES (2, 'alice@email.com', 'Another');  -- ERROR!
+-- Violation of UNIQUE constraint
+```
+
+## 🔑 UNIQUE vs PRIMARY KEY
+
+| Feature            | PRIMARY KEY | UNIQUE |
+| ------------------ | ----------- | ------ |
+| Duplicates allowed | No          | No     |
+| NULL allowed       | No          | Yes\*  |
+| How many per table | One         | Many   |
+| Creates index      | Yes         | Yes    |
+
+\*Most databases allow one NULL in UNIQUE column
+
+## 📊 Multiple UNIQUE Columns
+
+A table can have many unique constraints:
+
+```sql
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    sku VARCHAR(50) UNIQUE,      -- Product code - unique
+    barcode VARCHAR(20) UNIQUE,  -- Barcode - unique
+    name VARCHAR(100)            -- Name can repeat
+);
+```
+
+## ✏️ Named Constraints
+
+```sql
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    email VARCHAR(100),
+    employee_code VARCHAR(20),
+
+    CONSTRAINT UQ_employees_email UNIQUE (email),
+    CONSTRAINT UQ_employees_code UNIQUE (employee_code)
+);
+```
+
+## 💡 Adding UNIQUE to Existing Table
+
+```sql
+-- First check for duplicates!
+SELECT email, COUNT(*) FROM users GROUP BY email HAVING COUNT(*) > 1;
+
+-- Then add constraint
+ALTER TABLE users
+ADD CONSTRAINT UQ_users_email UNIQUE (email);
+```
+
+## 🎯 Common Use Cases
+
+| Column           | Why UNIQUE?            |
+| ---------------- | ---------------------- |
+| Email            | One account per email  |
+| Username         | No duplicate usernames |
+| SKU/Product Code | Unique inventory items |
+| Phone Number     | One account per phone  |
+
+<ProgressCheckpoint section="unique-basics" xpReward={20} />

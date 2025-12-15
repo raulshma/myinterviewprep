@@ -1,0 +1,98 @@
+# Primary Keys: Unique Row Identification
+
+Every table needs a way to identify each row uniquely - that's what primary keys do!
+
+## 🔑 What is a Primary Key?
+
+A primary key is a column (or columns) that **uniquely identifies** each row in a table.
+
+**Rules:**
+
+- Must be unique (no duplicate values)
+- Cannot be NULL
+- One primary key per table
+
+## 📝 Creating a Primary Key
+
+```sql
+-- Method 1: Inline
+CREATE TABLE customers (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+-- Method 2: As constraint
+CREATE TABLE products (
+    id INT,
+    name VARCHAR(100),
+    CONSTRAINT PK_products PRIMARY KEY (id)
+);
+```
+
+## ⚡ Auto-Increment IDs
+
+Let the database assign IDs automatically:
+
+```sql
+-- SQL Server
+CREATE TABLE orders (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    order_date DATE
+);
+
+-- PostgreSQL
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    order_date DATE
+);
+
+-- MySQL
+CREATE TABLE orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_date DATE
+);
+```
+
+Now when you insert, you don't specify the ID:
+
+```sql
+INSERT INTO orders (order_date) VALUES ('2024-03-15');
+-- ID is automatically assigned (1, 2, 3, ...)
+```
+
+## 🎯 Why Primary Keys Matter
+
+| Purpose               | Example                          |
+| --------------------- | -------------------------------- |
+| Unique identification | Find customer #123               |
+| Relationships         | Order links to customer by ID    |
+| Indexing              | Fast lookups by ID               |
+| Updates/Deletes       | Know exactly which row to change |
+
+## 💡 Choosing a Primary Key
+
+| Option             | Good For            | Example            |
+| ------------------ | ------------------- | ------------------ |
+| Auto-increment INT | Most tables         | id = 1, 2, 3, ...  |
+| Natural key        | If already unique   | email, ISBN        |
+| UUID/GUID          | Distributed systems | '550e8400-e29b...' |
+
+## 📊 See It In Action
+
+```sql
+CREATE TABLE employees (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    email VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL
+);
+
+INSERT INTO employees (email, name) VALUES
+    ('alice@company.com', 'Alice'),
+    ('bob@company.com', 'Bob');
+
+-- Each row has unique ID
+SELECT * FROM employees;
+-- id=1: Alice, id=2: Bob
+```
+
+<ProgressCheckpoint section="primary-key-basics" xpReward={25} />

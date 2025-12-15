@@ -1,0 +1,15 @@
+{
+  "id": "full-outer-join",
+  "title": "FULL OUTER JOIN",
+  "description": "Keep all rows from both tables.",
+  "milestone": "join-queries",
+  "order": 4,
+  "sections": ["full-basics", "use-cases", "alternatives"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 15, "xpReward": 40 }
+  },
+  "prerequisites": ["right-join"],
+  "tags": ["sql", "join", "full-outer-join"]
+}

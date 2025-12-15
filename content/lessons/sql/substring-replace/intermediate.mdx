@@ -1,0 +1,89 @@
+# SUBSTRING and REPLACE: Advanced Patterns
+
+Complex extraction and transformation patterns.
+
+## Dynamic Substring with CHARINDEX
+
+```sql
+-- Find position then extract
+SELECT
+    email,
+    SUBSTRING(email, 1, CHARINDEX('@', email) - 1) AS username,
+    SUBSTRING(email, CHARINDEX('@', email) + 1, LEN(email)) AS domain
+FROM users;
+-- 'john@example.com' → 'john', 'example.com'
+```
+
+## STUFF: Insert/Replace at Position
+
+```sql
+-- STUFF(string, start, length_to_delete, insert_string)
+SELECT STUFF('Hello World', 7, 5, 'SQL');  -- 'Hello SQL'
+
+-- Mask credit card (keep last 4)
+SELECT STUFF(card_number, 1, 12, '****-****-****-') AS masked
+FROM payments;
+-- '1234567890123456' → '****-****-****-3456'
+```
+
+## Multiple Replacements
+
+```sql
+-- Chain REPLACE calls
+SELECT REPLACE(REPLACE(REPLACE(
+    phone, '-', ''), '(', ''), ')', '') AS clean
+FROM contacts;
+-- '(555) 123-4567' → '5551234567'
+
+-- PostgreSQL: TRANSLATE for single char replacements
+SELECT TRANSLATE(phone, '()-', '') FROM contacts;
+```
+
+## PATINDEX: Pattern Position
+
+```sql
+-- Find pattern position (SQL Server)
+SELECT PATINDEX('%@%', email) AS at_position FROM users;
+
+-- Find first digit
+SELECT PATINDEX('%[0-9]%', mixed_string) AS first_digit_pos FROM data;
+
+-- Extract based on pattern
+SELECT SUBSTRING(code, PATINDEX('%[A-Z][0-9]%', code), 2)
+FROM products;
+```
+
+## Parsing Delimited Data
+
+```sql
+-- Split by delimiter (before STRING_SPLIT)
+-- Get first part
+SELECT
+    LEFT(full_name, CHARINDEX(' ', full_name) - 1) AS first_name,
+    SUBSTRING(full_name, CHARINDEX(' ', full_name) + 1, LEN(full_name)) AS last_name
+FROM users;
+
+-- Handle missing delimiter
+SELECT
+    CASE
+        WHEN CHARINDEX(' ', name) > 0
+        THEN LEFT(name, CHARINDEX(' ', name) - 1)
+        ELSE name
+    END AS first_part
+FROM data;
+```
+
+## REVERSE
+
+```sql
+-- Reverse string
+SELECT REVERSE('Hello');  -- 'olleH'
+
+-- Find last occurrence of character
+SELECT LEN(email) - CHARINDEX('@', REVERSE(email)) + 1 AS last_at
+FROM emails_with_multiple_ats;
+```
+
+<StringFunctionPlayground mode="intermediate" />
+
+<ProgressCheckpoint section="substring-replace-practical" xpReward={40} />

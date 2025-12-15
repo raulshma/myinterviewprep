@@ -1,0 +1,108 @@
+# SUM Function: Practical Patterns
+
+Master SUM for real-world reporting scenarios.
+
+## Conditional SUM
+
+```sql
+-- Sum based on condition (CASE statement)
+SELECT
+    SUM(CASE WHEN status = 'completed' THEN total ELSE 0 END) AS completed_total,
+    SUM(CASE WHEN status = 'pending' THEN total ELSE 0 END) AS pending_total,
+    SUM(total) AS grand_total
+FROM orders;
+```
+
+## SUM with Multiple Groups
+
+```sql
+SELECT
+    YEAR(order_date) AS year,
+    MONTH(order_date) AS month,
+    category,
+    SUM(total) AS monthly_total
+FROM orders o
+JOIN order_items oi ON o.id = oi.order_id
+JOIN products p ON oi.product_id = p.id
+GROUP BY YEAR(order_date), MONTH(order_date), category
+ORDER BY year, month, category;
+```
+
+## Running Totals
+
+```sql
+-- Cumulative sum with window function
+SELECT
+    order_date,
+    total,
+    SUM(total) OVER (ORDER BY order_date) AS running_total
+FROM orders;
+
+-- Running total per customer
+SELECT
+    customer_id,
+    order_date,
+    total,
+    SUM(total) OVER (PARTITION BY customer_id ORDER BY order_date) AS customer_running
+FROM orders;
+```
+
+## SUM with DISTINCT
+
+```sql
+-- Sum only unique values
+SELECT SUM(DISTINCT price) AS unique_prices_total
+FROM products;
+
+-- Usually more useful for COUNT, but valid for SUM
+```
+
+## Handling NULL in Calculations
+
+```sql
+-- If column might be NULL, use COALESCE
+SELECT SUM(COALESCE(quantity, 0) * price) AS total
+FROM order_items;
+
+-- ISNULL for SQL Server
+SELECT SUM(ISNULL(discount, 0)) AS total_discounts
+FROM orders;
+```
+
+## SUM in Subqueries
+
+```sql
+-- Find customers with high total spending
+SELECT * FROM customers
+WHERE id IN (
+    SELECT customer_id FROM orders
+    GROUP BY customer_id
+    HAVING SUM(total) > 1000
+);
+
+-- Correlated subquery
+SELECT c.*,
+    (SELECT SUM(total) FROM orders WHERE customer_id = c.id) AS total_spent
+FROM customers c;
+```
+
+## Percentage of Total
+
+```sql
+SELECT
+    category,
+    SUM(price) AS category_total,
+    SUM(price) * 100.0 / (SELECT SUM(price) FROM products) AS percentage
+FROM products
+GROUP BY category;
+
+-- Using window function
+SELECT
+    category,
+    SUM(price) AS category_total,
+    SUM(price) * 100.0 / SUM(SUM(price)) OVER () AS percentage
+FROM products
+GROUP BY category;
+```
+
+<ProgressCheckpoint section="sum-patterns" xpReward={30} />

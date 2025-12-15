@@ -1,0 +1,99 @@
+# CROSS JOIN: Practical Applications
+
+Useful CROSS JOIN patterns for real scenarios.
+
+## Report Skeleton Generation
+
+```sql
+-- Ensure all months appear for all products
+WITH months AS (
+    SELECT DISTINCT MONTH(sale_date) AS month FROM sales
+),
+products AS (
+    SELECT id, name FROM products
+)
+SELECT
+    p.id,
+    p.name,
+    m.month,
+    COALESCE(s.total, 0) AS sales
+FROM products p
+CROSS JOIN months m
+LEFT JOIN (
+    SELECT product_id, MONTH(sale_date) AS month, SUM(amount) AS total
+    FROM sales
+    GROUP BY product_id, MONTH(sale_date)
+) s ON p.id = s.product_id AND m.month = s.month;
+```
+
+## Calendar Generation
+
+```sql
+-- Generate a year of dates
+WITH RECURSIVE dates AS (
+    SELECT CAST('2024-01-01' AS DATE) AS dt
+    UNION ALL
+    SELECT DATEADD(DAY, 1, dt) FROM dates WHERE dt < '2024-12-31'
+)
+SELECT * FROM dates;
+
+-- All dates × all hours
+SELECT d.dt, h.hour
+FROM dates d
+CROSS JOIN (SELECT 0 AS hour UNION SELECT 1 UNION SELECT 2 /*... up to 23*/) h;
+```
+
+## Configuration Combinations
+
+```sql
+-- All possible feature flag combinations
+SELECT
+    f1.enabled AS feature_a,
+    f2.enabled AS feature_b,
+    f3.enabled AS feature_c
+FROM (SELECT 0 AS enabled UNION SELECT 1) f1
+CROSS JOIN (SELECT 0 AS enabled UNION SELECT 1) f2
+CROSS JOIN (SELECT 0 AS enabled UNION SELECT 1) f3;
+-- Returns 8 rows (2³)
+```
+
+## Comparison Matrix
+
+```sql
+-- Compare all customers to all products
+SELECT
+    c.id AS customer_id,
+    p.id AS product_id,
+    COALESCE(o.purchased, 0) AS has_purchased
+FROM customers c
+CROSS JOIN products p
+LEFT JOIN (
+    SELECT DISTINCT customer_id, product_id, 1 AS purchased FROM orders
+) o ON c.id = o.customer_id AND p.id = o.product_id;
+```
+
+## Distance Matrix
+
+```sql
+-- All pairs of cities for distance calculation
+SELECT
+    c1.name AS from_city,
+    c2.name AS to_city,
+    -- Calculate distance formula here
+    SQRT(POWER(c2.lat - c1.lat, 2) + POWER(c2.lng - c1.lng, 2)) AS distance
+FROM cities c1
+CROSS JOIN cities c2
+WHERE c1.id < c2.id;  -- Only unique pairs
+```
+
+## Avoiding Accidental CROSS JOIN
+
+```sql
+-- WRONG: Missing ON clause creates CROSS JOIN!
+SELECT * FROM orders, customers;  -- Cartesian product!
+
+-- RIGHT: Explicit join
+SELECT * FROM orders o JOIN customers c ON o.customer_id = c.id;
+```
+
+<ProgressCheckpoint section="cross-join-practical" xpReward={30} />

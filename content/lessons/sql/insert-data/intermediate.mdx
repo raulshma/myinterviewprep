@@ -1,0 +1,116 @@
+# INSERT: Practical Patterns
+
+Master real-world INSERT patterns for application development.
+
+## INSERT from SELECT
+
+Copy data from one table to another:
+
+```sql
+-- Archive old orders
+INSERT INTO orders_archive (order_id, customer_id, total, order_date)
+SELECT order_id, customer_id, total, order_date
+FROM orders
+WHERE order_date < '2023-01-01';
+
+-- Copy with transformation
+INSERT INTO report_summary (year, month, revenue)
+SELECT
+    YEAR(order_date),
+    MONTH(order_date),
+    SUM(total)
+FROM orders
+GROUP BY YEAR(order_date), MONTH(order_date);
+```
+
+## Getting Inserted IDs
+
+### SQL Server
+
+```sql
+-- Using OUTPUT clause
+INSERT INTO customers (name, email)
+OUTPUT INSERTED.id, INSERTED.name
+VALUES ('John', 'john@email.com');
+
+-- Get single identity
+INSERT INTO customers (name, email) VALUES ('Jane', 'jane@email.com');
+SELECT SCOPE_IDENTITY() AS new_id;
+```
+
+### PostgreSQL
+
+```sql
+INSERT INTO customers (name, email)
+VALUES ('John', 'john@email.com')
+RETURNING id, name;
+```
+
+### MySQL
+
+```sql
+INSERT INTO customers (name, email) VALUES ('John', 'john@email.com');
+SELECT LAST_INSERT_ID() AS new_id;
+```
+
+## Handling Duplicates
+
+### INSERT or UPDATE (Upsert)
+
+```sql
+-- PostgreSQL
+INSERT INTO products (sku, name, price)
+VALUES ('ABC123', 'Widget', 19.99)
+ON CONFLICT (sku) DO UPDATE
+SET price = EXCLUDED.price, updated_at = NOW();
+
+-- MySQL
+INSERT INTO products (sku, name, price)
+VALUES ('ABC123', 'Widget', 19.99)
+ON DUPLICATE KEY UPDATE price = VALUES(price);
+
+-- SQL Server (MERGE)
+MERGE INTO products AS target
+USING (VALUES ('ABC123', 'Widget', 19.99)) AS source (sku, name, price)
+ON target.sku = source.sku
+WHEN MATCHED THEN UPDATE SET price = source.price
+WHEN NOT MATCHED THEN INSERT (sku, name, price) VALUES (source.sku, source.name, source.price);
+```
+
+### INSERT if Not Exists
+
+```sql
+-- Using NOT EXISTS
+INSERT INTO users (email)
+SELECT 'new@email.com'
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'new@email.com');
+
+-- PostgreSQL: INSERT...ON CONFLICT DO NOTHING
+INSERT INTO users (email) VALUES ('new@email.com')
+ON CONFLICT (email) DO NOTHING;
+```
+
+## INSERT with CTEs
+
+```sql
+WITH new_employees AS (
+    SELECT
+        CONCAT(first, '.', last, '@company.com') AS email,
+        first AS first_name,
+        last AS last_name
+    FROM staging_hires
+)
+INSERT INTO employees (email, first_name, last_name)
+SELECT email, first_name, last_name FROM new_employees;
+```
+
+## Multi-Table Inserts
+
+```sql
+-- Insert into multiple tables from one source
+INSERT INTO orders (customer_id, order_date)
+OUTPUT INSERTED.id, @product_id, @quantity INTO order_items (order_id, product_id, quantity)
+VALUES (@customer_id, GETDATE());
+```
+
+<ProgressCheckpoint section="insert-intermediate" xpReward={40} />

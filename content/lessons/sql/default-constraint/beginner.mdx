@@ -1,0 +1,95 @@
+# Default Constraints: Auto-Fill Values
+
+Let the database fill in values automatically!
+
+## 🎯 What is a DEFAULT?
+
+A DEFAULT constraint provides a value when you don't specify one:
+
+```sql
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    status VARCHAR(20) DEFAULT 'pending',
+    created_at DATETIME DEFAULT GETDATE()
+);
+```
+
+## 📝 How It Works
+
+```sql
+-- Don't specify status - it gets the default
+INSERT INTO orders (id) VALUES (1);
+-- Result: id=1, status='pending', created_at='2024-03-15 10:30:00'
+
+-- Specify status - overrides default
+INSERT INTO orders (id, status) VALUES (2, 'processing');
+-- Result: id=2, status='processing', created_at='2024-03-15 10:30:01'
+```
+
+## 🌟 Common Default Values
+
+| Use Case  | Default Example     |
+| --------- | ------------------- |
+| Status    | `DEFAULT 'active'`  |
+| Counter   | `DEFAULT 0`         |
+| Flag      | `DEFAULT FALSE`     |
+| Date/Time | `DEFAULT GETDATE()` |
+| UUID      | `DEFAULT NEWID()`   |
+
+## 📊 Full Example
+
+```sql
+CREATE TABLE users (
+    id INT IDENTITY PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    is_active BIT DEFAULT 1,
+    login_count INT DEFAULT 0,
+    created_at DATETIME DEFAULT GETDATE(),
+    role VARCHAR(20) DEFAULT 'user'
+);
+
+-- Only need to specify required values
+INSERT INTO users (name, email)
+VALUES ('Alice', 'alice@email.com');
+-- Gets: is_active=1, login_count=0, created_at=now, role='user'
+```
+
+## ✏️ Named Default Constraints
+
+```sql
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    stock INT,
+    status VARCHAR(20),
+
+    CONSTRAINT DF_products_stock DEFAULT 0 FOR stock,
+    CONSTRAINT DF_products_status DEFAULT 'available' FOR status
+);
+```
+
+## ➕ Adding Default to Existing Column
+
+```sql
+-- SQL Server
+ALTER TABLE orders
+ADD CONSTRAINT DF_orders_status DEFAULT 'pending' FOR status;
+
+-- PostgreSQL
+ALTER TABLE orders
+ALTER COLUMN status SET DEFAULT 'pending';
+```
+
+## 💡 DEFAULT vs NULL
+
+```sql
+-- Without DEFAULT: Column gets NULL (if nullable)
+-- With DEFAULT: Column gets the default value
+
+CREATE TABLE example (
+    no_default INT,          -- NULL if not specified
+    has_default INT DEFAULT 0  -- 0 if not specified
+);
+```
+
+<ProgressCheckpoint section="default-basics" xpReward={20} />

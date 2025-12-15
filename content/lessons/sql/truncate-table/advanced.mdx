@@ -1,0 +1,174 @@
+# TRUNCATE TABLE: Enterprise Patterns
+
+Master TRUNCATE for high-performance data management scenarios.
+
+## Minimal Logging Deep Dive
+
+```sql
+-- TRUNCATE deallocates pages rather than deleting rows
+-- This is why it's so fast
+
+-- Internals:
+-- 1. Acquires schema modification lock
+-- 2. Records extent deallocations (not row deletions)
+-- 3. Deallocates all data pages
+-- 4. Resets identity seed
+
+-- Log space comparison
+CHECKPOINT;
+DECLARE @log_used_before BIGINT = (
+    SELECT cntr_value FROM sys.dm_os_performance_counters
+    WHERE counter_name = 'Log File(s) Used Size (KB)'
+);
+
+TRUNCATE TABLE large_table;  -- Minimal log
+
+SELECT @log_used_after - @log_used_before AS log_kb_used;
+```
+
+## Partition-Level TRUNCATE
+
+```sql
+-- SQL Server 2016+: Surgical precision
+-- Remove specific partitions without affecting others
+
+-- Identify partitions to truncate
+SELECT
+    partition_number,
+    rows
+FROM sys.partitions
+WHERE object_id = OBJECT_ID('orders')
+ORDER BY partition_number;
+
+-- Truncate old partitions (e.g., 2020-2021 data)
+TRUNCATE TABLE orders WITH (PARTITIONS (1, 2, 3, 4));
+
+-- Switch-based alternative for instant "truncate"
+CREATE TABLE orders_empty LIKE orders;
+ALTER TABLE orders SWITCH PARTITION 1 TO orders_empty;
+DROP TABLE orders_empty;
+```
+
+## Automated Cleanup Jobs
+
+```sql
+CREATE PROCEDURE usp_cleanup_log_tables
+    @retention_days INT = 90
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @table_name NVARCHAR(128);
+    DECLARE @sql NVARCHAR(500);
+    DECLARE @msg NVARCHAR(500);
+
+    -- Tables eligible for truncation
+    DECLARE table_cursor CURSOR FOR
+        SELECT name FROM sys.tables
+        WHERE name LIKE '%_log' OR name LIKE '%_audit'
+        ORDER BY name;
+
+    OPEN table_cursor;
+    FETCH NEXT FROM table_cursor INTO @table_name;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        BEGIN TRY
+            -- Check if any recent data exists
+            SET @sql = N'
+                IF NOT EXISTS (
+                    SELECT 1 FROM ' + QUOTENAME(@table_name) + '
+                    WHERE created_at > DATEADD(DAY, -' + CAST(@retention_days AS NVARCHAR) + ', GETDATE())
+                )
+                TRUNCATE TABLE ' + QUOTENAME(@table_name);
+
+            EXEC sp_executesql @sql;
+            SET @msg = 'Processed: ' + @table_name;
+            RAISERROR(@msg, 0, 1) WITH NOWAIT;
+        END TRY
+        BEGIN CATCH
+            SET @msg = 'Error on ' + @table_name + ': ' + ERROR_MESSAGE();
+            RAISERROR(@msg, 0, 1) WITH NOWAIT;
+        END CATCH;
+
+        FETCH NEXT FROM table_cursor INTO @table_name;
+    END;
+
+    CLOSE table_cursor;
+    DEALLOCATE table_cursor;
+END;
+```
+
+## TRUNCATE in CDC/Replication
+
+```sql
+-- Change Data Capture tables can't be truncated
+-- Error: Cannot truncate table because it is published for replication
+
+-- Workaround 1: Temporarily disable CDC
+EXEC sys.sp_cdc_disable_table
+    @source_schema = 'dbo',
+    @source_name = 'customers',
+    @capture_instance = 'dbo_customers';
+
+TRUNCATE TABLE customers;
+
+EXEC sys.sp_cdc_enable_table
+    @source_schema = 'dbo',
+    @source_name = 'customers',
+    @role_name = NULL;
+
+-- Workaround 2: Use DELETE (slower)
+DELETE FROM customers;
+DBCC CHECKIDENT('customers', RESEED, 0);
+```
+
+## Monitoring and Alerting
+
+```sql
+-- DDL trigger to log TRUNCATE operations
+CREATE TRIGGER tr_log_truncate
+ON DATABASE
+FOR DDL_TABLE_EVENTS
+AS
+BEGIN
+    IF EVENTDATA().value('(/EVENT_INSTANCE/EventType)[1]', 'NVARCHAR(100)') = 'TRUNCATE_TABLE'
+    BEGIN
+        INSERT INTO truncate_audit (
+            table_name,
+            truncated_by,
+            truncated_at
+        )
+        SELECT
+            EVENTDATA().value('(/EVENT_INSTANCE/ObjectName)[1]', 'NVARCHAR(100)'),
+            ORIGINAL_LOGIN(),
+            GETDATE();
+    END;
+END;
+```
+
+## Performance Tuning for Alternatives
+
+```sql
+-- When you can't use TRUNCATE, optimize DELETE:
+
+-- 1. Batch deletion with minimal locking
+WHILE 1 = 1
+BEGIN
+    DELETE TOP (10000) FROM large_table;
+    IF @@ROWCOUNT = 0 BREAK;
+    CHECKPOINT;
+END;
+
+-- 2. Partition switching (fastest alternative)
+CREATE TABLE empty_table (LIKE large_table);
+ALTER TABLE large_table SWITCH TO empty_table;
+DROP TABLE empty_table;
+
+-- 3. Recreate table
+SELECT * INTO table_backup FROM large_table WHERE 1 = 0;
+DROP TABLE large_table;
+EXEC sp_rename 'table_backup', 'large_table';
+```
+
+<ProgressCheckpoint section="truncate-enterprise" xpReward={45} />

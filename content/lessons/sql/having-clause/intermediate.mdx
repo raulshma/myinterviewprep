@@ -1,0 +1,113 @@
+# HAVING: Practical Patterns
+
+Master HAVING for complex aggregate filtering.
+
+## Multiple Conditions
+
+```sql
+SELECT category, COUNT(*) AS cnt, AVG(price) AS avg_price
+FROM products
+GROUP BY category
+HAVING COUNT(*) >= 5
+   AND AVG(price) > 20
+   AND MAX(price) < 500;
+```
+
+## HAVING with OR
+
+```sql
+-- Find interesting categories
+SELECT category, COUNT(*) AS cnt, AVG(price) AS avg
+FROM products
+GROUP BY category
+HAVING COUNT(*) > 10 OR AVG(price) > 100;
+```
+
+## HAVING with Subquery
+
+```sql
+-- Categories with above-average product count
+SELECT category, COUNT(*) AS cnt
+FROM products
+GROUP BY category
+HAVING COUNT(*) > (
+    SELECT AVG(category_count) FROM (
+        SELECT COUNT(*) AS category_count
+        FROM products
+        GROUP BY category
+    ) t
+);
+```
+
+## Common Use Cases
+
+### Find Duplicates
+
+```sql
+SELECT email, COUNT(*) AS occurrences
+FROM users
+GROUP BY email
+HAVING COUNT(*) > 1;
+```
+
+### High-Value Customers
+
+```sql
+SELECT customer_id, SUM(total) AS total_spent
+FROM orders
+WHERE order_date >= DATEADD(YEAR, -1, GETDATE())
+GROUP BY customer_id
+HAVING SUM(total) > 1000
+ORDER BY total_spent DESC;
+```
+
+### Active Products
+
+```sql
+SELECT product_id, COUNT(*) AS times_ordered
+FROM order_items
+GROUP BY product_id
+HAVING COUNT(*) >= 10;
+```
+
+## HAVING without GROUP BY
+
+You can use HAVING to filter on entire table aggregates (rare):
+
+```sql
+-- Only return if there are enough orders
+SELECT AVG(total) AS avg_order_value
+FROM orders
+HAVING COUNT(*) >= 100;
+-- Returns nothing if fewer than 100 orders
+```
+
+## HAVING with CASE
+
+```sql
+SELECT
+    YEAR(order_date) AS year,
+    COUNT(*) AS total_orders,
+    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed
+FROM orders
+GROUP BY YEAR(order_date)
+HAVING SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) > 100;
+```
+
+## Performance Note
+
+```sql
+-- Filter with WHERE when possible (before grouping)
+-- More efficient:
+SELECT category, COUNT(*) FROM products
+WHERE is_active = 1  -- Filter first
+GROUP BY category
+HAVING COUNT(*) > 5;
+
+-- Less efficient:
+SELECT category, COUNT(*) FROM products
+GROUP BY category
+HAVING COUNT(*) > 5 AND MIN(is_active) = 1;  -- After grouping
+```
+
+<ProgressCheckpoint section="having-patterns" xpReward={30} />

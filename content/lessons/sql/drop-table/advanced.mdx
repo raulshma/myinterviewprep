@@ -1,0 +1,168 @@
+# DROP TABLE: Enterprise Patterns
+
+Master enterprise-grade table removal and data lifecycle management.
+
+## Automated Dependency Resolution
+
+```sql
+-- SQL Server: Generate drop script for all dependencies
+DECLARE @TableName NVARCHAR(128) = 'customers';
+DECLARE @SQL NVARCHAR(MAX) = '';
+
+-- Drop foreign keys first
+SELECT @SQL = @SQL +
+    'ALTER TABLE ' + QUOTENAME(OBJECT_NAME(parent_object_id)) +
+    ' DROP CONSTRAINT ' + QUOTENAME(name) + ';' + CHAR(13)
+FROM sys.foreign_keys
+WHERE referenced_object_id = OBJECT_ID(@TableName);
+
+-- Drop views
+SELECT @SQL = @SQL +
+    'DROP VIEW ' + QUOTENAME(OBJECT_NAME(referencing_id)) + ';' + CHAR(13)
+FROM sys.sql_expression_dependencies
+WHERE referenced_id = OBJECT_ID(@TableName);
+
+-- Drop the table
+SET @SQL = @SQL + 'DROP TABLE ' + QUOTENAME(@TableName) + ';';
+
+PRINT @SQL;
+-- EXEC sp_executesql @SQL;  -- Uncomment to execute
+```
+
+## Data Retention Policies
+
+```sql
+-- Automated table cleanup with retention
+CREATE PROCEDURE usp_enforce_retention
+AS
+BEGIN
+    DECLARE @cutoff DATE = DATEADD(YEAR, -7, GETDATE());
+
+    -- Drop old partition tables
+    DECLARE @tableName NVARCHAR(128);
+    DECLARE table_cursor CURSOR FOR
+        SELECT name FROM sys.tables
+        WHERE name LIKE 'logs_%'
+        AND PARSENAME(REPLACE(name, '_', '.'), 1) < YEAR(@cutoff);
+
+    OPEN table_cursor;
+    FETCH NEXT FROM table_cursor INTO @tableName;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        EXEC('DROP TABLE ' + @tableName);
+        FETCH NEXT FROM table_cursor INTO @tableName;
+    END;
+
+    CLOSE table_cursor;
+    DEALLOCATE table_cursor;
+END;
+```
+
+## Partition Switching Instead of Drop
+
+```sql
+-- Instant "delete" via partition switch
+-- Much faster than DROP for large partitioned tables
+
+-- Create matching empty table
+CREATE TABLE orders_trash (
+    -- Same structure as orders
+    id INT, order_date DATE, total DECIMAL(10,2)
+);
+
+-- Switch old partition out
+ALTER TABLE orders SWITCH PARTITION 1 TO orders_trash;
+
+-- Drop the switched table
+DROP TABLE orders_trash;
+```
+
+## Recovery Options
+
+### Before Drop
+
+```sql
+-- Create recovery point
+BACKUP DATABASE MyDB TO DISK = 'pre_drop_backup.bak';
+
+-- Or, copy structure and sample data
+SELECT TOP 1000 * INTO customers_sample FROM customers;
+```
+
+### After Accidental Drop
+
+```sql
+-- Option 1: Point-in-time restore
+RESTORE DATABASE MyDB
+FROM DISK = 'MyDB.bak'
+WITH STOPAT = '2024-03-15T10:30:00';
+
+-- Option 2: Query temporal table history (if enabled)
+SELECT * FROM customers FOR SYSTEM_TIME ALL;
+
+-- Option 3: Use third-party log reader
+-- (e.g., ApexSQL Log, fn_dblog)
+```
+
+## Audit and Compliance
+
+```sql
+-- Log table drops via DDL trigger
+CREATE TRIGGER TR_AuditDropTable
+ON DATABASE
+FOR DROP_TABLE
+AS
+BEGIN
+    DECLARE @data XML = EVENTDATA();
+
+    INSERT INTO DDL_Audit_Log (
+        event_time,
+        event_type,
+        database_name,
+        object_name,
+        login_name,
+        sql_command
+    )
+    SELECT
+        GETDATE(),
+        @data.value('(/EVENT_INSTANCE/EventType)[1]', 'NVARCHAR(100)'),
+        @data.value('(/EVENT_INSTANCE/DatabaseName)[1]', 'NVARCHAR(100)'),
+        @data.value('(/EVENT_INSTANCE/ObjectName)[1]', 'NVARCHAR(100)'),
+        @data.value('(/EVENT_INSTANCE/LoginName)[1]', 'NVARCHAR(100)'),
+        @data.value('(/EVENT_INSTANCE/TSQLCommand/CommandText)[1]', 'NVARCHAR(MAX)');
+END;
+```
+
+## Database Cleanup Automation
+
+```sql
+-- Scheduled job to clean temp/staging tables
+CREATE PROCEDURE usp_cleanup_staging_tables
+AS
+BEGIN
+    DECLARE @TableName NVARCHAR(128);
+    DECLARE @SQL NVARCHAR(500);
+
+    DECLARE cleanup_cursor CURSOR FOR
+        SELECT name FROM sys.tables
+        WHERE name LIKE 'staging_%'
+        AND create_date < DATEADD(DAY, -7, GETDATE());
+
+    OPEN cleanup_cursor;
+    FETCH NEXT FROM cleanup_cursor INTO @TableName;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @SQL = 'DROP TABLE ' + QUOTENAME(@TableName);
+        EXEC sp_executesql @SQL;
+        PRINT 'Dropped: ' + @TableName;
+        FETCH NEXT FROM cleanup_cursor INTO @TableName;
+    END;
+
+    CLOSE cleanup_cursor;
+    DEALLOCATE cleanup_cursor;
+END;
+```
+
+<ProgressCheckpoint section="drop-table-enterprise" xpReward={45} />

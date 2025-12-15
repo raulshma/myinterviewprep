@@ -1,0 +1,15 @@
+{
+  "id": "optimizing-joins",
+  "title": "Optimizing JOIN Operations",
+  "description": "Write efficient JOINs for better performance.",
+  "milestone": "performance",
+  "order": 3,
+  "sections": ["join-types", "join-order", "join-algorithms"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["using-indexes"],
+  "tags": ["sql", "performance", "joins", "optimization"]
+}

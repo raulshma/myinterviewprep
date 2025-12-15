@@ -1,0 +1,164 @@
+# DELETE: High-Performance and Enterprise Patterns
+
+Master enterprise-grade DELETE strategies for large-scale systems.
+
+## Performance Optimization
+
+### Batching for Large Deletes
+
+```sql
+-- Prevent log file explosion and blocking
+DECLARE @batch INT = 50000;
+DECLARE @cutoff DATE = DATEADD(YEAR, -2, GETDATE());
+
+WHILE EXISTS (SELECT 1 FROM audit_logs WHERE log_date < @cutoff)
+BEGIN
+    DELETE TOP (@batch) FROM audit_logs
+    WHERE log_date < @cutoff;
+
+    -- Allow other transactions
+    WAITFOR DELAY '00:00:01';
+
+    -- Checkpoint to truncate log
+    CHECKPOINT;
+END
+```
+
+### Partition Switching (Fastest)
+
+```sql
+-- Instant delete via partition switch
+-- Create identical empty table
+CREATE TABLE logs_empty LIKE logs;
+
+-- Switch partition out
+ALTER TABLE logs
+SWITCH PARTITION 1 TO logs_empty PARTITION 1;
+
+-- Drop the switched partition
+DROP TABLE logs_empty;
+```
+
+### TRUNCATE with Partitions
+
+```sql
+-- SQL Server 2016+: Truncate specific partitions
+TRUNCATE TABLE sales
+WITH (PARTITIONS (1, 2, 3));
+```
+
+## Referential Integrity Challenges
+
+### Delete Order Matters
+
+```sql
+-- Wrong order: FK violation
+DELETE FROM customers WHERE id = 1;  -- Error: orders reference this
+
+-- Right order: children first
+DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE customer_id = 1);
+DELETE FROM orders WHERE customer_id = 1;
+DELETE FROM customers WHERE id = 1;
+```
+
+### Disabling Constraints Temporarily
+
+```sql
+-- Risky but sometimes necessary
+ALTER TABLE orders NOCHECK CONSTRAINT FK_customers;
+DELETE FROM customers WHERE cleanup_needed = 1;
+-- Also delete orphaned orders:
+DELETE FROM orders WHERE customer_id NOT IN (SELECT id FROM customers);
+ALTER TABLE orders CHECK CONSTRAINT FK_customers;
+```
+
+## Deadlock Prevention
+
+```sql
+-- Consistent ordering prevents deadlocks
+-- Always process by primary key order
+DELETE FROM table1 WHERE id IN (SELECT id FROM @ids ORDER BY id);
+DELETE FROM table2 WHERE ref_id IN (SELECT id FROM @ids ORDER BY id);
+
+-- Use ROWLOCK hint
+DELETE FROM orders WITH (ROWLOCK)
+WHERE id = @order_id;
+```
+
+## Legal and Compliance Deletion
+
+### GDPR Right to Erasure
+
+```sql
+-- Complete user data removal
+BEGIN TRANSACTION;
+
+-- Log the deletion request
+INSERT INTO deletion_log (user_id, requested_at, completed_at)
+VALUES (@user_id, @request_date, GETDATE());
+
+-- Anonymize rather than delete where required
+UPDATE orders
+SET
+    customer_name = 'REDACTED',
+    email = NULL,
+    phone = NULL
+WHERE customer_id = @user_id;
+
+-- Delete personal data
+DELETE FROM user_addresses WHERE user_id = @user_id;
+DELETE FROM user_preferences WHERE user_id = @user_id;
+DELETE FROM user_sessions WHERE user_id = @user_id;
+DELETE FROM users WHERE id = @user_id;
+
+COMMIT;
+```
+
+### Audit Trail Preservation
+
+```sql
+-- Soft delete with full audit
+CREATE TABLE deletion_audit (
+    id INT IDENTITY PRIMARY KEY,
+    table_name VARCHAR(100),
+    record_id INT,
+    record_data NVARCHAR(MAX),  -- JSON of deleted record
+    deleted_by INT,
+    deleted_at DATETIME DEFAULT GETDATE(),
+    deletion_reason VARCHAR(255)
+);
+
+-- Trigger to capture deletes
+CREATE TRIGGER tr_orders_delete ON orders
+AFTER DELETE
+AS
+BEGIN
+    INSERT INTO deletion_audit (table_name, record_id, record_data, deleted_by)
+    SELECT
+        'orders',
+        id,
+        (SELECT * FROM deleted d WHERE d.id = deleted.id FOR JSON AUTO),
+        SYSTEM_USER
+    FROM deleted;
+END;
+```
+
+## Recovery Patterns
+
+```sql
+-- Point-in-time recovery preparation
+-- Before major delete, create backup
+SELECT * INTO orders_backup_20240315
+FROM orders
+WHERE delete_candidate = 1;
+
+-- After validation period
+DROP TABLE orders_backup_20240315;
+
+-- Using temporal tables (SQL Server)
+-- Automatically keeps history
+SELECT * FROM orders
+FOR SYSTEM_TIME AS OF '2024-03-15T10:00:00';
+```
+
+<ProgressCheckpoint section="delete-advanced" xpReward={55} />

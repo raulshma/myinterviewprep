@@ -1,0 +1,102 @@
+# CASE Expression: Practical Patterns
+
+Master CASE for real-world applications.
+
+## CASE in Aggregations
+
+```sql
+-- Conditional counting
+SELECT
+    COUNT(*) AS total,
+    COUNT(CASE WHEN status = 'active' THEN 1 END) AS active_count,
+    COUNT(CASE WHEN status = 'inactive' THEN 1 END) AS inactive_count
+FROM accounts;
+
+-- Conditional sum
+SELECT
+    SUM(CASE WHEN type = 'credit' THEN amount ELSE 0 END) AS credits,
+    SUM(CASE WHEN type = 'debit' THEN amount ELSE 0 END) AS debits
+FROM transactions;
+```
+
+## CASE in ORDER BY
+
+```sql
+-- Custom sort order
+SELECT * FROM orders
+ORDER BY
+    CASE status
+        WHEN 'urgent' THEN 1
+        WHEN 'high' THEN 2
+        WHEN 'normal' THEN 3
+        WHEN 'low' THEN 4
+    END;
+
+-- NULLs first or last
+SELECT * FROM products
+ORDER BY CASE WHEN price IS NULL THEN 0 ELSE 1 END, price;
+```
+
+## CASE in WHERE
+
+```sql
+-- Dynamic filtering
+SELECT * FROM orders
+WHERE 1 = CASE
+    WHEN @show_all = 1 THEN 1
+    WHEN status = 'active' THEN 1
+    ELSE 0
+END;
+```
+
+## CASE in UPDATE
+
+```sql
+-- Bulk conditional update
+UPDATE products
+SET price = CASE
+    WHEN category = 'Electronics' THEN price * 1.10
+    WHEN category = 'Clothing' THEN price * 1.05
+    ELSE price
+END;
+```
+
+## Nested CASE
+
+```sql
+SELECT
+    CASE region
+        WHEN 'North' THEN
+            CASE WHEN sales > 1000 THEN 'North-High' ELSE 'North-Low' END
+        WHEN 'South' THEN
+            CASE WHEN sales > 1000 THEN 'South-High' ELSE 'South-Low' END
+        ELSE 'Other'
+    END AS segment
+FROM sales_data;
+```
+
+## CASE with NULL
+
+```sql
+-- Simple CASE doesn't match NULL!
+SELECT CASE status WHEN NULL THEN 'None' ELSE status END;
+-- This won't work as expected!
+
+-- Use searched CASE instead
+SELECT CASE WHEN status IS NULL THEN 'None' ELSE status END;
+```
+
+## Pivoting with CASE
+
+```sql
+-- Transform rows to columns
+SELECT
+    product_id,
+    SUM(CASE WHEN MONTH(sale_date) = 1 THEN amount END) AS Jan,
+    SUM(CASE WHEN MONTH(sale_date) = 2 THEN amount END) AS Feb,
+    SUM(CASE WHEN MONTH(sale_date) = 3 THEN amount END) AS Mar
+FROM sales
+GROUP BY product_id;
+```
+
+<ProgressCheckpoint section="case-practical" xpReward={40} />

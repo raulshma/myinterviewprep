@@ -1,0 +1,15 @@
+{
+  "id": "acid-properties",
+  "title": "ACID Properties",
+  "description": "Understand the foundational principles of database transactions.",
+  "milestone": "transactions",
+  "order": 1,
+  "sections": ["acid-overview", "each-property", "importance"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 20, "xpReward": 55 }
+  },
+  "prerequisites": ["cross-join"],
+  "tags": ["sql", "transactions", "acid"]
+}

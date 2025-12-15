@@ -1,0 +1,128 @@
+# CREATE TABLE: Constraints and Relationships
+
+Master table design with proper constraints and foreign keys.
+
+## Constraint Types
+
+| Constraint  | Purpose               | Example                                |
+| ----------- | --------------------- | -------------------------------------- |
+| PRIMARY KEY | Unique row identifier | `id INT PRIMARY KEY`                   |
+| FOREIGN KEY | Link to another table | `customer_id REFERENCES customers(id)` |
+| UNIQUE      | No duplicates allowed | `email VARCHAR(100) UNIQUE`            |
+| NOT NULL    | Value required        | `name VARCHAR(50) NOT NULL`            |
+| CHECK       | Custom validation     | `age INT CHECK (age >= 0)`             |
+| DEFAULT     | Auto-fill value       | `status VARCHAR(20) DEFAULT 'pending'` |
+
+## Foreign Keys
+
+Link tables together:
+
+```sql
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    order_date DATE NOT NULL,
+    total DECIMAL(10,2),
+
+    CONSTRAINT FK_orders_customers
+    FOREIGN KEY (customer_id) REFERENCES customers(id)
+);
+```
+
+### Cascade Options
+
+```sql
+CREATE TABLE order_items (
+    id INT PRIMARY KEY,
+    order_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT DEFAULT 1,
+
+    FOREIGN KEY (order_id) REFERENCES orders(id)
+        ON DELETE CASCADE    -- Delete items when order deleted
+        ON UPDATE CASCADE,   -- Update if order ID changes
+
+    FOREIGN KEY (product_id) REFERENCES products(id)
+        ON DELETE RESTRICT   -- Prevent delete if referenced
+);
+```
+
+## Composite Keys
+
+Multiple columns as primary key:
+
+```sql
+CREATE TABLE order_items (
+    order_id INT,
+    product_id INT,
+    quantity INT,
+    price DECIMAL(10,2),
+
+    PRIMARY KEY (order_id, product_id)
+);
+```
+
+## CHECK Constraints
+
+Validate data:
+
+```sql
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    price DECIMAL(10,2) CHECK (price > 0),
+    discount DECIMAL(3,2) CHECK (discount BETWEEN 0 AND 1),
+    status VARCHAR(20) CHECK (status IN ('active', 'inactive', 'discontinued'))
+);
+```
+
+## Named Constraints
+
+```sql
+CREATE TABLE employees (
+    id INT,
+    email VARCHAR(100),
+    salary DECIMAL(10,2),
+    manager_id INT,
+
+    CONSTRAINT PK_employees PRIMARY KEY (id),
+    CONSTRAINT UQ_employees_email UNIQUE (email),
+    CONSTRAINT CK_employees_salary CHECK (salary >= 0),
+    CONSTRAINT FK_employees_manager FOREIGN KEY (manager_id) REFERENCES employees(id)
+);
+```
+
+## Computed Columns
+
+```sql
+-- SQL Server
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    quantity INT,
+    unit_price DECIMAL(10,2),
+    total AS (quantity * unit_price) PERSISTED
+);
+
+-- PostgreSQL (via generated)
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    quantity INT,
+    unit_price DECIMAL(10,2),
+    total DECIMAL(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED
+);
+```
+
+## Default Values
+
+```sql
+CREATE TABLE posts (
+    id INT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    status VARCHAR(20) DEFAULT 'draft',
+    view_count INT DEFAULT 0,
+    created_at DATETIME DEFAULT GETDATE(),
+    updated_at DATETIME DEFAULT GETDATE()
+);
+```
+
+<ProgressCheckpoint section="create-table-constraints" xpReward={45} />

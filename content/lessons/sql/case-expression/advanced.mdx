@@ -1,0 +1,101 @@
+# CASE Expression: Advanced Topics
+
+Complex patterns and performance considerations.
+
+## CASE Expression Type Resolution
+
+```sql
+-- All THEN/ELSE must be compatible types
+SELECT CASE WHEN 1=1 THEN 'text' ELSE 123 END;  -- Error in strict mode!
+
+-- Explicit casting
+SELECT CASE WHEN 1=1 THEN 'text' ELSE CAST(123 AS VARCHAR) END;
+
+-- NULL in THEN doesn't affect type
+SELECT CASE WHEN 1=1 THEN NULL ELSE 'text' END;  -- Returns VARCHAR
+```
+
+## Dynamic Grouping
+
+```sql
+-- Runtime grouping decision
+SELECT
+    CASE @group_by
+        WHEN 'category' THEN category
+        WHEN 'region' THEN region
+        WHEN 'both' THEN CONCAT(category, '-', region)
+    END AS group_key,
+    SUM(sales) AS total
+FROM data
+GROUP BY
+    CASE @group_by
+        WHEN 'category' THEN category
+        WHEN 'region' THEN region
+        WHEN 'both' THEN CONCAT(category, '-', region)
+    END;
+```
+
+## CASE in Joins
+
+```sql
+-- Conditional join logic
+SELECT *
+FROM orders o
+LEFT JOIN customers c ON o.customer_id = c.id
+    AND CASE
+        WHEN o.order_type = 'retail' THEN c.type = 'individual'
+        WHEN o.order_type = 'wholesale' THEN c.type = 'business'
+        ELSE 1=1
+    END;
+```
+
+## Performance Considerations
+
+```sql
+-- CASE is evaluated per row
+-- Complex CASE in large result sets can be slow
+
+-- Consider computed columns for frequently used CASE
+ALTER TABLE products ADD price_tier AS (
+    CASE
+        WHEN price > 100 THEN 'Premium'
+        WHEN price > 50 THEN 'Standard'
+        ELSE 'Budget'
+    END
+) PERSISTED;
+
+-- Or use lookup table with join
+```
+
+## Short-Circuit Evaluation
+
+```sql
+-- CASE stops at first match
+-- Use this for safety
+SELECT
+    CASE
+        WHEN denominator = 0 THEN NULL
+        WHEN denominator IS NULL THEN NULL
+        ELSE numerator / denominator
+    END AS safe_division
+FROM data;
+-- Division never executed if denominator is 0
+```
+
+## Alternatives to CASE
+
+```sql
+-- IIF (SQL Server 2012+, simpler for 2 options)
+SELECT IIF(price > 100, 'Expensive', 'Affordable') FROM products;
+
+-- CHOOSE (by position)
+SELECT CHOOSE(status_code, 'New', 'Active', 'Closed') FROM orders;
+
+-- COALESCE for NULL handling
+SELECT COALESCE(nickname, username, 'Guest') FROM users;
+
+-- NULLIF for specific NULL cases
+SELECT NULLIF(status, 'inactive') FROM accounts;
+```
+
+<ProgressCheckpoint section="case-advanced" xpReward={50} />

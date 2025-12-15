@@ -1,0 +1,75 @@
+# INSERT: Adding New Data
+
+Learn how to add new rows to your database tables!
+
+## ➕ Basic INSERT Syntax
+
+```sql
+INSERT INTO table_name (column1, column2, column3)
+VALUES (value1, value2, value3);
+```
+
+## 📝 Your First INSERT
+
+```sql
+-- Add a new customer
+INSERT INTO customers (first_name, last_name, email)
+VALUES ('Alice', 'Smith', 'alice@email.com');
+```
+
+This adds one new row to the customers table!
+
+## 📦 Adding Multiple Rows
+
+```sql
+INSERT INTO customers (first_name, last_name, email)
+VALUES
+    ('Bob', 'Jones', 'bob@email.com'),
+    ('Carol', 'Williams', 'carol@email.com'),
+    ('David', 'Brown', 'david@email.com');
+```
+
+One INSERT, three new customers!
+
+## 🔢 Working with Different Data Types
+
+```sql
+INSERT INTO products (name, price, quantity, is_active, created_at)
+VALUES (
+    'Super Widget',        -- Text: use quotes
+    29.99,                 -- Numbers: no quotes
+    100,                   -- Integer
+    TRUE,                  -- Boolean
+    '2024-03-15'           -- Date: use quotes
+);
+```
+
+| Data Type | Example      | Notes                  |
+| --------- | ------------ | ---------------------- |
+| Text      | 'Hello'      | Use single quotes      |
+| Numbers   | 42, 3.14     | No quotes              |
+| Dates     | '2024-03-15' | Use quotes, YYYY-MM-DD |
+| Boolean   | TRUE/FALSE   | Or 1/0                 |
+| NULL      | NULL         | No quotes              |
+
+## ⚡ Using Default Values
+
+```sql
+-- Let the database fill in defaults
+INSERT INTO orders (customer_id, total)
+VALUES (1, 99.99);
+-- created_at gets the default GETDATE()
+
+-- Explicitly use DEFAULT keyword
+INSERT INTO products (name, price, stock)
+VALUES ('New Item', 10.00, DEFAULT);
+```
+
+## 💡 Quick Tips
+
+1. **Column order matters** - Must match VALUES order
+2. **Always list columns** - Safer than INSERT INTO table VALUES (...)
+3. **Check constraints** - NOT NULL columns require values
+4. **Watch for duplicates** - Unique columns can't repeat
+
+<ProgressCheckpoint section="insert-basics" xpReward={25} />

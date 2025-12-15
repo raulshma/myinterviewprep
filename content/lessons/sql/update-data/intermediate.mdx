@@ -1,0 +1,124 @@
+# UPDATE: Practical Patterns
+
+Master real-world UPDATE patterns for application development.
+
+## UPDATE with JOINs
+
+```sql
+-- SQL Server: Update based on another table
+UPDATE o
+SET o.status = 'vip'
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id
+WHERE c.total_spent > 10000;
+
+-- PostgreSQL: Using FROM clause
+UPDATE orders
+SET status = 'vip'
+FROM customers
+WHERE orders.customer_id = customers.id
+AND customers.total_spent > 10000;
+
+-- MySQL: JOIN in UPDATE
+UPDATE orders o
+INNER JOIN customers c ON o.customer_id = c.id
+SET o.status = 'vip'
+WHERE c.total_spent > 10000;
+```
+
+## UPDATE with Subqueries
+
+```sql
+-- Update based on aggregated data
+UPDATE products
+SET price = (
+    SELECT AVG(price)
+    FROM products p2
+    WHERE p2.category_id = products.category_id
+)
+WHERE stock = 0;
+
+-- Update with correlated subquery
+UPDATE employees e
+SET salary = salary * 1.1
+WHERE department_id IN (
+    SELECT id FROM departments WHERE profit_margin > 0.2
+);
+```
+
+## CASE in UPDATE
+
+```sql
+-- Conditional updates based on values
+UPDATE products
+SET price_tier = CASE
+    WHEN price > 1000 THEN 'Premium'
+    WHEN price > 100 THEN 'Standard'
+    ELSE 'Budget'
+END;
+
+-- Multiple column updates with CASE
+UPDATE employees
+SET
+    bonus = CASE
+        WHEN rating >= 9 THEN salary * 0.20
+        WHEN rating >= 7 THEN salary * 0.10
+        ELSE 0
+    END,
+    performance_level = CASE
+        WHEN rating >= 9 THEN 'Exceptional'
+        WHEN rating >= 7 THEN 'Meets Expectations'
+        ELSE 'Needs Improvement'
+    END;
+```
+
+## Returning Updated Rows
+
+```sql
+-- SQL Server: OUTPUT clause
+UPDATE customers
+SET last_access = GETDATE()
+OUTPUT INSERTED.id, INSERTED.name, INSERTED.last_access
+WHERE status = 'active';
+
+-- PostgreSQL: RETURNING clause
+UPDATE customers
+SET last_access = NOW()
+WHERE status = 'active'
+RETURNING id, name, last_access;
+```
+
+## Batched Updates
+
+```sql
+-- Update in chunks to reduce locking
+DECLARE @batch_size INT = 1000;
+DECLARE @rows_affected INT = 1;
+
+WHILE @rows_affected > 0
+BEGIN
+    UPDATE TOP (@batch_size) orders
+    SET processed = 1
+    WHERE processed = 0;
+
+    SET @rows_affected = @@ROWCOUNT;
+
+    -- Optional: brief pause between batches
+    WAITFOR DELAY '00:00:00.100';
+END
+```
+
+## Audit Trail Pattern
+
+```sql
+-- Track changes with trigger-less approach
+UPDATE products
+SET
+    price = @new_price,
+    price_changed_at = GETDATE(),
+    price_changed_by = @user_id,
+    previous_price = price
+WHERE id = @product_id;
+```
+
+<ProgressCheckpoint section="update-intermediate" xpReward={40} />

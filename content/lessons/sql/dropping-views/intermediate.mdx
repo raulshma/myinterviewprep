@@ -1,0 +1,89 @@
+# Dropping Views: Handling Dependencies
+
+Manage dependencies before dropping views.
+
+## Check All Dependencies
+
+```sql
+-- SQL Server: Complete dependency check
+SELECT
+    referencing_object = OBJECT_NAME(d.referencing_id),
+    referencing_type = o.type_desc,
+    referenced_object = d.referenced_entity_name
+FROM sys.sql_expression_dependencies d
+JOIN sys.objects o ON d.referencing_id = o.object_id
+WHERE d.referenced_entity_name = 'my_view';
+
+-- PostgreSQL
+SELECT
+    dependent_ns.nspname AS schema,
+    dependent_view.relname AS name,
+    dependent_view.relkind AS type
+FROM pg_depend
+JOIN pg_rewrite ON pg_depend.objid = pg_rewrite.oid
+JOIN pg_class dependent_view ON pg_rewrite.ev_class = dependent_view.oid
+JOIN pg_namespace dependent_ns ON dependent_view.relnamespace = dependent_ns.oid
+WHERE pg_depend.refobjid = 'public.my_view'::regclass;
+```
+
+## CASCADE Option
+
+```sql
+-- PostgreSQL: Drop view and all dependents
+DROP VIEW parent_view CASCADE;
+
+-- WARNING: This drops all views that depend on it!
+-- Use carefully
+```
+
+## RESTRICT Option
+
+```sql
+-- PostgreSQL: Fail if dependencies exist
+DROP VIEW my_view RESTRICT;
+
+-- This is the default - safe behavior
+-- Error: cannot drop view my_view because other objects depend on it
+```
+
+## Safe Drop Pattern
+
+```sql
+-- 1. Identify dependencies
+EXEC sp_depends 'my_view';
+
+-- 2. Script dependents for recreation
+-- 3. Drop dependents first (if needed)
+DROP VIEW IF EXISTS child_view;
+
+-- 4. Drop target view
+DROP VIEW my_view;
+
+-- 5. Recreate if view was just being modified
+CREATE VIEW my_view AS ...;
+
+-- 6. Recreate dependents
+CREATE VIEW child_view AS ... (SELECT FROM my_view) ...;
+```
+
+## Backup Before Drop
+
+```sql
+-- Generate CREATE script
+SELECT definition
+FROM sys.sql_modules
+WHERE object_id = OBJECT_ID('my_view');
+
+-- Store in migration history table
+INSERT INTO view_backups (view_name, definition, dropped_at)
+SELECT 'my_view', definition, GETDATE()
+FROM sys.sql_modules
+WHERE object_id = OBJECT_ID('my_view');
+
+-- Now safe to drop
+DROP VIEW my_view;
+```
+
+<ViewBuilder mode="intermediate" />
+
+<ProgressCheckpoint section="dropping-views-dependencies" xpReward={25} />

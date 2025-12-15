@@ -1,0 +1,30 @@
+{
+  "id": "join-queries",
+  "title": "SQL JOINs",
+  "description": "Master combining data from multiple tables with all types of SQL JOINs.",
+  "milestone": "sql",
+  "order": 8,
+  "sections": [
+    "inner-join",
+    "left-join",
+    "right-join",
+    "full-outer-join",
+    "self-cross-join"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 55
+    },
+    "advanced": {
+      "estimatedMinutes": 40,
+      "xpReward": 85
+    }
+  },
+  "prerequisites": ["dml-operations"],
+  "tags": ["sql", "joins", "inner", "left", "right", "outer"]
+}

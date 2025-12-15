@@ -1,0 +1,88 @@
+# ROW_NUMBER and RANK: Practical Patterns
+
+Real-world ranking applications.
+
+## Pagination
+
+```sql
+-- Page 3, 10 items per page
+WITH numbered AS (
+    SELECT *, ROW_NUMBER() OVER (ORDER BY created_at DESC) AS rn
+    FROM products
+)
+SELECT * FROM numbered WHERE rn BETWEEN 21 AND 30;
+
+-- Modern alternative
+SELECT * FROM products
+ORDER BY created_at DESC
+OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY;
+```
+
+## Deduplication
+
+```sql
+-- Keep only latest record per customer
+WITH ranked AS (
+    SELECT *,
+        ROW_NUMBER() OVER (PARTITION BY customer_email ORDER BY created_at DESC) AS rn
+    FROM customer_leads
+)
+DELETE FROM ranked WHERE rn > 1;
+
+-- Or select distinct:
+SELECT * FROM ranked WHERE rn = 1;
+```
+
+## Finding Latest Per Group
+
+```sql
+-- Latest order for each customer
+WITH ranked AS (
+    SELECT *,
+        ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date DESC) AS rn
+    FROM orders
+)
+SELECT customer_id, order_date, total
+FROM ranked
+WHERE rn = 1;
+```
+
+## Ranking with Multiple Criteria
+
+```sql
+SELECT name, department, salary, tenure,
+    RANK() OVER (
+        ORDER BY salary DESC, tenure DESC  -- Secondary sort for ties
+    ) AS overall_rank
+FROM employees;
+```
+
+## Percentile Ranking
+
+```sql
+SELECT name, score,
+    PERCENT_RANK() OVER (ORDER BY score) AS percentile,
+    NTILE(4) OVER (ORDER BY score) AS quartile
+FROM test_results;
+
+-- PERCENT_RANK: 0.0 to 1.0
+-- NTILE(4): 1 to 4 (quartiles)
+```
+
+## Gap Detection
+
+```sql
+-- Find gaps in sequence
+WITH numbered AS (
+    SELECT id,
+        ROW_NUMBER() OVER (ORDER BY id) AS expected,
+        id - ROW_NUMBER() OVER (ORDER BY id) AS gap_group
+    FROM items
+)
+SELECT MIN(id) AS gap_start, MAX(id) AS gap_end
+FROM numbered
+GROUP BY gap_group
+HAVING COUNT(*) = 1 AND MIN(id) <> (SELECT MIN(id) FROM numbered);
+```
+
+<ProgressCheckpoint section="ranking-practical" xpReward={40} />

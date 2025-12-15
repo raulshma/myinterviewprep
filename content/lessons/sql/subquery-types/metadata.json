@@ -1,0 +1,15 @@
+{
+  "id": "subquery-types",
+  "title": "Subquery Types Overview",
+  "description": "Understand scalar, column, row, and table subqueries.",
+  "milestone": "subqueries",
+  "order": 3,
+  "sections": ["scalar", "column-row", "table"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 35 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 45 }
+  },
+  "prerequisites": ["correlated-subqueries"],
+  "tags": ["sql", "subquery", "types"]
+}

@@ -1,0 +1,95 @@
+# NULLIF and COALESCE: Practical Patterns
+
+Real-world NULL handling strategies.
+
+## COALESCE in Aggregations
+
+```sql
+-- Replace NULL sums with 0
+SELECT
+    category,
+    COALESCE(SUM(sales), 0) AS total_sales
+FROM products
+LEFT JOIN sales ON products.id = sales.product_id
+GROUP BY category;
+```
+
+## Safe Division Pattern
+
+```sql
+-- Prevent division by zero
+SELECT
+    total_sales,
+    num_transactions,
+    total_sales / NULLIF(num_transactions, 0) AS avg_transaction
+FROM daily_stats;
+
+-- With COALESCE for default
+SELECT
+    COALESCE(total / NULLIF(count, 0), 0) AS safe_average
+FROM data;
+```
+
+## Cleaning Data
+
+```sql
+-- Convert empty strings and placeholders to NULL
+SELECT
+    NULLIF(NULLIF(NULLIF(phone, ''), 'N/A'), 'Unknown') AS clean_phone
+FROM contacts;
+
+-- Update to clean data
+UPDATE contacts
+SET phone = NULLIF(NULLIF(phone, ''), 'N/A');
+```
+
+## Display Defaults
+
+```sql
+-- User-friendly NULL replacement
+SELECT
+    name,
+    COALESCE(email, 'Not provided') AS email,
+    COALESCE(CAST(phone AS VARCHAR), 'No phone') AS phone,
+    COALESCE(CAST(last_login AS VARCHAR), 'Never') AS last_login
+FROM users;
+```
+
+## COALESCE vs ISNULL
+
+```sql
+-- ISNULL is SQL Server specific, 2 args only
+SELECT ISNULL(a, b);
+
+-- COALESCE is ANSI standard, unlimited args
+SELECT COALESCE(a, b, c, d, 'default');
+
+-- Type handling differs!
+SELECT ISNULL(NULL, 1);      -- Returns INT
+SELECT COALESCE(NULL, 1);    -- May require explicit type
+```
+
+## Conditional Updates
+
+```sql
+-- Only update if new value is not NULL
+UPDATE users
+SET
+    email = COALESCE(@new_email, email),
+    phone = COALESCE(@new_phone, phone)
+WHERE id = @user_id;
+-- NULL parameters preserve existing values
+```
+
+## NULLIF with Comparisons
+
+```sql
+-- Find products with meaningful descriptions
+SELECT * FROM products
+WHERE NULLIF(description, '') IS NOT NULL;
+
+-- Equivalent to
+WHERE description IS NOT NULL AND description <> '';
+```
+
+<ProgressCheckpoint section="null-functions-practical" xpReward={30} />

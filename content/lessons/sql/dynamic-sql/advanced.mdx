@@ -1,0 +1,94 @@
+# Dynamic SQL: Advanced Topics
+
+Expert-level dynamic SQL techniques.
+
+## Generating DDL
+
+```sql
+-- Generate CREATE INDEX statements
+DECLARE @sql NVARCHAR(MAX) = N'';
+
+SELECT @sql += 'CREATE INDEX IX_' + TABLE_NAME + '_' + COLUMN_NAME +
+    ' ON ' + QUOTENAME(TABLE_NAME) + '(' + QUOTENAME(COLUMN_NAME) + ');' + CHAR(13)
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'orders'
+AND COLUMN_NAME IN ('customer_id', 'order_date', 'status');
+
+PRINT @sql;
+-- EXEC sp_executesql @sql;
+```
+
+## Cross-Database Queries
+
+```sql
+DECLARE @db NVARCHAR(128) = N'Archive_2023';
+DECLARE @sql NVARCHAR(MAX);
+
+SET @sql = N'SELECT * FROM ' + QUOTENAME(@db) + N'.dbo.orders WHERE total > @min';
+EXEC sp_executesql @sql, N'@min DECIMAL', @min = 1000;
+```
+
+## Temporary Table Scope
+
+```sql
+-- Dynamic SQL has separate scope
+CREATE TABLE #temp (id INT);
+INSERT INTO #temp VALUES (1), (2), (3);
+
+-- This sees the temp table (same session)
+EXEC('SELECT * FROM #temp');
+
+-- Table variables are NOT visible in dynamic SQL scope
+DECLARE @table TABLE (id INT);
+INSERT INTO @table VALUES (1), (2), (3);
+EXEC('SELECT * FROM @table');  -- ERROR!
+```
+
+## Debugging Dynamic SQL
+
+```sql
+DECLARE @sql NVARCHAR(MAX) = N'...complex query...';
+DECLARE @debug BIT = 1;
+
+IF @debug = 1
+    PRINT @sql;  -- See the generated SQL
+ELSE
+    EXEC sp_executesql @sql;
+```
+
+## Performance: Plan Reuse
+
+```sql
+-- Parameterized queries reuse plans
+EXEC sp_executesql N'SELECT * FROM orders WHERE customer_id = @id',
+    N'@id INT', @id = 123;  -- Plan cached
+
+EXEC sp_executesql N'SELECT * FROM orders WHERE customer_id = @id',
+    N'@id INT', @id = 456;  -- Reuses cached plan
+
+-- Concatenated values = new plan each time
+EXEC('SELECT * FROM orders WHERE customer_id = 123');  -- New plan
+EXEC('SELECT * FROM orders WHERE customer_id = 456');  -- New plan again!
+```
+
+## Code Generation Pattern
+
+```sql
+-- Generate stored procedures for each table
+DECLARE @proc NVARCHAR(MAX), @table NVARCHAR(128);
+DECLARE cur CURSOR FOR SELECT name FROM sys.tables WHERE type = 'U';
+
+OPEN cur;
+FETCH NEXT FROM cur INTO @table;
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    SET @proc = 'CREATE PROCEDURE sp_get_' + @table + ' AS SELECT * FROM ' + QUOTENAME(@table);
+    -- EXEC sp_executesql @proc;
+    PRINT @proc;
+    FETCH NEXT FROM cur INTO @table;
+END;
+CLOSE cur;
+DEALLOCATE cur;
+```
+
+<ProgressCheckpoint section="dynamic-advanced" xpReward={55} />

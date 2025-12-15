@@ -1,0 +1,15 @@
+{
+  "id": "concat-length",
+  "title": "CONCAT and LENGTH Functions",
+  "description": "Combine strings and measure their length.",
+  "milestone": "string-functions",
+  "order": 1,
+  "sections": ["concat", "length", "combining"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["nullif-coalesce"],
+  "tags": ["sql", "functions", "string", "concat", "length"]
+}

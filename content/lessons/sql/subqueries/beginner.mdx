@@ -1,0 +1,104 @@
+# Understanding SQL Subqueries
+
+A subquery is a query inside another query. Think of it as asking a question that requires answering a smaller question first!
+
+## 🪆 The Russian Nesting Doll Analogy
+
+Imagine you want to find Northwind employees who earn more than average. You need to:
+
+1. First, calculate the average salary (**inner query**)
+2. Then, find employees above that average (**outer query**)
+
+> **A subquery is like a helper:** It gets information the main query needs!
+
+## Try It Out!
+
+Watch how subqueries execute step by step:
+
+<SubqueryPlayground mode="beginner" />
+
+## Basic Subquery Structure
+
+```sql
+SELECT ProductName, UnitPrice
+FROM Products
+WHERE UnitPrice > (
+    SELECT AVG(UnitPrice) FROM Products  -- Inner query runs FIRST
+);
+```
+
+**How it works:**
+
+1. Inner query calculates: `AVG(UnitPrice) = 28.87`
+2. Outer query becomes: `WHERE UnitPrice > 28.87`
+3. Results: All products priced above average!
+
+## Subqueries with IN
+
+Find all products ordered by customers in Germany:
+
+```sql
+SELECT ProductName
+FROM Products
+WHERE ProductID IN (
+    SELECT ProductID
+    FROM [Order Details]
+    WHERE OrderID IN (
+        SELECT OrderID
+        FROM Orders
+        WHERE CustomerID IN (
+            SELECT CustomerID
+            FROM Customers
+            WHERE Country = 'Germany'
+        )
+    )
+);
+```
+
+> **Think of IN as:** "Is this value in the list returned by the subquery?"
+
+## Subqueries in Different Places
+
+### 1. In WHERE Clause (Most Common)
+
+```sql
+-- Products more expensive than 'Chai'
+SELECT ProductName, UnitPrice
+FROM Products
+WHERE UnitPrice > (
+    SELECT UnitPrice FROM Products WHERE ProductName = 'Chai'
+);
+```
+
+### 2. In SELECT Clause
+
+```sql
+-- Show each order with the customer's country
+SELECT
+    OrderID,
+    (SELECT CompanyName FROM Customers WHERE CustomerID = Orders.CustomerID) AS CustomerName
+FROM Orders;
+```
+
+### 3. In FROM Clause
+
+```sql
+-- Use subquery result as a table
+SELECT CategoryName, AvgPrice
+FROM (
+    SELECT CategoryID, AVG(UnitPrice) AS AvgPrice
+    FROM Products
+    GROUP BY CategoryID
+) AS CategoryAverages
+JOIN Categories ON CategoryAverages.CategoryID = Categories.CategoryID;
+```
+
+## Key Takeaways ✓
+
+1. **Subquery = query inside a query**
+2. Inner query runs **first**, provides data to outer query
+3. Use `IN` when subquery returns multiple values
+4. Use `=, >, <` when subquery returns single value
+5. Subqueries can go in WHERE, SELECT, or FROM clauses
+
+<ProgressCheckpoint section="nested-subqueries" xpReward={30} />

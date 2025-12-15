@@ -1,0 +1,15 @@
+{
+  "id": "timestamp",
+  "title": "TIMESTAMP and Time Zones",
+  "description": "Work with timestamps and handle time zones.",
+  "milestone": "date-time",
+  "order": 2,
+  "sections": ["timestamp-basics", "timezone", "comparison"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["date-time-types"],
+  "tags": ["sql", "timestamp", "timezone", "datetime"]
+}

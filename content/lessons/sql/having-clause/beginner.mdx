@@ -1,0 +1,98 @@
+# HAVING: Filtering Groups
+
+Filter your grouped results based on aggregate values!
+
+## 🎯 What is HAVING?
+
+HAVING filters groups **after** GROUP BY:
+
+```sql
+-- Show only categories with more than 5 products
+SELECT category, COUNT(*) AS product_count
+FROM products
+GROUP BY category
+HAVING COUNT(*) > 5;
+```
+
+## 📊 WHERE vs HAVING
+
+|                     | WHERE           | HAVING         |
+| ------------------- | --------------- | -------------- |
+| When                | Before grouping | After grouping |
+| Filters             | Individual rows | Groups         |
+| Can use aggregates? | No              | Yes            |
+
+```sql
+-- WHERE: Filter rows first
+SELECT category, COUNT(*)
+FROM products
+WHERE price > 10        -- Filter individual products
+GROUP BY category;
+
+-- HAVING: Filter groups after
+SELECT category, COUNT(*) AS cnt
+FROM products
+GROUP BY category
+HAVING COUNT(*) > 5;    -- Filter on aggregate
+```
+
+## 📝 Basic Examples
+
+```sql
+-- Customers with multiple orders
+SELECT customer_id, COUNT(*) AS order_count
+FROM orders
+GROUP BY customer_id
+HAVING COUNT(*) > 1;
+
+-- Categories with high average price
+SELECT category, AVG(price) AS avg_price
+FROM products
+GROUP BY category
+HAVING AVG(price) > 50;
+
+-- Departments spending over budget
+SELECT department, SUM(salary) AS total_salary
+FROM employees
+GROUP BY department
+HAVING SUM(salary) > 100000;
+```
+
+## 🔄 Using WHERE and HAVING Together
+
+```sql
+SELECT category, COUNT(*) AS product_count
+FROM products
+WHERE is_active = 1        -- First: filter individual rows
+GROUP BY category
+HAVING COUNT(*) >= 3;      -- Then: filter resulting groups
+```
+
+## ⚠️ Common Mistake
+
+```sql
+-- WRONG: Can't use aggregate in WHERE
+SELECT category, COUNT(*)
+FROM products
+WHERE COUNT(*) > 5     -- ERROR!
+GROUP BY category;
+
+-- RIGHT: Use HAVING for aggregates
+SELECT category, COUNT(*)
+FROM products
+GROUP BY category
+HAVING COUNT(*) > 5;   -- Correct!
+```
+
+## 💡 Query Order
+
+```
+1. FROM     - Get data
+2. WHERE    - Filter rows
+3. GROUP BY - Make groups
+4. HAVING   - Filter groups
+5. SELECT   - Choose columns
+6. ORDER BY - Sort results
+```
+
+<ProgressCheckpoint section="having-basics" xpReward={20} />

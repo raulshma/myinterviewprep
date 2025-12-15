@@ -1,0 +1,71 @@
+# Database Security Best Practices
+
+Protect your database from attacks and data breaches!
+
+## 🛡️ SQL Injection Prevention
+
+The #1 database security threat:
+
+```sql
+-- DANGEROUS: User input directly in query
+query = "SELECT * FROM users WHERE name = '" + user_input + "'";
+
+-- If user_input is: ' OR '1'='1
+-- Becomes: SELECT * FROM users WHERE name = '' OR '1'='1'
+-- Returns ALL users!
+```
+
+## ✅ Use Parameterized Queries
+
+```sql
+-- SAFE: Parameters prevent injection
+-- SQL Server
+EXEC sp_executesql
+    N'SELECT * FROM users WHERE name = @name',
+    N'@name NVARCHAR(100)',
+    @name = @user_input;
+
+-- In application code:
+command.Parameters.AddWithValue("@name", userInput);
+```
+
+## 🔑 Principle of Least Privilege
+
+Only grant what's needed:
+
+```sql
+-- BAD: App connects as admin
+GRANT ALL ON DATABASE mydb TO app_user;
+
+-- GOOD: Minimal permissions
+GRANT SELECT, INSERT ON orders TO app_user;
+GRANT EXECUTE ON sp_create_order TO app_user;
+```
+
+## 🔒 Password Security
+
+```sql
+-- Never store plain text passwords!
+-- Store hash instead
+INSERT INTO users (username, password_hash)
+VALUES ('john', HASHBYTES('SHA2_256', @password + @salt));
+
+-- Verify on login
+SELECT * FROM users
+WHERE username = @username
+AND password_hash = HASHBYTES('SHA2_256', @password + salt);
+```
+
+## 📋 Key Security Rules
+
+| Do                        | Don't                   |
+| ------------------------- | ----------------------- |
+| Use parameterized queries | Concatenate SQL strings |
+| Hash passwords            | Store plain text        |
+| Limit privileges          | Use admin accounts      |
+| Encrypt sensitive data    | Leave data unencrypted  |
+| Audit access              | Ignore logging          |
+
+<SecurityPermissionDemo mode="beginner" />
+
+<ProgressCheckpoint section="security-basics" xpReward={30} />

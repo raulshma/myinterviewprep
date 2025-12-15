@@ -1,0 +1,120 @@
+# Default Constraints: Practical Patterns
+
+Master default constraint patterns for real applications.
+
+## Date/Time Defaults
+
+```sql
+-- Current date/time
+created_at DATETIME DEFAULT GETDATE()           -- SQL Server
+created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP   -- PostgreSQL/MySQL
+
+-- UTC time
+created_at DATETIME DEFAULT GETUTCDATE()        -- SQL Server
+created_at TIMESTAMPTZ DEFAULT NOW()            -- PostgreSQL
+```
+
+## UUID/GUID Defaults
+
+```sql
+-- SQL Server
+id UNIQUEIDENTIFIER DEFAULT NEWID()
+id UNIQUEIDENTIFIER DEFAULT NEWSEQUENTIALID()  -- Sequential (better perf)
+
+-- PostgreSQL
+id UUID DEFAULT gen_random_uuid()
+```
+
+## Calculated Defaults
+
+```sql
+-- SQL Server: Using functions
+expiry_date DATE DEFAULT DATEADD(YEAR, 1, GETDATE())
+
+-- PostgreSQL
+expiry_date DATE DEFAULT CURRENT_DATE + INTERVAL '1 year'
+```
+
+## Defaults with Sequences
+
+```sql
+-- PostgreSQL
+CREATE SEQUENCE invoice_seq START 1000;
+ALTER TABLE invoices ALTER COLUMN invoice_no SET DEFAULT nextval('invoice_seq');
+
+-- SQL Server (use sequence object)
+CREATE SEQUENCE invoice_seq START WITH 1000;
+ALTER TABLE invoices ADD CONSTRAINT DF_invoice_no
+    DEFAULT NEXT VALUE FOR invoice_seq FOR invoice_no;
+```
+
+## Managing Defaults
+
+```sql
+-- View existing defaults (SQL Server)
+SELECT
+    c.name AS column_name,
+    dc.name AS constraint_name,
+    dc.definition AS default_value
+FROM sys.default_constraints dc
+JOIN sys.columns c ON dc.parent_column_id = c.column_id
+    AND dc.parent_object_id = c.object_id
+WHERE dc.parent_object_id = OBJECT_ID('orders');
+
+-- Drop default
+ALTER TABLE orders DROP CONSTRAINT DF_orders_status;
+
+-- Modify default (drop and recreate)
+ALTER TABLE orders DROP CONSTRAINT DF_orders_status;
+ALTER TABLE orders ADD CONSTRAINT DF_orders_status DEFAULT 'new' FOR status;
+```
+
+## DEFAULT vs COALESCE
+
+```sql
+-- DEFAULT applies on INSERT only
+-- COALESCE can handle NULLs in SELECT
+
+-- With DEFAULT:
+INSERT INTO t (a) VALUES (NULL);  -- Column gets NULL, not default!
+
+-- Explicit default:
+INSERT INTO t (a) VALUES (DEFAULT);  -- Column gets the default value
+
+-- COALESCE for runtime defaults:
+SELECT COALESCE(nickname, 'Anonymous') AS display_name FROM users;
+```
+
+## Trigger for Dynamic Defaults
+
+```sql
+-- When DEFAULT is not complex enough
+CREATE TRIGGER TR_set_defaults
+ON orders
+AFTER INSERT
+AS
+BEGIN
+    UPDATE o
+    SET o.order_number = 'ORD-' + FORMAT(o.id, '000000')
+    FROM orders o
+    INNER JOIN inserted i ON o.id = i.id
+    WHERE o.order_number IS NULL;
+END;
+```
+
+## Default Values in ORM
+
+```sql
+-- Often better to set defaults in application/ORM
+-- Database defaults are fallback
+
+-- Django example:
+-- created_at = models.DateTimeField(default=timezone.now)
+
+-- Benefits of app-level defaults:
+-- • More flexibility
+-- • Consistent with business logic
+-- • Easier testing
+```
+
+<ProgressCheckpoint section="default-patterns" xpReward={25} />

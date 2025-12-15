@@ -1,0 +1,110 @@
+# Self Join: Practical Patterns
+
+Master self-join for hierarchies, sequences, and comparisons.
+
+## Multi-Level Hierarchy
+
+```sql
+-- Employee with manager and skip-level manager
+SELECT
+    e.name AS employee,
+    m.name AS manager,
+    gm.name AS grand_manager
+FROM employees e
+LEFT JOIN employees m ON e.manager_id = m.id
+LEFT JOIN employees gm ON m.manager_id = gm.id;
+```
+
+## Finding Duplicates
+
+```sql
+-- Find customers with same email
+SELECT c1.id, c1.name, c2.id AS duplicate_id
+FROM customers c1
+INNER JOIN customers c2
+    ON c1.email = c2.email
+    AND c1.id < c2.id;  -- Only show each pair once
+```
+
+## Consecutive Records
+
+```sql
+-- Find orders placed consecutively
+SELECT
+    o1.id AS order1,
+    o2.id AS order2,
+    o1.order_date AS date1,
+    o2.order_date AS date2
+FROM orders o1
+INNER JOIN orders o2
+    ON o1.customer_id = o2.customer_id
+    AND o2.order_date = DATEADD(DAY, 1, o1.order_date);
+```
+
+## Gap Detection
+
+```sql
+-- Find gaps in sequential IDs
+SELECT
+    t1.id + 1 AS gap_start,
+    MIN(t2.id) - 1 AS gap_end
+FROM my_table t1
+LEFT JOIN my_table t2 ON t2.id > t1.id
+GROUP BY t1.id
+HAVING MIN(t2.id) > t1.id + 1;
+```
+
+## Sibling Relationships
+
+```sql
+-- Find all sibling pairs (same parent)
+SELECT
+    c1.name AS child1,
+    c2.name AS child2,
+    p.name AS parent
+FROM categories c1
+INNER JOIN categories c2
+    ON c1.parent_id = c2.parent_id
+    AND c1.id < c2.id
+LEFT JOIN categories p ON c1.parent_id = p.id;
+```
+
+## Comparing Periods
+
+```sql
+-- Compare current year to previous year sales
+WITH yearly_sales AS (
+    SELECT
+        product_id,
+        YEAR(sale_date) AS year,
+        SUM(amount) AS total
+    FROM sales
+    GROUP BY product_id, YEAR(sale_date)
+)
+SELECT
+    curr.product_id,
+    curr.year,
+    curr.total AS current_sales,
+    prev.total AS previous_sales,
+    curr.total - COALESCE(prev.total, 0) AS growth
+FROM yearly_sales curr
+LEFT JOIN yearly_sales prev
+    ON curr.product_id = prev.product_id
+    AND prev.year = curr.year - 1;
+```
+
+## All Pairs Within Group
+
+```sql
+-- All possible product comparisons within category
+SELECT
+    p1.id AS product1,
+    p2.id AS product2,
+    p1.price - p2.price AS price_difference
+FROM products p1
+CROSS JOIN products p2
+WHERE p1.category_id = p2.category_id
+AND p1.id <> p2.id;
+```
+
+<ProgressCheckpoint section="self-join-patterns" xpReward={40} />

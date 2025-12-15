@@ -1,0 +1,87 @@
+# ALTER TABLE: Changing Your Table Structure
+
+Learn to modify tables after they're created - add columns, change types, and more!
+
+## 🔧 What is ALTER TABLE?
+
+ALTER TABLE lets you change an existing table without recreating it.
+
+## ➕ Adding Columns
+
+```sql
+-- Add one column
+ALTER TABLE customers
+ADD phone VARCHAR(20);
+
+-- Add with default value
+ALTER TABLE orders
+ADD status VARCHAR(20) DEFAULT 'pending';
+
+-- Add multiple columns (SQL Server)
+ALTER TABLE products
+ADD
+    weight DECIMAL(5,2),
+    dimensions VARCHAR(50);
+```
+
+## 🗑️ Removing Columns
+
+```sql
+-- Drop a column
+ALTER TABLE customers
+DROP COLUMN middle_name;
+
+-- SQL Server: Drop multiple
+ALTER TABLE products
+DROP COLUMN weight, DROP COLUMN dimensions;
+```
+
+## ✏️ Changing Column Types
+
+```sql
+-- SQL Server
+ALTER TABLE customers
+ALTER COLUMN phone VARCHAR(30);
+
+-- PostgreSQL
+ALTER TABLE customers
+ALTER COLUMN phone TYPE VARCHAR(30);
+
+-- MySQL
+ALTER TABLE customers
+MODIFY COLUMN phone VARCHAR(30);
+```
+
+## 📝 Renaming Things
+
+```sql
+-- Rename column (varies by database)
+-- SQL Server
+EXEC sp_rename 'customers.phone', 'phone_number', 'COLUMN';
+
+-- PostgreSQL
+ALTER TABLE customers
+RENAME COLUMN phone TO phone_number;
+
+-- Rename table
+ALTER TABLE customers RENAME TO clients;
+-- or
+EXEC sp_rename 'customers', 'clients';  -- SQL Server
+```
+
+## 🎯 Common Examples
+
+| Task          | SQL                                        |
+| ------------- | ------------------------------------------ |
+| Add column    | `ADD email VARCHAR(100)`                   |
+| Drop column   | `DROP COLUMN temp_field`                   |
+| Make NOT NULL | `ALTER COLUMN name SET NOT NULL`           |
+| Add default   | `ALTER COLUMN status SET DEFAULT 'active'` |
+
+## 💡 Quick Tips
+
+1. **Backup first** - ALTER can't always be undone
+2. **Test on development** - Make sure changes work
+3. **Consider downtime** - Large tables may lock during ALTER
+
+<ProgressCheckpoint section="alter-table-basics" xpReward={25} />

@@ -1,0 +1,89 @@
+# GRANT and REVOKE: Practical Patterns
+
+Role-based access and permission management.
+
+## Column-Level Permissions
+
+```sql
+-- Grant access to specific columns only
+GRANT SELECT (id, name, email) ON users TO support_team;
+-- Cannot see: password, ssn, salary
+
+GRANT UPDATE (email, phone) ON users TO users_themselves;
+```
+
+## WITH GRANT OPTION
+
+```sql
+-- Allow user to grant their permissions to others
+GRANT SELECT ON reports TO manager WITH GRANT OPTION;
+
+-- Manager can now:
+GRANT SELECT ON reports TO team_member;  -- Allowed!
+```
+
+## Schema-Level Permissions
+
+```sql
+-- PostgreSQL
+GRANT USAGE ON SCHEMA analytics TO analyst;
+GRANT SELECT ON ALL TABLES IN SCHEMA analytics TO analyst;
+GRANT SELECT ON ALL FUTURE TABLES IN SCHEMA analytics TO analyst;
+
+-- SQL Server
+GRANT SELECT ON SCHEMA::sales TO sales_user;
+```
+
+## Database-Level Permissions
+
+```sql
+-- SQL Server
+GRANT CONNECT TO app_user;
+GRANT CREATE TABLE TO developer;
+GRANT ALTER ANY SCHEMA TO admin;
+
+-- PostgreSQL
+GRANT CONNECT ON DATABASE mydb TO app_user;
+GRANT CREATE ON DATABASE mydb TO developer;
+```
+
+## Role Hierarchies
+
+```sql
+-- Create hierarchical roles
+CREATE ROLE reader;
+CREATE ROLE writer;
+CREATE ROLE admin;
+
+-- Build hierarchy
+GRANT reader TO writer;  -- Writers can also read
+GRANT writer TO admin;   -- Admins can read and write
+
+-- Grant permissions to base roles
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO reader;
+GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO writer;
+```
+
+## View Effective Permissions
+
+```sql
+-- SQL Server
+SELECT * FROM fn_my_permissions('orders', 'OBJECT');
+
+-- PostgreSQL
+SELECT grantee, privilege_type
+FROM information_schema.role_table_grants
+WHERE table_name = 'orders';
+```
+
+## CASCADE Option
+
+```sql
+-- Remove permission and any granted by it
+REVOKE SELECT ON reports FROM manager CASCADE;
+-- Also removes permissions manager granted to others
+```
+
+<SecurityPermissionDemo mode="intermediate" />
+
+<ProgressCheckpoint section="grant-revoke-practical" xpReward={40} />

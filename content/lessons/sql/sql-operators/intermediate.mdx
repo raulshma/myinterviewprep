@@ -1,0 +1,144 @@
+# SQL Operators: Complete Guide
+
+Master all SQL operators for building sophisticated query conditions.
+
+## Comparison Operators Deep Dive
+
+### Standard Comparisons
+
+```sql
+-- Equal (be careful with NULL!)
+WHERE status = 'active'
+
+-- Not equal (two syntaxes)
+WHERE status <> 'deleted'
+WHERE status != 'deleted'
+
+-- Range comparisons
+WHERE price >= 10 AND price <= 100
+-- Equivalent to:
+WHERE price BETWEEN 10 AND 100
+```
+
+### NULL-Safe Comparisons
+
+```sql
+-- Regular comparison fails with NULL
+WHERE column = NULL      -- Always FALSE (don't do this!)
+
+-- Correct NULL checks
+WHERE column IS NULL
+WHERE column IS NOT NULL
+
+-- NULL-safe equality (varies by database)
+WHERE column <=> value   -- MySQL
+WHERE column IS NOT DISTINCT FROM value  -- PostgreSQL/SQL Server
+```
+
+## String Operators
+
+### LIKE Patterns
+
+| Pattern  | Matches          | Example                      |
+| -------- | ---------------- | ---------------------------- |
+| `%`      | Any characters   | `'%son'` → Anderson, Jackson |
+| `_`      | Single character | `'_ohn'` → John, Bohn        |
+| `[abc]`  | Any in brackets  | `'[JK]ohn'` → John, Kohn     |
+| `[^abc]` | NOT in brackets  | `'[^J]ohn'` → Kohn, not John |
+
+```sql
+-- Case-insensitive search
+WHERE LOWER(name) LIKE '%smith%'
+
+-- Escape special characters
+WHERE description LIKE '%50\%%' ESCAPE '\'  -- Contains "50%"
+```
+
+### String Concatenation
+
+```sql
+-- Standard (SQL Server/PostgreSQL)
+SELECT first_name + ' ' + last_name AS full_name
+
+-- PostgreSQL/Oracle
+SELECT first_name || ' ' || last_name AS full_name
+
+-- CONCAT function (all databases)
+SELECT CONCAT(first_name, ' ', last_name) AS full_name
+```
+
+## Logical Operator Precedence
+
+Order of evaluation (highest to lowest):
+
+1. `NOT`
+2. `AND`
+3. `OR`
+
+```sql
+-- This query...
+WHERE a = 1 OR b = 2 AND c = 3
+-- Is evaluated as...
+WHERE a = 1 OR (b = 2 AND c = 3)
+
+-- Use parentheses for clarity!
+WHERE (a = 1 OR b = 2) AND c = 3
+```
+
+## Set Operators
+
+### IN and NOT IN
+
+```sql
+-- IN is cleaner than multiple ORs
+WHERE status IN ('pending', 'processing', 'shipped')
+
+-- Subquery with IN
+WHERE customer_id IN (
+    SELECT customer_id FROM vip_customers
+)
+
+-- Watch out for NULL in NOT IN!
+WHERE id NOT IN (1, 2, NULL)  -- Returns NO rows!
+```
+
+### EXISTS vs IN
+
+```sql
+-- EXISTS (often better for large subqueries)
+WHERE EXISTS (
+    SELECT 1 FROM orders o
+    WHERE o.customer_id = customers.id
+)
+
+-- IN (simpler syntax)
+WHERE customer_id IN (SELECT id FROM vip_customers)
+```
+
+## Arithmetic Operations
+
+```sql
+SELECT
+    quantity * price AS subtotal,
+    quantity * price * 0.1 AS tax,
+    quantity * price * 1.1 AS total,
+    (end_date - start_date) AS days_between,  -- Date arithmetic
+    salary / 12.0 AS monthly_salary  -- Use .0 to avoid integer division
+FROM orders;
+```
+
+## Bitwise Operators
+
+```sql
+-- Permissions using bits
+SELECT * FROM users
+WHERE permissions & 4 = 4;  -- Has read permission (bit 2)
+
+-- Operators
+& -- AND
+| -- OR
+^ -- XOR
+~ -- NOT
+```
+
+<ProgressCheckpoint section="operators-complete" xpReward={35} />

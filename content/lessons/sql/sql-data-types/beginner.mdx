@@ -1,0 +1,89 @@
+# SQL Data Types: Storing Different Kinds of Data
+
+Every piece of data has a **type**. Just like real life!
+
+## 🎯 What Are Data Types?
+
+Data types tell the database what kind of information a column can hold:
+
+| Real World        | Data Type | SQL Example   |
+| ----------------- | --------- | ------------- |
+| Your age          | Number    | `INT`         |
+| Your name         | Text      | `VARCHAR(50)` |
+| Your birthday     | Date      | `DATE`        |
+| Are you a member? | Yes/No    | `BOOLEAN`     |
+
+## 🔢 Number Types
+
+### Whole Numbers (Integers)
+
+| Type      | Range          | Use For           |
+| --------- | -------------- | ----------------- |
+| `TINYINT` | 0 to 255       | Age, small counts |
+| `INT`     | ±2 billion     | Most IDs, counts  |
+| `BIGINT`  | ±9 quintillion | Huge numbers      |
+
+### Decimal Numbers
+
+| Type            | Example  | Use For         |
+| --------------- | -------- | --------------- |
+| `DECIMAL(10,2)` | 12345.67 | Money!          |
+| `FLOAT`         | 3.14159  | Scientific data |
+
+```sql
+CREATE TABLE products (
+    price DECIMAL(10, 2),  -- $99999999.99
+    weight FLOAT
+);
+```
+
+## 📝 Text Types
+
+| Type           | Max Length | Use For          |
+| -------------- | ---------- | ---------------- |
+| `CHAR(10)`     | Fixed 10   | State codes, zip |
+| `VARCHAR(100)` | Up to 100  | Names, emails    |
+| `TEXT`         | Very long  | Descriptions     |
+
+```sql
+CREATE TABLE users (
+    first_name VARCHAR(50),
+    bio TEXT
+);
+```
+
+## 📅 Date and Time Types
+
+| Type       | Stores    | Example             |
+| ---------- | --------- | ------------------- |
+| `DATE`     | Just date | 2024-03-15          |
+| `TIME`     | Just time | 14:30:00            |
+| `DATETIME` | Both      | 2024-03-15 14:30:00 |
+
+```sql
+CREATE TABLE events (
+    event_date DATE,
+    start_time TIME,
+    created_at DATETIME
+);
+```
+
+## ✅ Boolean Type
+
+```sql
+CREATE TABLE tasks (
+    is_completed BOOLEAN  -- TRUE or FALSE
+);
+```
+
+## 💡 Choosing the Right Type
+
+| Ask Yourself          | Choose           |
+| --------------------- | ---------------- |
+| Is it a whole number? | INT              |
+| Is it money?          | DECIMAL          |
+| Is it short text?     | VARCHAR          |
+| Is it a date?         | DATE or DATETIME |
+| Is it yes/no?         | BOOLEAN          |
+
+<ProgressCheckpoint section="sql-data-types" xpReward={25} />

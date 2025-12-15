@@ -1,0 +1,28 @@
+{
+  "id": "window-functions",
+  "title": "SQL Window Functions",
+  "description": "Master ROW_NUMBER, RANK, LAG, LEAD, and aggregate window functions for advanced analytics.",
+  "milestone": "sql",
+  "order": 18,
+  "sections": [
+    "row-number-rank",
+    "lag-lead",
+    "aggregate-over"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 18,
+      "xpReward": 35
+    },
+    "intermediate": {
+      "estimatedMinutes": 30,
+      "xpReward": 60
+    },
+    "advanced": {
+      "estimatedMinutes": 45,
+      "xpReward": 95
+    }
+  },
+  "prerequisites": ["aggregate-functions", "subqueries"],
+  "tags": ["sql", "window-functions", "analytics", "rank", "partition"]
+}

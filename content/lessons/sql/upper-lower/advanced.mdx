@@ -1,0 +1,105 @@
+# UPPER, LOWER, TRIM: Advanced Topics
+
+Unicode, performance, and complex formatting.
+
+## Unicode Case Conversion
+
+```sql
+-- Some characters have special casing
+SELECT UPPER('ß');  -- 'SS' (German eszett)
+SELECT LOWER('İ');  -- Depends on locale (Turkish I)
+
+-- PostgreSQL: Locale-aware
+SELECT UPPER('ß' COLLATE "de_DE");
+
+-- Be aware of length changes
+SELECT LEN('ß'), LEN(UPPER('ß'));  -- 1, 2
+```
+
+## Performance Implications
+
+```sql
+-- Functions on columns prevent index seek
+-- Slow:
+WHERE LOWER(email) = 'john@example.com'
+
+-- Solutions:
+-- 1. Case-insensitive collation on column
+ALTER TABLE users
+ALTER COLUMN email VARCHAR(100) COLLATE Latin1_General_CI_AS;
+
+-- 2. Functional index (PostgreSQL)
+CREATE INDEX idx_email_lower ON users(LOWER(email));
+
+-- 3. Computed column (SQL Server)
+ALTER TABLE users ADD email_lower AS LOWER(email) PERSISTED;
+CREATE INDEX idx_email_lower ON users(email_lower);
+```
+
+## Fuzzy Matching Preparation
+
+```sql
+-- Normalize for comparison
+CREATE FUNCTION dbo.NormalizeForMatch(@text NVARCHAR(MAX))
+RETURNS NVARCHAR(MAX)
+AS
+BEGIN
+    RETURN LOWER(
+        REPLACE(REPLACE(REPLACE(REPLACE(
+            TRIM(@text),
+            '-', ''), ' ', ''), '.', ''), '''', '')
+    );
+END;
+
+-- Usage: Find matching names
+WHERE dbo.NormalizeForMatch(name) = dbo.NormalizeForMatch(@search);
+```
+
+## Accent Handling
+
+```sql
+-- PostgreSQL: UNACCENT extension
+CREATE EXTENSION unaccent;
+SELECT unaccent('Héllo Wörld');  -- 'Hello World'
+
+-- SQL Server: Collation
+SELECT 'café' COLLATE Latin1_General_CI_AI;  -- AI = Accent Insensitive
+
+-- Compare ignoring accents
+WHERE name COLLATE Latin1_General_CI_AI = 'cafe';
+```
+
+## ASCII and Character Functions
+
+```sql
+-- Get ASCII value
+SELECT ASCII('A');  -- 65
+
+-- Get character from ASCII
+SELECT CHAR(65);  -- 'A'
+
+-- Check for valid characters
+SELECT name FROM products
+WHERE name NOT LIKE '%[^a-zA-Z0-9 ]%';  -- Only alphanumeric
+
+-- Remove non-printable characters
+SELECT REPLACE(text, CHAR(0), '');  -- Remove NULL chars
+```
+
+## Batch Processing for Cleanup
+
+```sql
+-- Efficient bulk cleanup
+UPDATE users
+SET
+    email = LOWER(TRIM(email)),
+    name = UPPER(LEFT(TRIM(name), 1)) + LOWER(SUBSTRING(TRIM(name), 2, 100))
+WHERE
+    email <> LOWER(TRIM(email))
+    OR name <> UPPER(LEFT(TRIM(name), 1)) + LOWER(SUBSTRING(TRIM(name), 2, 100));
+-- Only update rows that need it
+```
+
+<StringFunctionPlayground mode="advanced" />
+
+<ProgressCheckpoint section="upper-lower-advanced" xpReward={40} />

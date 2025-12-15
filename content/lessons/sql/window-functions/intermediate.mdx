@@ -1,0 +1,144 @@
+# LAG, LEAD, and Aggregate Window Functions
+
+Explore time-series analysis and running calculations with Northwind data.
+
+## LAG and LEAD: Looking Backward and Forward
+
+### LAG: Access Previous Row
+
+```sql
+-- Compare each order's freight with the previous order
+SELECT
+    OrderID,
+    OrderDate,
+    Freight,
+    LAG(Freight, 1) OVER (ORDER BY OrderDate) AS PrevFreight,
+    Freight - LAG(Freight, 1) OVER (ORDER BY OrderDate) AS FreightChange
+FROM Orders
+WHERE CustomerID = 'ALFKI';
+```
+
+| OrderID | OrderDate  | Freight | PrevFreight | FreightChange |
+| :------ | :--------- | :------ | :---------- | :------------ |
+| 10643   | 1997-08-25 | 29.46   | NULL        | NULL          |
+| 10692   | 1997-10-03 | 61.02   | 29.46       | +31.56        |
+| 10702   | 1997-10-13 | 23.94   | 61.02       | -37.08        |
+
+### LEAD: Access Next Row
+
+```sql
+-- Show current and next order date for forecasting
+SELECT
+    OrderID,
+    OrderDate,
+    LEAD(OrderDate, 1) OVER (ORDER BY OrderDate) AS NextOrderDate,
+    DATEDIFF(day, OrderDate, LEAD(OrderDate, 1) OVER (ORDER BY OrderDate)) AS DaysBetween
+FROM Orders
+WHERE CustomerID = 'ALFKI';
+```
+
+<WindowFunctionExplorer mode="intermediate" />
+
+## LAG/LEAD with Default Values
+
+Handle the NULL at edges:
+
+```sql
+SELECT
+    ProductName,
+    UnitPrice,
+    LAG(UnitPrice, 1, 0) OVER (ORDER BY UnitPrice) AS PrevPrice  -- 0 if no previous
+FROM Products;
+```
+
+## Aggregate Window Functions
+
+Run aggregates over a window **without grouping**:
+
+### Running Total
+
+```sql
+-- Running total of order value per customer
+SELECT
+    o.CustomerID,
+    o.OrderID,
+    o.OrderDate,
+    SUM(od.Quantity * od.UnitPrice) AS OrderValue,
+    SUM(SUM(od.Quantity * od.UnitPrice)) OVER (
+        PARTITION BY o.CustomerID
+        ORDER BY o.OrderDate
+    ) AS RunningTotal
+FROM Orders o
+JOIN [Order Details] od ON o.OrderID = od.OrderID
+GROUP BY o.CustomerID, o.OrderID, o.OrderDate
+ORDER BY o.CustomerID, o.OrderDate;
+```
+
+### Moving Average (Last 3 Orders)
+
+```sql
+SELECT
+    OrderID,
+    OrderDate,
+    Freight,
+    AVG(Freight) OVER (
+        ORDER BY OrderDate
+        ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+    ) AS MovingAvg3
+FROM Orders
+WHERE CustomerID = 'QUICK';
+```
+
+## Window Frame Specification
+
+Control exactly which rows are included:
+
+```sql
+ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW  -- All previous + current
+ROWS BETWEEN 3 PRECEDING AND 1 FOLLOWING          -- 3 before, current, 1 after
+ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING  -- Current + all after
+```
+
+## Practical Northwind Patterns
+
+### Year-over-Year Comparison
+
+```sql
+SELECT
+    YEAR(OrderDate) AS Year,
+    MONTH(OrderDate) AS Month,
+    SUM(Freight) AS TotalFreight,
+    LAG(SUM(Freight), 12) OVER (ORDER BY YEAR(OrderDate), MONTH(OrderDate)) AS SameMonthLastYear
+FROM Orders
+GROUP BY YEAR(OrderDate), MONTH(OrderDate);
+```
+
+### Percentage of Category Total
+
+```sql
+SELECT
+    CategoryID,
+    ProductName,
+    UnitPrice,
+    ROUND(100.0 * UnitPrice / SUM(UnitPrice) OVER (PARTITION BY CategoryID), 1) AS PctOfCategory
+FROM Products;
+```
+
+### First and Last Values
+
+```sql
+SELECT DISTINCT
+    CategoryID,
+    FIRST_VALUE(ProductName) OVER (
+        PARTITION BY CategoryID
+        ORDER BY UnitPrice DESC
+    ) AS MostExpensive,
+    LAST_VALUE(ProductName) OVER (
+        PARTITION BY CategoryID
+        ORDER BY UnitPrice DESC
+        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+    ) AS LeastExpensive
+FROM Products;
+```
+
+<ProgressCheckpoint section="lag-lead" xpReward={60} />

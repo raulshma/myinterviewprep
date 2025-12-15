@@ -1,0 +1,116 @@
+# Check Constraints: Complex Validation
+
+Master complex validation patterns with CHECK constraints.
+
+## Multi-Column Constraints
+
+```sql
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    order_date DATE NOT NULL,
+    ship_date DATE,
+    status VARCHAR(20),
+
+    -- Ship date must be after order date
+    CONSTRAINT CK_dates CHECK (ship_date IS NULL OR ship_date >= order_date),
+
+    -- Status must match timeline
+    CONSTRAINT CK_status_ship CHECK (
+        (status = 'pending' AND ship_date IS NULL) OR
+        (status = 'shipped' AND ship_date IS NOT NULL) OR
+        status NOT IN ('pending', 'shipped')
+    )
+);
+```
+
+## Pattern Matching
+
+```sql
+-- SQL Server: Limited to LIKE patterns
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    email VARCHAR(100) CHECK (email LIKE '%@%.%'),
+    phone VARCHAR(20) CHECK (phone LIKE '[0-9][0-9][0-9]-[0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]')
+);
+
+-- PostgreSQL: Full regex support
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    email VARCHAR(100) CHECK (email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z]{2,}$')
+);
+```
+
+## Conditional Logic
+
+```sql
+CREATE TABLE inventory (
+    id INT PRIMARY KEY,
+    product_type VARCHAR(20),
+    serial_number VARCHAR(50),
+    batch_number VARCHAR(50),
+
+    -- Electronics must have serial, consumables must have batch
+    CHECK (
+        (product_type = 'electronic' AND serial_number IS NOT NULL) OR
+        (product_type = 'consumable' AND batch_number IS NOT NULL) OR
+        product_type NOT IN ('electronic', 'consumable')
+    )
+);
+```
+
+## XOR (Exactly One Of)
+
+```sql
+CREATE TABLE contacts (
+    id INT PRIMARY KEY,
+    email VARCHAR(100),
+    phone VARCHAR(20),
+
+    -- Must have at least one contact method
+    CHECK (email IS NOT NULL OR phone IS NOT NULL),
+
+    -- Or exactly one (XOR):
+    -- CHECK ((email IS NULL) != (phone IS NULL))
+);
+```
+
+## Handling Existing Data
+
+```sql
+-- Add constraint even if existing data violates it
+-- SQL Server
+ALTER TABLE products WITH NOCHECK
+ADD CONSTRAINT CK_price CHECK (price > 0);
+
+-- Later, find violations
+SELECT * FROM products WHERE price <= 0;
+
+-- Enable checking (will fail until data is fixed)
+ALTER TABLE products CHECK CONSTRAINT CK_price;
+```
+
+## Disabling and Dropping
+
+```sql
+-- Temporarily disable (SQL Server)
+ALTER TABLE products NOCHECK CONSTRAINT CK_price;
+-- ... perform bulk operation ...
+ALTER TABLE products CHECK CONSTRAINT CK_price;
+
+-- Drop constraint
+ALTER TABLE products DROP CONSTRAINT CK_price;
+```
+
+## Checking Constraint Status
+
+```sql
+-- SQL Server
+SELECT
+    name,
+    is_disabled,
+    is_not_trusted  -- True if WITH NOCHECK was used
+FROM sys.check_constraints
+WHERE parent_object_id = OBJECT_ID('products');
+```
+
+<ProgressCheckpoint section="check-complex" xpReward={30} />

@@ -1,0 +1,31 @@
+{
+  "id": "dml-operations",
+  "title": "Data Manipulation Language (DML)",
+  "description": "Master CRUD operations - SELECT, INSERT, UPDATE, DELETE - the core of everyday SQL work.",
+  "milestone": "sql",
+  "order": 3,
+  "sections": [
+    "select-queries",
+    "from-where-orderby", 
+    "groupby-having",
+    "insert-data",
+    "update-data",
+    "delete-data"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 20,
+      "xpReward": 35
+    },
+    "intermediate": {
+      "estimatedMinutes": 35,
+      "xpReward": 65
+    },
+    "advanced": {
+      "estimatedMinutes": 50,
+      "xpReward": 100
+    }
+  },
+  "prerequisites": ["basic-sql-syntax"],
+  "tags": ["sql", "dml", "select", "insert", "update", "delete", "crud"]
+}

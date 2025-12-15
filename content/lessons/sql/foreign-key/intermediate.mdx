@@ -1,0 +1,127 @@
+# Foreign Keys: Cascade Options and Patterns
+
+Master foreign key behaviors and relationship patterns.
+
+## Cascade Options
+
+Control what happens when parent records are updated or deleted:
+
+```sql
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    customer_id INT,
+    FOREIGN KEY (customer_id) REFERENCES customers(id)
+        ON DELETE CASCADE      -- Delete orders when customer deleted
+        ON UPDATE CASCADE      -- Update FK if customer ID changes
+);
+```
+
+### ON DELETE Options
+
+| Option        | Behavior                          | Use Case                   |
+| ------------- | --------------------------------- | -------------------------- |
+| `NO ACTION`   | Error if children exist (default) | Prevent accidental deletes |
+| `CASCADE`     | Delete children too               | Logs, temporary data       |
+| `SET NULL`    | Set FK to NULL                    | Optional relationships     |
+| `SET DEFAULT` | Set FK to default value           | Rare                       |
+
+```sql
+-- SET NULL example
+CREATE TABLE comments (
+    id INT PRIMARY KEY,
+    user_id INT,
+    content TEXT,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+        ON DELETE SET NULL  -- Keep comment, remove user link
+);
+```
+
+## Many-to-Many Relationships
+
+Use a junction/bridge table:
+
+```sql
+-- Students can take many courses
+-- Courses can have many students
+CREATE TABLE students (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE courses (
+    id INT PRIMARY KEY,
+    title VARCHAR(100)
+);
+
+-- Junction table (also called: bridge, linking, or join table)
+CREATE TABLE student_courses (
+    student_id INT,
+    course_id INT,
+    enrolled_date DATE,
+    PRIMARY KEY (student_id, course_id),
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+);
+```
+
+## Self-Referencing Foreign Key
+
+A table referencing itself (hierarchies):
+
+```sql
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    manager_id INT,
+    FOREIGN KEY (manager_id) REFERENCES employees(id)
+);
+
+-- CEO has no manager
+INSERT INTO employees VALUES (1, 'CEO', NULL);
+-- Others report to someone
+INSERT INTO employees VALUES (2, 'VP', 1);
+INSERT INTO employees VALUES (3, 'Manager', 2);
+```
+
+## Adding FK to Existing Table
+
+```sql
+-- Add foreign key constraint
+ALTER TABLE orders
+ADD CONSTRAINT FK_orders_customers
+FOREIGN KEY (customer_id) REFERENCES customers(id);
+
+-- Drop foreign key
+ALTER TABLE orders
+DROP CONSTRAINT FK_orders_customers;
+```
+
+## Checking Existing Foreign Keys
+
+```sql
+-- SQL Server
+SELECT
+    fk.name AS FK_name,
+    OBJECT_NAME(fk.parent_object_id) AS child_table,
+    COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS child_column,
+    OBJECT_NAME(fk.referenced_object_id) AS parent_table
+FROM sys.foreign_keys fk
+JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id;
+```
+
+## Nullable Foreign Keys
+
+```sql
+-- Optional relationship
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    department_id INT NULL,  -- Employee might not have department yet
+    FOREIGN KEY (department_id) REFERENCES departments(id)
+);
+
+-- Insert without department
+INSERT INTO employees (id, name, department_id) VALUES (1, 'Contractor', NULL);
+```
+
+<ProgressCheckpoint section="foreign-key-cascade" xpReward={45} />

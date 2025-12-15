@@ -1,0 +1,92 @@
+# Nested Subqueries: Queries Within Queries
+
+Learn to use one query inside another for powerful data retrieval!
+
+## 🎯 What is a Subquery?
+
+A subquery is a query inside another query, wrapped in parentheses:
+
+```sql
+SELECT * FROM products
+WHERE price > (SELECT AVG(price) FROM products);
+-- Find products above average price
+```
+
+## 📊 Where Can You Use Subqueries?
+
+| Location | Purpose                       |
+| -------- | ----------------------------- |
+| WHERE    | Filter based on another query |
+| SELECT   | Add calculated columns        |
+| FROM     | Use query result as a table   |
+
+## 📝 Subquery in WHERE
+
+```sql
+-- Products above average price
+SELECT * FROM products
+WHERE price > (SELECT AVG(price) FROM products);
+
+-- Customers with orders
+SELECT * FROM customers
+WHERE id IN (SELECT customer_id FROM orders);
+
+-- Products not yet sold
+SELECT * FROM products
+WHERE id NOT IN (SELECT product_id FROM order_items);
+```
+
+## ⚡ Subquery in SELECT
+
+Add a calculated value to each row:
+
+```sql
+SELECT
+    name,
+    price,
+    (SELECT AVG(price) FROM products) AS avg_price,
+    price - (SELECT AVG(price) FROM products) AS diff_from_avg
+FROM products;
+```
+
+## 📦 Subquery in FROM
+
+Use a query result as a table:
+
+```sql
+SELECT
+    category,
+    avg_price
+FROM (
+    SELECT category, AVG(price) AS avg_price
+    FROM products
+    GROUP BY category
+) AS category_stats
+WHERE avg_price > 100;
+```
+
+## 🎯 Common Patterns
+
+```sql
+-- Find the maximum value's row
+SELECT * FROM products
+WHERE price = (SELECT MAX(price) FROM products);
+
+-- Top spenders
+SELECT * FROM customers
+WHERE id IN (
+    SELECT customer_id FROM orders
+    GROUP BY customer_id
+    HAVING SUM(total) > 1000
+);
+```
+
+## 💡 Key Points
+
+1. Subqueries run first (inside out)
+2. Inner query feeds the outer query
+3. Use parentheses around subqueries
+4. Single-value subqueries work with `=, >, <`
+5. Multi-value subqueries work with `IN, NOT IN`
+
+<ProgressCheckpoint section="nested-basics" xpReward={30} />

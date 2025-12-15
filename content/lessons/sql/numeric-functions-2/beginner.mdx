@@ -1,0 +1,75 @@
+# Advanced Numeric Functions
+
+Power, roots, and exponential calculations!
+
+## ⚡ POWER - Exponentiation
+
+```sql
+SELECT POWER(2, 3);   -- 8 (2³ = 2×2×2)
+SELECT POWER(10, 2);  -- 100
+SELECT POWER(5, 0);   -- 1 (anything to power 0 = 1)
+```
+
+## √ SQRT - Square Root
+
+```sql
+SELECT SQRT(16);  -- 4
+SELECT SQRT(2);   -- 1.414...
+SELECT SQRT(0);   -- 0
+```
+
+## 📊 SQUARE (SQL Server)
+
+```sql
+SELECT SQUARE(5);  -- 25
+SELECT SQUARE(3);  -- 9
+-- Equivalent: SELECT POWER(5, 2);
+```
+
+## 🌍 Real Examples
+
+```sql
+-- Calculate area of circles
+SELECT POWER(radius, 2) * PI() AS area FROM circles;
+
+-- Pythagorean distance
+SELECT SQRT(POWER(x2 - x1, 2) + POWER(y2 - y1, 2)) AS distance
+FROM points;
+
+-- Compound interest
+SELECT
+    principal,
+    rate,
+    years,
+    principal * POWER(1 + rate, years) AS future_value
+FROM investments;
+```
+
+## 📈 EXP and LOG
+
+```sql
+-- EXP: e raised to a power
+SELECT EXP(1);    -- 2.718... (e)
+SELECT EXP(0);    -- 1
+
+-- LOG: Natural logarithm
+SELECT LOG(2.718);  -- ~1
+SELECT LOG(1);      -- 0
+```
+
+## 🔢 RAND - Random Numbers
+
+```sql
+-- Random number between 0 and 1
+SELECT RAND();  -- 0.37281...
+
+-- Random integer 1-100
+SELECT FLOOR(RAND() * 100) + 1;
+
+-- Random row
+SELECT TOP 1 * FROM products ORDER BY NEWID();
+```
+
+<NumericFunctionExplorer mode="beginner" />
+
+<ProgressCheckpoint section="advanced-numeric-basics" xpReward={25} />

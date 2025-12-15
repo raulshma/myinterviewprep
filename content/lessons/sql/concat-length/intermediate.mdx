@@ -1,0 +1,104 @@
+# CONCAT and LENGTH: Practical Patterns
+
+Real-world string building and validation.
+
+## CONCAT_WS: With Separator
+
+```sql
+-- Avoid empty separators
+SELECT CONCAT_WS(', ',
+    NULLIF(address1, ''),
+    NULLIF(address2, ''),
+    city,
+    state
+) AS full_address
+FROM addresses;
+-- Skips NULL/empty values, no double commas
+```
+
+## Building Dynamic Strings
+
+```sql
+-- Email formatting
+SELECT CONCAT(
+    LOWER(first_name), '.',
+    LOWER(last_name),
+    '@company.com'
+) AS email
+FROM employees;
+
+-- File paths
+SELECT CONCAT('/uploads/', user_id, '/', filename) AS path
+FROM files;
+```
+
+## LENGTH Variations
+
+```sql
+-- Character length vs byte length
+SELECT
+    LENGTH('Héllo'),       -- 5 characters
+    LENGTHB('Héllo'),      -- 6 bytes (PostgreSQL, Oracle - UTF-8)
+    DATALENGTH('Héllo');   -- Bytes in SQL Server
+
+-- Trim before measuring
+SELECT LENGTH(TRIM(name)) FROM products;
+```
+
+## Formatting with Padding
+
+```sql
+-- Right pad to fixed length
+SELECT RPAD(name, 20, ' ') AS formatted_name FROM products;
+
+-- Left pad numbers
+SELECT LPAD(CAST(id AS VARCHAR), 5, '0') AS padded_id FROM orders;
+-- 42 → '00042'
+```
+
+## Truncating Long Strings
+
+```sql
+-- Truncate with ellipsis
+SELECT
+    CASE
+        WHEN LENGTH(description) > 100
+        THEN CONCAT(LEFT(description, 97), '...')
+        ELSE description
+    END AS short_desc
+FROM products;
+```
+
+## String Aggregation
+
+```sql
+-- SQL Server: STRING_AGG
+SELECT STRING_AGG(name, ', ') AS all_names
+FROM products
+GROUP BY category;
+
+-- PostgreSQL: string_agg
+SELECT string_agg(name, ', ' ORDER BY name) AS all_names
+FROM products;
+
+-- MySQL: GROUP_CONCAT
+SELECT GROUP_CONCAT(name SEPARATOR ', ') AS all_names
+FROM products
+GROUP BY category;
+```
+
+## Multi-Column Formatting
+
+```sql
+SELECT
+    CONCAT_WS(' | ',
+        CONCAT('ID: ', id),
+        CONCAT('Name: ', name),
+        CONCAT('Price: $', FORMAT(price, 2))
+    ) AS formatted_row
+FROM products;
+```
+
+<StringFunctionPlayground mode="intermediate" />
+
+<ProgressCheckpoint section="concat-length-practical" xpReward={40} />

@@ -1,0 +1,15 @@
+{
+  "id": "rollback-transaction",
+  "title": "ROLLBACK TRANSACTION",
+  "description": "Undo transaction changes and restore previous state.",
+  "milestone": "transactions",
+  "order": 4,
+  "sections": ["rollback-basics", "error-handling", "patterns"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 15, "xpReward": 40 }
+  },
+  "prerequisites": ["commit-transaction"],
+  "tags": ["sql", "transactions", "rollback"]
+}

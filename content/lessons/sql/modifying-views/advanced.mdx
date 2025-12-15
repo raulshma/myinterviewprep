@@ -1,0 +1,108 @@
+# Modifying Views: Advanced Topics
+
+Complex modifications and enterprise patterns.
+
+## Schema Migration with Views
+
+```sql
+-- Use views as abstraction during migration
+-- Old table: customers (id, first_name, last_name)
+-- New table: customers (id, full_name)
+
+-- Transition view
+CREATE OR REPLACE VIEW customers_api AS
+SELECT
+    id,
+    COALESCE(full_name, CONCAT(first_name, ' ', last_name)) AS name
+FROM customers;
+
+-- Applications use view, backend migrates transparently
+```
+
+## Versioned Views
+
+```sql
+-- Maintain multiple versions
+CREATE VIEW api.customers_v1 AS ...;
+CREATE VIEW api.customers_v2 AS ...;  -- Added fields
+CREATE VIEW api.customers_v3 AS ...;  -- Breaking changes
+
+-- Applications migrate at their pace
+-- Deprecate after transition period
+```
+
+## Online View Modification
+
+```sql
+-- Minimize downtime
+-- PostgreSQL: CREATE OR REPLACE is atomic
+CREATE OR REPLACE VIEW my_view AS SELECT ...;
+
+-- SQL Server 2016+: CREATE OR ALTER
+CREATE OR ALTER VIEW my_view AS SELECT ...;
+
+-- Zero downtime, no existing connections affected
+```
+
+## Indexed View Updates
+
+```sql
+-- SQL Server: Cannot ALTER indexed view
+-- Must drop indexes, alter, recreate
+
+-- Drop indexes
+DROP INDEX IX_mv_1 ON my_indexed_view;
+
+-- Recreate view
+CREATE OR ALTER VIEW my_indexed_view
+WITH SCHEMABINDING AS
+SELECT ...;
+
+-- Recreate indexes
+CREATE UNIQUE CLUSTERED INDEX IX_mv_1 ON my_indexed_view(...);
+```
+
+## Materialized View Refresh
+
+```sql
+-- PostgreSQL
+ALTER MATERIALIZED VIEW sales_summary RENAME TO sales_summary_old;
+
+CREATE MATERIALIZED VIEW sales_summary AS
+SELECT ...;  -- New definition
+
+-- Populate
+REFRESH MATERIALIZED VIEW sales_summary;
+
+-- Swap complete
+DROP MATERIALIZED VIEW sales_summary_old;
+```
+
+## Deployment Automation
+
+```sql
+-- Migration script pattern
+BEGIN TRANSACTION;
+
+-- Track changes
+INSERT INTO schema_changes (version, object_name, change_type)
+VALUES ('1.2.3', 'customer_view', 'ALTER');
+
+-- Apply change
+CREATE OR ALTER VIEW customer_view AS
+SELECT ...;
+
+-- Validate
+IF NOT EXISTS (SELECT 1 FROM customer_view WHERE ...)
+BEGIN
+    ROLLBACK;
+    RAISERROR('View modification failed validation', 16, 1);
+    RETURN;
+END;
+
+COMMIT;
+```
+
+<ViewBuilder mode="advanced" />
+
+<ProgressCheckpoint section="modifying-views-advanced" xpReward={40} />

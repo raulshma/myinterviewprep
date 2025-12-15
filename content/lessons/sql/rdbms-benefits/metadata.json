@@ -1,0 +1,28 @@
+{
+  "id": "rdbms-benefits",
+  "title": "RDBMS Benefits and Limitations",
+  "description": "Explore the advantages and trade-offs of relational database management systems.",
+  "milestone": "learn-basics",
+  "order": 2,
+  "sections": [
+    "benefits",
+    "limitations",
+    "when-to-use"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 55
+    }
+  },
+  "prerequisites": ["what-is-rdbms"],
+  "tags": ["sql", "database", "rdbms", "benefits", "limitations"]
+}

@@ -1,0 +1,98 @@
+# CASE Expression: Conditional Logic
+
+Add if-then-else logic to your SQL queries!
+
+## 🎯 What is CASE?
+
+CASE lets you choose different values based on conditions:
+
+```sql
+SELECT
+    name,
+    CASE
+        WHEN price > 100 THEN 'Expensive'
+        WHEN price > 50 THEN 'Medium'
+        ELSE 'Cheap'
+    END AS price_category
+FROM products;
+```
+
+## 📝 Two Forms of CASE
+
+### Simple CASE (Exact Match)
+
+```sql
+SELECT
+    status,
+    CASE status
+        WHEN 'A' THEN 'Active'
+        WHEN 'I' THEN 'Inactive'
+        WHEN 'D' THEN 'Deleted'
+        ELSE 'Unknown'
+    END AS status_name
+FROM accounts;
+```
+
+### Searched CASE (Conditions)
+
+```sql
+SELECT
+    score,
+    CASE
+        WHEN score >= 90 THEN 'A'
+        WHEN score >= 80 THEN 'B'
+        WHEN score >= 70 THEN 'C'
+        ELSE 'F'
+    END AS grade
+FROM students;
+```
+
+## 🎨 Examples
+
+### Transform Values
+
+```sql
+SELECT
+    name,
+    CASE gender
+        WHEN 'M' THEN 'Male'
+        WHEN 'F' THEN 'Female'
+        ELSE 'Other'
+    END AS gender_full
+FROM people;
+```
+
+### Categorize Numbers
+
+```sql
+SELECT
+    age,
+    CASE
+        WHEN age < 13 THEN 'Child'
+        WHEN age < 20 THEN 'Teen'
+        WHEN age < 60 THEN 'Adult'
+        ELSE 'Senior'
+    END AS age_group
+FROM customers;
+```
+
+### Handle NULL
+
+```sql
+SELECT
+    name,
+    CASE
+        WHEN email IS NULL THEN 'No email'
+        ELSE email
+    END AS contact
+FROM users;
+```
+
+## ⚡ Key Points
+
+1. Conditions checked top to bottom
+2. First matching condition wins
+3. ELSE is optional (returns NULL if no match)
+4. Must end with `END`
+
+<ProgressCheckpoint section="case-basics" xpReward={25} />

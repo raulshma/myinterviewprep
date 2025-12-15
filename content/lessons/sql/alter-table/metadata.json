@@ -1,0 +1,15 @@
+{
+  "id": "alter-table",
+  "title": "ALTER TABLE",
+  "description": "Modify existing table structures by adding, removing, or changing columns and constraints.",
+  "milestone": "ddl",
+  "order": 2,
+  "sections": ["add-columns", "modify-columns", "constraints"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 20, "xpReward": 55 }
+  },
+  "prerequisites": ["create-table"],
+  "tags": ["sql", "ddl", "alter-table", "schema-changes"]
+}

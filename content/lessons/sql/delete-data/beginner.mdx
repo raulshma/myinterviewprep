@@ -1,0 +1,101 @@
+# DELETE: Removing Data Safely
+
+Learn how to remove records from your database - with caution!
+
+## 🗑️ Basic DELETE Syntax
+
+```sql
+DELETE FROM table_name
+WHERE condition;
+```
+
+> ⚠️ **Always use WHERE!** Without it, you'll delete ALL rows!
+
+## 📝 Your First DELETE
+
+```sql
+-- Delete one customer by ID
+DELETE FROM customers
+WHERE id = 1;
+```
+
+## 🎯 Deleting Multiple Rows
+
+```sql
+-- Delete all inactive customers
+DELETE FROM customers
+WHERE status = 'inactive';
+
+-- Delete old orders
+DELETE FROM orders
+WHERE order_date < '2020-01-01';
+```
+
+## ⚠️ The Danger Zone
+
+```sql
+-- DANGEROUS: Deletes ALL data!
+DELETE FROM customers;
+-- Your entire customer table is now empty! 😱
+
+-- Also deletes ALL data:
+DELETE FROM customers WHERE 1=1;
+```
+
+## 💡 Safe DELETE Workflow
+
+1. **SELECT first** to see what you're about to delete:
+
+```sql
+SELECT * FROM orders WHERE status = 'cancelled';
+```
+
+2. **Check the count**:
+
+```sql
+SELECT COUNT(*) FROM orders WHERE status = 'cancelled';
+-- 47 rows - is this what you expect?
+```
+
+3. **Convert to DELETE**:
+
+```sql
+DELETE FROM orders WHERE status = 'cancelled';
+```
+
+4. **Verify**:
+
+```sql
+SELECT COUNT(*) FROM orders WHERE status = 'cancelled';
+-- Should be 0
+```
+
+## 🔢 DELETE vs TRUNCATE
+
+|           | DELETE               | TRUNCATE      |
+| --------- | -------------------- | ------------- |
+| Speed     | Slower               | Very Fast     |
+| WHERE?    | Yes                  | No (all rows) |
+| Undo?     | Yes (in transaction) | Usually no    |
+| Triggers? | Fire                 | Don't fire    |
+| Reset ID? | No                   | Yes           |
+
+```sql
+-- TRUNCATE: Fast way to empty entire table
+TRUNCATE TABLE temp_logs;
+```
+
+## 🎯 Common Patterns
+
+```sql
+-- Delete by ID
+DELETE FROM products WHERE id = 123;
+
+-- Delete by date
+DELETE FROM logs WHERE created_at < DATEADD(day, -30, GETDATE());
+
+-- Delete by status
+DELETE FROM orders WHERE status = 'draft' AND customer_id IS NULL;
+```
+
+<ProgressCheckpoint section="delete-basics" xpReward={25} />

@@ -1,0 +1,112 @@
+# Isolation Levels: Phenomena and Trade-offs
+
+Understand the anomalies each isolation level prevents.
+
+## Read Anomalies
+
+### Dirty Read
+
+```sql
+-- Transaction A
+BEGIN;
+    UPDATE accounts SET balance = 500 WHERE id = 1;
+    -- NOT COMMITTED YET
+
+-- Transaction B (Read Uncommitted)
+    SELECT balance FROM accounts WHERE id = 1;  -- Sees 500!
+
+-- Transaction A
+ROLLBACK;  -- Never happened!
+-- Transaction B used invalid data!
+```
+
+### Non-Repeatable Read
+
+```sql
+-- Transaction A (Read Committed)
+BEGIN;
+    SELECT balance FROM accounts WHERE id = 1;  -- 1000
+
+    -- Transaction B commits: UPDATE balance to 500
+
+    SELECT balance FROM accounts WHERE id = 1;  -- 500 (different!)
+COMMIT;
+```
+
+### Phantom Read
+
+```sql
+-- Transaction A (Repeatable Read)
+BEGIN;
+    SELECT COUNT(*) FROM orders WHERE date = TODAY;  -- 10
+
+    -- Transaction B commits: INSERT new order
+
+    SELECT COUNT(*) FROM orders WHERE date = TODAY;  -- 11 (phantom!)
+COMMIT;
+```
+
+## Isolation Level Comparison
+
+| Level            | Dirty | Non-Repeatable | Phantom | Performance |
+| ---------------- | ----- | -------------- | ------- | ----------- |
+| Read Uncommitted | ✓     | ✓              | ✓       | Fastest     |
+| Read Committed   | ✗     | ✓              | ✓       | Fast        |
+| Repeatable Read  | ✗     | ✗              | ✓       | Medium      |
+| Serializable     | ✗     | ✗              | ✗       | Slowest     |
+
+## Snapshot Isolation (SQL Server/PostgreSQL)
+
+```sql
+-- SQL Server
+ALTER DATABASE MyDB SET READ_COMMITTED_SNAPSHOT ON;
+-- Or
+ALTER DATABASE MyDB SET ALLOW_SNAPSHOT_ISOLATION ON;
+SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+
+-- Reads never block writes, writes never block reads
+-- Uses row versioning instead of locks
+```
+
+## Practical Scenarios
+
+```sql
+-- Bank Balance Check (need accurate read)
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+BEGIN;
+    SELECT balance FROM accounts WHERE id = 1;  -- Always accurate
+COMMIT;
+
+-- Dashboard Reports (approximate OK)
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+BEGIN;
+    SELECT COUNT(*) FROM orders WHERE date = TODAY;  -- Fast, may be off
+COMMIT;
+
+-- Order Processing (prevent lost updates)
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+BEGIN;
+    SELECT quantity FROM inventory WHERE product = 1;
+    -- Calculate...
+    UPDATE inventory SET quantity = @new_qty WHERE product = 1;
+COMMIT;
+```
+
+## Locking Behavior
+
+```sql
+-- Read Committed: Shared locks released after read
+-- Repeatable Read: Shared locks held until commit
+-- Serializable: Range locks prevent phantoms
+
+-- Check current isolation level
+SELECT CASE transaction_isolation_level
+    WHEN 1 THEN 'Read Uncommitted'
+    WHEN 2 THEN 'Read Committed'
+    WHEN 3 THEN 'Repeatable Read'
+    WHEN 4 THEN 'Serializable'
+    WHEN 5 THEN 'Snapshot'
+END FROM sys.dm_exec_sessions WHERE session_id = @@SPID;
+```
+
+<ProgressCheckpoint section="isolation-phenomena" xpReward={45} />

@@ -1,0 +1,86 @@
+# Isolation Levels: Transaction Visibility
+
+Control what transactions can see of each other's work!
+
+## 🔒 What are Isolation Levels?
+
+Isolation levels control how much of other transactions' work you can see:
+
+| Level            | See Uncommitted? | See Changes During Read? | See New Rows? |
+| ---------------- | ---------------- | ------------------------ | ------------- |
+| Read Uncommitted | Yes              | Yes                      | Yes           |
+| Read Committed   | No               | Yes                      | Yes           |
+| Repeatable Read  | No               | No                       | Yes           |
+| Serializable     | No               | No                       | No            |
+
+## 📝 Setting Isolation Level
+
+```sql
+-- SQL Server
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+BEGIN TRANSACTION;
+    -- Work here uses READ COMMITTED isolation
+COMMIT;
+
+-- PostgreSQL
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+    -- Work here
+COMMIT;
+```
+
+## 🔍 The Four Levels
+
+### 1. Read Uncommitted (Fastest, Least Safe)
+
+```sql
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+-- Can see other transactions' uncommitted changes (dirty reads)
+```
+
+### 2. Read Committed (Default in Most DBs)
+
+```sql
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+-- Only see committed data
+-- Same query might return different results if others commit
+```
+
+### 3. Repeatable Read
+
+```sql
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+-- Same row always returns same value
+-- But new rows might appear (phantom reads)
+```
+
+### 4. Serializable (Safest, Slowest)
+
+```sql
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+-- Transactions appear to run one after another
+-- No anomalies, but slowest
+```
+
+## 🎯 Simple Example
+
+```sql
+-- Transaction A (Read Committed)
+BEGIN TRANSACTION;
+    SELECT balance FROM accounts WHERE id = 1;  -- Returns 1000
+
+    -- Meanwhile, Transaction B commits: UPDATE balance to 500
+
+    SELECT balance FROM accounts WHERE id = 1;  -- Returns 500 (changed!)
+COMMIT;
+```
+
+## 💡 Which to Use?
+
+| Use Case                      | Recommended Level |
+| ----------------------------- | ----------------- |
+| Most applications             | Read Committed    |
+| Reports needing consistency   | Repeatable Read   |
+| Financial/Critical            | Serializable      |
+| Quick counts (approximate OK) | Read Uncommitted  |
+
+<ProgressCheckpoint section="isolation-basics" xpReward={30} />

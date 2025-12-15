@@ -1,0 +1,76 @@
+# Index Optimization: Tune for Speed
+
+Choose the right indexes for your queries!
+
+## 🔍 Analyzing Query Performance
+
+Check if your query uses indexes:
+
+```sql
+-- SQL Server: Show execution plan
+SET STATISTICS IO ON;
+SELECT * FROM orders WHERE customer_id = 123;
+
+-- Look for:
+-- "Index Seek" = Good (using index)
+-- "Table Scan" = Bad (checking every row)
+```
+
+## 📊 Common Patterns
+
+### Good: Index Seek
+
+```sql
+-- Uses index efficiently
+SELECT * FROM orders WHERE customer_id = 123;
+-- If index exists on customer_id
+```
+
+### Bad: Table Scan
+
+```sql
+-- Checks every row
+SELECT * FROM orders WHERE YEAR(order_date) = 2024;
+-- Function on column prevents index use!
+
+-- Better:
+SELECT * FROM orders
+WHERE order_date >= '2024-01-01' AND order_date < '2025-01-01';
+```
+
+## ⚠️ Things That Prevent Index Use
+
+| Don't Do This                | Do This Instead                         |
+| ---------------------------- | --------------------------------------- |
+| `WHERE UPPER(name) = 'JOHN'` | Store normalized                        |
+| `WHERE price * 1.1 > 100`    | `WHERE price > 100/1.1`                 |
+| `WHERE date IS NOT NULL`     | May not use index                       |
+| `WHERE status <> 'deleted'`  | `WHERE status IN ('active', 'pending')` |
+
+## 🎯 Index Selection Tips
+
+```sql
+-- Index columns that appear in:
+-- 1. WHERE clauses
+SELECT * FROM orders WHERE customer_id = 123;
+
+-- 2. JOIN conditions
+SELECT * FROM orders o JOIN customers c ON o.customer_id = c.id;
+
+-- 3. ORDER BY (if frequently sorted)
+SELECT * FROM orders ORDER BY order_date DESC;
+```
+
+## 💡 Too Many Indexes?
+
+Indexes have costs:
+
+- Slow down INSERT/UPDATE/DELETE
+- Take storage space
+- Need maintenance
+
+Balance is key!
+
+<IndexVisualizer mode="beginner" />
+
+<ProgressCheckpoint section="index-optimization-basics" xpReward={30} />

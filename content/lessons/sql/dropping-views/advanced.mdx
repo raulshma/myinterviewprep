@@ -1,0 +1,119 @@
+# Dropping Views: Advanced Topics
+
+Enterprise patterns for view lifecycle management.
+
+## Soft Delete Pattern
+
+```sql
+-- Instead of dropping, mark as deprecated
+CREATE TABLE view_metadata (
+    view_name NVARCHAR(128) PRIMARY KEY,
+    status VARCHAR(20),  -- 'active', 'deprecated', 'pending_drop'
+    deprecation_date DATE,
+    drop_after_date DATE,
+    replaced_by NVARCHAR(128)
+);
+
+-- Mark for deprecation
+UPDATE view_metadata
+SET status = 'deprecated',
+    deprecation_date = GETDATE(),
+    drop_after_date = DATEADD(MONTH, 3, GETDATE())
+WHERE view_name = 'old_view';
+
+-- Scheduled job drops after grace period
+DELETE FROM view_metadata WHERE drop_after_date < GETDATE();
+DROP VIEW IF EXISTS old_view;
+```
+
+## Audit Before Drop
+
+```sql
+-- Log what was dropped
+CREATE TABLE dropped_views_log (
+    id INT IDENTITY PRIMARY KEY,
+    view_name NVARCHAR(128),
+    schema_name NVARCHAR(128),
+    definition NVARCHAR(MAX),
+    dropped_by NVARCHAR(128),
+    dropped_at DATETIME2
+);
+
+-- Procedure to drop with audit
+CREATE PROCEDURE sp_safe_drop_view @view_name NVARCHAR(128)
+AS
+BEGIN
+    -- Log it
+    INSERT INTO dropped_views_log (view_name, schema_name, definition, dropped_by, dropped_at)
+    SELECT @view_name, SCHEMA_NAME(o.schema_id), m.definition, SYSTEM_USER, SYSDATETIME()
+    FROM sys.objects o
+    JOIN sys.sql_modules m ON o.object_id = m.object_id
+    WHERE o.name = @view_name AND o.type = 'V';
+
+    -- Drop it
+    DECLARE @sql NVARCHAR(MAX) = 'DROP VIEW IF EXISTS ' + QUOTENAME(@view_name);
+    EXEC sp_executesql @sql;
+END;
+```
+
+## Cleanup Unused Views
+
+```sql
+-- SQL Server: Find unused views (using Query Store)
+WITH view_usage AS (
+    SELECT DISTINCT OBJECT_NAME(q.object_id) AS view_name
+    FROM sys.query_store_query q
+    JOIN sys.objects o ON q.object_id = o.object_id
+    WHERE o.type = 'V'
+)
+SELECT v.name AS potentially_unused_view
+FROM sys.views v
+WHERE v.name NOT IN (SELECT view_name FROM view_usage WHERE view_name IS NOT NULL)
+AND v.create_date < DATEADD(MONTH, -6, GETDATE());  -- Created 6+ months ago
+```
+
+## Transaction-Safe Drops
+
+```sql
+BEGIN TRANSACTION;
+
+-- Save rollback point
+SAVE TRANSACTION before_drop;
+
+BEGIN TRY
+    -- Drop view
+    DROP VIEW important_view;
+
+    -- Verify system still works
+    EXEC sp_validate_system_after_drop 'important_view';
+
+    COMMIT;
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION before_drop;
+    THROW;
+END CATCH;
+```
+
+## Multi-Environment Coordination
+
+```sql
+-- Track view drops across environments
+CREATE TABLE schema_migrations (
+    migration_id VARCHAR(50) PRIMARY KEY,
+    action VARCHAR(20),
+    object_name NVARCHAR(128),
+    applied_dev BIT DEFAULT 0,
+    applied_test BIT DEFAULT 0,
+    applied_prod BIT DEFAULT 0,
+    created_at DATETIME2
+);
+
+-- Migration record
+INSERT INTO schema_migrations VALUES
+('M2024031501', 'DROP VIEW', 'legacy_report_view', 0, 0, 0, GETDATE());
+```
+
+<ViewBuilder mode="advanced" />
+
+<ProgressCheckpoint section="dropping-views-advanced" xpReward={35} />

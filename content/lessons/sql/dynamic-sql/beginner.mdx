@@ -1,0 +1,68 @@
+# Dynamic SQL
+
+Build queries at runtime!
+
+## 📝 What is Dynamic SQL?
+
+Dynamic SQL builds and executes SQL statements as strings:
+
+```sql
+DECLARE @sql NVARCHAR(MAX);
+SET @sql = N'SELECT * FROM products WHERE category = ''Electronics''';
+EXEC(@sql);
+```
+
+## 🎯 When to Use
+
+| Good Use Cases              | Avoid When           |
+| --------------------------- | -------------------- |
+| Variable table/column names | Static queries work  |
+| Dynamic filters             | Can use parameters   |
+| Building pivot columns      | Security is critical |
+| Schema exploration          | Performance matters  |
+
+## ⚠️ Security Warning
+
+**NEVER** concatenate user input directly!
+
+```sql
+-- DANGEROUS: SQL Injection!
+SET @sql = 'SELECT * FROM users WHERE name = ''' + @userInput + '''';
+
+-- If @userInput = "'; DROP TABLE users; --"
+-- Result: SELECT * FROM users WHERE name = ''; DROP TABLE users; --'
+```
+
+## ✅ Safe: Use Parameters
+
+```sql
+DECLARE @sql NVARCHAR(MAX) = N'SELECT * FROM users WHERE name = @name';
+EXEC sp_executesql @sql, N'@name NVARCHAR(100)', @name = @userInput;
+```
+
+## 📊 Basic Execution
+
+```sql
+-- Simple EXEC
+DECLARE @tableName NVARCHAR(128) = N'products';
+EXEC('SELECT * FROM ' + @tableName);
+
+-- sp_executesql (preferred)
+DECLARE @sql NVARCHAR(MAX) = N'SELECT * FROM products WHERE price > @min';
+EXEC sp_executesql @sql, N'@min DECIMAL(10,2)', @min = 100.00;
+```
+
+## 💡 Validate Identifiers
+
+```sql
+-- Check table exists before using
+IF EXISTS (SELECT 1 FROM sys.tables WHERE name = @tableName)
+BEGIN
+    SET @sql = N'SELECT * FROM ' + QUOTENAME(@tableName);
+    EXEC sp_executesql @sql;
+END
+ELSE
+    THROW 50001, 'Invalid table name', 1;
+```
+
+<ProgressCheckpoint section="dynamic-basics" xpReward={30} />

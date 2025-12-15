@@ -1,0 +1,28 @@
+{
+  "id": "data-constraints-lesson",
+  "title": "Data Constraints",
+  "description": "Enforce data integrity with PRIMARY KEY, FOREIGN KEY, UNIQUE, NOT NULL, and CHECK constraints.",
+  "milestone": "sql",
+  "order": 5,
+  "sections": [
+    "primary-key",
+    "foreign-key",
+    "unique-notnull-check"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 22,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 80
+    }
+  },
+  "prerequisites": ["ddl"],
+  "tags": ["sql", "constraints", "primary-key", "foreign-key", "data-integrity"]
+}

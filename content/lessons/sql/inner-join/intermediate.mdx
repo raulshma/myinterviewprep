@@ -1,0 +1,111 @@
+# INNER JOIN: Multiple Tables and Patterns
+
+Master joining multiple tables and common join patterns.
+
+## Joining Multiple Tables
+
+```sql
+-- Three-table join
+SELECT
+    o.id AS order_id,
+    c.name AS customer,
+    p.name AS product,
+    oi.quantity,
+    oi.price
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id
+INNER JOIN order_items oi ON o.id = oi.order_id
+INNER JOIN products p ON oi.product_id = p.id;
+```
+
+## JOIN with Additional Conditions
+
+```sql
+-- Filter in ON clause
+SELECT o.*, c.name
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id AND c.is_active = 1;
+
+-- Filter in WHERE clause (same result, different semantics)
+SELECT o.*, c.name
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id
+WHERE c.is_active = 1;
+```
+
+## Composite Key JOINs
+
+```sql
+-- Join on multiple columns
+SELECT s.*, p.name
+FROM sales s
+INNER JOIN products p
+    ON s.product_id = p.id
+    AND s.region = p.primary_region;
+```
+
+## Non-Equality JOINs
+
+```sql
+-- Range join
+SELECT e.name, g.grade
+FROM employees e
+INNER JOIN salary_grades g
+    ON e.salary >= g.min_salary
+    AND e.salary <= g.max_salary;
+
+-- Inequality join (less common)
+SELECT a.*, b.*
+FROM table_a a
+INNER JOIN table_b b ON a.value > b.threshold;
+```
+
+## Self-Join Pattern
+
+```sql
+-- Find employees and their managers
+SELECT
+    e.name AS employee,
+    m.name AS manager
+FROM employees e
+INNER JOIN employees m ON e.manager_id = m.id;
+```
+
+## JOIN with Aggregates
+
+```sql
+SELECT
+    c.name,
+    COUNT(o.id) AS order_count,
+    SUM(o.total) AS total_spent
+FROM customers c
+INNER JOIN orders o ON c.id = o.customer_id
+GROUP BY c.id, c.name
+ORDER BY total_spent DESC;
+```
+
+## Joining Same Table Twice
+
+```sql
+-- Order with billing and shipping addresses
+SELECT
+    o.id,
+    b.city AS billing_city,
+    s.city AS shipping_city
+FROM orders o
+INNER JOIN addresses b ON o.billing_address_id = b.id
+INNER JOIN addresses s ON o.shipping_address_id = s.id;
+```
+
+## Performance Tips
+
+```sql
+-- Index the join columns!
+CREATE INDEX IX_orders_customer ON orders(customer_id);
+CREATE INDEX IX_order_items_order ON order_items(order_id);
+
+-- Join order matters for complex queries
+-- Optimizer usually picks best order, but you can hint
+```
+
+<ProgressCheckpoint section="inner-join-multiple" xpReward={45} />

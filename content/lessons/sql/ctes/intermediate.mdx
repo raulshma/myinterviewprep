@@ -1,0 +1,99 @@
+# CTEs: Practical Patterns
+
+Real-world CTE applications.
+
+## Chain of CTEs
+
+```sql
+WITH
+-- Step 1: Get raw data
+raw_orders AS (
+    SELECT * FROM orders WHERE order_date >= '2024-01-01'
+),
+-- Step 2: Aggregate
+daily_totals AS (
+    SELECT DATE(order_date) AS day, SUM(total) AS daily_total
+    FROM raw_orders
+    GROUP BY DATE(order_date)
+),
+-- Step 3: Add calculations
+with_averages AS (
+    SELECT *,
+        AVG(daily_total) OVER () AS overall_avg,
+        daily_total / AVG(daily_total) OVER () AS ratio_to_avg
+    FROM daily_totals
+)
+SELECT * FROM with_averages ORDER BY day;
+```
+
+## CTE for UPDATE
+
+```sql
+-- SQL Server
+WITH to_update AS (
+    SELECT id, status
+    FROM orders
+    WHERE status = 'pending' AND order_date < DATEADD(DAY, -30, GETDATE())
+)
+UPDATE to_update SET status = 'expired';
+
+-- PostgreSQL
+WITH to_update AS (
+    SELECT id FROM orders
+    WHERE status = 'pending' AND order_date < CURRENT_DATE - INTERVAL '30 days'
+)
+UPDATE orders SET status = 'expired'
+WHERE id IN (SELECT id FROM to_update);
+```
+
+## CTE for DELETE
+
+```sql
+WITH duplicates AS (
+    SELECT id,
+        ROW_NUMBER() OVER (PARTITION BY email ORDER BY created_at DESC) AS rn
+    FROM users
+)
+DELETE FROM users WHERE id IN (SELECT id FROM duplicates WHERE rn > 1);
+```
+
+## CTE for INSERT
+
+```sql
+WITH source_data AS (
+    SELECT customer_id, SUM(total) AS total_spent
+    FROM orders
+    WHERE order_date >= '2024-01-01'
+    GROUP BY customer_id
+)
+INSERT INTO customer_summary (customer_id, period, total_spent)
+SELECT customer_id, '2024-Q1', total_spent FROM source_data;
+```
+
+## Materialized CTE Hint
+
+```sql
+-- PostgreSQL: Force materialization
+WITH MATERIALIZED customer_orders AS (
+    SELECT customer_id, COUNT(*) AS order_count
+    FROM orders
+    GROUP BY customer_id
+)
+SELECT * FROM customer_orders;
+
+-- NOT MATERIALIZED: Inline the CTE
+WITH NOT MATERIALIZED simple_cte AS (...)
+```
+
+## CTE Scope
+
+```sql
+-- CTEs are scoped to the statement
+WITH my_cte AS (SELECT * FROM products)
+SELECT * FROM my_cte;
+
+-- This fails - CTE no longer exists:
+-- SELECT * FROM my_cte;  -- Error!
+```
+
+<ProgressCheckpoint section="cte-practical" xpReward={40} />

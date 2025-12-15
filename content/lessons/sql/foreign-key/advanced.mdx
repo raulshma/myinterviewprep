@@ -1,0 +1,153 @@
+# Foreign Keys: Performance and Advanced Patterns
+
+Optimize foreign key usage for high-performance databases.
+
+## Performance Implications
+
+### Index on Foreign Keys
+
+Foreign key columns should almost always be indexed:
+
+```sql
+-- Create foreign key
+ALTER TABLE orders
+ADD CONSTRAINT FK_orders_customers
+FOREIGN KEY (customer_id) REFERENCES customers(id);
+
+-- ADD INDEX for performance
+CREATE INDEX IX_orders_customer ON orders(customer_id);
+
+-- Without index: Every DELETE from customers scans orders table!
+```
+
+### FK Check Cost
+
+```sql
+-- Every INSERT into child table checks parent
+-- Every DELETE from parent checks children
+
+-- Disable checks temporarily for bulk loads
+ALTER TABLE orders NOCHECK CONSTRAINT FK_orders_customers;
+-- ... bulk insert ...
+ALTER TABLE orders CHECK CONSTRAINT FK_orders_customers;
+```
+
+## Polymorphic Associations
+
+When one table relates to multiple parent types:
+
+```sql
+-- Option 1: Multiple nullable FKs
+CREATE TABLE comments (
+    id INT PRIMARY KEY,
+    content TEXT,
+    post_id INT REFERENCES posts(id),
+    video_id INT REFERENCES videos(id),
+    CHECK (
+        (post_id IS NOT NULL AND video_id IS NULL) OR
+        (post_id IS NULL AND video_id IS NOT NULL)
+    )
+);
+
+-- Option 2: Type + ID pattern (no FK, application enforced)
+CREATE TABLE comments (
+    id INT PRIMARY KEY,
+    content TEXT,
+    parent_type VARCHAR(20),  -- 'post' or 'video'
+    parent_id INT
+);
+```
+
+## Composite Foreign Keys
+
+```sql
+-- Reference composite primary key
+CREATE TABLE order_item_details (
+    order_id INT,
+    product_id INT,
+    detail_text TEXT,
+
+    FOREIGN KEY (order_id, product_id)
+        REFERENCES order_items(order_id, product_id)
+);
+```
+
+## Deferrable Constraints
+
+```sql
+-- PostgreSQL: Check at commit, not immediately
+CREATE TABLE table1 (
+    id INT PRIMARY KEY,
+    ref_id INT REFERENCES table2(id) DEFERRABLE INITIALLY DEFERRED
+);
+
+-- Allows circular inserts within transaction
+BEGIN;
+INSERT INTO table1 (id, ref_id) VALUES (1, 1);  -- Would fail if immediate
+INSERT INTO table2 (id, ref_id) VALUES (1, 1);
+COMMIT;  -- Checks here
+```
+
+## Soft Delete Considerations
+
+```sql
+-- Problem: FK still references soft-deleted records
+CREATE TABLE customers (
+    id INT PRIMARY KEY,
+    is_deleted BIT DEFAULT 0
+);
+
+-- Solution 1: Exclude soft-deleted in FK check (requires check constraint)
+-- Solution 2: Use application-level validation
+-- Solution 3: Archive to separate table
+
+-- Alternative: Filtered foreign key (not standard SQL)
+-- Some ORMs handle this logic in application layer
+```
+
+## Circular References
+
+```sql
+-- Tables that reference each other
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    department_id INT  -- Will add FK later
+);
+
+CREATE TABLE departments (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    manager_id INT REFERENCES employees(id)
+);
+
+-- Add second FK after both tables exist
+ALTER TABLE employees
+ADD CONSTRAINT FK_emp_dept FOREIGN KEY (department_id) REFERENCES departments(id);
+
+-- Insert requires careful ordering or deferred constraints
+```
+
+## Monitoring FK Violations
+
+```sql
+-- SQL Server: Check for orphaned records
+SELECT o.* FROM orders o
+LEFT JOIN customers c ON o.customer_id = c.id
+WHERE c.id IS NULL;
+
+-- Find FK violations after disabling constraints
+DBCC CHECKCONSTRAINTS ('FK_orders_customers');
+```
+
+## FK in Partitioned Tables
+
+```sql
+-- Foreign keys across partitioned tables require care
+-- Child partition FK must match parent partition scheme
+
+-- SQL Server: FK on partitioned table must include partition column
+-- PostgreSQL: Similar considerations
+```
+
+<ProgressCheckpoint section="foreign-key-advanced" xpReward={55} />

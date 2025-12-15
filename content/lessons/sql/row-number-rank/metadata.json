@@ -1,0 +1,15 @@
+{
+  "id": "row-number-rank",
+  "title": "ROW_NUMBER and RANK Functions",
+  "description": "Number and rank rows within partitions.",
+  "milestone": "advanced-sql",
+  "order": 2,
+  "sections": ["row-number", "rank", "dense-rank"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["window-functions-intro"],
+  "tags": ["sql", "advanced", "window-functions", "ranking"]
+}

@@ -1,0 +1,90 @@
+# PIVOT and UNPIVOT: Practical Patterns
+
+Real-world data transformation.
+
+## Multi-Column PIVOT
+
+```sql
+-- Sales by product and year
+SELECT * FROM (
+    SELECT product, YEAR(sale_date) AS year, amount
+    FROM sales
+) src
+PIVOT (
+    SUM(amount) FOR year IN ([2022], [2023], [2024])
+) pvt;
+```
+
+## PIVOT with Multiple Aggregates
+
+```sql
+-- Count and Sum in separate queries, then join
+WITH counts AS (
+    SELECT * FROM (...) src
+    PIVOT (COUNT(id) FOR status IN ([Open], [Closed])) pvt
+),
+sums AS (
+    SELECT * FROM (...) src
+    PIVOT (SUM(amount) FOR status IN ([Open], [Closed])) pvt
+)
+SELECT c.category, c.[Open] AS open_count, c.[Closed] AS closed_count,
+       s.[Open] AS open_sum, s.[Closed] AS closed_sum
+FROM counts c JOIN sums s ON c.category = s.category;
+```
+
+## UNPIVOT Multiple Columns
+
+```sql
+-- Normalize a wide table
+SELECT id, attribute, value
+FROM (
+    SELECT id,
+        CAST(field1 AS VARCHAR(100)) AS field1,
+        CAST(field2 AS VARCHAR(100)) AS field2,
+        CAST(field3 AS VARCHAR(100)) AS field3
+    FROM wide_table
+) src
+UNPIVOT (
+    value FOR attribute IN (field1, field2, field3)
+) unpvt;
+```
+
+## PostgreSQL: FILTER Clause
+
+```sql
+-- Alternative to PIVOT using FILTER
+SELECT product,
+    SUM(sales) FILTER (WHERE month = 'Jan') AS jan_sales,
+    SUM(sales) FILTER (WHERE month = 'Feb') AS feb_sales,
+    SUM(sales) FILTER (WHERE month = 'Mar') AS mar_sales
+FROM monthly_sales
+GROUP BY product;
+```
+
+## PostgreSQL: Lateral Join for UNPIVOT
+
+```sql
+SELECT t.id, x.attribute, x.value
+FROM wide_table t
+CROSS JOIN LATERAL (
+    VALUES ('field1', field1), ('field2', field2), ('field3', field3)
+) AS x(attribute, value);
+```
+
+## Conditional Pivot
+
+```sql
+SELECT customer_id,
+    MAX(CASE WHEN order_rank = 1 THEN order_date END) AS first_order,
+    MAX(CASE WHEN order_rank = 1 THEN total END) AS first_total,
+    MAX(CASE WHEN order_rank = 2 THEN order_date END) AS second_order,
+    MAX(CASE WHEN order_rank = 2 THEN total END) AS second_total
+FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY order_date) AS order_rank
+    FROM orders
+) ranked
+WHERE order_rank <= 2
+GROUP BY customer_id;
+```
+
+<ProgressCheckpoint section="pivot-practical" xpReward={40} />

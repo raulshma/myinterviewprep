@@ -1,0 +1,79 @@
+# TIMESTAMP: Capturing Moments in Time
+
+Work with timestamps and understand time zones!
+
+## 📍 What is a TIMESTAMP?
+
+A timestamp captures an exact moment in time, often with timezone awareness:
+
+```sql
+-- Current timestamp
+SELECT CURRENT_TIMESTAMP;  -- 2024-03-15 14:30:00.000
+
+-- Get timestamp now
+SELECT GETDATE();       -- SQL Server
+SELECT NOW();           -- PostgreSQL/MySQL
+SELECT SYSTIMESTAMP;    -- Oracle
+```
+
+## 🌍 TIMESTAMP vs DATETIME
+
+| Feature     | DATETIME      | TIMESTAMP         |
+| ----------- | ------------- | ----------------- |
+| Timezone    | No conversion | Converts to UTC   |
+| Range       | Larger        | 1970-2038 (MySQL) |
+| Storage     | Larger        | Smaller           |
+| Auto-update | Manual        | Can auto-update   |
+
+## ⏱️ Creating Timestamps
+
+```sql
+-- SQL Server
+CREATE TABLE events (
+    created_at DATETIME2 DEFAULT SYSDATETIME()
+);
+
+-- PostgreSQL
+CREATE TABLE events (
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- MySQL (auto-updated on changes)
+CREATE TABLE events (
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+## 🔄 Unix Timestamp
+
+Seconds since January 1, 1970 (epoch):
+
+```sql
+-- Get Unix timestamp
+-- SQL Server
+SELECT DATEDIFF(SECOND, '1970-01-01', GETUTCDATE());
+
+-- PostgreSQL
+SELECT EXTRACT(EPOCH FROM NOW());
+
+-- Convert from Unix timestamp
+SELECT DATEADD(SECOND, @unix_ts, '1970-01-01');  -- SQL Server
+SELECT TO_TIMESTAMP(@unix_ts);                    -- PostgreSQL
+```
+
+## 📊 Comparing Timestamps
+
+```sql
+-- Recent records
+SELECT * FROM orders
+WHERE created_at > DATEADD(DAY, -7, GETDATE());
+
+-- Between two timestamps
+SELECT * FROM logs
+WHERE timestamp BETWEEN '2024-01-01' AND '2024-01-31';
+```
+
+<DateTimeExplorer mode="beginner" />
+
+<ProgressCheckpoint section="timestamp-basics" xpReward={25} />

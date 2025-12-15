@@ -1,0 +1,116 @@
+# Recursive Queries: Advanced Topics
+
+Expert-level recursion techniques.
+
+## Graph Traversal with Cycle Detection
+
+```sql
+WITH RECURSIVE graph AS (
+    SELECT
+        start_node AS current,
+        end_node AS next,
+        CAST(start_node AS VARCHAR(1000)) AS path,
+        1 AS depth,
+        0 AS is_cycle
+    FROM edges WHERE start_node = 'A'
+
+    UNION ALL
+
+    SELECT
+        e.start_node,
+        e.end_node,
+        CAST(g.path + ' -> ' + e.end_node AS VARCHAR(1000)),
+        g.depth + 1,
+        CASE WHEN g.path LIKE '%' + e.end_node + '%' THEN 1 ELSE 0 END
+    FROM edges e
+    JOIN graph g ON e.start_node = g.next
+    WHERE g.is_cycle = 0 AND g.depth < 10
+)
+SELECT * FROM graph WHERE is_cycle = 0;
+```
+
+## Shortest Path
+
+```sql
+WITH RECURSIVE shortest AS (
+    SELECT
+        end_node AS destination,
+        distance,
+        CAST(start_node + ' -> ' + end_node AS VARCHAR(500)) AS path
+    FROM edges WHERE start_node = 'A'
+
+    UNION ALL
+
+    SELECT
+        e.end_node,
+        s.distance + e.distance,
+        CAST(s.path + ' -> ' + e.end_node AS VARCHAR(500))
+    FROM edges e
+    JOIN shortest s ON e.start_node = s.destination
+    WHERE s.path NOT LIKE '%' + e.end_node + '%'
+)
+SELECT destination, MIN(distance) AS shortest_distance
+FROM shortest
+GROUP BY destination;
+```
+
+## SQL Server MAXRECURSION
+
+```sql
+-- Default limit is 100 iterations
+WITH RECURSIVE nums AS (...)
+SELECT * FROM nums
+OPTION (MAXRECURSION 1000);  -- Allow up to 1000
+
+-- 0 = unlimited (dangerous!)
+OPTION (MAXRECURSION 0);
+```
+
+## Recursive Aggregation
+
+```sql
+-- Running total via recursion (usually window function is better)
+WITH RECURSIVE running AS (
+    SELECT id, amount, amount AS running_total, 1 AS rn
+    FROM (SELECT *, ROW_NUMBER() OVER (ORDER BY id) AS rn FROM transactions) t
+    WHERE rn = 1
+
+    UNION ALL
+
+    SELECT t.id, t.amount, r.running_total + t.amount, t.rn
+    FROM (SELECT *, ROW_NUMBER() OVER (ORDER BY id) AS rn FROM transactions) t
+    JOIN running r ON t.rn = r.rn + 1
+)
+SELECT id, amount, running_total FROM running;
+```
+
+## Transitive Closure
+
+```sql
+-- Find all reachable nodes
+WITH RECURSIVE closure AS (
+    SELECT DISTINCT start_node, end_node FROM edges
+
+    UNION
+
+    SELECT c.start_node, e.end_node
+    FROM closure c
+    JOIN edges e ON c.end_node = e.start_node
+)
+SELECT * FROM closure;
+```
+
+## Performance Tips
+
+```sql
+-- Index on parent/child columns
+CREATE INDEX IX_employees_manager ON employees(manager_id);
+
+-- Limit depth
+WHERE depth < 20
+
+-- Use EXISTS for termination check
+WHERE NOT EXISTS (SELECT 1 FROM closure c2 WHERE c2.end_node = c.end_node)
+```
+
+<ProgressCheckpoint section="recursive-advanced" xpReward={55} />

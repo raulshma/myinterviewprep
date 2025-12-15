@@ -1,0 +1,85 @@
+# Understanding Relational Database Architecture
+
+Let's dive deeper into how relational databases work under the hood.
+
+## Database Management Systems (DBMS)
+
+A **DBMS** is the software that manages the database. Popular ones include:
+
+| DBMS       | Type        | Best For                     |
+| ---------- | ----------- | ---------------------------- |
+| PostgreSQL | Open Source | Complex queries, extensions  |
+| MySQL      | Open Source | Web applications, speed      |
+| SQL Server | Commercial  | Enterprise, .NET integration |
+| Oracle     | Commercial  | Large enterprises            |
+| SQLite     | Embedded    | Mobile apps, local storage   |
+
+## The Relational Model
+
+The relational model was invented by **Edgar F. Codd** at IBM in 1970. It's based on mathematical set theory.
+
+### Core Principles
+
+1. **Data is stored in tables (relations)**
+2. **Each table has a primary key** - unique identifier for each row
+3. **Tables connect via foreign keys** - references to other tables
+4. **Data is queried using SQL** - Structured Query Language
+
+<RdbmsConceptVisualizer mode="intermediate" />
+
+## Schema Design Basics
+
+A **schema** is the structure of your database - the blueprint that defines:
+
+- Tables and their names
+- Columns and their data types
+- Relationships between tables
+- Constraints (rules for data integrity)
+
+```sql
+-- Example schema for a simple blog
+CREATE TABLE Users (
+    UserID INT PRIMARY KEY,
+    Username VARCHAR(50) NOT NULL,
+    Email VARCHAR(100) UNIQUE
+);
+
+CREATE TABLE Posts (
+    PostID INT PRIMARY KEY,
+    Title VARCHAR(200),
+    Content TEXT,
+    AuthorID INT REFERENCES Users(UserID)
+);
+```
+
+## Keys Are Everything
+
+| Key Type          | Purpose                      | Example              |
+| ----------------- | ---------------------------- | -------------------- |
+| **Primary Key**   | Uniquely identifies each row | UserID               |
+| **Foreign Key**   | Links to another table       | AuthorID → UserID    |
+| **Composite Key** | Multiple columns as key      | (OrderID, ProductID) |
+| **Natural Key**   | Real-world identifier        | ISBN, SSN            |
+| **Surrogate Key** | System-generated ID          | Auto-increment ID    |
+
+## Data Integrity Rules
+
+RDBMS enforce **integrity constraints**:
+
+- **Entity Integrity**: Primary keys can't be NULL
+- **Referential Integrity**: Foreign keys must exist in parent table
+- **Domain Integrity**: Values must match column data type
+- **User-Defined**: Custom business rules (CHECK constraints)
+
+## The ACID Properties
+
+Databases guarantee **ACID** for transactions:
+
+| Property        | Meaning                      | Example                                |
+| --------------- | ---------------------------- | -------------------------------------- |
+| **Atomicity**   | All or nothing               | Transfer money: both debit AND credit  |
+| **Consistency** | Data stays valid             | Can't have negative balance            |
+| **Isolation**   | Transactions don't interfere | Two transfers don't corrupt each other |
+| **Durability**  | Changes persist              | Data survives server restart           |
+
+<ProgressCheckpoint section="rdbms-architecture" xpReward={40} />

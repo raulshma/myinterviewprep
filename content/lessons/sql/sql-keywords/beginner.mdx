@@ -1,0 +1,72 @@
+# SQL Keywords: The Building Blocks
+
+SQL has special words called **keywords** that tell the database what to do!
+
+## 🔤 What Are SQL Keywords?
+
+Keywords are reserved words in SQL that have special meaning. Think of them as **commands** you give to the database.
+
+| Keyword  | What It Does   | Example             |
+| -------- | -------------- | ------------------- |
+| `SELECT` | Get data       | SELECT name FROM... |
+| `FROM`   | Which table    | ...FROM customers   |
+| `WHERE`  | Filter results | WHERE age > 18      |
+| `INSERT` | Add new data   | INSERT INTO...      |
+| `UPDATE` | Change data    | UPDATE products...  |
+| `DELETE` | Remove data    | DELETE FROM...      |
+
+## 📦 The Essential Keywords
+
+### Getting Data (SELECT)
+
+```sql
+SELECT name, email
+FROM customers;
+```
+
+### Adding Data (INSERT)
+
+```sql
+INSERT INTO customers (name, email)
+VALUES ('Alice', 'alice@email.com');
+```
+
+### Changing Data (UPDATE)
+
+```sql
+UPDATE customers
+SET email = 'new@email.com'
+WHERE name = 'Alice';
+```
+
+### Removing Data (DELETE)
+
+```sql
+DELETE FROM customers
+WHERE name = 'Alice';
+```
+
+## 🎯 Categories of Keywords
+
+| Category              | Keywords               | Purpose           |
+| --------------------- | ---------------------- | ----------------- |
+| **Data Query**        | SELECT, FROM, WHERE    | Reading data      |
+| **Data Modification** | INSERT, UPDATE, DELETE | Changing data     |
+| **Sorting**           | ORDER BY, ASC, DESC    | Arranging results |
+| **Filtering**         | WHERE, AND, OR, NOT    | Narrowing results |
+| **Grouping**          | GROUP BY, HAVING       | Summarizing data  |
+
+## 💡 Quick Tips
+
+- Keywords are **NOT case-sensitive** (SELECT = select = SeLeCt)
+- Convention: Write keywords in **UPPERCASE** for readability
+- Keywords **cannot be used** as table or column names (usually)
+
+```sql
+-- All of these work the same:
+SELECT * FROM customers;
+select * from customers;
+Select * From Customers;
+```
+
+<ProgressCheckpoint section="sql-keywords" xpReward={20} />

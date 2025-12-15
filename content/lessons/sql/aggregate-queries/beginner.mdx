@@ -1,0 +1,122 @@
+# Aggregate Functions
+
+Aggregate functions summarize data across multiple rows into a single result. They&apos;re essential for analytics and reporting!
+
+## 📊 What Are Aggregates?
+
+Instead of seeing every row, aggregates give you **summaries**:
+
+| Without Aggregate   | With Aggregate                     |
+| :------------------ | :--------------------------------- |
+| 830 order rows      | Total: 830 orders                  |
+| 77 product prices   | Average: $28.87                    |
+| All customer orders | Top customer: QUICK with 28 orders |
+
+> **Think of it like:** Asking "What&apos;s the total?" instead of "Show me everything"
+
+## The Five Core Aggregate Functions
+
+### COUNT - How Many?
+
+```sql
+-- Total number of products in Northwind
+SELECT COUNT(*) AS TotalProducts FROM Products;
+-- Result: 77
+
+-- Count only non-NULL values
+SELECT COUNT(Fax) AS CustomersWithFax FROM Customers;
+-- Only counts rows where Fax is not NULL
+
+-- Count unique values
+SELECT COUNT(DISTINCT Country) AS UniqueCountries FROM Customers;
+-- Result: 21
+```
+
+### SUM - Total of Values
+
+```sql
+-- Total inventory value
+SELECT SUM(UnitPrice * UnitsInStock) AS TotalInventoryValue
+FROM Products;
+
+-- Total freight costs
+SELECT SUM(Freight) AS TotalFreight FROM Orders;
+```
+
+### AVG - Average Value
+
+```sql
+-- Average product price
+SELECT AVG(UnitPrice) AS AvgPrice FROM Products;
+-- Result: 28.87
+
+-- Average order value
+SELECT AVG(od.Quantity * od.UnitPrice) AS AvgLineValue
+FROM [Order Details] od;
+```
+
+### MIN and MAX
+
+```sql
+-- Cheapest and most expensive products
+SELECT
+    MIN(UnitPrice) AS CheapestPrice,
+    MAX(UnitPrice) AS MostExpensivePrice
+FROM Products;
+-- Result: 2.50 and 263.50
+
+-- First and last order dates
+SELECT
+    MIN(OrderDate) AS FirstOrder,
+    MAX(OrderDate) AS LastOrder
+FROM Orders;
+```
+
+## GROUP BY - Summarize by Category
+
+Group rows and calculate aggregates for each group:
+
+```sql
+-- Count products per category
+SELECT CategoryID, COUNT(*) AS ProductCount
+FROM Products
+GROUP BY CategoryID;
+
+-- Total sales per customer
+SELECT
+    CustomerID,
+    COUNT(OrderID) AS OrderCount,
+    SUM(Freight) AS TotalFreight
+FROM Orders
+GROUP BY CustomerID
+ORDER BY OrderCount DESC;
+```
+
+## HAVING - Filter Groups
+
+WHERE filters rows **before** grouping. HAVING filters **after**:
+
+```sql
+-- Customers with more than 10 orders
+SELECT CustomerID, COUNT(*) AS OrderCount
+FROM Orders
+GROUP BY CustomerID
+HAVING COUNT(*) > 10;
+
+-- Categories with average price over $30
+SELECT CategoryID, AVG(UnitPrice) AS AvgPrice
+FROM Products
+GROUP BY CategoryID
+HAVING AVG(UnitPrice) > 30;
+```
+
+## Key Takeaways ✓
+
+1. **COUNT** = how many rows
+2. **SUM** = total of a column
+3. **AVG** = average value
+4. **MIN/MAX** = smallest/largest value
+5. **GROUP BY** = summarize per group
+6. **HAVING** = filter groups (after aggregation)
+
+<ProgressCheckpoint section="sum-count" xpReward={30} />

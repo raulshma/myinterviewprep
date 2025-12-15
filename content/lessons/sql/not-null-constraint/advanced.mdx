@@ -1,0 +1,102 @@
+# NOT NULL Constraint: Advanced Topics
+
+Enterprise patterns and considerations.
+
+## NOT NULL in Schema Design
+
+```sql
+-- Aggressive NOT NULL approach
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    order_date DATETIME NOT NULL DEFAULT GETDATE(),
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    shipping_address_id INT NOT NULL,
+    billing_address_id INT NOT NULL,
+    notes NVARCHAR(MAX)  -- Only truly optional columns allow NULL
+);
+
+-- Benefits:
+-- - Clearer data model
+-- - Fewer NULL checks in code
+-- - Better query optimizer decisions
+```
+
+## NULL Handling in Joins
+
+```sql
+-- NULL in FK column = no match in INNER JOIN
+SELECT o.id, c.name
+FROM orders o
+JOIN customers c ON o.customer_id = c.id;
+-- Orders with NULL customer_id are excluded
+
+-- LEFT JOIN includes but c.name is NULL
+SELECT o.id, c.name
+FROM orders o
+LEFT JOIN customers c ON o.customer_id = c.id;
+
+-- Making FK NOT NULL ensures all orders have customers
+```
+
+## Index Considerations
+
+```sql
+-- NULL values in indexes
+-- - SQL Server: NULL included in indexes (one NULL per unique)
+-- - PostgreSQL: NULL included, multiple NULLs allowed in unique
+-- - Oracle: NULL excluded from B-tree indexes
+
+-- NOT NULL columns index better
+CREATE INDEX IX_orders_status ON orders(status);
+-- If status allows NULL, NULLs may not use index efficiently
+
+-- Filtered index alternative
+CREATE INDEX IX_orders_status_notnull ON orders(status)
+WHERE status IS NOT NULL;
+```
+
+## Migration Strategies
+
+```sql
+-- Strategy 1: Staged migration
+-- Phase 1: Add column nullable with default
+ALTER TABLE users ADD new_column VARCHAR(50) DEFAULT 'default_value';
+
+-- Phase 2: Populate data
+UPDATE users SET new_column = computed_value WHERE new_column IS NULL;
+
+-- Phase 3: Make NOT NULL
+ALTER TABLE users ALTER COLUMN new_column VARCHAR(50) NOT NULL;
+
+-- Strategy 2: Backfill with batch processing
+WHILE EXISTS (SELECT 1 FROM users WHERE new_column IS NULL)
+BEGIN
+    UPDATE TOP (1000) users SET new_column = 'default' WHERE new_column IS NULL;
+END;
+```
+
+## Application-Level Considerations
+
+```sql
+-- ORM mapping: NOT NULL affects generated code
+-- Entity Framework example:
+-- NOT NULL column -> required property (string)
+-- NULL column -> nullable property (string?)
+
+-- API validation should mirror database constraints
+-- Database is last line of defense
+```
+
+## Performance of NOT NULL Checks
+
+```sql
+-- NOT NULL check is very fast (bit flag in row)
+-- Unlike CHECK constraints, no expression evaluation
+
+-- Storage: NOT NULL columns slightly smaller
+-- NULL columns need NULL bitmap (1 bit per nullable column)
+```
+
+<ProgressCheckpoint section="not-null-advanced" xpReward={45} />

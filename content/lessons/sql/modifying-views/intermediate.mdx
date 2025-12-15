@@ -1,0 +1,91 @@
+# Modifying Views: Practical Patterns
+
+Safe update strategies and dependency handling.
+
+## Check Dependencies First
+
+```sql
+-- SQL Server: Find dependent objects
+SELECT
+    OBJECT_NAME(d.referencing_id) AS dependent_object,
+    o.type_desc
+FROM sys.sql_expression_dependencies d
+JOIN sys.objects o ON d.referencing_id = o.object_id
+WHERE d.referenced_entity_name = 'my_view';
+
+-- PostgreSQL
+SELECT dependent_ns.nspname AS dependent_schema,
+       dependent_view.relname AS dependent_view
+FROM pg_depend
+JOIN pg_rewrite ON pg_depend.objid = pg_rewrite.oid
+JOIN pg_class dependent_view ON pg_rewrite.ev_class = dependent_view.oid
+JOIN pg_namespace dependent_ns ON dependent_view.relnamespace = dependent_ns.oid
+WHERE pg_depend.refobjid = 'my_view'::regclass;
+```
+
+## Preserve Permissions
+
+```sql
+-- SQL Server: ALTER VIEW preserves permissions
+-- CREATE OR REPLACE in PostgreSQL also preserves permissions
+
+-- Manual backup pattern:
+-- 1. Script existing permissions
+-- 2. Modify view
+-- 3. Reapply if needed
+```
+
+## Safe Update Pattern
+
+```sql
+-- 1. Create new version
+CREATE VIEW customers_v2 AS
+SELECT id, name, email, phone, created_at
+FROM customers WHERE status = 'active';
+
+-- 2. Test new version
+SELECT * FROM customers_v2;
+
+-- 3. Swap old to backup
+sp_rename 'customers_vw', 'customers_vw_backup';
+
+-- 4. Make new the primary
+sp_rename 'customers_v2', 'customers_vw';
+
+-- 5. After validation, drop backup
+DROP VIEW customers_vw_backup;
+```
+
+## Conditional View Modification
+
+```sql
+-- SQL Server: Check if view exists
+IF OBJECT_ID('dbo.my_view', 'V') IS NOT NULL
+    ALTER VIEW dbo.my_view AS SELECT ...;
+ELSE
+    CREATE VIEW dbo.my_view AS SELECT ...;
+
+-- Or use dynamic SQL
+DECLARE @sql NVARCHAR(MAX) = 'CREATE OR ALTER VIEW dbo.my_view AS SELECT ...';
+EXEC sp_executesql @sql;
+```
+
+## Updating View Options
+
+```sql
+-- Add SCHEMABINDING to existing view
+-- Must drop and recreate (SQL Server)
+DROP VIEW dbo.my_view;
+CREATE VIEW dbo.my_view
+WITH SCHEMABINDING
+AS SELECT ...;
+
+-- Add CHECK OPTION
+ALTER VIEW my_view AS
+SELECT * FROM products WHERE active = 1
+WITH CHECK OPTION;
+```
+
+<ViewBuilder mode="intermediate" />
+
+<ProgressCheckpoint section="modifying-views-practical" xpReward={30} />

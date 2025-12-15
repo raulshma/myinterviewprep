@@ -1,0 +1,109 @@
+# GROUP BY: Advanced Techniques
+
+Master ROLLUP, CUBE, GROUPING SETS for complex reporting.
+
+## ROLLUP - Hierarchical Subtotals
+
+```sql
+SELECT
+    COALESCE(region, 'ALL REGIONS') AS region,
+    COALESCE(country, 'ALL COUNTRIES') AS country,
+    COALESCE(city, 'ALL CITIES') AS city,
+    SUM(sales) AS total_sales
+FROM sales_data
+GROUP BY ROLLUP(region, country, city);
+
+-- Produces:
+-- region, country, city  (detail)
+-- region, country, NULL  (country subtotal)
+-- region, NULL, NULL     (region subtotal)
+-- NULL, NULL, NULL       (grand total)
+```
+
+## CUBE - All Combinations
+
+```sql
+SELECT
+    region,
+    product_category,
+    SUM(sales) AS total_sales
+FROM sales_data
+GROUP BY CUBE(region, product_category);
+
+-- Produces all combinations:
+-- region + category, region only, category only, grand total
+```
+
+## GROUPING SETS - Custom Groups
+
+```sql
+SELECT
+    region,
+    category,
+    SUM(sales) AS total
+FROM sales_data
+GROUP BY GROUPING SETS (
+    (region, category),  -- By both
+    (region),            -- By region only
+    (category),          -- By category only
+    ()                   -- Grand total
+);
+```
+
+## GROUPING Function
+
+Identify subtotal rows:
+
+```sql
+SELECT
+    CASE WHEN GROUPING(region) = 1 THEN 'All Regions' ELSE region END AS region,
+    CASE WHEN GROUPING(category) = 1 THEN 'All Categories' ELSE category END AS category,
+    SUM(sales) AS total,
+    GROUPING_ID(region, category) AS grouping_level
+FROM sales_data
+GROUP BY ROLLUP(region, category);
+```
+
+## Performance Optimization
+
+```sql
+-- Index for GROUP BY
+CREATE INDEX IX_orders_customer ON orders(customer_id);
+
+-- This query uses the index:
+SELECT customer_id, COUNT(*) FROM orders GROUP BY customer_id;
+
+-- Covering index (includes aggregated column)
+CREATE INDEX IX_orders_customer_total ON orders(customer_id) INCLUDE (total);
+
+SELECT customer_id, SUM(total) FROM orders GROUP BY customer_id;
+-- Index-only scan
+```
+
+## GROUP BY vs DISTINCT
+
+```sql
+-- These are equivalent for simple cases
+SELECT DISTINCT category FROM products;
+SELECT category FROM products GROUP BY category;
+
+-- GROUP BY is needed when aggregating
+SELECT category, COUNT(*) FROM products GROUP BY category;
+-- Can't do this with DISTINCT alone
+```
+
+## Streaming vs Hash Aggregation
+
+```sql
+-- SQL Server query plan shows:
+-- Stream Aggregate: Data is sorted (uses index or explicit sort)
+-- Hash Match Aggregate: Uses hash table (better for large, unsorted data)
+
+-- Force hash with hint (if needed)
+SELECT category, COUNT(*)
+FROM products
+GROUP BY category
+OPTION (HASH GROUP);
+```
+
+<ProgressCheckpoint section="groupby-advanced" xpReward={55} />

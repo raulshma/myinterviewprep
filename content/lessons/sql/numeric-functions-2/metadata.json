@@ -1,0 +1,15 @@
+{
+  "id": "numeric-functions-2",
+  "title": "Advanced Numeric Functions",
+  "description": "POWER, SQRT, LOG, and advanced mathematical operations.",
+  "milestone": "advanced-functions",
+  "order": 2,
+  "sections": ["exponential", "trigonometry", "statistical"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["numeric-functions-1"],
+  "tags": ["sql", "functions", "numeric", "math", "advanced"]
+}

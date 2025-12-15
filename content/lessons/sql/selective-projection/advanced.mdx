@@ -1,0 +1,90 @@
+# Selective Projection: Advanced Optimization
+
+Expert-level column selection strategies.
+
+## Columnstore Index Benefits
+
+```sql
+-- Columnstore stores data by column, not row
+CREATE COLUMNSTORE INDEX IX_cs ON large_table (...);
+
+-- Only requested columns are read from disk
+SELECT customer_id, SUM(amount)
+FROM large_table
+GROUP BY customer_id;
+-- Only customer_id and amount columns accessed
+
+-- SELECT * reads every column (much slower)
+```
+
+## Row vs Column Storage
+
+```sql
+/*
+Row storage (traditional):
+Row1: [id=1, name="John", email="j@ex.com", phone="..."]
+Row2: [id=2, name="Jane", email="a@ex.com", phone="..."]
+
+Column storage:
+id:    [1, 2, 3, ...]
+name:  ["John", "Jane", ...]
+email: ["j@ex.com", "a@ex.com", ...]
+
+Column storage: Selecting 2 of 20 columns = 10% I/O
+Row storage: Always reads full rows
+*/
+```
+
+## Memory-Optimized Tables
+
+```sql
+-- In-memory tables: Column selection still matters
+CREATE TABLE hot_data (
+    id INT PRIMARY KEY NONCLUSTERED,
+    key1 VARCHAR(100),
+    key2 VARCHAR(100),
+    large_payload NVARCHAR(MAX)
+) WITH (MEMORY_OPTIMIZED = ON);
+
+-- Avoid payload when not needed
+SELECT id, key1, key2 FROM hot_data WHERE key1 = 'value';
+```
+
+## Sparse Columns
+
+```sql
+-- SQL Server: Sparse columns for mostly-NULL data
+ALTER TABLE products ADD
+    special_feature1 NVARCHAR(100) SPARSE,
+    special_feature2 NVARCHAR(100) SPARSE;
+
+-- Only non-NULL values stored
+-- Use column_set for efficient retrieval
+ALTER TABLE products ADD features XML COLUMN_SET FOR ALL_SPARSE_COLUMNS;
+```
+
+## Query Plan Column Impact
+
+```sql
+-- Execution plan shows I/O by column selection
+SET STATISTICS IO ON;
+
+SELECT id, name FROM customers;  -- Logical reads: 100
+SELECT * FROM customers;         -- Logical reads: 500
+-- (hypothetical values showing difference)
+```
+
+## Projection in Distributed Queries
+
+```sql
+-- Distributed/linked server queries: Column selection critical
+SELECT id, name  -- Only transfer 2 columns across network
+FROM LinkedServer.RemoteDB.dbo.customers
+WHERE country = 'USA';
+
+-- SELECT * transfers entire table worth of data!
+```
+
+<QueryOptimizer mode="advanced" />
+
+<ProgressCheckpoint section="projection-advanced" xpReward={45} />

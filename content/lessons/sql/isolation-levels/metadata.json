@@ -1,0 +1,15 @@
+{
+  "id": "isolation-levels",
+  "title": "Transaction Isolation Levels",
+  "description": "Control how transactions interact with each other.",
+  "milestone": "transactions",
+  "order": 6,
+  "sections": ["levels-overview", "phenomena", "choosing-level"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
+    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
+    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+  },
+  "prerequisites": ["savepoint"],
+  "tags": ["sql", "transactions", "isolation", "locking"]
+}

@@ -1,0 +1,98 @@
+# Recursive Queries
+
+Navigate trees and hierarchies!
+
+## 🌳 What is a Recursive Query?
+
+Recursive CTEs call themselves to traverse hierarchical data:
+
+```sql
+-- Employee hierarchy
+WITH RECURSIVE org_chart AS (
+    -- Base case: Start with CEO
+    SELECT id, name, manager_id, 1 AS level
+    FROM employees WHERE manager_id IS NULL
+
+    UNION ALL
+
+    -- Recursive case: Get subordinates
+    SELECT e.id, e.name, e.manager_id, o.level + 1
+    FROM employees e
+    JOIN org_chart o ON e.manager_id = o.id
+)
+SELECT * FROM org_chart;
+```
+
+## 📝 Basic Structure
+
+```sql
+WITH RECURSIVE cte_name AS (
+    -- Anchor: Starting point (non-recursive)
+    SELECT ...
+
+    UNION ALL
+
+    -- Recursive: References itself
+    SELECT ... FROM cte_name WHERE ...
+)
+SELECT * FROM cte_name;
+```
+
+## 🔢 Simple Example: Numbers
+
+```sql
+-- Generate numbers 1-10
+WITH RECURSIVE numbers AS (
+    SELECT 1 AS n          -- Anchor: Start at 1
+
+    UNION ALL
+
+    SELECT n + 1 FROM numbers WHERE n < 10  -- Recursive: Add 1
+)
+SELECT * FROM numbers;
+
+-- Result: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+```
+
+## 👨‍👩‍👧‍👦 Family Tree Example
+
+```sql
+-- Data: id, name, parent_id
+WITH RECURSIVE family AS (
+    -- Start with grandparent
+    SELECT id, name, parent_id, 0 AS generation
+    FROM people WHERE name = 'Grandpa'
+
+    UNION ALL
+
+    -- Find children
+    SELECT p.id, p.name, p.parent_id, f.generation + 1
+    FROM people p
+    JOIN family f ON p.parent_id = f.id
+)
+SELECT name, generation FROM family;
+```
+
+## ⚠️ Important: Stop Condition
+
+Always include a condition to stop recursion!
+
+```sql
+-- Without stop: INFINITE LOOP!
+WITH RECURSIVE bad AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM bad  -- No WHERE clause!
+)
+SELECT * FROM bad;
+
+-- With stop: Safe
+WITH RECURSIVE good AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM good WHERE n < 100  -- Stops at 100
+)
+SELECT * FROM good;
+```
+
+<ProgressCheckpoint section="recursive-basics" xpReward={30} />

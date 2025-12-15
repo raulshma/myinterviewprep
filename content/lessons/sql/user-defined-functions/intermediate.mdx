@@ -1,0 +1,106 @@
+# User-Defined Functions: Practical Patterns
+
+Real-world function development.
+
+## Multi-Statement Table Function
+
+```sql
+CREATE FUNCTION fn_customer_summary(@min_orders INT)
+RETURNS @result TABLE (
+    customer_id INT,
+    customer_name NVARCHAR(100),
+    order_count INT,
+    total_spent DECIMAL(15,2)
+)
+AS
+BEGIN
+    INSERT INTO @result
+    SELECT
+        c.id,
+        c.name,
+        COUNT(o.id),
+        SUM(o.total)
+    FROM customers c
+    LEFT JOIN orders o ON c.id = o.customer_id
+    GROUP BY c.id, c.name
+    HAVING COUNT(o.id) >= @min_orders;
+
+    RETURN;
+END;
+
+-- Use it
+SELECT * FROM fn_customer_summary(5);
+```
+
+## Inline vs Multi-Statement
+
+```sql
+-- Inline: Single SELECT, better performance
+CREATE FUNCTION fn_active_products_inline()
+RETURNS TABLE
+AS
+RETURN (SELECT * FROM products WHERE is_active = 1);
+
+-- Multi-statement: Complex logic, slower
+CREATE FUNCTION fn_active_products_multi()
+RETURNS @result TABLE (id INT, name VARCHAR(100))
+AS
+BEGIN
+    INSERT INTO @result SELECT id, name FROM products WHERE is_active = 1;
+    RETURN;
+END;
+```
+
+## Deterministic Functions
+
+```sql
+-- Deterministic: Same input = same output
+CREATE FUNCTION fn_calculate_discount(@price DECIMAL, @percent DECIMAL)
+RETURNS DECIMAL
+WITH SCHEMABINDING  -- Required for deterministic
+AS
+BEGIN
+    RETURN @price * (1 - @percent / 100);
+END;
+
+-- Can be used in computed columns and indexes
+```
+
+## PostgreSQL Functions
+
+```sql
+-- PostgreSQL uses CREATE FUNCTION for both
+CREATE FUNCTION calculate_age(birth_date DATE)
+RETURNS INTEGER AS $$
+BEGIN
+    RETURN DATE_PART('year', AGE(birth_date));
+END;
+$$ LANGUAGE plpgsql;
+
+-- Inline (SQL language)
+CREATE FUNCTION get_active_users()
+RETURNS SETOF users AS $$
+    SELECT * FROM users WHERE is_active = true;
+$$ LANGUAGE sql;
+```
+
+## Using Functions in Queries
+
+```sql
+-- In SELECT
+SELECT id, dbo.fn_format_phone(phone) AS phone FROM contacts;
+
+-- In WHERE
+SELECT * FROM orders WHERE dbo.fn_is_valid(status) = 1;
+
+-- In JOIN
+SELECT * FROM orders o
+CROSS APPLY dbo.fn_get_order_items(o.id) i;
+
+-- In computed column
+ALTER TABLE orders ADD tax_amount AS dbo.fn_calculate_tax(total);
+```
+
+<StoredProcedureBuilder mode="intermediate" />
+
+<ProgressCheckpoint section="udf-practical" xpReward={40} />

@@ -1,0 +1,77 @@
+# ROLLBACK: Undoing Changes
+
+Cancel a transaction and restore the previous state!
+
+## ↩️ What is ROLLBACK?
+
+ROLLBACK undoes all changes made during the transaction:
+
+```sql
+BEGIN TRANSACTION;
+    UPDATE accounts SET balance = 0 WHERE id = 1;  -- Oops!
+ROLLBACK;  -- Undo! Balance restored to original value
+```
+
+## 📝 Syntax
+
+```sql
+ROLLBACK;
+ROLLBACK TRANSACTION;
+ROLLBACK WORK;
+ROLLBACK TRAN;  -- SQL Server
+```
+
+## 🎯 When to Use ROLLBACK
+
+1. **Error occurs** - Something went wrong
+2. **Validation fails** - Business rule violated
+3. **Testing** - Preview changes without saving
+4. **User cancels** - Operation aborted
+
+## 📊 COMMIT vs ROLLBACK
+
+```sql
+BEGIN TRANSACTION;
+    UPDATE products SET price = price * 1.1;  -- 10% increase
+
+    -- Check the result
+    IF (SELECT MAX(price) FROM products) > 1000
+    BEGIN
+        ROLLBACK;  -- Too expensive, undo!
+        PRINT 'Prices not updated';
+    END
+    ELSE
+    BEGIN
+        COMMIT;    -- Looks good, save!
+        PRINT 'Prices updated';
+    END;
+```
+
+## ⚡ Quick Example
+
+```sql
+BEGIN TRANSACTION;
+    DELETE FROM orders WHERE id = 999;
+
+    -- Changed my mind!
+ROLLBACK;
+-- The order is still there!
+```
+
+## 💡 Key Points
+
+- Undoes ALL changes since BEGIN TRANSACTION
+- Releases locks
+- Ends the transaction
+- Data returns to pre-transaction state
+
+## ⚠️ Can't Rollback After Commit!
+
+```sql
+BEGIN TRANSACTION;
+    DELETE FROM important_data;
+COMMIT;
+ROLLBACK;  -- TOO LATE! Data is gone.
+```
+
+<ProgressCheckpoint section="rollback-basics" xpReward={20} />

@@ -1,0 +1,98 @@
+# Advanced Numeric Functions: Expert Topics
+
+Complex mathematical operations and performance.
+
+## Geographic Calculations
+
+```sql
+-- Haversine formula for distance between coordinates (in km)
+SELECT
+    2 * 6371 * ASIN(
+        SQRT(
+            POWER(SIN(RADIANS(lat2 - lat1) / 2), 2) +
+            COS(RADIANS(lat1)) * COS(RADIANS(lat2)) *
+            POWER(SIN(RADIANS(lon2 - lon1) / 2), 2)
+        )
+    ) AS distance_km
+FROM location_pairs;
+
+-- Bearing calculation
+SELECT
+    DEGREES(
+        ATAN2(
+            SIN(RADIANS(lon2 - lon1)) * COS(RADIANS(lat2)),
+            COS(RADIANS(lat1)) * SIN(RADIANS(lat2)) -
+            SIN(RADIANS(lat1)) * COS(RADIANS(lat2)) * COS(RADIANS(lon2 - lon1))
+        )
+    ) AS bearing
+FROM location_pairs;
+```
+
+## Window Function Statistics
+
+```sql
+-- Moving average with window
+SELECT
+    date,
+    value,
+    AVG(value) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS ma_7day,
+    STDEV(value) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS std_7day
+FROM daily_values;
+
+-- Percentile calculations
+SELECT
+    value,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY value) OVER () AS median,
+    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY value) OVER () AS q1,
+    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY value) OVER () AS q3
+FROM data;
+```
+
+## Machine Learning Prep
+
+```sql
+-- Min-Max normalization
+SELECT
+    value,
+    (value - MIN(value) OVER ()) /
+    (MAX(value) OVER () - MIN(value) OVER ()) AS normalized
+FROM features;
+
+-- Z-score standardization
+SELECT
+    value,
+    (value - AVG(value) OVER ()) / STDEV(value) OVER () AS z_score
+FROM features;
+```
+
+## Bitwise Operations
+
+```sql
+-- Bitwise AND, OR, XOR
+SELECT 5 & 3;   -- 1 (binary: 101 & 011 = 001)
+SELECT 5 | 3;   -- 7 (binary: 101 | 011 = 111)
+SELECT 5 ^ 3;   -- 6 (binary: 101 ^ 011 = 110)
+
+-- Check if bit is set
+SELECT id FROM items WHERE (flags & 4) = 4;  -- Bit 2 is set
+```
+
+## Overflow Prevention
+
+```sql
+-- Handle potential overflow
+SELECT
+    CASE
+        WHEN a > 0 AND b > SQRT(CAST(9223372036854775807 AS BIGINT) / a) THEN NULL
+        ELSE a * b
+    END AS safe_product
+FROM numbers;
+
+-- Use DECIMAL for large precise calculations
+SELECT CAST(a AS DECIMAL(38,10)) * CAST(b AS DECIMAL(38,10))
+FROM big_numbers;
+```
+
+<NumericFunctionExplorer mode="advanced" />
+
+<ProgressCheckpoint section="advanced-numeric-expert" xpReward={50} />

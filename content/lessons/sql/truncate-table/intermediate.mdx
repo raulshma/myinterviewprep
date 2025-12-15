@@ -1,0 +1,137 @@
+# TRUNCATE TABLE: Practical Usage
+
+Master TRUNCATE patterns for ETL, testing, and data management.
+
+## ETL Staging Pattern
+
+```sql
+-- Common ETL pattern
+BEGIN TRANSACTION;
+
+-- Clear staging table
+TRUNCATE TABLE staging_customers;
+
+-- Load new data
+BULK INSERT staging_customers
+FROM 'customers.csv'
+WITH (FIELDTERMINATOR = ',');
+
+-- Merge into production
+MERGE INTO customers AS target
+USING staging_customers AS source
+ON target.id = source.id
+WHEN MATCHED THEN UPDATE SET name = source.name
+WHEN NOT MATCHED THEN INSERT (id, name) VALUES (source.id, source.name);
+
+COMMIT;
+```
+
+## Transaction Behavior
+
+### SQL Server - Rollback Supported
+
+```sql
+BEGIN TRANSACTION;
+TRUNCATE TABLE test_data;
+-- Changed my mind
+ROLLBACK;  -- Data is back!
+```
+
+### MySQL - Auto-Commits
+
+```sql
+-- MySQL: TRUNCATE auto-commits, cannot rollback
+START TRANSACTION;
+TRUNCATE TABLE test_data;  -- Immediately permanent!
+ROLLBACK;  -- Has no effect on TRUNCATE
+```
+
+## Handling Foreign Keys
+
+### Workaround: Disable Constraints
+
+```sql
+-- SQL Server: Temporary disable all constraints
+EXEC sp_MSforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL';
+
+TRUNCATE TABLE parent_table;
+TRUNCATE TABLE child_table;
+
+-- Re-enable constraints
+EXEC sp_MSforeachtable 'ALTER TABLE ? CHECK CONSTRAINT ALL';
+```
+
+### Alternative: Delete in Order
+
+```sql
+-- If foreign keys exist, delete in correct order
+DELETE FROM order_items;     -- Child table first
+DELETE FROM orders;          -- Parent table
+-- Then optionally reseed identity
+DBCC CHECKIDENT('orders', RESEED, 0);
+```
+
+## Truncate Partitions
+
+```sql
+-- SQL Server 2016+: Truncate specific partitions
+TRUNCATE TABLE orders
+WITH (PARTITIONS (1, 2, 3));
+
+-- Much faster than DELETE for time-based cleanup
+```
+
+## Performance Comparison
+
+```sql
+-- Setup: Table with 1 million rows
+
+-- DELETE: Logs each row deletion
+DELETE FROM large_table;
+-- Time: ~30 seconds
+-- Log growth: Large
+
+-- TRUNCATE: Deallocates pages
+TRUNCATE TABLE large_table;
+-- Time: <1 second
+-- Log growth: Minimal
+```
+
+## Test Data Management
+
+```sql
+-- Create test data reset procedure
+CREATE PROCEDURE usp_reset_test_data
+AS
+BEGIN
+    -- Disable constraints
+    EXEC sp_MSforeachtable 'ALTER TABLE ? NOCHECK CONSTRAINT ALL';
+
+    -- Truncate all tables (careful in production!)
+    TRUNCATE TABLE order_items;
+    TRUNCATE TABLE orders;
+    TRUNCATE TABLE customers;
+    TRUNCATE TABLE products;
+
+    -- Re-enable constraints
+    EXEC sp_MSforeachtable 'ALTER TABLE ? CHECK CONSTRAINT ALL';
+
+    -- Reload seed data
+    EXEC usp_load_seed_data;
+END;
+```
+
+## Common Gotchas
+
+```sql
+-- 1. TRUNCATE requires ALTER permission, not DELETE
+GRANT ALTER ON table_name TO user_name;
+
+-- 2. Cannot TRUNCATE table with FK references
+-- Even if the referencing table is empty!
+
+-- 3. Cannot TRUNCATE tables in replication
+-- Use DELETE instead
+```
+
+<ProgressCheckpoint section="truncate-practical" xpReward={30} />

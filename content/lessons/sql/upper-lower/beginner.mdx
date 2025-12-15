@@ -1,0 +1,75 @@
+# UPPER, LOWER, and TRIM: String Formatting
+
+Change case and clean up whitespace!
+
+## 🔤 UPPER: Make Uppercase
+
+```sql
+SELECT UPPER('hello');     -- 'HELLO'
+SELECT UPPER('Hello World'); -- 'HELLO WORLD'
+```
+
+## 🔡 LOWER: Make Lowercase
+
+```sql
+SELECT LOWER('HELLO');     -- 'hello'
+SELECT LOWER('Hello World'); -- 'hello world'
+```
+
+## ✂️ TRIM: Remove Whitespace
+
+```sql
+SELECT TRIM('  hello  ');   -- 'hello'
+SELECT LTRIM('  hello');    -- 'hello' (left only)
+SELECT RTRIM('hello  ');    -- 'hello' (right only)
+```
+
+## 🎯 Practical Examples
+
+```sql
+-- Normalize email for comparison
+SELECT LOWER(TRIM(email)) AS clean_email FROM users;
+
+-- Standardize names
+SELECT UPPER(last_name), first_name FROM employees;
+
+-- Clean user input
+INSERT INTO users (email) VALUES (LOWER(TRIM(@input_email)));
+```
+
+## 📊 Case-Insensitive Search
+
+```sql
+-- Bad: Depends on collation
+WHERE name = 'JOHN'
+
+-- Good: Explicit case handling
+WHERE UPPER(name) = UPPER('john')
+
+-- Or
+WHERE LOWER(name) = LOWER('JOHN')
+```
+
+## 🌟 Title Case (INITCAP)
+
+```sql
+-- PostgreSQL/Oracle has INITCAP
+SELECT INITCAP('hello world');  -- 'Hello World'
+
+-- SQL Server: Manual
+SELECT UPPER(LEFT(name, 1)) + LOWER(SUBSTRING(name, 2, LEN(name)));
+```
+
+## ⚡ Quick Reference
+
+| Function | Purpose       | Example               |
+| -------- | ------------- | --------------------- |
+| UPPER    | Uppercase     | `UPPER('hi')` → 'HI'  |
+| LOWER    | Lowercase     | `LOWER('HI')` → 'hi'  |
+| TRIM     | Remove spaces | `TRIM(' hi ')` → 'hi' |
+| LTRIM    | Left spaces   | `LTRIM(' hi')` → 'hi' |
+| RTRIM    | Right spaces  | `RTRIM('hi ')` → 'hi' |
+
+<StringFunctionPlayground mode="beginner" />
+
+<ProgressCheckpoint section="upper-lower-basics" xpReward={20} />

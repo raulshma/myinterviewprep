@@ -1,0 +1,103 @@
+# Using Indexes Effectively: Advanced Optimization
+
+Expert-level index strategies.
+
+## Index Seek vs Scan Decision
+
+```sql
+-- Optimizer chooses based on selectivity
+-- High selectivity (few rows): Index Seek
+SELECT * FROM orders WHERE customer_id = 123;  -- Returns 10 rows
+
+-- Low selectivity (many rows): Table Scan may be faster!
+SELECT * FROM orders WHERE status = 'active';  -- Returns 80% of rows
+
+-- Tipping point: ~25-30% of rows
+```
+
+## Multi-Column Index Ordering
+
+```sql
+-- Index: (category_id, is_active, price)
+
+-- Optimal: Uses all columns
+WHERE category_id = 1 AND is_active = 1 AND price > 50
+
+-- Good: Uses first two columns + range on third
+WHERE category_id = 1 AND is_active = 1 AND price > 50
+
+-- Suboptimal: Range breaks further columns
+WHERE category_id = 1 AND is_active > 0 AND price > 50
+-- Only uses category_id for seek, rest is residual filter
+```
+
+## Skip Scan Optimization
+
+```sql
+-- PostgreSQL can skip-scan low-cardinality leading columns
+-- Index: (gender, age)
+
+SELECT * FROM users WHERE age = 25;
+-- May scan index for gender='M', age=25
+-- Then scan for gender='F', age=25
+-- Skip scan makes this efficient
+```
+
+## Index Intersection
+
+```sql
+-- When optimizer combines multiple indexes
+CREATE INDEX IX_status ON orders(status);
+CREATE INDEX IX_date ON orders(order_date);
+
+SELECT * FROM orders WHERE status = 'active' AND order_date > '2024-01-01';
+-- May use both indexes and intersect results
+
+-- Usually better to have composite index instead
+CREATE INDEX IX_status_date ON orders(status, order_date);
+```
+
+## Indexed Views (Materialized Views)
+
+```sql
+-- SQL Server: Indexed View
+CREATE VIEW vw_order_summary
+WITH SCHEMABINDING
+AS
+SELECT customer_id, COUNT_BIG(*) AS order_count, SUM(total) AS total_spent
+FROM dbo.orders
+GROUP BY customer_id;
+
+CREATE UNIQUE CLUSTERED INDEX IX_vw_order_summary ON vw_order_summary(customer_id);
+
+-- Aggregates now use the indexed view
+SELECT * FROM vw_order_summary WHERE customer_id = 123;
+```
+
+## Filtered Index Usage
+
+```sql
+-- Filtered index for common queries
+CREATE INDEX IX_active_orders ON orders(customer_id, order_date)
+WHERE status = 'active';
+
+-- Query must match filter exactly
+SELECT * FROM orders WHERE status = 'active' AND customer_id = 123;  -- Uses filtered index
+SELECT * FROM orders WHERE status = 'pending' AND customer_id = 123; -- Cannot use filtered index
+```
+
+## Index Statistics Maintenance
+
+```sql
+-- Outdated statistics = wrong plan = wrong index usage
+UPDATE STATISTICS orders WITH FULLSCAN;  -- SQL Server
+ANALYZE VERBOSE orders;                   -- PostgreSQL
+
+-- Auto-update threshold (~20% change)
+-- Force more frequent updates for volatile tables
+ALTER DATABASE mydb SET AUTO_UPDATE_STATISTICS_ASYNC ON;
+```
+
+<IndexVisualizer mode="advanced" />
+
+<ProgressCheckpoint section="using-indexes-advanced" xpReward={50} />

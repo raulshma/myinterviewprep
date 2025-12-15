@@ -1,0 +1,97 @@
+# Subquery Types: The Complete Picture
+
+Understand the different types of subqueries and when to use each!
+
+## 📊 Four Types of Subqueries
+
+| Type       | Returns                   | Used With              |
+| ---------- | ------------------------- | ---------------------- |
+| **Scalar** | Single value              | `=, >, <, >=, <=`      |
+| **Column** | One column, many rows     | `IN, NOT IN, ANY, ALL` |
+| **Row**    | One row, multiple columns | Row comparison         |
+| **Table**  | Multiple rows and columns | `FROM, JOIN`           |
+
+## 1️⃣ Scalar Subquery
+
+Returns exactly ONE value (one row, one column):
+
+```sql
+-- In SELECT
+SELECT name, price,
+    (SELECT AVG(price) FROM products) AS avg_price
+FROM products;
+
+-- In WHERE
+SELECT * FROM products
+WHERE price > (SELECT AVG(price) FROM products);
+
+-- Error if returns more than one value!
+```
+
+## 2️⃣ Column Subquery
+
+Returns ONE column with multiple rows:
+
+```sql
+-- With IN
+SELECT * FROM customers
+WHERE id IN (SELECT customer_id FROM orders);
+
+-- With NOT IN
+SELECT * FROM products
+WHERE id NOT IN (SELECT product_id FROM order_items);
+
+-- With ANY/ALL
+SELECT * FROM products
+WHERE price > ALL (SELECT price FROM products WHERE category = 'Budget');
+```
+
+## 3️⃣ Row Subquery
+
+Returns ONE row with multiple columns (less common):
+
+```sql
+-- Compare multiple columns at once
+SELECT * FROM products
+WHERE (category, brand) = (SELECT category, brand FROM featured_products LIMIT 1);
+
+-- Useful for finding exact matches
+```
+
+## 4️⃣ Table Subquery (Derived Table)
+
+Returns a full table (multiple rows, multiple columns):
+
+```sql
+-- In FROM clause
+SELECT category, avg_price
+FROM (
+    SELECT category, AVG(price) AS avg_price
+    FROM products
+    GROUP BY category
+) AS category_stats
+WHERE avg_price > 50;
+
+-- In JOIN
+SELECT c.*, stats.order_count
+FROM customers c
+JOIN (
+    SELECT customer_id, COUNT(*) AS order_count
+    FROM orders GROUP BY customer_id
+) stats ON c.id = stats.customer_id;
+```
+
+## 💡 Quick Reference
+
+```sql
+-- Scalar: One value
+(SELECT MAX(price) FROM products)
+
+-- Column: One column, many rows
+(SELECT id FROM customers WHERE active = 1)
+
+-- Table: Multiple rows and columns
+(SELECT customer_id, SUM(total) FROM orders GROUP BY customer_id)
+```
+
+<ProgressCheckpoint section="subquery-types-basics" xpReward={25} />

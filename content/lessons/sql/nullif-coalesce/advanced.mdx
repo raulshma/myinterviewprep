@@ -1,0 +1,110 @@
+# NULLIF and COALESCE: Advanced Topics
+
+Complex NULL handling and performance.
+
+## Type Precedence in COALESCE
+
+```sql
+-- COALESCE returns highest precedence type
+SELECT COALESCE(NULL, 1, 2.5);  -- Returns 2.5 as DECIMAL (int converted)
+
+-- Explicit typing for clarity
+SELECT COALESCE(
+    CAST(nullable_decimal AS DECIMAL(10,2)),
+    CAST(fallback_int AS DECIMAL(10,2)),
+    0.00
+);
+```
+
+## NULLIF with Complex Expressions
+
+```sql
+-- Compare computed values
+SELECT
+    NULLIF(
+        total_sales - total_costs,
+        0
+    ) AS meaningful_profit
+FROM financials;
+
+-- Using expressions
+SELECT
+    a,
+    b,
+    NULLIF(a + b, a)  -- NULL if b = 0
+FROM numbers;
+```
+
+## Optimizing NULL Checks
+
+```sql
+-- Index-friendly NULL handling
+-- Instead of:
+WHERE COALESCE(status, 'default') = 'default'
+
+-- Use:
+WHERE status IS NULL OR status = 'default'
+-- This can use index on status column
+
+-- For partial indexes (PostgreSQL)
+CREATE INDEX idx_active ON users(id) WHERE status IS NOT NULL;
+```
+
+## NULL in Aggregates
+
+```sql
+-- COUNT behavior
+SELECT COUNT(*);          -- Counts all rows
+SELECT COUNT(column);     -- Counts non-NULL values
+SELECT COUNT(DISTINCT x); -- Ignores NULL
+
+-- AVG, SUM, etc. ignore NULL
+SELECT AVG(score)         -- Only averages non-NULL scores
+FROM tests;
+
+-- Include NULL in calculations
+SELECT
+    SUM(COALESCE(score, 0)) / COUNT(*) AS avg_with_zeros,
+    AVG(score) AS avg_without_nulls
+FROM tests;
+```
+
+## NVL and NVL2 (Oracle)
+
+```sql
+-- Oracle NVL (like ISNULL)
+SELECT NVL(commission, 0) FROM employees;
+
+-- NVL2: Different value for NULL vs non-NULL
+SELECT NVL2(commission, 'Has commission', 'No commission')
+FROM employees;
+
+-- SQL Server equivalent of NVL2:
+SELECT CASE WHEN commission IS NOT NULL THEN 'Has' ELSE 'No' END;
+```
+
+## IFNULL (MySQL)
+
+```sql
+-- MySQL IFNULL (like ISNULL)
+SELECT IFNULL(name, 'Unknown') FROM users;
+
+-- MySQL IF for conditional
+SELECT IF(score IS NULL, 'No score', CAST(score AS CHAR));
+```
+
+## Combining Functions
+
+```sql
+-- Complex NULL logic
+SELECT
+    COALESCE(
+        NULLIF(TRIM(primary_email), ''),
+        NULLIF(TRIM(secondary_email), ''),
+        NULLIF(TRIM(work_email), ''),
+        'no-reply@company.com'
+    ) AS best_email
+FROM contacts;
+```
+
+<ProgressCheckpoint section="null-functions-advanced" xpReward={40} />

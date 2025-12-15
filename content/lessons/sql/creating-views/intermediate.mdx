@@ -1,0 +1,101 @@
+# Creating Views: Practical Patterns
+
+Advanced view creation patterns.
+
+## Complex Multi-Table Views
+
+```sql
+CREATE VIEW sales_dashboard AS
+SELECT
+    p.category,
+    p.name AS product,
+    SUM(oi.quantity) AS total_sold,
+    SUM(oi.quantity * oi.price) AS revenue,
+    COUNT(DISTINCT o.id) AS order_count,
+    COUNT(DISTINCT o.customer_id) AS customer_count
+FROM products p
+JOIN order_items oi ON p.id = oi.product_id
+JOIN orders o ON oi.order_id = o.id
+WHERE o.status = 'completed'
+GROUP BY p.category, p.name;
+```
+
+## Views with Computed Columns
+
+```sql
+CREATE VIEW customer_metrics AS
+SELECT
+    c.id,
+    c.name,
+    COUNT(o.id) AS order_count,
+    COALESCE(SUM(o.total), 0) AS lifetime_value,
+    COALESCE(AVG(o.total), 0) AS avg_order_value,
+    MAX(o.order_date) AS last_order_date,
+    DATEDIFF(DAY, MAX(o.order_date), GETDATE()) AS days_since_order
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+GROUP BY c.id, c.name;
+```
+
+## WITH SCHEMABINDING
+
+```sql
+-- SQL Server: Bind view to underlying tables
+CREATE VIEW dbo.order_summary
+WITH SCHEMABINDING
+AS
+SELECT
+    customer_id,
+    COUNT_BIG(*) AS order_count,
+    SUM(total) AS total_amount
+FROM dbo.orders
+GROUP BY customer_id;
+
+-- Prevents changing underlying table structure that would break view
+```
+
+## CHECK OPTION
+
+```sql
+-- Ensure INSERT/UPDATE through view satisfies WHERE clause
+CREATE VIEW active_products AS
+SELECT * FROM products WHERE is_active = 1
+WITH CHECK OPTION;
+
+-- This will fail:
+INSERT INTO active_products (name, is_active) VALUES ('Test', 0);
+-- Error: CHECK OPTION violation
+```
+
+## Views with CTEs
+
+```sql
+CREATE VIEW customer_rankings AS
+WITH ranked AS (
+    SELECT
+        customer_id,
+        SUM(total) AS total_spent,
+        RANK() OVER (ORDER BY SUM(total) DESC) AS spending_rank
+    FROM orders
+    GROUP BY customer_id
+)
+SELECT c.*, r.total_spent, r.spending_rank
+FROM customers c
+JOIN ranked r ON c.id = r.customer_id;
+```
+
+## Recursive Views (PostgreSQL)
+
+```sql
+CREATE RECURSIVE VIEW org_chart (id, name, manager_id, level, path) AS
+    SELECT id, name, manager_id, 0, name
+    FROM employees WHERE manager_id IS NULL
+    UNION ALL
+    SELECT e.id, e.name, e.manager_id, oc.level + 1, oc.path || ' > ' || e.name
+    FROM employees e
+    JOIN org_chart oc ON e.manager_id = oc.id;
+```
+
+<ViewBuilder mode="intermediate" />
+
+<ProgressCheckpoint section="creating-views-practical" xpReward={40} />

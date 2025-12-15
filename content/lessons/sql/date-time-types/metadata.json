@@ -1,0 +1,15 @@
+{
+  "id": "date-time-types",
+  "title": "Date and Time Data Types",
+  "description": "Understand DATE, TIME, DATETIME, and related types.",
+  "milestone": "date-time",
+  "order": 1,
+  "sections": ["date-types", "time-types", "choosing-types"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["upper-lower"],
+  "tags": ["sql", "date", "time", "datetime", "data-types"]
+}

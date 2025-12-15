@@ -1,0 +1,90 @@
+# Creating Stored Procedures
+
+Store reusable SQL code in your database!
+
+## 📦 What is a Stored Procedure?
+
+A stored procedure is saved SQL code you can run by name:
+
+```sql
+CREATE PROCEDURE sp_get_active_customers
+AS
+BEGIN
+    SELECT * FROM customers WHERE status = 'active';
+END;
+
+-- Run it
+EXEC sp_get_active_customers;
+```
+
+## 🎯 Why Use Stored Procedures?
+
+| Benefit             | Description                        |
+| ------------------- | ---------------------------------- |
+| **Reusability**     | Write once, call many times        |
+| **Security**        | Grant EXECUTE without table access |
+| **Performance**     | Pre-compiled execution plan        |
+| **Maintainability** | Change logic in one place          |
+
+## 📝 Basic Syntax
+
+```sql
+-- SQL Server
+CREATE PROCEDURE procedure_name
+AS
+BEGIN
+    -- SQL statements
+END;
+
+-- PostgreSQL
+CREATE FUNCTION procedure_name()
+RETURNS void AS $$
+BEGIN
+    -- SQL statements
+END;
+$$ LANGUAGE plpgsql;
+```
+
+## 🔧 Simple Examples
+
+```sql
+-- Get all orders
+CREATE PROCEDURE sp_get_all_orders
+AS
+BEGIN
+    SELECT id, customer_id, total, order_date
+    FROM orders
+    ORDER BY order_date DESC;
+END;
+
+-- Execute
+EXEC sp_get_all_orders;
+```
+
+```sql
+-- Insert a new customer
+CREATE PROCEDURE sp_add_customer
+    @name NVARCHAR(100),
+    @email NVARCHAR(100)
+AS
+BEGIN
+    INSERT INTO customers (name, email)
+    VALUES (@name, @email);
+END;
+
+-- Execute with parameters
+EXEC sp_add_customer 'John Doe', 'john@example.com';
+```
+
+## 🗑️ Drop a Procedure
+
+```sql
+DROP PROCEDURE sp_get_active_customers;
+
+-- If exists
+DROP PROCEDURE IF EXISTS sp_get_active_customers;
+```
+
+<StoredProcedureBuilder mode="beginner" />
+
+<ProgressCheckpoint section="procedures-basics" xpReward={30} />

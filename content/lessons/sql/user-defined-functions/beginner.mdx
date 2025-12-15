@@ -1,0 +1,77 @@
+# User-Defined Functions
+
+Create reusable logic that returns values!
+
+## 🔧 What is a UDF?
+
+A User-Defined Function (UDF) is like a procedure but returns a value:
+
+```sql
+CREATE FUNCTION fn_calculate_tax(@amount DECIMAL(10,2))
+RETURNS DECIMAL(10,2)
+AS
+BEGIN
+    RETURN @amount * 0.08;
+END;
+
+-- Use in queries
+SELECT price, dbo.fn_calculate_tax(price) AS tax FROM products;
+```
+
+## 📝 Types of Functions
+
+| Type         | Returns       | Use In        |
+| ------------ | ------------- | ------------- |
+| Scalar       | Single value  | SELECT, WHERE |
+| Table-Valued | Table         | FROM clause   |
+| Inline Table | Single SELECT | FROM clause   |
+
+## 🎯 Scalar Function
+
+Returns one value:
+
+```sql
+CREATE FUNCTION fn_full_name(
+    @first NVARCHAR(50),
+    @last NVARCHAR(50)
+)
+RETURNS NVARCHAR(100)
+AS
+BEGIN
+    RETURN @first + ' ' + @last;
+END;
+
+-- Use it
+SELECT dbo.fn_full_name(first_name, last_name) AS name FROM employees;
+```
+
+## 📊 Table-Valued Function
+
+Returns a table:
+
+```sql
+CREATE FUNCTION fn_get_orders_by_customer(@customer_id INT)
+RETURNS TABLE
+AS
+RETURN (
+    SELECT id, order_date, total
+    FROM orders
+    WHERE customer_id = @customer_id
+);
+
+-- Use like a table
+SELECT * FROM fn_get_orders_by_customer(123);
+```
+
+## ⚡ Function vs Procedure
+
+| Function        | Procedure       |
+| --------------- | --------------- |
+| Returns value   | May return data |
+| Use in SELECT   | Call with EXEC  |
+| No side effects | Can modify data |
+| Single task     | Complex logic   |
+
+<StoredProcedureBuilder mode="beginner" />
+
+<ProgressCheckpoint section="udf-basics" xpReward={25} />

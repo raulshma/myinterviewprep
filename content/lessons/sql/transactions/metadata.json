@@ -1,0 +1,29 @@
+{
+  "id": "transactions",
+  "title": "SQL Transactions",
+  "description": "Ensure data integrity with ACID-compliant transactions using BEGIN, COMMIT, and ROLLBACK.",
+  "milestone": "sql",
+  "order": 9,
+  "sections": [
+    "acid-properties",
+    "begin-commit",
+    "rollback-savepoint",
+    "isolation-levels"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 55
+    },
+    "advanced": {
+      "estimatedMinutes": 40,
+      "xpReward": 85
+    }
+  },
+  "prerequisites": ["dml-operations"],
+  "tags": ["sql", "transactions", "acid", "commit", "rollback"]
+}

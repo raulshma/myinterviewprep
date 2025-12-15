@@ -1,0 +1,15 @@
+{
+  "id": "pivot-unpivot",
+  "title": "PIVOT and UNPIVOT",
+  "description": "Transform rows to columns and vice versa.",
+  "milestone": "advanced-sql",
+  "order": 6,
+  "sections": ["pivot-basics", "unpivot", "dynamic-pivot"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["recursive-queries"],
+  "tags": ["sql", "advanced", "pivot", "transformation"]
+}

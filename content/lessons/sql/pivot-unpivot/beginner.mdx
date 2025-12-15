@@ -1,0 +1,75 @@
+# PIVOT and UNPIVOT
+
+Transform your data layout!
+
+## 🔄 What is PIVOT?
+
+PIVOT turns row values into columns:
+
+```
+Before (rows):           After (columns):
+Product | Month | Sales   Product | Jan | Feb | Mar
+A       | Jan   | 100     A       | 100 | 150 | 200
+A       | Feb   | 150     B       | 80  | 90  | 110
+A       | Mar   | 200
+B       | Jan   | 80
+...
+```
+
+## 📝 Basic PIVOT (SQL Server)
+
+```sql
+SELECT * FROM (
+    SELECT product, month, sales
+    FROM monthly_sales
+) src
+PIVOT (
+    SUM(sales)
+    FOR month IN ([Jan], [Feb], [Mar])
+) pvt;
+```
+
+## 🔀 Alternative: CASE Expression
+
+Works on any database:
+
+```sql
+SELECT product,
+    SUM(CASE WHEN month = 'Jan' THEN sales ELSE 0 END) AS Jan,
+    SUM(CASE WHEN month = 'Feb' THEN sales ELSE 0 END) AS Feb,
+    SUM(CASE WHEN month = 'Mar' THEN sales ELSE 0 END) AS Mar
+FROM monthly_sales
+GROUP BY product;
+```
+
+## ↩️ UNPIVOT: Columns to Rows
+
+The reverse operation:
+
+```
+Before:                   After:
+Product | Jan | Feb | Mar  Product | Month | Sales
+A       | 100 | 150 | 200  A       | Jan   | 100
+B       | 80  | 90  | 110  A       | Feb   | 150
+                           A       | Mar   | 200
+                           B       | Jan   | 80
+                           ...
+```
+
+```sql
+SELECT product, month, sales
+FROM products
+UNPIVOT (
+    sales FOR month IN ([Jan], [Feb], [Mar])
+) unpvt;
+```
+
+## 💡 PostgreSQL: crosstab
+
+```sql
+SELECT * FROM crosstab(
+    'SELECT product, month, sales FROM monthly_sales ORDER BY 1,2'
+) AS ct(product TEXT, Jan INT, Feb INT, Mar INT);
+```
+
+<ProgressCheckpoint section="pivot-basics" xpReward={25} />

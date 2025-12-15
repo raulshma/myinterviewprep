@@ -1,0 +1,116 @@
+# DROP TABLE: Dependencies and Safe Practices
+
+Handle table dependencies and establish safe deletion practices.
+
+## Checking Dependencies
+
+### Find Foreign Key References
+
+```sql
+-- SQL Server: Find tables referencing a table
+SELECT
+    fk.name AS FK_name,
+    OBJECT_NAME(fk.parent_object_id) AS referencing_table
+FROM sys.foreign_keys fk
+WHERE OBJECT_NAME(fk.referenced_object_id) = 'customers';
+
+-- PostgreSQL
+SELECT
+    tc.table_name AS referencing_table,
+    tc.constraint_name
+FROM information_schema.table_constraints tc
+JOIN information_schema.constraint_column_usage ccu
+    ON tc.constraint_name = ccu.constraint_name
+WHERE ccu.table_name = 'customers'
+    AND tc.constraint_type = 'FOREIGN KEY';
+```
+
+### Find Dependent Views
+
+```sql
+-- SQL Server
+SELECT DISTINCT OBJECT_NAME(referencing_id) AS dependent_view
+FROM sys.sql_expression_dependencies
+WHERE referenced_id = OBJECT_ID('customers')
+AND OBJECT_NAME(referencing_id) IN (SELECT name FROM sys.views);
+
+-- PostgreSQL
+SELECT dependent_ns.nspname AS schema, dependent_view.relname AS view
+FROM pg_depend
+JOIN pg_rewrite ON pg_depend.objid = pg_rewrite.oid
+JOIN pg_class AS dependent_view ON pg_rewrite.ev_class = dependent_view.oid
+JOIN pg_namespace dependent_ns ON dependent_view.relnamespace = dependent_ns.oid
+WHERE pg_depend.refobjid = 'customers'::regclass;
+```
+
+## CASCADE Option
+
+```sql
+-- PostgreSQL: Drop table and all dependent objects
+DROP TABLE customers CASCADE;
+-- Drops table AND any views, foreign keys referencing it
+
+-- Be careful! This can drop more than expected
+```
+
+## Safe Drop Pattern
+
+```sql
+-- Comprehensive dependency check and drop
+BEGIN TRANSACTION;
+
+-- 1. Check for dependencies
+SELECT 'Found FK' WHERE EXISTS (
+    SELECT 1 FROM sys.foreign_keys
+    WHERE referenced_object_id = OBJECT_ID('old_table')
+);
+
+-- 2. Archive if needed
+SELECT * INTO old_table_archive FROM old_table;
+
+-- 3. Drop constraints first
+ALTER TABLE referencing_table DROP CONSTRAINT FK_ref;
+
+-- 4. Drop the table
+DROP TABLE old_table;
+
+-- 5. Verify
+IF OBJECT_ID('old_table') IS NULL
+    COMMIT;
+ELSE
+    ROLLBACK;
+```
+
+## Dropping Temporary Tables
+
+```sql
+-- Local temp tables (session-scoped)
+CREATE TABLE #temp_data (id INT);
+DROP TABLE #temp_data;
+
+-- Global temp tables
+CREATE TABLE ##global_temp (id INT);
+DROP TABLE ##global_temp;
+
+-- Best practice: Always drop temp tables when done
+BEGIN
+    CREATE TABLE #results (value INT);
+    -- ... use the temp table ...
+    DROP TABLE #results;
+END;
+```
+
+## Drop vs Truncate
+
+| Feature            | DROP TABLE | TRUNCATE TABLE |
+| ------------------ | ---------- | -------------- |
+| Removes data       | Yes        | Yes            |
+| Removes structure  | Yes        | No             |
+| Can be rolled back | Depends\*  | Depends\*      |
+| Resets identity    | N/A        | Yes            |
+| Can use WHERE      | No         | No             |
+| Speed              | Fast       | Very fast      |
+
+\*Depends on database and logging mode
+
+<ProgressCheckpoint section="drop-table-dependencies" xpReward={30} />

@@ -1,0 +1,109 @@
+# DATEPART and DATEADD: Practical Patterns
+
+Real-world date manipulation scenarios.
+
+## Start/End of Period
+
+```sql
+-- Start of month
+SELECT DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()), 0);
+
+-- End of month
+SELECT DATEADD(DAY, -1, DATEADD(MONTH, DATEDIFF(MONTH, 0, GETDATE()) + 1, 0));
+
+-- Start of week (Sunday)
+SELECT DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()), 0);
+
+-- Start of year
+SELECT DATEADD(YEAR, DATEDIFF(YEAR, 0, GETDATE()), 0);
+```
+
+## Business Day Calculations
+
+```sql
+-- Add business days (simplified, no holidays)
+CREATE FUNCTION dbo.AddBusinessDays(@date DATE, @days INT)
+RETURNS DATE
+AS
+BEGIN
+    DECLARE @result DATE = @date;
+    DECLARE @added INT = 0;
+
+    WHILE @added < @days
+    BEGIN
+        SET @result = DATEADD(DAY, 1, @result);
+        IF DATEPART(WEEKDAY, @result) NOT IN (1, 7)  -- Not weekend
+            SET @added = @added + 1;
+    END;
+
+    RETURN @result;
+END;
+```
+
+## Age Calculation
+
+```sql
+-- Precise age calculation
+SELECT
+    birth_date,
+    DATEDIFF(YEAR, birth_date, GETDATE()) -
+        CASE
+            WHEN DATEADD(YEAR, DATEDIFF(YEAR, birth_date, GETDATE()), birth_date) > GETDATE()
+            THEN 1
+            ELSE 0
+        END AS age
+FROM users;
+```
+
+## Formatting with DATENAME
+
+```sql
+SELECT DATENAME(MONTH, GETDATE());    -- 'March'
+SELECT DATENAME(WEEKDAY, GETDATE());  -- 'Friday'
+
+-- Full formatted date
+SELECT
+    DATENAME(WEEKDAY, order_date) + ', ' +
+    DATENAME(MONTH, order_date) + ' ' +
+    CAST(DAY(order_date) AS VARCHAR) + ', ' +
+    CAST(YEAR(order_date) AS VARCHAR)
+FROM orders;
+-- 'Friday, March 15, 2024'
+```
+
+## Grouping by Time Periods
+
+```sql
+-- By hour
+SELECT
+    DATEPART(HOUR, created_at) AS hour,
+    COUNT(*) AS count
+FROM events
+GROUP BY DATEPART(HOUR, created_at);
+
+-- By day of week
+SELECT
+    DATENAME(WEEKDAY, order_date) AS day_name,
+    COUNT(*) AS orders
+FROM orders
+GROUP BY DATEPART(WEEKDAY, order_date), DATENAME(WEEKDAY, order_date)
+ORDER BY DATEPART(WEEKDAY, order_date);
+```
+
+## Date Truncation
+
+```sql
+-- Truncate to hour
+SELECT DATEADD(HOUR, DATEDIFF(HOUR, 0, GETDATE()), 0);
+
+-- Truncate to minute
+SELECT DATEADD(MINUTE, DATEDIFF(MINUTE, 0, GETDATE()), 0);
+
+-- PostgreSQL: date_trunc
+SELECT date_trunc('hour', NOW());
+SELECT date_trunc('day', NOW());
+```
+
+<DateTimeExplorer mode="intermediate" />
+
+<ProgressCheckpoint section="datepart-practical" xpReward={40} />

@@ -1,0 +1,128 @@
+# Creating Stored Procedures: Practical Patterns
+
+Real-world procedure development.
+
+## Control Flow
+
+```sql
+CREATE PROCEDURE sp_process_order
+    @order_id INT
+AS
+BEGIN
+    DECLARE @status VARCHAR(20);
+
+    -- Get current status
+    SELECT @status = status FROM orders WHERE id = @order_id;
+
+    -- Conditional logic
+    IF @status = 'pending'
+    BEGIN
+        UPDATE orders SET status = 'processing' WHERE id = @order_id;
+        INSERT INTO order_log (order_id, action) VALUES (@order_id, 'Started processing');
+    END
+    ELSE IF @status = 'processing'
+    BEGIN
+        UPDATE orders SET status = 'shipped' WHERE id = @order_id;
+    END
+    ELSE
+    BEGIN
+        PRINT 'Order cannot be processed';
+    END;
+END;
+```
+
+## Error Handling
+
+```sql
+CREATE PROCEDURE sp_transfer_funds
+    @from_account INT,
+    @to_account INT,
+    @amount DECIMAL(10,2)
+AS
+BEGIN
+    BEGIN TRY
+        BEGIN TRANSACTION;
+            UPDATE accounts SET balance = balance - @amount WHERE id = @from_account;
+            UPDATE accounts SET balance = balance + @amount WHERE id = @to_account;
+        COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH;
+END;
+```
+
+## Returning Data
+
+```sql
+-- Return result set
+CREATE PROCEDURE sp_search_products @search NVARCHAR(100)
+AS
+BEGIN
+    SELECT * FROM products WHERE name LIKE '%' + @search + '%';
+END;
+
+-- Return scalar via OUTPUT parameter
+CREATE PROCEDURE sp_count_orders
+    @customer_id INT,
+    @count INT OUTPUT
+AS
+BEGIN
+    SELECT @count = COUNT(*) FROM orders WHERE customer_id = @customer_id;
+END;
+
+-- Call with output
+DECLARE @result INT;
+EXEC sp_count_orders 123, @result OUTPUT;
+SELECT @result;
+```
+
+## RETURN Values
+
+```sql
+CREATE PROCEDURE sp_validate_user @user_id INT
+AS
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM users WHERE id = @user_id)
+        RETURN -1;  -- User not found
+
+    IF EXISTS (SELECT 1 FROM users WHERE id = @user_id AND is_active = 0)
+        RETURN -2;  -- User inactive
+
+    RETURN 0;  -- Success
+END;
+
+-- Check return value
+DECLARE @result INT;
+EXEC @result = sp_validate_user 123;
+IF @result < 0 PRINT 'Validation failed';
+```
+
+## Loops
+
+```sql
+CREATE PROCEDURE sp_process_batch
+AS
+BEGIN
+    DECLARE @id INT;
+    DECLARE order_cursor CURSOR FOR
+        SELECT id FROM orders WHERE status = 'pending';
+
+    OPEN order_cursor;
+    FETCH NEXT FROM order_cursor INTO @id;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        EXEC sp_process_order @id;
+        FETCH NEXT FROM order_cursor INTO @id;
+    END;
+
+    CLOSE order_cursor;
+    DEALLOCATE order_cursor;
+END;
+```
+
+<StoredProcedureBuilder mode="intermediate" />
+
+<ProgressCheckpoint section="procedures-practical" xpReward={45} />

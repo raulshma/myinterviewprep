@@ -1,0 +1,119 @@
+# BEGIN TRANSACTION: Advanced Patterns
+
+Enterprise transaction management and edge cases.
+
+## Implicit vs Explicit Transactions
+
+```sql
+-- Implicit (default): Each statement = transaction
+UPDATE accounts SET balance = 100;  -- Auto-committed
+
+-- Explicit: You control boundaries
+BEGIN TRANSACTION;
+    UPDATE accounts SET balance = 100;
+    -- Not committed until you say so
+COMMIT;
+
+-- SQL Server: Disable auto-commit
+SET IMPLICIT_TRANSACTIONS ON;
+-- Now every statement starts a transaction if not in one
+```
+
+## Transaction State Validation
+
+```sql
+-- Comprehensive error handling
+CREATE PROCEDURE usp_transfer @from INT, @to INT, @amount MONEY
+AS
+BEGIN
+    DECLARE @started_tran BIT = 0;
+
+    IF @@TRANCOUNT = 0
+    BEGIN
+        BEGIN TRANSACTION;
+        SET @started_tran = 1;
+    END;
+
+    BEGIN TRY
+        UPDATE accounts SET balance = balance - @amount WHERE id = @from;
+        IF @@ROWCOUNT = 0 THROW 50001, 'From account not found', 1;
+
+        UPDATE accounts SET balance = balance + @amount WHERE id = @to;
+        IF @@ROWCOUNT = 0 THROW 50002, 'To account not found', 1;
+
+        IF @started_tran = 1 COMMIT;
+    END TRY
+    BEGIN CATCH
+        IF @started_tran = 1 AND @@TRANCOUNT > 0 ROLLBACK;
+        THROW;
+    END CATCH;
+END;
+```
+
+## Distributed Transactions
+
+```sql
+-- SQL Server: Span multiple servers
+BEGIN DISTRIBUTED TRANSACTION;
+    UPDATE server1.db.dbo.table1 SET ...;
+    UPDATE server2.db.dbo.table2 SET ...;
+COMMIT;
+
+-- Requires MSDTC (Microsoft Distributed Transaction Coordinator)
+```
+
+## Transaction Log Analysis
+
+```sql
+-- SQL Server: View active transactions
+SELECT
+    transaction_id,
+    name,
+    transaction_begin_time,
+    DATEDIFF(SECOND, transaction_begin_time, GETDATE()) AS duration_seconds
+FROM sys.dm_tran_active_transactions;
+
+-- View long-running transactions
+SELECT * FROM sys.dm_tran_session_transactions
+JOIN sys.dm_exec_sessions ON ...;
+```
+
+## Connection Pooling Considerations
+
+```sql
+-- Always commit or rollback before returning connection!
+-- Uncommitted transactions can affect next user of pooled connection
+
+-- .NET pattern
+using (var conn = new SqlConnection(connString))
+{
+    conn.Open();
+    using (var tran = conn.BeginTransaction())
+    {
+        try
+        {
+            // Operations...
+            tran.Commit();
+        }
+        catch
+        {
+            tran.Rollback();
+            throw;
+        }
+    }
+}  // Connection returned to pool, no lingering transaction
+```
+
+## Transaction Markers
+
+```sql
+-- SQL Server: Mark transaction for log backup
+BEGIN TRANSACTION TransferFunds WITH MARK 'Daily transfer batch';
+    -- Operations
+COMMIT;
+
+-- Can restore to marked transaction
+RESTORE LOG MyDB FROM ... WITH STOPATMARK = 'Daily transfer batch';
+```
+
+<ProgressCheckpoint section="begin-transaction-advanced" xpReward={40} />

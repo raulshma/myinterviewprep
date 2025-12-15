@@ -1,0 +1,73 @@
+# Creating Views: Virtual Tables
+
+Create reusable queries as virtual tables!
+
+## 👁️ What is a View?
+
+A view is a saved query that acts like a table:
+
+```sql
+CREATE VIEW active_customers AS
+SELECT id, name, email
+FROM customers
+WHERE status = 'active';
+
+-- Use like a table
+SELECT * FROM active_customers;
+```
+
+## 📝 Basic Syntax
+
+```sql
+CREATE VIEW view_name AS
+SELECT column1, column2
+FROM table_name
+WHERE condition;
+```
+
+## 🎯 Why Use Views?
+
+1. **Simplify complex queries** - Write once, use many times
+2. **Security** - Hide columns users shouldn't see
+3. **Abstraction** - Change underlying structure without affecting users
+4. **Consistency** - Same query logic everywhere
+
+## 📊 Examples
+
+```sql
+-- Simplify JOINs
+CREATE VIEW order_details AS
+SELECT
+    o.id AS order_id,
+    c.name AS customer_name,
+    o.total,
+    o.order_date
+FROM orders o
+JOIN customers c ON o.customer_id = c.id;
+
+-- Now just:
+SELECT * FROM order_details WHERE order_date > '2024-01-01';
+```
+
+```sql
+-- Hide sensitive data
+CREATE VIEW public_employees AS
+SELECT id, name, department, title
+FROM employees;  -- Hides salary, SSN, etc.
+```
+
+## ⚡ Views Are Dynamic!
+
+Views show current data, not a snapshot:
+
+```sql
+CREATE VIEW recent_orders AS
+SELECT * FROM orders WHERE order_date > DATEADD(DAY, -7, GETDATE());
+
+-- Always shows last 7 days from NOW
+SELECT * FROM recent_orders;
+```
+
+<ViewBuilder mode="beginner" />
+
+<ProgressCheckpoint section="creating-views-basics" xpReward={25} />

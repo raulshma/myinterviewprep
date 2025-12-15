@@ -1,0 +1,84 @@
+# Date and Time Data Types
+
+Store dates and times correctly in your database!
+
+## 📅 Common Date/Time Types
+
+| Type      | Stores        | Example                |
+| --------- | ------------- | ---------------------- |
+| DATE      | Date only     | 2024-03-15             |
+| TIME      | Time only     | 14:30:00               |
+| DATETIME  | Both          | 2024-03-15 14:30:00    |
+| TIMESTAMP | With timezone | 2024-03-15 14:30:00+00 |
+
+## 🗓️ DATE Type
+
+Just the date, no time:
+
+```sql
+CREATE TABLE events (
+    event_date DATE
+);
+
+INSERT INTO events VALUES ('2024-03-15');
+SELECT event_date FROM events;  -- 2024-03-15
+```
+
+## ⏰ TIME Type
+
+Just the time, no date:
+
+```sql
+CREATE TABLE schedules (
+    start_time TIME
+);
+
+INSERT INTO schedules VALUES ('14:30:00');
+SELECT start_time FROM schedules;  -- 14:30:00
+```
+
+## 📆 DATETIME / TIMESTAMP
+
+Both date and time:
+
+```sql
+CREATE TABLE orders (
+    created_at DATETIME  -- or TIMESTAMP
+);
+
+INSERT INTO orders VALUES ('2024-03-15 14:30:00');
+INSERT INTO orders VALUES (GETDATE());  -- Current date/time
+```
+
+## 🌍 Timezone Considerations
+
+```sql
+-- SQL Server: DATETIMEOFFSET
+CREATE TABLE global_events (
+    event_time DATETIMEOFFSET
+);
+INSERT INTO global_events VALUES ('2024-03-15 14:30:00 +05:30');
+
+-- PostgreSQL: TIMESTAMPTZ
+CREATE TABLE events (
+    created_at TIMESTAMPTZ
+);
+```
+
+## 🎯 Getting Current Date/Time
+
+```sql
+-- SQL Server
+SELECT GETDATE();        -- Current datetime
+SELECT GETUTCDATE();     -- UTC datetime
+SELECT SYSDATETIME();    -- High precision
+
+-- PostgreSQL / MySQL
+SELECT NOW();
+SELECT CURRENT_TIMESTAMP;
+SELECT CURRENT_DATE;
+```
+
+<DateTimeExplorer mode="beginner" />
+
+<ProgressCheckpoint section="datetime-types-basics" xpReward={25} />

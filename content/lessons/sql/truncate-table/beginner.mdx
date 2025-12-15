@@ -1,0 +1,88 @@
+# TRUNCATE TABLE: Fast Data Removal
+
+Learn the fastest way to empty a table completely!
+
+## 🚀 What is TRUNCATE?
+
+TRUNCATE removes **all rows** from a table instantly, while keeping the table structure intact.
+
+```sql
+TRUNCATE TABLE table_name;
+```
+
+## 📝 Simple Example
+
+```sql
+-- Empty the logs table
+TRUNCATE TABLE logs;
+```
+
+The table is now empty, but still exists!
+
+## ⚡ TRUNCATE vs DELETE
+
+| Feature         | TRUNCATE   | DELETE                |
+| --------------- | ---------- | --------------------- |
+| Speed           | Very fast  | Slow for large tables |
+| WHERE clause    | No         | Yes                   |
+| Resets identity | Yes        | No                    |
+| Triggers        | Don't fire | Fire                  |
+| Transaction log | Minimal    | Full logging          |
+| Can rollback\*  | Depends    | Yes                   |
+
+```sql
+-- DELETE: Remove some or all rows
+DELETE FROM logs WHERE log_date < '2024-01-01';
+DELETE FROM logs;  -- All rows, but slow
+
+-- TRUNCATE: Remove all rows instantly
+TRUNCATE TABLE logs;
+```
+
+\*In SQL Server, TRUNCATE can be rolled back within a transaction
+
+## 🎯 When to Use TRUNCATE
+
+✅ **Use TRUNCATE when:**
+
+- Emptying temporary tables
+- Clearing staging tables after ETL
+- Resetting test data
+- Fresh start for the table
+
+❌ **Don't use TRUNCATE when:**
+
+- You need to keep some rows (use DELETE)
+- Triggers must fire
+- Other tables have foreign keys to it
+
+## ⚠️ Foreign Key Limitation
+
+```sql
+-- This fails if other tables reference it:
+TRUNCATE TABLE customers;
+-- Error: Cannot truncate, referenced by FK
+
+-- Solution: Delete instead
+DELETE FROM customers;
+```
+
+## 🔄 Resets Identity Values
+
+```sql
+-- Identity starts from 1 again after TRUNCATE
+CREATE TABLE items (
+    id INT IDENTITY(1,1) PRIMARY KEY,
+    name VARCHAR(50)
+);
+
+INSERT INTO items (name) VALUES ('A'), ('B'), ('C');
+-- IDs are 1, 2, 3
+
+TRUNCATE TABLE items;
+
+INSERT INTO items (name) VALUES ('D');
+-- ID is 1 again (reset!)
+```
+
+<ProgressCheckpoint section="truncate-basics" xpReward={20} />

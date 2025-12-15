@@ -1,0 +1,87 @@
+# NOT NULL Constraint: Practical Patterns
+
+Real-world NOT NULL usage.
+
+## Default Values with NOT NULL
+
+```sql
+-- Combine NOT NULL with DEFAULT
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    is_active BIT NOT NULL DEFAULT 1,           -- Required, defaults to true
+    created_at DATETIME NOT NULL DEFAULT GETDATE(),  -- Required, auto-set
+    stock_count INT NOT NULL DEFAULT 0          -- Required, starts at 0
+);
+
+-- Insert without optional columns
+INSERT INTO products (id, name) VALUES (1, 'Widget');
+-- is_active = 1, created_at = now, stock_count = 0
+```
+
+## Modifying Existing Columns
+
+```sql
+-- SQL Server: Change NULL to NOT NULL
+ALTER TABLE users ALTER COLUMN phone VARCHAR(20) NOT NULL;
+
+-- PostgreSQL
+ALTER TABLE users ALTER COLUMN phone SET NOT NULL;
+
+-- MySQL
+ALTER TABLE users MODIFY phone VARCHAR(20) NOT NULL;
+```
+
+## Removing NOT NULL
+
+```sql
+-- SQL Server
+ALTER TABLE users ALTER COLUMN phone VARCHAR(20) NULL;
+
+-- PostgreSQL
+ALTER TABLE users ALTER COLUMN phone DROP NOT NULL;
+
+-- MySQL
+ALTER TABLE users MODIFY phone VARCHAR(20) NULL;
+```
+
+## Named Constraints (CHECK approach)
+
+```sql
+-- Some databases support named NOT NULL via CHECK
+ALTER TABLE users ADD CONSTRAINT CK_users_email_notnull
+    CHECK (email IS NOT NULL);
+
+-- Benefits: Named constraint, easier to drop
+ALTER TABLE users DROP CONSTRAINT CK_users_email_notnull;
+```
+
+## Bulk Updates Before Constraint
+
+```sql
+-- Handle NULL values before adding constraint
+BEGIN TRANSACTION;
+
+-- Update NULLs to sensible defaults
+UPDATE customers SET phone = 'Unknown' WHERE phone IS NULL;
+UPDATE customers SET country = 'USA' WHERE country IS NULL;
+
+-- Now add constraint
+ALTER TABLE customers ALTER COLUMN phone VARCHAR(20) NOT NULL;
+ALTER TABLE customers ALTER COLUMN country VARCHAR(50) NOT NULL;
+
+COMMIT;
+```
+
+## Checking for NULL Values
+
+```sql
+-- Find columns with NULL values before adding constraint
+SELECT
+    COUNT(*) AS total_rows,
+    SUM(CASE WHEN email IS NULL THEN 1 ELSE 0 END) AS null_emails,
+    SUM(CASE WHEN phone IS NULL THEN 1 ELSE 0 END) AS null_phones
+FROM customers;
+```
+
+<ProgressCheckpoint section="not-null-practical" xpReward={35} />

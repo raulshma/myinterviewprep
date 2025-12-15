@@ -1,0 +1,91 @@
+# ROW_NUMBER and RANK: Advanced Topics
+
+Expert-level ranking techniques.
+
+## Island Detection
+
+```sql
+-- Group consecutive events
+WITH numbered AS (
+    SELECT *,
+        ROW_NUMBER() OVER (ORDER BY event_time) AS rn,
+        ROW_NUMBER() OVER (PARTITION BY event_type ORDER BY event_time) AS type_rn
+    FROM events
+)
+SELECT
+    event_type,
+    MIN(event_time) AS island_start,
+    MAX(event_time) AS island_end,
+    COUNT(*) AS island_size
+FROM numbered
+GROUP BY event_type, (rn - type_rn)
+ORDER BY MIN(event_time);
+```
+
+## Session Detection
+
+```sql
+-- Define sessions with 30-minute gap
+WITH ordered AS (
+    SELECT *,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_time
+    FROM user_events
+),
+sessions AS (
+    SELECT *,
+        CASE WHEN DATEDIFF(MINUTE, prev_time, event_time) > 30 THEN 1 ELSE 0 END AS new_session
+    FROM ordered
+),
+session_groups AS (
+    SELECT *,
+        SUM(new_session) OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+    FROM sessions
+)
+SELECT user_id, session_id, MIN(event_time) AS session_start, MAX(event_time) AS session_end
+FROM session_groups
+GROUP BY user_id, session_id;
+```
+
+## Parallel Ranking
+
+```sql
+-- Multiple independent rankings
+SELECT name, salary, performance_score,
+    RANK() OVER (ORDER BY salary DESC) AS salary_rank,
+    RANK() OVER (ORDER BY performance_score DESC) AS performance_rank,
+    ROW_NUMBER() OVER (PARTITION BY department ORDER BY hire_date) AS dept_seniority
+FROM employees;
+```
+
+## Ranking Performance
+
+```sql
+-- Index for ORDER BY column helps
+CREATE INDEX IX_employees_salary ON employees(salary DESC);
+
+-- For partitioned ranking
+CREATE INDEX IX_employees_dept_salary ON employees(department, salary DESC);
+```
+
+## Windowed Ranking with Aggregates
+
+```sql
+-- Rank departments by their average salary
+SELECT department,
+    AVG(salary) AS avg_salary,
+    RANK() OVER (ORDER BY AVG(salary) DESC) AS dept_rank
+FROM employees
+GROUP BY department;
+```
+
+## Tiebreaker Strategies
+
+```sql
+-- Consistent ordering for ties
+SELECT name, score,
+    ROW_NUMBER() OVER (ORDER BY score DESC, id ASC) AS deterministic_rank
+FROM leaderboard;
+-- id ensures consistent ordering even with tied scores
+```
+
+<ProgressCheckpoint section="ranking-advanced" xpReward={50} />

@@ -1,0 +1,105 @@
+# ACID Properties: Advanced Concepts
+
+Distributed ACID, trade-offs, and modern alternatives.
+
+## ACID vs BASE
+
+| ACID        | BASE                 |
+| ----------- | -------------------- |
+| Atomicity   | Basically Available  |
+| Consistency | Soft state           |
+| Isolation   | Eventual consistency |
+| Durability  |                      |
+
+```sql
+-- ACID: Traditional RDBMS
+-- Every transaction fully consistent
+
+-- BASE: NoSQL approach
+-- Prioritize availability over immediate consistency
+```
+
+## CAP Theorem Connection
+
+- **C**onsistency - All nodes see same data
+- **A**vailability - Every request gets response
+- **P**artition tolerance - System works despite network issues
+
+ACID databases choose C + A (sacrifice P in network splits)
+
+## Distributed Transactions
+
+### Two-Phase Commit (2PC)
+
+```sql
+-- Phase 1: Prepare
+-- Coordinator: "Everyone ready?"
+-- All participants: "Ready" or "Abort"
+
+-- Phase 2: Commit
+-- If all ready: Coordinator says "Commit"
+-- If any abort: Coordinator says "Rollback"
+
+-- SQL Server Distributed Transaction
+BEGIN DISTRIBUTED TRANSACTION;
+    UPDATE server1.db.table SET ...;
+    UPDATE server2.db.table SET ...;
+COMMIT;  -- Coordinates across servers
+```
+
+### Saga Pattern
+
+```sql
+-- Alternative to 2PC for microservices
+-- Each step has compensating action
+
+-- Step 1: Reserve inventory
+-- Step 2: Charge payment
+-- Step 3: Ship order
+
+-- If Step 2 fails: Compensate Step 1 (unreserve)
+```
+
+## Performance Trade-offs
+
+```sql
+-- Stronger isolation = More locking = Slower
+
+-- Fast but risky
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+
+-- Safe but slower
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+-- Balance: Most common choice
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+```
+
+## Optimistic vs Pessimistic
+
+```sql
+-- Pessimistic: Lock first
+SELECT * FROM accounts WITH (UPDLOCK) WHERE id = 1;
+UPDATE accounts SET balance = @new WHERE id = 1;
+
+-- Optimistic: Check at commit
+SELECT balance, version FROM accounts WHERE id = 1;
+-- ... do work ...
+UPDATE accounts SET balance = @new, version = version + 1
+WHERE id = 1 AND version = @original_version;
+-- If 0 rows: Someone else changed it!
+```
+
+## ACID in Modern Systems
+
+```sql
+-- PostgreSQL: Full ACID, MVCC
+-- MySQL InnoDB: Full ACID
+-- SQL Server: Full ACID with snapshot isolation option
+-- SQLite: Full ACID (single file)
+
+-- NewSQL (CockroachDB, TiDB): Distributed ACID
+-- Spanner: Global ACID with TrueTime
+```
+
+<ProgressCheckpoint section="acid-advanced" xpReward={55} />

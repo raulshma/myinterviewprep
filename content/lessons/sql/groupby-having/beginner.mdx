@@ -1,0 +1,86 @@
+# GROUP BY: Summarizing Your Data
+
+Learn to count, sum, and calculate totals across groups of rows!
+
+## 🎯 What is GROUP BY?
+
+GROUP BY collects rows into groups so you can calculate totals:
+
+```sql
+-- How many customers per city?
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+GROUP BY city;
+```
+
+**Result:**
+| city | customer_count |
+|------|----------------|
+| New York | 45 |
+| Boston | 23 |
+| Miami | 31 |
+
+## 📊 Common Aggregate Functions
+
+| Function      | What It Does    | Example             |
+| ------------- | --------------- | ------------------- |
+| `COUNT(*)`    | Count rows      | How many orders?    |
+| `SUM(column)` | Total of values | Total revenue?      |
+| `AVG(column)` | Average         | Average order size? |
+| `MIN(column)` | Smallest        | Cheapest product?   |
+| `MAX(column)` | Largest         | Most expensive?     |
+
+```sql
+SELECT
+    category,
+    COUNT(*) AS product_count,
+    AVG(price) AS avg_price,
+    MIN(price) AS cheapest,
+    MAX(price) AS most_expensive
+FROM products
+GROUP BY category;
+```
+
+## 🔍 HAVING: Filter the Groups
+
+WHERE filters rows **before** grouping. HAVING filters **after**:
+
+```sql
+-- Show only cities with more than 10 customers
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+GROUP BY city
+HAVING COUNT(*) > 10;
+```
+
+## ⚡ WHERE vs HAVING
+
+| Clause | When It Runs    | Filters What      |
+| ------ | --------------- | ----------------- |
+| WHERE  | Before grouping | Individual rows   |
+| HAVING | After grouping  | Groups/aggregates |
+
+```sql
+-- Use BOTH together
+SELECT city, COUNT(*) AS customer_count
+FROM customers
+WHERE status = 'active'    -- Filter: only active customers
+GROUP BY city
+HAVING COUNT(*) > 10;      -- Filter: only cities with 10+ results
+```
+
+## 💡 Quick Example
+
+Question: "What's the total sales per product, but only show products that sold more than $1000?"
+
+```sql
+SELECT
+    product_name,
+    SUM(quantity * price) AS total_sales
+FROM order_items
+GROUP BY product_name
+HAVING SUM(quantity * price) > 1000
+ORDER BY total_sales DESC;
+```
+
+<ProgressCheckpoint section="groupby-having" xpReward={30} />

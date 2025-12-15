@@ -1,0 +1,117 @@
+# Creating Views: Advanced Topics
+
+Indexed views, materialized views, and performance.
+
+## Indexed Views (SQL Server)
+
+```sql
+-- Create view with SCHEMABINDING
+CREATE VIEW dbo.monthly_sales
+WITH SCHEMABINDING
+AS
+SELECT
+    product_id,
+    YEAR(order_date) AS order_year,
+    MONTH(order_date) AS order_month,
+    COUNT_BIG(*) AS order_count,
+    SUM(quantity) AS total_quantity,
+    SUM(amount) AS total_amount
+FROM dbo.order_items oi
+JOIN dbo.orders o ON oi.order_id = o.id
+GROUP BY product_id, YEAR(order_date), MONTH(order_date);
+GO
+
+-- Create unique clustered index
+CREATE UNIQUE CLUSTERED INDEX IX_monthly_sales
+ON dbo.monthly_sales (product_id, order_year, order_month);
+
+-- Now physically stored - instant aggregation queries!
+```
+
+## Materialized Views (PostgreSQL)
+
+```sql
+-- Create materialized view
+CREATE MATERIALIZED VIEW sales_summary AS
+SELECT
+    date_trunc('day', order_date) AS day,
+    COUNT(*) AS orders,
+    SUM(total) AS revenue
+FROM orders
+GROUP BY date_trunc('day', order_date);
+
+-- Create index on materialized view
+CREATE INDEX idx_sales_summary_day ON sales_summary(day);
+
+-- Refresh data (blocking)
+REFRESH MATERIALIZED VIEW sales_summary;
+
+-- Refresh concurrently (non-blocking, need unique index)
+REFRESH MATERIALIZED VIEW CONCURRENTLY sales_summary;
+```
+
+## View Performance Considerations
+
+```sql
+-- Views are expanded inline
+-- This:
+SELECT * FROM my_view WHERE id = 5;
+
+-- Becomes this at runtime:
+SELECT * FROM (SELECT ... complex query ...) WHERE id = 5;
+
+-- Push filters into view when possible
+-- Optimizer usually does this, but verify with execution plan
+```
+
+## Partitioned Views
+
+```sql
+-- SQL Server: Union multiple tables
+CREATE VIEW all_orders AS
+SELECT * FROM orders_2022
+UNION ALL
+SELECT * FROM orders_2023
+UNION ALL
+SELECT * FROM orders_2024;
+
+-- With constraint on each table:
+-- orders_2022: CHECK (order_date >= '2022-01-01' AND order_date < '2023-01-01')
+-- Query optimizer eliminates tables based on WHERE clause
+```
+
+## Security Views
+
+```sql
+-- Row-level security via view
+CREATE VIEW my_orders AS
+SELECT * FROM orders
+WHERE customer_id = (SELECT customer_id FROM users WHERE user_id = CURRENT_USER);
+
+-- Column-level security
+CREATE VIEW public_employees AS
+SELECT id, name, department
+FROM employees;
+-- Omits salary, SSN, etc.
+
+GRANT SELECT ON public_employees TO public_role;
+-- No direct table access
+```
+
+## View Dependencies
+
+```sql
+-- SQL Server: View dependencies
+SELECT OBJECT_NAME(referencing_id) AS view_name,
+       referenced_entity_name AS table_name
+FROM sys.sql_expression_dependencies
+WHERE referencing_id = OBJECT_ID('my_view');
+
+-- PostgreSQL
+SELECT * FROM information_schema.view_table_usage
+WHERE view_name = 'my_view';
+```
+
+<ViewBuilder mode="advanced" />
+
+<ProgressCheckpoint section="creating-views-advanced" xpReward={50} />

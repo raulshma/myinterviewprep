@@ -1,0 +1,107 @@
+# Reducing Subquery Overhead: Practical Patterns
+
+Real-world subquery optimization techniques.
+
+## Derived Tables vs Repeated Subqueries
+
+```sql
+-- BAD: Same subquery multiple times
+SELECT
+    (SELECT AVG(total) FROM orders) AS avg_order,
+    (SELECT MAX(total) FROM orders) AS max_order,
+    (SELECT MIN(total) FROM orders) AS min_order;
+
+-- GOOD: Calculate once
+SELECT AVG(total), MAX(total), MIN(total) FROM orders;
+
+-- Or derived table for complex scenarios
+SELECT avg_order, max_order, min_order
+FROM (
+    SELECT AVG(total) AS avg_order, MAX(total) AS max_order, MIN(total) AS min_order
+    FROM orders
+) stats;
+```
+
+## APPLY for Correlated Scenarios
+
+```sql
+-- Slow correlated subquery
+SELECT c.name,
+    (SELECT TOP 1 order_date FROM orders WHERE customer_id = c.id ORDER BY order_date DESC)
+FROM customers c;
+
+-- Fast with APPLY (SQL Server)
+SELECT c.name, o.order_date
+FROM customers c
+CROSS APPLY (
+    SELECT TOP 1 order_date
+    FROM orders
+    WHERE customer_id = c.id
+    ORDER BY order_date DESC
+) o;
+
+-- PostgreSQL: LATERAL JOIN
+SELECT c.name, o.order_date
+FROM customers c
+CROSS JOIN LATERAL (
+    SELECT order_date
+    FROM orders
+    WHERE customer_id = c.id
+    ORDER BY order_date DESC
+    LIMIT 1
+) o;
+```
+
+## Replacing NOT IN
+
+```sql
+-- NOT IN with NULLs can be problematic
+SELECT * FROM customers
+WHERE id NOT IN (SELECT customer_id FROM orders);
+-- If customer_id can be NULL, this returns no rows!
+
+-- Better: LEFT JOIN + NULL check
+SELECT c.*
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+WHERE o.id IS NULL;
+
+-- Or NOT EXISTS
+SELECT * FROM customers c
+WHERE NOT EXISTS (SELECT 1 FROM orders WHERE customer_id = c.id);
+```
+
+## Window Functions Instead of Subqueries
+
+```sql
+-- Slow: Correlated subquery for running total
+SELECT id, amount,
+    (SELECT SUM(amount) FROM transactions t2 WHERE t2.id <= t1.id) AS running_total
+FROM transactions t1;
+
+-- Fast: Window function
+SELECT id, amount,
+    SUM(amount) OVER (ORDER BY id) AS running_total
+FROM transactions;
+```
+
+## Materialized Subquery Results
+
+```sql
+-- Store expensive calculation in temp table
+SELECT customer_id, SUM(total) AS lifetime_value
+INTO #customer_value
+FROM orders
+GROUP BY customer_id;
+
+-- Use temp table multiple times
+SELECT c.*, cv.lifetime_value
+FROM customers c
+JOIN #customer_value cv ON c.id = cv.customer_id;
+
+DROP TABLE #customer_value;
+```
+
+<QueryOptimizer mode="intermediate" />
+
+<ProgressCheckpoint section="subqueries-practical" xpReward={40} />

@@ -1,0 +1,105 @@
+# DATEPART and DATEADD: Advanced Topics
+
+Complex calculations and performance optimization.
+
+## ISO Week Numbers
+
+```sql
+-- ISO week (Monday start, week containing Jan 4)
+SELECT DATEPART(ISO_WEEK, GETDATE());  -- SQL Server
+
+-- PostgreSQL
+SELECT EXTRACT(WEEK FROM CURRENT_DATE);
+SELECT TO_CHAR(CURRENT_DATE, 'IW');  -- ISO week
+```
+
+## Date Interval Formatting
+
+```sql
+-- Format as interval
+WITH duration AS (
+    SELECT DATEDIFF(SECOND, start_time, end_time) AS seconds
+    FROM tasks
+)
+SELECT
+    seconds / 86400 AS days,
+    (seconds % 86400) / 3600 AS hours,
+    (seconds % 3600) / 60 AS minutes,
+    seconds % 60 AS seconds
+FROM duration;
+
+-- PostgreSQL: Native interval
+SELECT end_time - start_time AS duration FROM tasks;
+-- Returns: '3 days 04:30:00'
+```
+
+## Performance Optimization
+
+```sql
+-- Avoid functions in WHERE for indexed columns
+-- Bad:
+WHERE DATEPART(YEAR, order_date) = 2024
+
+-- Good: Use range
+WHERE order_date >= '2024-01-01' AND order_date < '2025-01-01'
+
+-- For frequent extractions, use computed columns
+ALTER TABLE orders ADD order_year AS YEAR(order_date) PERSISTED;
+ALTER TABLE orders ADD order_month AS MONTH(order_date) PERSISTED;
+CREATE INDEX IX_orders_year_month ON orders(order_year, order_month);
+```
+
+## Complex Period Calculations
+
+```sql
+-- Rolling 12 months
+SELECT *
+FROM sales
+WHERE sale_date >= DATEADD(MONTH, -12, GETDATE())
+AND sale_date < GETDATE();
+
+-- Same period last year
+DECLARE @start DATE = '2024-01-01', @end DATE = '2024-03-31';
+SELECT
+    SUM(CASE WHEN sale_date BETWEEN @start AND @end THEN amount END) AS this_year,
+    SUM(CASE WHEN sale_date BETWEEN DATEADD(YEAR, -1, @start) AND DATEADD(YEAR, -1, @end) THEN amount END) AS last_year
+FROM sales;
+
+-- Quarter boundaries
+SELECT
+    DATEADD(QUARTER, DATEDIFF(QUARTER, 0, GETDATE()), 0) AS quarter_start,
+    DATEADD(DAY, -1, DATEADD(QUARTER, DATEDIFF(QUARTER, 0, GETDATE()) + 1, 0)) AS quarter_end;
+```
+
+## EOMONTH (End of Month)
+
+```sql
+-- SQL Server 2012+
+SELECT EOMONTH(GETDATE());        -- Last day of current month
+SELECT EOMONTH(GETDATE(), 1);     -- Last day of next month
+SELECT EOMONTH(GETDATE(), -1);    -- Last day of previous month
+
+-- Days in month
+SELECT DAY(EOMONTH(GETDATE()));
+```
+
+## Fiscal Year Handling
+
+```sql
+-- Fiscal year starting April
+SELECT
+    CASE
+        WHEN MONTH(order_date) >= 4 THEN YEAR(order_date)
+        ELSE YEAR(order_date) - 1
+    END AS fiscal_year,
+    CASE
+        WHEN MONTH(order_date) >= 4
+        THEN MONTH(order_date) - 3
+        ELSE MONTH(order_date) + 9
+    END AS fiscal_month
+FROM orders;
+```
+
+<DateTimeExplorer mode="advanced" />
+
+<ProgressCheckpoint section="datepart-advanced" xpReward={50} />

@@ -1,0 +1,95 @@
+# Dynamic SQL: Practical Patterns
+
+Real-world dynamic SQL applications.
+
+## Dynamic Filter Building
+
+```sql
+CREATE PROCEDURE sp_search_products
+    @name NVARCHAR(100) = NULL,
+    @category_id INT = NULL,
+    @min_price DECIMAL = NULL,
+    @max_price DECIMAL = NULL
+AS
+BEGIN
+    DECLARE @sql NVARCHAR(MAX) = N'SELECT * FROM products WHERE 1=1';
+    DECLARE @params NVARCHAR(MAX) = N'@name NVARCHAR(100), @category_id INT, @min_price DECIMAL, @max_price DECIMAL';
+
+    IF @name IS NOT NULL
+        SET @sql += N' AND name LIKE ''%'' + @name + ''%''';
+    IF @category_id IS NOT NULL
+        SET @sql += N' AND category_id = @category_id';
+    IF @min_price IS NOT NULL
+        SET @sql += N' AND price >= @min_price';
+    IF @max_price IS NOT NULL
+        SET @sql += N' AND price <= @max_price';
+
+    EXEC sp_executesql @sql, @params, @name, @category_id, @min_price, @max_price;
+END;
+```
+
+## Dynamic ORDER BY
+
+```sql
+CREATE PROCEDURE sp_get_products
+    @sort_column NVARCHAR(50) = 'name',
+    @sort_direction VARCHAR(4) = 'ASC'
+AS
+BEGIN
+    -- Validate sort column
+    IF @sort_column NOT IN ('name', 'price', 'created_at')
+        SET @sort_column = 'name';
+
+    IF @sort_direction NOT IN ('ASC', 'DESC')
+        SET @sort_direction = 'ASC';
+
+    DECLARE @sql NVARCHAR(MAX) = N'SELECT * FROM products ORDER BY '
+        + QUOTENAME(@sort_column) + ' ' + @sort_direction;
+
+    EXEC sp_executesql @sql;
+END;
+```
+
+## Output Parameters
+
+```sql
+DECLARE @sql NVARCHAR(MAX) = N'SELECT @count = COUNT(*) FROM products WHERE category_id = @cat';
+DECLARE @count INT;
+
+EXEC sp_executesql @sql,
+    N'@cat INT, @count INT OUTPUT',
+    @cat = 5, @count = @count OUTPUT;
+
+SELECT @count;
+```
+
+## PostgreSQL: EXECUTE
+
+```sql
+CREATE OR REPLACE FUNCTION search_dynamic(p_table TEXT, p_column TEXT, p_value TEXT)
+RETURNS SETOF RECORD AS $$
+BEGIN
+    RETURN QUERY EXECUTE format(
+        'SELECT * FROM %I WHERE %I = $1',
+        p_table, p_column
+    ) USING p_value;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+## Dynamic Table Creation
+
+```sql
+DECLARE @tableName NVARCHAR(128) = N'Archive_' + FORMAT(GETDATE(), 'yyyyMM');
+
+IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = @tableName)
+BEGIN
+    EXEC('CREATE TABLE ' + @tableName + ' (
+        id INT PRIMARY KEY,
+        data NVARCHAR(MAX),
+        archived_at DATETIME DEFAULT GETDATE()
+    )');
+END;
+```
+
+<ProgressCheckpoint section="dynamic-practical" xpReward={45} />

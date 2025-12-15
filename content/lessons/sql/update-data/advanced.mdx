@@ -1,0 +1,170 @@
+# UPDATE: Advanced Techniques
+
+Master safe, performant UPDATE operations for enterprise applications.
+
+## Concurrency Control
+
+### Optimistic Locking
+
+```sql
+-- Use version column for conflict detection
+UPDATE products
+SET
+    price = @new_price,
+    version = version + 1
+WHERE id = @id AND version = @expected_version;
+
+-- Check if update succeeded
+IF @@ROWCOUNT = 0
+BEGIN
+    RAISERROR('Concurrent modification detected', 16, 1);
+END
+```
+
+### Pessimistic Locking
+
+```sql
+-- Lock row during read (SQL Server)
+BEGIN TRANSACTION;
+
+SELECT * FROM products WITH (UPDLOCK, ROWLOCK)
+WHERE id = @id;
+
+-- Process...
+
+UPDATE products SET price = @new_price WHERE id = @id;
+
+COMMIT;
+```
+
+## Performance Optimization
+
+### Index Impact
+
+```sql
+-- Updates to indexed columns are expensive
+-- Bad: Frequent updates to indexed column
+UPDATE logs SET status = 'processed' WHERE id = @id;
+-- (If status is indexed, triggers index maintenance)
+
+-- Consider: Non-indexed status or batch updates
+```
+
+### Avoiding Table Scans
+
+```sql
+-- Ensure WHERE uses index
+UPDATE large_table
+SET value = @new_value
+WHERE indexed_column = @key;  -- Uses index
+
+-- Not:
+UPDATE large_table
+SET value = @new_value
+WHERE YEAR(date_column) = 2024;  -- Table scan!
+```
+
+### Lock Escalation Prevention
+
+```sql
+-- Process in batches to prevent table lock
+DECLARE @batch INT = 5000;
+
+WHILE EXISTS (SELECT 1 FROM orders WHERE processed = 0)
+BEGIN
+    UPDATE TOP (@batch) orders
+    SET processed = 1
+    OUTPUT INSERTED.id
+    WHERE processed = 0;
+
+    -- Commit each batch
+    WAITFOR DELAY '00:00:00.050';
+END
+```
+
+## MERGE Statement
+
+```sql
+-- Combined INSERT/UPDATE/DELETE
+MERGE INTO target_table AS target
+USING source_table AS source
+ON target.id = source.id
+
+WHEN MATCHED AND source.value IS NOT NULL THEN
+    UPDATE SET target.value = source.value
+
+WHEN MATCHED AND source.value IS NULL THEN
+    DELETE
+
+WHEN NOT MATCHED BY TARGET THEN
+    INSERT (id, value) VALUES (source.id, source.value)
+
+WHEN NOT MATCHED BY SOURCE THEN
+    DELETE;
+```
+
+## Cross-Database Updates
+
+```sql
+-- SQL Server: Update across databases
+UPDATE db1.dbo.customers
+SET sync_date = GETDATE()
+FROM db1.dbo.customers c
+INNER JOIN db2.dbo.orders o ON c.id = o.customer_id
+WHERE o.order_date > '2024-01-01';
+
+-- PostgreSQL: Using dblink
+UPDATE local_table
+SET status = r.status
+FROM dblink('connection_name', 'SELECT id, status FROM remote_table')
+    AS r(id INT, status TEXT)
+WHERE local_table.id = r.id;
+```
+
+## Monitoring UPDATE Performance
+
+```sql
+-- SQL Server: Check lock waits
+SELECT
+    request_session_id,
+    resource_type,
+    resource_description,
+    request_mode,
+    request_status
+FROM sys.dm_tran_locks
+WHERE resource_database_id = DB_ID();
+
+-- Identify blocking
+SELECT
+    blocking_session_id,
+    session_id,
+    wait_type,
+    wait_time
+FROM sys.dm_exec_requests
+WHERE blocking_session_id <> 0;
+```
+
+## Safe Deployment Pattern
+
+```sql
+-- 1. Preview changes
+SELECT id, current_value, @new_value AS new_value
+FROM table_name
+WHERE condition;
+
+-- 2. Wrap in transaction for testing
+BEGIN TRANSACTION;
+UPDATE table_name SET column = @new_value WHERE condition;
+SELECT * FROM table_name WHERE condition;
+ROLLBACK;  -- or COMMIT if satisfied
+
+-- 3. Execute with safeguard
+BEGIN TRANSACTION;
+UPDATE table_name SET column = @new_value WHERE condition;
+IF @@ROWCOUNT > @expected_count
+    ROLLBACK;
+ELSE
+    COMMIT;
+```
+
+<ProgressCheckpoint section="update-advanced" xpReward={55} />

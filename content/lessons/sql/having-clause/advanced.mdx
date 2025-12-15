@@ -1,0 +1,139 @@
+# HAVING: Advanced Techniques
+
+Enterprise patterns and optimization for HAVING clause.
+
+## Complex Aggregate Conditions
+
+```sql
+-- Multiple statistical thresholds
+SELECT
+    category,
+    COUNT(*) AS n,
+    AVG(price) AS mean,
+    STDEV(price) AS std_dev
+FROM products
+GROUP BY category
+HAVING
+    COUNT(*) >= 10                    -- Minimum sample size
+    AND STDEV(price) < AVG(price)     -- Low variation
+    AND MAX(price) / MIN(price) < 10; -- Reasonable range
+```
+
+## HAVING in Analytics
+
+```sql
+-- Find anomalies: groups far from average
+WITH category_stats AS (
+    SELECT
+        category,
+        AVG(price) AS avg_price,
+        COUNT(*) AS product_count
+    FROM products
+    GROUP BY category
+),
+overall AS (
+    SELECT AVG(avg_price) AS global_avg FROM category_stats
+)
+SELECT cs.*
+FROM category_stats cs, overall o
+WHERE ABS(cs.avg_price - o.global_avg) > o.global_avg * 0.5;
+```
+
+## Correlated HAVING Subqueries
+
+```sql
+-- Categories performing below their typical
+SELECT
+    category,
+    YEAR(sale_date) AS year,
+    SUM(amount) AS yearly_sales
+FROM sales
+GROUP BY category, YEAR(sale_date)
+HAVING SUM(amount) < (
+    SELECT AVG(yearly_sum) FROM (
+        SELECT SUM(amount) AS yearly_sum
+        FROM sales s2
+        WHERE s2.category = sales.category
+        GROUP BY YEAR(sale_date)
+    ) history
+);
+```
+
+## Window Functions as Alternative
+
+```sql
+-- Instead of HAVING to find top groups, use window
+SELECT * FROM (
+    SELECT
+        category,
+        SUM(sales) AS total_sales,
+        RANK() OVER (ORDER BY SUM(sales) DESC) AS sales_rank
+    FROM products
+    GROUP BY category
+) ranked
+WHERE sales_rank <= 5;
+
+-- Filter based on partition comparison
+SELECT * FROM (
+    SELECT
+        region,
+        category,
+        SUM(sales) AS total,
+        SUM(sales) * 100.0 / SUM(SUM(sales)) OVER (PARTITION BY region) AS pct_of_region
+    FROM sales
+    GROUP BY region, category
+) t
+WHERE pct_of_region > 10;  -- Categories >10% of region
+```
+
+## Performance Optimization
+
+```sql
+-- HAVING executes after GROUP BY
+-- Pre-filter with WHERE when possible
+
+-- Slow: Aggregate all, then filter
+SELECT customer_id, SUM(total)
+FROM all_orders  -- Millions of rows
+GROUP BY customer_id
+HAVING customer_id IN (SELECT id FROM vip_customers);
+
+-- Fast: Filter first
+SELECT customer_id, SUM(total)
+FROM all_orders
+WHERE customer_id IN (SELECT id FROM vip_customers)
+GROUP BY customer_id;
+```
+
+## HAVING with ROLLUP/CUBE
+
+```sql
+-- Filter rollup results
+SELECT
+    COALESCE(region, 'ALL') AS region,
+    COALESCE(category, 'ALL') AS category,
+    SUM(sales) AS total
+FROM sales
+GROUP BY ROLLUP(region, category)
+HAVING SUM(sales) > 10000
+   AND GROUPING_ID(region, category) IN (0, 1);  -- Skip some subtotals
+```
+
+## Dynamic HAVING
+
+```sql
+-- Parameterized HAVING conditions
+CREATE PROCEDURE GetLargeCategories
+    @min_count INT = 5,
+    @min_avg_price DECIMAL = 0
+AS
+BEGIN
+    SELECT category, COUNT(*) AS cnt, AVG(price) AS avg_price
+    FROM products
+    GROUP BY category
+    HAVING COUNT(*) >= @min_count
+       AND AVG(price) >= @min_avg_price;
+END;
+```
+
+<ProgressCheckpoint section="having-advanced" xpReward={40} />

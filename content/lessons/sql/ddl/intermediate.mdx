@@ -1,0 +1,160 @@
+# Advanced Table Design
+
+Let&apos;s explore constraints, indexes, and proper table design patterns.
+
+## Constraints
+
+Constraints enforce data integrity rules:
+
+### PRIMARY KEY
+
+Uniquely identifies each row:
+
+```sql
+-- Single column primary key
+CREATE TABLE Categories (
+    CategoryID INT PRIMARY KEY,
+    CategoryName VARCHAR(50) NOT NULL
+);
+
+-- Composite primary key (multiple columns)
+CREATE TABLE OrderDetails (
+    OrderID INT,
+    ProductID INT,
+    Quantity INT NOT NULL,
+    UnitPrice DECIMAL(10,2),
+    PRIMARY KEY (OrderID, ProductID)
+);
+```
+
+### FOREIGN KEY
+
+Links tables together:
+
+```sql
+CREATE TABLE Orders (
+    OrderID INT PRIMARY KEY IDENTITY,
+    CustomerID CHAR(5),
+    OrderDate DATE DEFAULT GETDATE(),
+
+    FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID)
+);
+
+-- With ON DELETE/UPDATE actions
+CREATE TABLE OrderDetails (
+    OrderDetailID INT PRIMARY KEY,
+    OrderID INT,
+    ProductID INT,
+
+    FOREIGN KEY (OrderID) REFERENCES Orders(OrderID)
+        ON DELETE CASCADE    -- Delete details when order is deleted
+        ON UPDATE CASCADE,   -- Update if OrderID changes
+
+    FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+        ON DELETE SET NULL   -- Set to NULL if product is deleted
+);
+```
+
+### UNIQUE, NOT NULL, CHECK, DEFAULT
+
+```sql
+CREATE TABLE Employees (
+    EmployeeID INT PRIMARY KEY IDENTITY,
+    Email VARCHAR(255) UNIQUE NOT NULL,
+    FirstName VARCHAR(50) NOT NULL,
+    LastName VARCHAR(50) NOT NULL,
+    Salary DECIMAL(10,2) CHECK (Salary > 0),
+    HireDate DATE DEFAULT GETDATE(),
+    Status VARCHAR(20) DEFAULT 'Active'
+        CHECK (Status IN ('Active', 'Inactive', 'Terminated'))
+);
+```
+
+## Designing the Northwind Schema
+
+Here&apos;s how key Northwind tables are structured:
+
+```sql
+-- Customers table
+CREATE TABLE Customers (
+    CustomerID CHAR(5) PRIMARY KEY,
+    CompanyName VARCHAR(40) NOT NULL,
+    ContactName VARCHAR(30),
+    ContactTitle VARCHAR(30),
+    Address VARCHAR(60),
+    City VARCHAR(15),
+    Region VARCHAR(15),
+    PostalCode VARCHAR(10),
+    Country VARCHAR(15),
+    Phone VARCHAR(24),
+    Fax VARCHAR(24)
+);
+
+-- Products with relationships
+CREATE TABLE Products (
+    ProductID INT PRIMARY KEY IDENTITY,
+    ProductName VARCHAR(40) NOT NULL,
+    SupplierID INT,
+    CategoryID INT,
+    QuantityPerUnit VARCHAR(20),
+    UnitPrice DECIMAL(10,2) DEFAULT 0,
+    UnitsInStock SMALLINT DEFAULT 0,
+    UnitsOnOrder SMALLINT DEFAULT 0,
+    ReorderLevel SMALLINT DEFAULT 0,
+    Discontinued BIT DEFAULT 0,
+
+    FOREIGN KEY (SupplierID) REFERENCES Suppliers(SupplierID),
+    FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID)
+);
+```
+
+## Adding Constraints Later
+
+```sql
+-- Add primary key to existing table
+ALTER TABLE Products
+ADD CONSTRAINT PK_Products PRIMARY KEY (ProductID);
+
+-- Add foreign key
+ALTER TABLE Products
+ADD CONSTRAINT FK_Products_Categories
+    FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID);
+
+-- Add unique constraint
+ALTER TABLE Customers
+ADD CONSTRAINT UQ_Customers_Email UNIQUE (Email);
+
+-- Add check constraint
+ALTER TABLE Products
+ADD CONSTRAINT CK_Products_Price CHECK (UnitPrice >= 0);
+
+-- Remove a constraint
+ALTER TABLE Products
+DROP CONSTRAINT FK_Products_Categories;
+```
+
+## Temporary Tables
+
+Creating tables for temporary use:
+
+```sql
+-- Local temp table (visible only in current session)
+CREATE TABLE #TempProducts (
+    ProductID INT,
+    ProductName VARCHAR(100)
+);
+
+-- Global temp table (visible to all sessions)
+CREATE TABLE ##GlobalTemp (
+    ID INT,
+    Value VARCHAR(50)
+);
+
+-- Table variable (exists only in the batch)
+DECLARE @ProductList TABLE (
+    ProductID INT,
+    ProductName VARCHAR(100)
+);
+```
+
+<ProgressCheckpoint section="alter-table" xpReward={55} />

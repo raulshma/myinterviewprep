@@ -1,0 +1,165 @@
+# SQL Statements: Enterprise Patterns
+
+Master advanced statement techniques for high-performance, safe data operations.
+
+## MERGE Statement (Upsert)
+
+Combine INSERT, UPDATE, and DELETE in one atomic operation:
+
+```sql
+-- SQL Server / Oracle
+MERGE INTO target_table t
+USING source_table s ON t.id = s.id
+WHEN MATCHED THEN
+    UPDATE SET t.value = s.value
+WHEN NOT MATCHED THEN
+    INSERT (id, value) VALUES (s.id, s.value)
+WHEN NOT MATCHED BY SOURCE THEN
+    DELETE;
+
+-- PostgreSQL (INSERT ON CONFLICT)
+INSERT INTO users (email, name)
+VALUES ('john@email.com', 'John')
+ON CONFLICT (email) DO UPDATE
+SET name = EXCLUDED.name;
+
+-- MySQL
+INSERT INTO users (email, name)
+VALUES ('john@email.com', 'John')
+ON DUPLICATE KEY UPDATE name = VALUES(name);
+```
+
+## Bulk Operations
+
+### Batch INSERT Performance
+
+```sql
+-- Slow: Individual inserts
+INSERT INTO logs (message) VALUES ('msg1');
+INSERT INTO logs (message) VALUES ('msg2');
+-- (repeated thousands of times)
+
+-- Fast: Batch insert
+INSERT INTO logs (message) VALUES
+('msg1'), ('msg2'), ('msg3'), ... ('msg1000');
+
+-- Fastest: Bulk copy
+-- SQL Server: BULK INSERT / bcp
+BULK INSERT logs FROM 'C:\data.csv' WITH (FIELDTERMINATOR = ',');
+
+-- PostgreSQL: COPY
+COPY logs FROM '/data.csv' WITH (FORMAT csv);
+```
+
+### Minimal Logging
+
+```sql
+-- SQL Server: Use SELECT INTO for minimal logging
+SELECT * INTO new_table FROM old_table WHERE condition;
+
+-- PostgreSQL: UNLOGGED tables for temporary data
+CREATE UNLOGGED TABLE temp_import (...);
+```
+
+## Optimistic Concurrency
+
+```sql
+-- Add version column
+ALTER TABLE products ADD version INT DEFAULT 1;
+
+-- Update with version check
+UPDATE products
+SET
+    price = 99.99,
+    version = version + 1
+WHERE id = 123 AND version = @expected_version;
+
+-- Check if update succeeded
+IF @@ROWCOUNT = 0
+    RAISERROR('Concurrency conflict', 16, 1);
+```
+
+## Partition-Aware Operations
+
+```sql
+-- Delete from specific partition (faster than WHERE)
+ALTER TABLE orders
+SWITCH PARTITION 1 TO archive_orders PARTITION 1;
+
+-- Truncate partition (SQL Server)
+TRUNCATE TABLE orders WITH (PARTITIONS (1, 2, 3));
+
+-- PostgreSQL: Partition pruning
+DELETE FROM orders_2023 WHERE order_date < '2023-07-01';
+```
+
+## Query Hints
+
+```sql
+-- SQL Server
+UPDATE orders WITH (ROWLOCK)  -- Use row locks instead of page
+SET status = 'processed'
+WHERE id = 123;
+
+DELETE FROM logs WITH (TABLOCK)  -- Single table lock (faster bulk)
+WHERE log_date < DATEADD(DAY, -90, GETDATE());
+
+-- PostgreSQL
+DELETE FROM logs
+WHERE log_date < CURRENT_DATE - 90
+FOR NO KEY UPDATE;  -- Lock mode hint
+```
+
+## OUTPUT/RETURNING Patterns
+
+```sql
+-- SQL Server: Capture deleted rows
+DECLARE @deleted TABLE (id INT, name VARCHAR(100));
+
+DELETE FROM users
+OUTPUT DELETED.id, DELETED.name INTO @deleted
+WHERE last_login < DATEADD(YEAR, -2, GETDATE());
+
+-- Then archive
+INSERT INTO archived_users SELECT * FROM @deleted;
+
+-- PostgreSQL: CTE with DELETE
+WITH deleted AS (
+    DELETE FROM users
+    WHERE last_login < CURRENT_DATE - INTERVAL '2 years'
+    RETURNING *
+)
+INSERT INTO archived_users SELECT * FROM deleted;
+```
+
+## Avoiding Common Pitfalls
+
+### Missing WHERE Clause Protection
+
+```sql
+-- SQL Server: Require WHERE for updates
+SET XACT_ABORT ON;
+BEGIN TRY
+    UPDATE orders SET status = 'cancelled';  -- Missing WHERE!
+    IF @@ROWCOUNT > 1000
+        THROW 50001, 'Too many rows affected, rolling back', 1;
+    COMMIT;
+END TRY
+BEGIN CATCH
+    ROLLBACK;
+END CATCH;
+```
+
+### Lock Escalation Prevention
+
+```sql
+-- Process in batches to prevent lock escalation
+WHILE 1 = 1
+BEGIN
+    DELETE TOP (10000) FROM logs WHERE log_date < '2023-01-01';
+    IF @@ROWCOUNT = 0 BREAK;
+    WAITFOR DELAY '00:00:01';  -- Brief pause
+END
+```
+
+<ProgressCheckpoint section="enterprise-statements" xpReward={55} />

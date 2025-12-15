@@ -1,0 +1,204 @@
+# Transaction Isolation and Concurrency
+
+Master isolation levels, locking mechanisms, and advanced concurrency patterns.
+
+## Transaction Isolation Levels
+
+Different levels balance data consistency vs performance:
+
+<TransactionSimulator mode="advanced" />
+
+### READ UNCOMMITTED (Lowest Isolation)
+
+Can see other transactions&apos; uncommitted changes (dirty reads):
+
+```sql
+-- Session 1                         -- Session 2
+BEGIN;                               SET TRANSACTION ISOLATION LEVEL
+UPDATE Products                        READ UNCOMMITTED;
+SET UnitPrice = 99.99               SELECT UnitPrice FROM Products
+WHERE ProductID = 1;                 WHERE ProductID = 1;
+-- Not committed yet!                -- Returns 99.99 (DIRTY READ!)
+ROLLBACK;                            -- But it was never committed!
+```
+
+### READ COMMITTED (Default in PostgreSQL, SQL Server)
+
+Only sees committed data, but repeated reads might differ:
+
+```sql
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+BEGIN;
+SELECT UnitPrice FROM Products WHERE ProductID = 1;  -- Returns 18.00
+
+-- Meanwhile, another transaction commits a price change to 25.00
+
+SELECT UnitPrice FROM Products WHERE ProductID = 1;  -- Returns 25.00
+-- Non-repeatable read!
+```
+
+### REPEATABLE READ (Default in MySQL InnoDB)
+
+Same query returns same results within transaction:
+
+```sql
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+
+BEGIN;
+SELECT * FROM Products WHERE CategoryID = 1;  -- Returns 12 rows
+
+-- Another transaction inserts a new product in CategoryID = 1
+
+SELECT * FROM Products WHERE CategoryID = 1;  -- Still 12 rows
+COMMIT;
+
+SELECT * FROM Products WHERE CategoryID = 1;  -- Now 13 rows (phantom row)
+```
+
+### SERIALIZABLE (Highest Isolation)
+
+Completely isolated - transactions appear to run one at a time:
+
+```sql
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+
+BEGIN;
+SELECT SUM(UnitsInStock) FROM Products WHERE CategoryID = 1;
+
+-- Another transaction trying to INSERT into CategoryID = 1 will WAIT
+
+COMMIT;  -- Now the other transaction can proceed
+```
+
+## Isolation Level Summary
+
+| Level            | Dirty Reads | Non-Repeatable | Phantom Rows | Performance |
+| :--------------- | :---------- | :------------- | :----------- | :---------- |
+| READ UNCOMMITTED | Yes         | Yes            | Yes          | Fastest     |
+| READ COMMITTED   | No          | Yes            | Yes          | Fast        |
+| REPEATABLE READ  | No          | No             | Yes          | Medium      |
+| SERIALIZABLE     | No          | No             | No           | Slowest     |
+
+## Locking Mechanisms
+
+### Shared Locks (S) - For Reading
+
+```sql
+BEGIN;
+SELECT * FROM Customers WITH (HOLDLOCK)
+WHERE Country = 'Germany';
+-- Other transactions can READ but not UPDATE these rows
+COMMIT;
+```
+
+### Exclusive Locks (X) - For Writing
+
+```sql
+BEGIN;
+UPDATE Products SET UnitPrice = 20.00 WHERE ProductID = 1;
+-- Other transactions cannot READ or UPDATE this row
+COMMIT;
+```
+
+### Lock Hints (SQL Server)
+
+```sql
+-- Force exclusive lock even for SELECT
+SELECT * FROM Orders WITH (XLOCK, ROWLOCK)
+WHERE OrderID = 10248;
+
+-- Don't wait for locks
+SELECT * FROM Products WITH (NOWAIT)
+WHERE ProductID = 1;
+
+-- Read without taking locks
+SELECT * FROM Customers WITH (NOLOCK)
+WHERE Country = 'USA';
+```
+
+## MVCC: Multi-Version Concurrency Control
+
+Modern databases (PostgreSQL, Oracle) use versions instead of locks:
+
+```sql
+-- Transaction 1 (Starts first)
+BEGIN;
+SELECT * FROM Products WHERE ProductID = 1;
+-- Sees version 1: UnitPrice = 18.00
+
+-- Transaction 2 (Starts second, commits fast)
+BEGIN;
+UPDATE Products SET UnitPrice = 25.00 WHERE ProductID = 1;
+COMMIT;  -- Creates version 2
+
+-- Transaction 1 (Still running)
+SELECT * FROM Products WHERE ProductID = 1;
+-- Still sees version 1: UnitPrice = 18.00 (snapshot isolation)
+
+COMMIT;
+-- Future transactions see version 2
+```
+
+## Distributed Transactions (Two-Phase Commit)
+
+When updating across multiple databases:
+
+```sql
+-- Phase 1: PREPARE
+BEGIN DISTRIBUTED TRANSACTION;
+
+UPDATE NorthwindDB.dbo.Products SET UnitsInStock = 100 WHERE ProductID = 1;
+UPDATE InventoryDB.dbo.Stock SET Quantity = 100 WHERE SKU = 'PROD-001';
+
+-- Both databases confirm they CAN commit
+
+-- Phase 2: COMMIT
+COMMIT TRANSACTION;
+-- Both databases commit simultaneously
+```
+
+## Real-World Patterns: Northwind Concurrency
+
+### Optimistic Locking with Version Column
+
+```sql
+-- Add version column
+ALTER TABLE Products ADD RowVersion ROWVERSION;
+
+-- Update only if version hasn&apos;t changed
+UPDATE Products
+SET UnitPrice = 25.00, UnitsInStock = 50
+WHERE ProductID = 1
+AND RowVersion = @OriginalVersion;
+
+-- Check if update succeeded
+IF @@ROWCOUNT = 0
+    RAISERROR('Product was modified by another user', 16, 1);
+```
+
+### Pessimistic Locking for Inventory
+
+```sql
+BEGIN TRANSACTION;
+
+-- Lock the product row while checking
+SELECT UnitsInStock
+FROM Products WITH (UPDLOCK, ROWLOCK)
+WHERE ProductID = 1;
+
+-- Now safely update
+IF @Stock >= 10
+BEGIN
+    UPDATE Products SET UnitsInStock = UnitsInStock - 10 WHERE ProductID = 1;
+    INSERT INTO [Order Details] VALUES (@OrderID, 1, 18.00, 10, 0);
+    COMMIT;
+END
+ELSE
+BEGIN
+    ROLLBACK;
+    RAISERROR('Insufficient stock', 16, 1);
+END
+```
+
+<ProgressCheckpoint section="isolation-levels" xpReward={85} />

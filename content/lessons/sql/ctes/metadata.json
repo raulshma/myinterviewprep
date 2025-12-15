@@ -1,0 +1,15 @@
+{
+  "id": "ctes",
+  "title": "Common Table Expressions (CTEs)",
+  "description": "Write cleaner queries with WITH clause.",
+  "milestone": "advanced-sql",
+  "order": 4,
+  "sections": ["cte-basics", "multiple-ctes", "best-practices"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["lag-lead"],
+  "tags": ["sql", "advanced", "cte", "with-clause"]
+}

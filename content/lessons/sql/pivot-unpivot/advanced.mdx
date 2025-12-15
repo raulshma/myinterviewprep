@@ -1,0 +1,95 @@
+# PIVOT and UNPIVOT: Advanced Topics
+
+Dynamic pivoting and complex transformations.
+
+## Dynamic PIVOT
+
+```sql
+-- SQL Server: Build PIVOT with unknown column values
+DECLARE @columns NVARCHAR(MAX), @sql NVARCHAR(MAX);
+
+-- Get distinct values for column list
+SELECT @columns = STRING_AGG(QUOTENAME(month_name), ', ')
+FROM (SELECT DISTINCT month_name FROM sales) t;
+
+-- Build dynamic SQL
+SET @sql = N'
+    SELECT * FROM (
+        SELECT product, month_name, sales_amount
+        FROM sales
+    ) src
+    PIVOT (
+        SUM(sales_amount)
+        FOR month_name IN (' + @columns + ')
+    ) pvt';
+
+EXEC sp_executesql @sql;
+```
+
+## Dynamic UNPIVOT
+
+```sql
+-- Generate UNPIVOT dynamically
+DECLARE @columns NVARCHAR(MAX);
+
+SELECT @columns = STRING_AGG(QUOTENAME(COLUMN_NAME), ', ')
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_NAME = 'wide_table' AND COLUMN_NAME NOT IN ('id', 'created_at');
+
+EXEC('
+    SELECT id, attribute, value
+    FROM wide_table
+    UNPIVOT (value FOR attribute IN (' + @columns + ')) unpvt
+');
+```
+
+## EAV to Relational
+
+```sql
+-- Entity-Attribute-Value to table
+WITH attrs AS (
+    SELECT entity_id,
+        MAX(CASE WHEN attribute = 'name' THEN value END) AS name,
+        MAX(CASE WHEN attribute = 'email' THEN value END) AS email,
+        MAX(CASE WHEN attribute = 'phone' THEN value END) AS phone
+    FROM eav_table
+    GROUP BY entity_id
+)
+SELECT * FROM attrs;
+```
+
+## Matrix Report
+
+```sql
+-- Sales matrix: Product x Region
+SELECT
+    product_name,
+    ISNULL([North], 0) AS North,
+    ISNULL([South], 0) AS South,
+    ISNULL([East], 0) AS East,
+    ISNULL([West], 0) AS West,
+    ISNULL([North], 0) + ISNULL([South], 0) + ISNULL([East], 0) + ISNULL([West], 0) AS Total
+FROM (
+    SELECT p.name AS product_name, r.name AS region_name, s.amount
+    FROM sales s
+    JOIN products p ON s.product_id = p.id
+    JOIN regions r ON s.region_id = r.id
+) src
+PIVOT (SUM(amount) FOR region_name IN ([North], [South], [East], [West])) pvt;
+```
+
+## Performance Considerations
+
+```sql
+-- PIVOT/UNPIVOT can be expensive
+-- Pre-aggregate when possible
+WITH agg AS (
+    SELECT product, month, SUM(sales) AS total_sales
+    FROM daily_sales
+    GROUP BY product, month
+)
+SELECT * FROM agg
+PIVOT (MAX(total_sales) FOR month IN (...)) pvt;
+```
+
+<ProgressCheckpoint section="pivot-advanced" xpReward={50} />

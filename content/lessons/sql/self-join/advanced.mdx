@@ -1,0 +1,132 @@
+# Self Join: Advanced Hierarchies
+
+Recursive patterns and complex hierarchy traversal.
+
+## Recursive CTE for Full Hierarchy
+
+```sql
+-- Get complete org chart with level
+WITH RECURSIVE org_tree AS (
+    -- Anchor: Top level (CEO)
+    SELECT id, name, manager_id, 0 AS level, CAST(name AS VARCHAR(500)) AS path
+    FROM employees WHERE manager_id IS NULL
+
+    UNION ALL
+
+    -- Recursive: Each level down
+    SELECT e.id, e.name, e.manager_id, t.level + 1,
+           CONCAT(t.path, ' > ', e.name)
+    FROM employees e
+    INNER JOIN org_tree t ON e.manager_id = t.id
+)
+SELECT * FROM org_tree ORDER BY path;
+```
+
+## Transitive Closure
+
+```sql
+-- All ancestor-descendant pairs
+WITH RECURSIVE ancestors AS (
+    SELECT id, manager_id, 1 AS distance
+    FROM employees WHERE manager_id IS NOT NULL
+
+    UNION ALL
+
+    SELECT a.id, e.manager_id, a.distance + 1
+    FROM ancestors a
+    INNER JOIN employees e ON a.manager_id = e.id
+    WHERE e.manager_id IS NOT NULL
+)
+SELECT * FROM ancestors;
+```
+
+## Ranking Within Group
+
+```sql
+-- Rank products by price within category using self-join
+SELECT
+    p1.*,
+    COUNT(p2.id) + 1 AS price_rank
+FROM products p1
+LEFT JOIN products p2
+    ON p1.category_id = p2.category_id
+    AND p2.price > p1.price
+GROUP BY p1.id, p1.name, p1.price, p1.category_id;
+
+-- Modern approach: Window function
+SELECT *, RANK() OVER (PARTITION BY category_id ORDER BY price DESC) AS price_rank
+FROM products;
+```
+
+## Performance Optimization
+
+```sql
+-- Self-join can be expensive (n² potential)
+-- Index the join columns!
+CREATE INDEX IX_employees_manager ON employees(manager_id);
+
+-- Limit depth when possible
+WITH RECURSIVE tree AS (
+    SELECT id, name, manager_id, 1 AS level FROM employees WHERE manager_id IS NULL
+    UNION ALL
+    SELECT e.id, e.name, e.manager_id, t.level + 1
+    FROM employees e
+    JOIN tree t ON e.manager_id = t.id
+    WHERE t.level < 10  -- Limit recursion depth
+)
+SELECT * FROM tree;
+```
+
+## Bill of Materials Pattern
+
+```sql
+-- Product assembly hierarchy with quantities
+WITH RECURSIVE bom AS (
+    SELECT
+        component_id,
+        1 AS quantity,
+        component_id AS root_component
+    FROM components WHERE parent_id IS NULL
+
+    UNION ALL
+
+    SELECT
+        c.component_id,
+        c.quantity * b.quantity,
+        b.root_component
+    FROM components c
+    JOIN bom b ON c.parent_id = b.component_id
+)
+SELECT
+    root_component,
+    component_id,
+    SUM(quantity) AS total_quantity
+FROM bom
+GROUP BY root_component, component_id;
+```
+
+## Graph Traversal
+
+```sql
+-- Find path between two nodes
+WITH RECURSIVE path AS (
+    SELECT
+        id,
+        CAST(id AS VARCHAR(1000)) AS path,
+        1 AS depth
+    FROM nodes WHERE id = @start_id
+
+    UNION ALL
+
+    SELECT
+        e.to_node,
+        CONCAT(p.path, '->', e.to_node),
+        p.depth + 1
+    FROM edges e
+    JOIN path p ON e.from_node = p.id
+    WHERE p.depth < 10 AND CHARINDEX(CAST(e.to_node AS VARCHAR), p.path) = 0
+)
+SELECT * FROM path WHERE id = @end_id;
+```
+
+<ProgressCheckpoint section="self-join-advanced" xpReward={50} />

@@ -1,0 +1,70 @@
+# NULLIF and COALESCE: NULL Handling
+
+Master these essential functions for dealing with NULL values!
+
+## 🎯 COALESCE: First Non-NULL
+
+COALESCE returns the first non-NULL value:
+
+```sql
+SELECT COALESCE(NULL, NULL, 'Hello');  -- 'Hello'
+SELECT COALESCE(NULL, 'First', 'Second');  -- 'First'
+SELECT COALESCE('Found', NULL, 'Other');  -- 'Found'
+```
+
+## 📝 COALESCE Examples
+
+```sql
+-- Default for NULL
+SELECT COALESCE(nickname, 'No nickname') FROM users;
+
+-- Fallback chain
+SELECT COALESCE(mobile_phone, home_phone, work_phone, 'No phone')
+FROM contacts;
+
+-- With calculations
+SELECT price * COALESCE(quantity, 0) AS total FROM orders;
+```
+
+## 🔄 NULLIF: Make NULL
+
+NULLIF returns NULL if two values are equal:
+
+```sql
+SELECT NULLIF(5, 5);    -- NULL (equal)
+SELECT NULLIF(5, 3);    -- 5 (not equal)
+SELECT NULLIF('A', 'B'); -- 'A' (not equal)
+```
+
+## 🎨 NULLIF Examples
+
+```sql
+-- Treat empty string as NULL
+SELECT COALESCE(NULLIF(name, ''), 'Unknown') FROM users;
+
+-- Avoid division by zero
+SELECT amount / NULLIF(count, 0) AS average FROM stats;
+-- Returns NULL instead of error when count is 0!
+
+-- Treat placeholder values as NULL
+SELECT NULLIF(phone, 'N/A') FROM contacts;
+```
+
+## ⚡ ISNULL (SQL Server)
+
+Similar to COALESCE but only two arguments:
+
+```sql
+SELECT ISNULL(NULL, 'Default');  -- 'Default'
+SELECT ISNULL(name, 'Unknown') FROM users;
+```
+
+## 📊 Comparison
+
+| Function | Purpose        | Arguments  |
+| -------- | -------------- | ---------- |
+| COALESCE | First non-NULL | Any number |
+| NULLIF   | NULL if equal  | Exactly 2  |
+| ISNULL   | Replace NULL   | Exactly 2  |
+
+<ProgressCheckpoint section="null-functions-basics" xpReward={20} />

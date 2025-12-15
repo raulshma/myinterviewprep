@@ -1,0 +1,15 @@
+{
+  "id": "from-where-orderby",
+  "title": "FROM, WHERE, ORDER BY",
+  "description": "Learn to filter and sort your query results.",
+  "milestone": "dml",
+  "order": 2,
+  "sections": ["from-clause", "where-filtering", "order-by-sorting"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
+    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
+    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+  },
+  "prerequisites": ["select-querying"],
+  "tags": ["sql", "where", "orderby", "filtering", "sorting"]
+}

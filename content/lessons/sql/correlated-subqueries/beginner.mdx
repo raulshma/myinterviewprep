@@ -1,0 +1,95 @@
+# Correlated Subqueries: Connected Inner Queries
+
+Learn subqueries that reference the outer query for row-by-row comparisons!
+
+## 🔗 What is a Correlated Subquery?
+
+A correlated subquery references a column from the outer query:
+
+```sql
+SELECT * FROM products p
+WHERE price > (
+    SELECT AVG(price) FROM products
+    WHERE category = p.category  -- References outer p.category!
+);
+```
+
+The inner query uses `p.category` from the outer query!
+
+## 📊 Regular vs Correlated
+
+| Type       | Inner Query References Outer? | Runs How Many Times? |
+| ---------- | ----------------------------- | -------------------- |
+| Regular    | No                            | Once                 |
+| Correlated | Yes                           | Once per outer row   |
+
+```sql
+-- Regular: Runs inner query once
+SELECT * FROM products WHERE price > (SELECT AVG(price) FROM products);
+
+-- Correlated: Runs inner query for each product
+SELECT * FROM products p
+WHERE price > (SELECT AVG(price) FROM products WHERE category = p.category);
+```
+
+## 📝 Common Pattern: Compare to Group
+
+```sql
+-- Products priced above their category average
+SELECT * FROM products p
+WHERE price > (
+    SELECT AVG(price)
+    FROM products
+    WHERE category = p.category
+);
+
+-- Employees earning more than their department average
+SELECT * FROM employees e
+WHERE salary > (
+    SELECT AVG(salary)
+    FROM employees
+    WHERE department = e.department
+);
+```
+
+## ✅ EXISTS Operator
+
+Check if related rows exist:
+
+```sql
+-- Customers with at least one order
+SELECT * FROM customers c
+WHERE EXISTS (
+    SELECT 1 FROM orders WHERE customer_id = c.id
+);
+
+-- Products never ordered
+SELECT * FROM products p
+WHERE NOT EXISTS (
+    SELECT 1 FROM order_items WHERE product_id = p.id
+);
+```
+
+## 💡 Why EXISTS is Special
+
+EXISTS just checks "does any row exist?" - very efficient!
+
+```sql
+-- Stops at first match - fast!
+WHERE EXISTS (SELECT 1 FROM orders WHERE customer_id = c.id)
+
+-- Must check all matches - slower for large lists
+WHERE c.id IN (SELECT customer_id FROM orders)
+```
+
+## 🎯 Quick Examples
+
+```sql
+-- Latest order per customer
+SELECT * FROM orders o
+WHERE order_date = (
+    SELECT MAX(order_date) FROM orders WHERE customer_id = o.customer_id
+);
+```
+
+<ProgressCheckpoint section="correlated-basics" xpReward={30} />

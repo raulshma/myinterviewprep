@@ -1,0 +1,196 @@
+# Enterprise DDL Patterns
+
+Master database design for large-scale applications.
+
+## Schema Organization
+
+Organize tables into logical schemas:
+
+```sql
+-- Create schemas
+CREATE SCHEMA Sales;
+CREATE SCHEMA HR;
+CREATE SCHEMA Inventory;
+
+-- Create tables in schemas
+CREATE TABLE Sales.Orders (
+    OrderID INT PRIMARY KEY IDENTITY,
+    CustomerID CHAR(5),
+    OrderDate DATE
+);
+
+CREATE TABLE HR.Employees (
+    EmployeeID INT PRIMARY KEY IDENTITY,
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50)
+);
+
+-- Reference tables across schemas
+ALTER TABLE Sales.Orders
+ADD EmployeeID INT,
+    FOREIGN KEY (EmployeeID) REFERENCES HR.Employees(EmployeeID);
+```
+
+## Partitioned Tables
+
+Split large tables for performance:
+
+```sql
+-- Create partition function
+CREATE PARTITION FUNCTION OrderDateRange (DATE)
+AS RANGE RIGHT FOR VALUES (
+    '2022-01-01', '2023-01-01', '2024-01-01', '2025-01-01'
+);
+
+-- Create partition scheme
+CREATE PARTITION SCHEME OrderDateScheme
+AS PARTITION OrderDateRange
+TO (FG_2021, FG_2022, FG_2023, FG_2024, FG_2025);
+
+-- Create partitioned table
+CREATE TABLE Sales.OrdersPartitioned (
+    OrderID INT IDENTITY,
+    CustomerID CHAR(5),
+    OrderDate DATE,
+    Freight DECIMAL(10,2)
+) ON OrderDateScheme(OrderDate);
+```
+
+## Computed Columns
+
+Derive values automatically:
+
+```sql
+CREATE TABLE OrderDetails (
+    OrderID INT,
+    ProductID INT,
+    UnitPrice DECIMAL(10,2),
+    Quantity SMALLINT,
+    Discount DECIMAL(4,2) DEFAULT 0,
+
+    -- Computed column (calculated on the fly)
+    LineTotal AS (UnitPrice * Quantity * (1 - Discount)),
+
+    -- Persisted computed column (stored on disk)
+    LineTotalPersisted AS (UnitPrice * Quantity * (1 - Discount)) PERSISTED,
+
+    PRIMARY KEY (OrderID, ProductID)
+);
+
+-- Computed column with function
+CREATE TABLE Products (
+    ProductID INT PRIMARY KEY,
+    ProductName VARCHAR(100),
+    UnitPrice DECIMAL(10,2),
+
+    PriceCategory AS CASE
+        WHEN UnitPrice < 10 THEN 'Budget'
+        WHEN UnitPrice < 50 THEN 'Standard'
+        ELSE 'Premium'
+    END
+);
+```
+
+## Temporal Tables (System-Versioned)
+
+Track all changes over time:
+
+```sql
+-- Create temporal table
+CREATE TABLE Products (
+    ProductID INT PRIMARY KEY,
+    ProductName VARCHAR(100),
+    UnitPrice DECIMAL(10,2),
+
+    -- Required columns for temporal
+    ValidFrom DATETIME2 GENERATED ALWAYS AS ROW START,
+    ValidTo DATETIME2 GENERATED ALWAYS AS ROW END,
+
+    PERIOD FOR SYSTEM_TIME (ValidFrom, ValidTo)
+)
+WITH (SYSTEM_VERSIONING = ON (HISTORY_TABLE = dbo.ProductsHistory));
+
+-- Query historical data
+SELECT * FROM Products
+FOR SYSTEM_TIME AS OF '2024-01-15 00:00:00';
+
+SELECT * FROM Products
+FOR SYSTEM_TIME BETWEEN '2024-01-01' AND '2024-06-30';
+```
+
+## Database-Level DDL
+
+```sql
+-- Create database
+CREATE DATABASE NorthwindDev
+ON PRIMARY (
+    NAME = 'NorthwindDev_Data',
+    FILENAME = 'C:\Data\NorthwindDev.mdf',
+    SIZE = 100MB,
+    MAXSIZE = 1GB,
+    FILEGROWTH = 50MB
+)
+LOG ON (
+    NAME = 'NorthwindDev_Log',
+    FILENAME = 'C:\Data\NorthwindDev.ldf',
+    SIZE = 25MB,
+    FILEGROWTH = 25%
+);
+
+-- Alter database settings
+ALTER DATABASE NorthwindDev
+SET RECOVERY FULL;
+
+ALTER DATABASE NorthwindDev
+SET AUTO_SHRINK OFF;
+```
+
+## Indexes as DDL
+
+```sql
+-- Clustered index (data stored in this order)
+CREATE CLUSTERED INDEX IX_Orders_OrderDate
+ON Orders(OrderDate);
+
+-- Non-clustered index
+CREATE NONCLUSTERED INDEX IX_Products_CategoryID
+ON Products(CategoryID)
+INCLUDE (ProductName, UnitPrice);  -- Covering index
+
+-- Filtered index
+CREATE NONCLUSTERED INDEX IX_Products_Active
+ON Products(ProductName)
+WHERE Discontinued = 0;
+
+-- Columnstore index (for analytics)
+CREATE NONCLUSTERED COLUMNSTORE INDEX IX_OrderDetails_Analytics
+ON OrderDetails(OrderID, ProductID, Quantity, UnitPrice);
+```
+
+## DDL Triggers
+
+Audit or prevent schema changes:
+
+```sql
+-- Prevent table drops
+CREATE TRIGGER PreventTableDrop
+ON DATABASE
+FOR DROP_TABLE
+AS
+BEGIN
+    PRINT 'Table drops are not allowed in production!';
+    ROLLBACK;
+END;
+
+-- Audit DDL changes
+CREATE TRIGGER AuditDDL
+ON DATABASE
+FOR DDL_DATABASE_LEVEL_EVENTS
+AS
+BEGIN
+    INSERT INTO DDLAuditLog (EventData, LoginName, EventDate)
+    VALUES (EVENTDATA(), SUSER_NAME(), GETDATE());
+END;
+```
+
+<ProgressCheckpoint section="truncate-table" xpReward={85} />

@@ -1,0 +1,125 @@
+# ALTER TABLE: Constraint Management
+
+Master adding and modifying constraints on existing tables.
+
+## Adding Constraints
+
+### Primary Key
+
+```sql
+-- Add primary key to existing table
+ALTER TABLE products
+ADD CONSTRAINT PK_products PRIMARY KEY (id);
+
+-- Composite primary key
+ALTER TABLE order_items
+ADD CONSTRAINT PK_order_items PRIMARY KEY (order_id, product_id);
+```
+
+### Foreign Keys
+
+```sql
+-- Add foreign key
+ALTER TABLE orders
+ADD CONSTRAINT FK_orders_customers
+FOREIGN KEY (customer_id) REFERENCES customers(id);
+
+-- With cascade options
+ALTER TABLE order_items
+ADD CONSTRAINT FK_items_orders
+FOREIGN KEY (order_id) REFERENCES orders(id)
+ON DELETE CASCADE
+ON UPDATE CASCADE;
+```
+
+### Unique Constraints
+
+```sql
+-- Single column
+ALTER TABLE users
+ADD CONSTRAINT UQ_users_email UNIQUE (email);
+
+-- Multiple columns
+ALTER TABLE products
+ADD CONSTRAINT UQ_products_sku_vendor UNIQUE (sku, vendor_id);
+```
+
+### Check Constraints
+
+```sql
+ALTER TABLE products
+ADD CONSTRAINT CK_products_price CHECK (price > 0);
+
+ALTER TABLE orders
+ADD CONSTRAINT CK_orders_status
+CHECK (status IN ('pending', 'processing', 'shipped', 'delivered'));
+```
+
+## Removing Constraints
+
+```sql
+-- Drop constraint by name
+ALTER TABLE orders DROP CONSTRAINT FK_orders_customers;
+ALTER TABLE products DROP CONSTRAINT CK_products_price;
+ALTER TABLE users DROP CONSTRAINT UQ_users_email;
+
+-- Drop primary key
+ALTER TABLE products DROP CONSTRAINT PK_products;
+```
+
+## Modifying Columns
+
+### Change Data Type
+
+```sql
+-- SQL Server
+ALTER TABLE orders ALTER COLUMN total DECIMAL(12,2);
+
+-- PostgreSQL (with explicit cast)
+ALTER TABLE orders
+ALTER COLUMN total TYPE DECIMAL(12,2) USING total::DECIMAL(12,2);
+
+-- MySQL
+ALTER TABLE orders MODIFY COLUMN total DECIMAL(12,2);
+```
+
+### Add/Remove NULL
+
+```sql
+-- Make column NOT NULL (ensure no NULLs exist first!)
+UPDATE users SET email = 'unknown@example.com' WHERE email IS NULL;
+ALTER TABLE users ALTER COLUMN email VARCHAR(100) NOT NULL;
+
+-- Allow NULLs
+ALTER TABLE users ALTER COLUMN middle_name VARCHAR(50) NULL;
+```
+
+### Change Default Value
+
+```sql
+-- Add default
+ALTER TABLE orders
+ADD CONSTRAINT DF_orders_status DEFAULT 'pending' FOR status;
+
+-- Drop default (SQL Server)
+ALTER TABLE orders DROP CONSTRAINT DF_orders_status;
+
+-- PostgreSQL
+ALTER TABLE orders ALTER COLUMN status SET DEFAULT 'pending';
+ALTER TABLE orders ALTER COLUMN status DROP DEFAULT;
+```
+
+## Enabling/Disabling Constraints
+
+```sql
+-- Disable foreign key (SQL Server) - for bulk loads
+ALTER TABLE orders NOCHECK CONSTRAINT FK_orders_customers;
+
+-- Re-enable
+ALTER TABLE orders CHECK CONSTRAINT FK_orders_customers;
+
+-- Disable all foreign keys on table
+ALTER TABLE orders NOCHECK CONSTRAINT ALL;
+```
+
+<ProgressCheckpoint section="alter-table-constraints" xpReward={40} />

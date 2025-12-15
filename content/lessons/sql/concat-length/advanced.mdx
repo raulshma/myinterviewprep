@@ -1,0 +1,99 @@
+# CONCAT and LENGTH: Advanced Topics
+
+Complex string manipulation and performance.
+
+## Performance Considerations
+
+```sql
+-- String operations can be expensive
+-- Avoid in WHERE when possible
+
+-- Slow: Function on column prevents index use
+WHERE CONCAT(first_name, last_name) = 'JohnDoe'
+
+-- Better: Computed column with index
+ALTER TABLE users ADD full_name AS (CONCAT(first_name, last_name));
+CREATE INDEX IX_users_fullname ON users(full_name);
+
+-- Or use separate conditions
+WHERE first_name = 'John' AND last_name = 'Doe'
+```
+
+## Unicode and Encoding
+
+```sql
+-- Length in different encodings
+SELECT
+    LEN(N'日本語'),           -- 3 characters
+    DATALENGTH(N'日本語'),    -- 6 bytes (NVARCHAR = 2 bytes/char)
+    DATALENGTH('日本語');      -- 3-4 bytes (VARCHAR depends on collation)
+
+-- PostgreSQL specific
+SELECT
+    char_length('日本語'),     -- 3
+    octet_length('日本語');    -- 9 (UTF-8)
+```
+
+## Format Strings
+
+```sql
+-- SQL Server FORMAT
+SELECT FORMAT(123456.789, 'N2');  -- '123,456.79'
+SELECT FORMAT(GETDATE(), 'yyyy-MM-dd');
+
+-- PostgreSQL to_char
+SELECT to_char(123456.789, '999,999.99');
+SELECT to_char(NOW(), 'YYYY-MM-DD');
+```
+
+## Building Dynamic SQL
+
+```sql
+-- Careful with SQL injection!
+-- Use parameterized queries when possible
+
+DECLARE @sql NVARCHAR(MAX);
+SET @sql = CONCAT(
+    'SELECT * FROM ', QUOTENAME(@table_name),
+    ' WHERE ', QUOTENAME(@column_name), ' = @value'
+);
+EXEC sp_executesql @sql, N'@value NVARCHAR(100)', @value = @search_value;
+```
+
+## JSON String Building
+
+```sql
+-- Build JSON manually (when JSON functions unavailable)
+SELECT CONCAT(
+    '{"id":', id,
+    ',"name":"', REPLACE(name, '"', '\"'),
+    '","price":', price, '}'
+) AS json_row
+FROM products;
+
+-- Better: Use native JSON functions
+SELECT JSON_OBJECT('id': id, 'name': name, 'price': price)
+FROM products;  -- PostgreSQL/MySQL 8+
+```
+
+## Recursive String Building
+
+```sql
+-- Build comma-separated list recursively (before STRING_AGG)
+WITH RECURSIVE list AS (
+    SELECT id, name, CAST(name AS VARCHAR(MAX)) AS names
+    FROM (SELECT MIN(id) AS id, MIN(name) AS name FROM products) first
+
+    UNION ALL
+
+    SELECT p.id, p.name, CONCAT(l.names, ', ', p.name)
+    FROM list l
+    JOIN products p ON p.id > l.id
+    WHERE NOT EXISTS (SELECT 1 FROM products p2 WHERE p2.id > l.id AND p2.id < p.id)
+)
+SELECT MAX(names) FROM list;
+```
+
+<StringFunctionPlayground mode="advanced" />
+
+<ProgressCheckpoint section="concat-length-advanced" xpReward={50} />

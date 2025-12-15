@@ -1,0 +1,28 @@
+{
+  "id": "sql-vs-nosql",
+  "title": "SQL vs NoSQL Databases",
+  "description": "Compare relational and non-relational databases to understand when to use each.",
+  "milestone": "learn-basics",
+  "order": 3,
+  "sections": [
+    "comparison",
+    "use-cases",
+    "choosing"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 65
+    }
+  },
+  "prerequisites": ["what-is-rdbms", "rdbms-benefits"],
+  "tags": ["sql", "nosql", "database", "comparison", "mongodb", "redis"]
+}

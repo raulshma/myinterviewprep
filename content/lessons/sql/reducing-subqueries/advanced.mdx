@@ -1,0 +1,101 @@
+# Reducing Subquery Overhead: Advanced Optimization
+
+Expert-level subquery performance strategies.
+
+## Subquery Flattening
+
+```sql
+-- Optimizer may flatten subqueries automatically
+-- Equivalent queries after optimization:
+
+-- Original
+SELECT * FROM orders WHERE customer_id IN (SELECT id FROM customers WHERE status = 'active');
+
+-- Flattened by optimizer
+SELECT o.* FROM orders o JOIN customers c ON o.customer_id = c.id WHERE c.status = 'active';
+```
+
+## Scalar Subquery Caching
+
+```sql
+-- SQL Server caches scalar subquery results for repeated values
+SELECT customer_id,
+    (SELECT name FROM customers WHERE id = o.customer_id) AS customer_name
+FROM orders o;
+
+-- If many orders have same customer_id, cache helps
+-- But JOIN is still usually better
+```
+
+## Semi-Join Optimization
+
+```sql
+-- Optimizer may convert to semi-join
+SELECT * FROM orders
+WHERE customer_id IN (SELECT id FROM customers WHERE country = 'USA');
+
+-- Execution plan may show "Right Semi Join"
+-- More efficient than correlated execution
+```
+
+## Forcing Optimization
+
+```sql
+-- SQL Server: Hints to influence subquery handling
+SELECT * FROM products
+WHERE price > (SELECT AVG(price) FROM products)
+OPTION (OPTIMIZE FOR UNKNOWN);
+
+-- Force hash match for semi-join
+SELECT * FROM orders o
+WHERE EXISTS (
+    SELECT 1 FROM customers c WHERE c.id = o.customer_id
+)
+OPTION (HASH JOIN);
+```
+
+## Subquery in FROM (Complex Aggregation)
+
+```sql
+-- Complex multi-level aggregation
+WITH daily_totals AS (
+    SELECT DATE(order_date) AS day, SUM(total) AS daily_sum
+    FROM orders
+    GROUP BY DATE(order_date)
+),
+weekly_avg AS (
+    SELECT AVG(daily_sum) AS avg_daily
+    FROM daily_totals
+)
+SELECT dt.*, wa.avg_daily,
+    CASE WHEN dt.daily_sum > wa.avg_daily THEN 'Above' ELSE 'Below' END AS performance
+FROM daily_totals dt
+CROSS JOIN weekly_avg wa;
+```
+
+## Avoiding Repeated Calculation
+
+```sql
+-- BAD: Same complex expression repeated
+SELECT
+    id,
+    (price * quantity * (1 - discount)) AS net_total,
+    (price * quantity * (1 - discount)) * 0.08 AS tax,
+    (price * quantity * (1 - discount)) * 1.08 AS grand_total
+FROM order_items;
+
+-- GOOD: Calculate once
+SELECT
+    id,
+    net_total,
+    net_total * 0.08 AS tax,
+    net_total * 1.08 AS grand_total
+FROM (
+    SELECT id, price * quantity * (1 - discount) AS net_total
+    FROM order_items
+) calc;
+```
+
+<QueryOptimizer mode="advanced" />
+
+<ProgressCheckpoint section="subqueries-advanced" xpReward={50} />

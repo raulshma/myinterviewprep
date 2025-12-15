@@ -1,0 +1,71 @@
+# Managing Indexes: Speed Up Your Queries
+
+Learn to create indexes that make queries lightning fast!
+
+## 📚 What is an Index?
+
+An index is like a book's index - it helps find data quickly without scanning every row:
+
+```
+Without index: Scan all 1,000,000 rows to find one
+With index: Jump directly to the row!
+```
+
+## 🚀 Creating an Index
+
+```sql
+-- Basic index on one column
+CREATE INDEX IX_customers_email ON customers(email);
+
+-- Now this is FAST:
+SELECT * FROM customers WHERE email = 'john@example.com';
+```
+
+## 📝 Index Syntax
+
+```sql
+CREATE INDEX index_name ON table_name(column1, column2);
+
+-- Unique index (no duplicates)
+CREATE UNIQUE INDEX IX_users_email ON users(email);
+
+-- Drop an index
+DROP INDEX IX_customers_email ON customers;  -- SQL Server
+DROP INDEX IX_customers_email;                -- PostgreSQL
+```
+
+## 🎯 When to Create Indexes
+
+| Good for Index     | Bad for Index              |
+| ------------------ | -------------------------- |
+| WHERE columns      | Columns rarely queried     |
+| JOIN columns       | Small tables               |
+| ORDER BY columns   | Frequently updated columns |
+| Unique constraints | Very few distinct values   |
+
+## 📊 Types of Indexes
+
+```sql
+-- Clustered: Physical order of data (one per table)
+CREATE CLUSTERED INDEX IX_orders_date ON orders(order_date);
+
+-- Non-clustered: Separate structure pointing to data
+CREATE NONCLUSTERED INDEX IX_customers_name ON customers(last_name);
+```
+
+## ⚡ Example Impact
+
+```sql
+-- Before index: Full table scan (slow)
+SELECT * FROM orders WHERE customer_id = 123;
+-- Scans 1,000,000 rows
+
+-- After index: Index seek (fast!)
+CREATE INDEX IX_orders_customer ON orders(customer_id);
+SELECT * FROM orders WHERE customer_id = 123;
+-- Finds directly via index
+```
+
+<IndexVisualizer mode="beginner" />
+
+<ProgressCheckpoint section="managing-indexes-basics" xpReward={30} />

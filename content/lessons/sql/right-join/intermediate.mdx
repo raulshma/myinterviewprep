@@ -1,0 +1,76 @@
+# RIGHT JOIN: Practical Usage
+
+When and how to effectively use RIGHT JOIN.
+
+## Converting RIGHT to LEFT
+
+```sql
+-- Original with RIGHT JOIN
+SELECT a.col1, b.col2, c.col3
+FROM table_a a
+INNER JOIN table_b b ON a.id = b.a_id
+RIGHT JOIN table_c c ON b.id = c.b_id;
+
+-- Equivalent with LEFT JOIN (rearranged)
+SELECT a.col1, b.col2, c.col3
+FROM table_c c
+LEFT JOIN table_b b ON c.b_id = b.id
+LEFT JOIN table_a a ON b.a_id = a.id;
+```
+
+## RIGHT JOIN in Complex Queries
+
+```sql
+-- When RIGHT JOIN makes sense
+SELECT
+    d.department_name,
+    e.employee_name,
+    p.project_name
+FROM employees e
+INNER JOIN projects p ON e.id = p.lead_id
+RIGHT JOIN departments d ON e.department_id = d.id;
+
+-- Shows all departments, even those with no project leads
+```
+
+## Finding Orphan Records
+
+```sql
+-- Orders referencing deleted customers
+SELECT o.*
+FROM customers c
+RIGHT JOIN orders o ON c.id = o.customer_id
+WHERE c.id IS NULL;
+
+-- Data integrity check
+SELECT COUNT(*) AS orphan_orders
+FROM customers c
+RIGHT JOIN orders o ON c.id = o.customer_id
+WHERE c.id IS NULL;
+```
+
+## Mixed JOIN Types
+
+```sql
+SELECT
+    c.name,
+    o.id AS order_id,
+    p.name AS product
+FROM categories cat
+INNER JOIN products p ON cat.id = p.category_id
+RIGHT JOIN order_items oi ON p.id = oi.product_id
+LEFT JOIN orders o ON oi.order_id = o.id
+LEFT JOIN customers c ON o.customer_id = c.id;
+```
+
+## Anti-Pattern: Excessive RIGHT JOINs
+
+```sql
+-- Hard to read:
+SELECT * FROM a RIGHT JOIN b ON ... RIGHT JOIN c ON ... RIGHT JOIN d ON ...
+
+-- Better: Use LEFT JOINs with logical table order
+SELECT * FROM d LEFT JOIN c ON ... LEFT JOIN b ON ... LEFT JOIN a ON ...
+```
+
+<ProgressCheckpoint section="right-join-practical" xpReward={30} />

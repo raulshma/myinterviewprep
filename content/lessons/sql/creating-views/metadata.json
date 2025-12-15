@@ -1,0 +1,15 @@
+{
+  "id": "creating-views",
+  "title": "Creating Views",
+  "description": "Create virtual tables with SQL views.",
+  "milestone": "views",
+  "order": 1,
+  "sections": ["view-basics", "syntax", "use-cases"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["datepart-dateadd"],
+  "tags": ["sql", "views", "create", "virtual-table"]
+}

@@ -1,0 +1,150 @@
+# Advanced SELECT Queries
+
+Let&apos;s explore more powerful SELECT features using the Northwind database.
+
+## GROUP BY and Aggregates
+
+Summarize data across groups:
+
+```sql
+-- Total orders per customer
+SELECT
+    CustomerID,
+    COUNT(*) AS OrderCount,
+    SUM(Freight) AS TotalFreight
+FROM Orders
+GROUP BY CustomerID
+ORDER BY OrderCount DESC;
+
+-- Average unit price per category
+SELECT
+    c.CategoryName,
+    COUNT(p.ProductID) AS ProductCount,
+    ROUND(AVG(p.UnitPrice), 2) AS AvgPrice
+FROM Categories c
+JOIN Products p ON c.CategoryID = p.CategoryID
+GROUP BY c.CategoryID, c.CategoryName;
+```
+
+## HAVING vs WHERE
+
+**WHERE** filters rows BEFORE grouping. **HAVING** filters AFTER grouping.
+
+```sql
+-- Customers with more than 10 orders
+SELECT CustomerID, COUNT(*) AS OrderCount
+FROM Orders
+GROUP BY CustomerID
+HAVING COUNT(*) > 10;
+
+-- Categories with average price over $30
+SELECT CategoryID, AVG(UnitPrice) AS AvgPrice
+FROM Products
+WHERE Discontinued = 0  -- WHERE: filter before grouping
+GROUP BY CategoryID
+HAVING AVG(UnitPrice) > 30;  -- HAVING: filter after grouping
+```
+
+## Advanced WHERE Clauses
+
+### BETWEEN, IN, LIKE
+
+```sql
+-- Products priced between $10 and $50
+SELECT ProductName, UnitPrice
+FROM Products
+WHERE UnitPrice BETWEEN 10 AND 50;
+
+-- Customers in specific countries
+SELECT CompanyName, Country
+FROM Customers
+WHERE Country IN ('Germany', 'France', 'UK');
+
+-- Products starting with "Ch"
+SELECT ProductName
+FROM Products
+WHERE ProductName LIKE 'Ch%';
+
+-- Contact names containing "an"
+SELECT ContactName
+FROM Customers
+WHERE ContactName LIKE '%an%';
+```
+
+### NULL Handling
+
+```sql
+-- Find customers without a fax
+SELECT CompanyName, Fax
+FROM Customers
+WHERE Fax IS NULL;
+
+-- Find customers WITH a fax
+SELECT CompanyName, Fax
+FROM Customers
+WHERE Fax IS NOT NULL;
+```
+
+## INSERT with SELECT
+
+Copy data from one table to another:
+
+```sql
+-- Create backup of high-value orders
+INSERT INTO HighValueOrders (OrderID, CustomerID, Total)
+SELECT o.OrderID, o.CustomerID, SUM(od.Quantity * od.UnitPrice)
+FROM Orders o
+JOIN [Order Details] od ON o.OrderID = od.OrderID
+GROUP BY o.OrderID, o.CustomerID
+HAVING SUM(od.Quantity * od.UnitPrice) > 10000;
+```
+
+## UPDATE with JOIN
+
+Update based on values from another table:
+
+```sql
+-- Increase price by 10% for products in Beverages category
+UPDATE Products
+SET UnitPrice = UnitPrice * 1.10
+WHERE CategoryID = (
+    SELECT CategoryID FROM Categories WHERE CategoryName = 'Beverages'
+);
+
+-- SQL Server syntax with JOIN
+UPDATE p
+SET p.UnitPrice = p.UnitPrice * 1.10
+FROM Products p
+JOIN Categories c ON p.CategoryID = c.CategoryID
+WHERE c.CategoryName = 'Beverages';
+```
+
+## DELETE with Subquery
+
+```sql
+-- Delete order details for cancelled orders
+DELETE FROM [Order Details]
+WHERE OrderID IN (
+    SELECT OrderID FROM Orders WHERE ShippedDate IS NULL AND OrderDate < '1997-01-01'
+);
+```
+
+## DISTINCT and TOP
+
+```sql
+-- Unique countries
+SELECT DISTINCT Country FROM Customers ORDER BY Country;
+
+-- Top 5 most expensive products
+SELECT TOP 5 ProductName, UnitPrice
+FROM Products
+ORDER BY UnitPrice DESC;
+
+-- PostgreSQL/MySQL syntax
+SELECT ProductName, UnitPrice
+FROM Products
+ORDER BY UnitPrice DESC
+LIMIT 5;
+```
+
+<ProgressCheckpoint section="groupby-having" xpReward={65} />

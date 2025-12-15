@@ -1,0 +1,100 @@
+# Understanding SQL Transactions
+
+Transactions are like safety nets for your database operations. They ensure your data stays consistent even when things go wrong!
+
+## 🏦 The Bank Transfer Analogy
+
+Imagine transferring $100 between two accounts in the Northwind database:
+
+1. **Subtract** $100 from Account A
+2. **Add** $100 to Account B
+
+What if the system crashes after step 1 but before step 2? The money would disappear!
+
+> **Transactions solve this:** Either BOTH steps happen, or NEITHER does.
+
+## Try the Interactive Simulator
+
+Experiment with transactions to see ACID in action:
+
+<TransactionSimulator mode="beginner" />
+
+## The ACID Guarantee
+
+Every database transaction follows four rules:
+
+| Letter | Principle   | Meaning                                 |
+| :----- | :---------- | :-------------------------------------- |
+| **A**  | Atomicity   | All or nothing - no partial updates     |
+| **C**  | Consistency | Data stays valid before and after       |
+| **I**  | Isolation   | Other transactions can&apos;t interfere |
+| **D**  | Durability  | Changes survive crashes once saved      |
+
+## Basic Transaction Commands
+
+### 1. BEGIN - Start a Transaction
+
+```sql
+BEGIN TRANSACTION;
+-- Or simply: BEGIN;
+```
+
+### 2. COMMIT - Save All Changes
+
+```sql
+-- Update customer in Northwind database
+BEGIN;
+
+UPDATE Customers
+SET ContactName = 'Maria Anderson'
+WHERE CustomerID = 'ALFKI';
+
+COMMIT;  -- ✓ Changes are now permanent!
+```
+
+### 3. ROLLBACK - Undo Everything
+
+```sql
+BEGIN;
+
+DELETE FROM Orders
+WHERE OrderID = 10248;
+
+-- Oops, that was a mistake!
+ROLLBACK;  -- ↩ Order is restored - phew!
+```
+
+## Real-World Example: Order Processing
+
+When a customer places an order in Northwind, multiple tables must update together:
+
+```sql
+BEGIN;
+
+-- Step 1: Create the order
+INSERT INTO Orders (CustomerID, OrderDate, ShipCountry)
+VALUES ('ALFKI', CURRENT_DATE, 'Germany');
+
+-- Step 2: Add order details
+INSERT INTO OrderDetails (OrderID, ProductID, Quantity, UnitPrice)
+VALUES (LAST_INSERT_ID(), 11, 5, 21.00);
+
+-- Step 3: Update product stock
+UPDATE Products
+SET UnitsInStock = UnitsInStock - 5
+WHERE ProductID = 11;
+
+COMMIT;  -- All three steps succeed together!
+```
+
+If ANY step fails, ROLLBACK undoes everything.
+
+## Key Takeaways ✓
+
+1. **BEGIN** starts a transaction
+2. **COMMIT** saves all changes permanently
+3. **ROLLBACK** cancels all changes
+4. **ACID** = Atomicity, Consistency, Isolation, Durability
+5. Always use transactions for related operations!
+
+<ProgressCheckpoint section="acid-properties" xpReward={30} />

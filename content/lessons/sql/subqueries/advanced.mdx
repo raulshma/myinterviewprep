@@ -1,0 +1,189 @@
+# Advanced Subquery Optimization
+
+Master query rewriting, performance tuning, and complex subquery patterns.
+
+## Subquery Performance Analysis
+
+Understanding execution plans is crucial:
+
+```sql
+EXPLAIN ANALYZE
+SELECT ProductName
+FROM Products p
+WHERE EXISTS (
+    SELECT 1 FROM [Order Details] od
+    WHERE od.ProductID = p.ProductID
+);
+```
+
+<SubqueryPlayground mode="advanced" />
+
+## Rewriting Subqueries as JOINs
+
+Often, JOINs perform better than subqueries:
+
+### Subquery Version
+
+```sql
+SELECT DISTINCT c.CustomerID, c.CompanyName
+FROM Customers c
+WHERE c.CustomerID IN (
+    SELECT CustomerID FROM Orders WHERE YEAR(OrderDate) = 1997
+);
+```
+
+### Equivalent JOIN Version (Often Faster)
+
+```sql
+SELECT DISTINCT c.CustomerID, c.CompanyName
+FROM Customers c
+JOIN Orders o ON c.CustomerID = o.CustomerID
+WHERE YEAR(o.OrderDate) = 1997;
+```
+
+### When JOINs Don&apos;t Work
+
+Anti-joins (NOT IN, NOT EXISTS) can&apos;t always be rewritten:
+
+```sql
+-- This subquery is hard to replace with a simple JOIN
+SELECT ProductName FROM Products
+WHERE ProductID NOT IN (
+    SELECT ProductID FROM [Order Details]
+);
+
+-- LEFT JOIN equivalent
+SELECT ProductName
+FROM Products p
+LEFT JOIN [Order Details] od ON p.ProductID = od.ProductID
+WHERE od.ProductID IS NULL;
+```
+
+## Scalar Subquery Optimization
+
+### Problem: Scalar Subquery Per Row
+
+```sql
+-- SLOW: Subquery runs for EACH product
+SELECT
+    ProductName,
+    (SELECT CategoryName FROM Categories WHERE CategoryID = Products.CategoryID) AS Category
+FROM Products;
+```
+
+### Solution: JOIN Instead
+
+```sql
+-- FAST: Single join operation
+SELECT p.ProductName, c.CategoryName
+FROM Products p
+JOIN Categories c ON p.CategoryID = c.CategoryID;
+```
+
+## Lateral Subqueries / CROSS APPLY
+
+Get top 3 orders per customer (can&apos;t do with regular JOIN):
+
+```sql
+-- SQL Server / PostgreSQL LATERAL
+SELECT c.CustomerID, c.CompanyName, recent.*
+FROM Customers c
+CROSS APPLY (
+    SELECT TOP 3 o.OrderID, o.OrderDate, o.Freight
+    FROM Orders o
+    WHERE o.CustomerID = c.CustomerID
+    ORDER BY o.OrderDate DESC
+) recent;
+```
+
+## Recursive Subqueries with CTEs
+
+Model hierarchical data (e.g., employee reporting structure):
+
+```sql
+WITH EmployeeHierarchy AS (
+    -- Anchor: Top-level employees (no manager)
+    SELECT EmployeeID, LastName, FirstName, ReportsTo, 0 AS Level
+    FROM Employees
+    WHERE ReportsTo IS NULL
+
+    UNION ALL
+
+    -- Recursive: Employees who report to someone in the hierarchy
+    SELECT e.EmployeeID, e.LastName, e.FirstName, e.ReportsTo, eh.Level + 1
+    FROM Employees e
+    JOIN EmployeeHierarchy eh ON e.ReportsTo = eh.EmployeeID
+)
+SELECT
+    REPLICATE('  ', Level) + LastName + ', ' + FirstName AS EmployeeName,
+    Level
+FROM EmployeeHierarchy
+ORDER BY Level, LastName;
+```
+
+## Complex Northwind Analytics
+
+### Running Totals with Subquery
+
+```sql
+SELECT
+    o.OrderID,
+    o.OrderDate,
+    o.Freight,
+    (SELECT SUM(o2.Freight)
+     FROM Orders o2
+     WHERE o2.OrderDate <= o.OrderDate) AS RunningTotal
+FROM Orders o
+ORDER BY o.OrderDate;
+```
+
+### Year-over-Year Comparison
+
+```sql
+SELECT
+    YEAR(o1.OrderDate) AS Year,
+    MONTH(o1.OrderDate) AS Month,
+    SUM(od.Quantity * od.UnitPrice) AS Revenue,
+    (SELECT SUM(od2.Quantity * od2.UnitPrice)
+     FROM Orders o2
+     JOIN [Order Details] od2 ON o2.OrderID = od2.OrderID
+     WHERE YEAR(o2.OrderDate) = YEAR(o1.OrderDate) - 1
+     AND MONTH(o2.OrderDate) = MONTH(o1.OrderDate)) AS PriorYearRevenue
+FROM Orders o1
+JOIN [Order Details] od ON o1.OrderID = od.OrderID
+GROUP BY YEAR(o1.OrderDate), MONTH(o1.OrderDate)
+ORDER BY Year, Month;
+```
+
+### Finding Gaps in Sequential Data
+
+```sql
+-- Find missing order IDs
+SELECT prev.OrderID + 1 AS MissingStart
+FROM Orders prev
+WHERE NOT EXISTS (
+    SELECT 1 FROM Orders
+    WHERE OrderID = prev.OrderID + 1
+)
+AND prev.OrderID < (SELECT MAX(OrderID) FROM Orders);
+```
+
+## Anti-Pattern: Correlated Subquery in SELECT
+
+```sql
+-- BAD: N+1 query problem
+SELECT
+    ProductName,
+    (SELECT COUNT(*) FROM [Order Details] WHERE ProductID = Products.ProductID) AS OrderCount
+FROM Products;
+
+-- GOOD: Single query with LEFT JOIN
+SELECT
+    p.ProductName,
+    COUNT(od.OrderID) AS OrderCount
+FROM Products p
+LEFT JOIN [Order Details] od ON p.ProductID = od.ProductID
+GROUP BY p.ProductID, p.ProductName;
+```
+
+<ProgressCheckpoint section="subquery-types" xpReward={85} />

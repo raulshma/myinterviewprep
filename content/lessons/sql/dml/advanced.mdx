@@ -1,0 +1,168 @@
+# Expert DML Patterns
+
+Master complex data manipulation scenarios in production environments.
+
+## MERGE (Upsert) Operations
+
+Insert or update depending on whether a row exists:
+
+```sql
+-- SQL Server MERGE
+MERGE INTO Products AS target
+USING (SELECT 1 AS ProductID, 'Chai' AS ProductName, 20.00 AS UnitPrice) AS source
+ON target.ProductID = source.ProductID
+WHEN MATCHED THEN
+    UPDATE SET UnitPrice = source.UnitPrice
+WHEN NOT MATCHED THEN
+    INSERT (ProductName, UnitPrice) VALUES (source.ProductName, source.UnitPrice);
+
+-- PostgreSQL INSERT ON CONFLICT
+INSERT INTO Products (ProductID, ProductName, UnitPrice)
+VALUES (1, 'Chai', 20.00)
+ON CONFLICT (ProductID)
+DO UPDATE SET UnitPrice = EXCLUDED.UnitPrice;
+```
+
+## Batch Operations
+
+### Chunked DELETE for Large Tables
+
+```sql
+-- Delete in batches to avoid locking issues
+DECLARE @BatchSize INT = 1000;
+DECLARE @RowsDeleted INT = 1;
+
+WHILE @RowsDeleted > 0
+BEGIN
+    DELETE TOP (@BatchSize) FROM OrderHistory
+    WHERE OrderDate < DATEADD(year, -5, GETDATE());
+
+    SET @RowsDeleted = @@ROWCOUNT;
+
+    -- Optional: Small delay to reduce lock contention
+    WAITFOR DELAY '00:00:00.100';
+END
+```
+
+### Bulk INSERT Optimization
+
+```sql
+-- SQL Server bulk insert with minimal logging
+INSERT INTO ProductsArchive WITH (TABLOCK)
+SELECT * FROM Products WHERE Discontinued = 1;
+
+-- Using table hints for performance
+INSERT INTO HighVolumeTable WITH (TABLOCK, HOLDLOCK)
+SELECT * FROM SourceTable;
+```
+
+## CTEs for Complex DML
+
+```sql
+-- Delete duplicates keeping only the first occurrence
+WITH DuplicateCTE AS (
+    SELECT
+        *,
+        ROW_NUMBER() OVER (
+            PARTITION BY ProductName, SupplierID
+            ORDER BY ProductID
+        ) AS rn
+    FROM Products
+)
+DELETE FROM DuplicateCTE WHERE rn > 1;
+
+-- Update using CTE calculations
+WITH CategoryStats AS (
+    SELECT
+        CategoryID,
+        AVG(UnitPrice) AS AvgPrice
+    FROM Products
+    GROUP BY CategoryID
+)
+UPDATE p
+SET p.UnitPrice = p.UnitPrice * 1.10
+FROM Products p
+JOIN CategoryStats cs ON p.CategoryID = cs.CategoryID
+WHERE p.UnitPrice < cs.AvgPrice;
+```
+
+## OUTPUT Clause (Audit Trail)
+
+Capture affected rows during DML:
+
+```sql
+-- Track what was deleted
+DELETE FROM Products
+OUTPUT
+    deleted.ProductID,
+    deleted.ProductName,
+    GETDATE() AS DeletedAt,
+    SUSER_NAME() AS DeletedBy
+INTO ProductsAudit (ProductID, ProductName, DeletedAt, DeletedBy)
+WHERE Discontinued = 1;
+
+-- Capture both old and new values during UPDATE
+UPDATE Products
+SET UnitPrice = UnitPrice * 1.10
+OUTPUT
+    inserted.ProductID,
+    deleted.UnitPrice AS OldPrice,
+    inserted.UnitPrice AS NewPrice
+INTO PriceChangeLog (ProductID, OldPrice, NewPrice)
+WHERE CategoryID = 1;
+```
+
+## CASE in DML
+
+Conditional updates:
+
+```sql
+-- Apply different discounts based on stock level
+UPDATE Products
+SET UnitPrice = CASE
+    WHEN UnitsInStock > 100 THEN UnitPrice * 0.90  -- 10% discount
+    WHEN UnitsInStock > 50 THEN UnitPrice * 0.95   -- 5% discount
+    WHEN UnitsInStock = 0 THEN UnitPrice * 1.10    -- 10% increase
+    ELSE UnitPrice
+END
+WHERE CategoryID IN (1, 2, 3);
+
+-- Conditional INSERT destination
+INSERT INTO CustomersTier1 (CustomerID, CompanyName)
+SELECT CustomerID, CompanyName
+FROM Customers c
+WHERE (SELECT COUNT(*) FROM Orders WHERE CustomerID = c.CustomerID) > 20;
+```
+
+## Cross-Database Operations
+
+```sql
+-- Copy data between databases
+INSERT INTO ArchiveDB.dbo.Orders
+SELECT * FROM ProductionDB.dbo.Orders
+WHERE OrderDate < DATEADD(year, -1, GETDATE());
+
+-- Update using linked server
+UPDATE RemoteServer.RemoteDB.dbo.Products
+SET UnitPrice = p.UnitPrice * 1.05
+FROM RemoteServer.RemoteDB.dbo.Products rp
+JOIN LocalProducts p ON rp.ProductID = p.ProductID;
+```
+
+## DML Performance Optimization
+
+```sql
+-- Minimize logging with TRUNCATE instead of DELETE
+TRUNCATE TABLE TempTable;  -- Faster than DELETE, resets identity
+
+-- Use table variables for small datasets
+DECLARE @ProductsToUpdate TABLE (ProductID INT);
+INSERT INTO @ProductsToUpdate
+SELECT ProductID FROM Products WHERE Discontinued = 0;
+
+UPDATE p SET p.UnitPrice = p.UnitPrice * 1.05
+FROM Products p
+JOIN @ProductsToUpdate u ON p.ProductID = u.ProductID;
+```
+
+<ProgressCheckpoint section="delete-data" xpReward={100} />

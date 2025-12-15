@@ -1,0 +1,77 @@
+# SQL vs NoSQL: What's the Difference?
+
+Not all databases work the same way. Let's explore the two main types!
+
+## 🤔 The Big Question
+
+**SQL Databases** (Relational):
+
+- Data lives in tables with rows and columns
+- Use SQL language
+- Example: PostgreSQL, MySQL, SQL Server
+
+**NoSQL Databases** (Non-Relational):
+
+- Data can be stored in many different ways
+- Each type has its own way of querying
+- Example: MongoDB, Redis, Cassandra
+
+## 📦 A Simple Analogy
+
+Think of storing information about your friends:
+
+### SQL Approach: Filing Cabinet
+
+```
+Friends Table:
+| ID | Name    | Phone       | City       |
+|----|---------|-------------|------------|
+| 1  | Alice   | 555-0101    | New York   |
+| 2  | Bob     | 555-0102    | Los Angeles|
+```
+
+Every friend has the SAME columns. Very organized!
+
+### NoSQL Approach: Box of Index Cards
+
+```
+Card 1: { name: "Alice", phone: "555-0101", city: "New York" }
+Card 2: { name: "Bob", phone: "555-0102", pets: ["Dog", "Cat"] }
+Card 3: { name: "Carol", email: "carol@email.com" }
+```
+
+Each card can have DIFFERENT information. More flexible!
+
+<RdbmsConceptVisualizer mode="beginner" />
+
+## 🆚 Side-by-Side Comparison
+
+| Feature       | SQL                        | NoSQL                       |
+| ------------- | -------------------------- | --------------------------- |
+| **Structure** | Fixed tables               | Flexible                    |
+| **Scaling**   | Vertical (bigger server)   | Horizontal (more servers)   |
+| **Best for**  | Related data, transactions | Big data, varied structures |
+| **Language**  | SQL (standard)             | Various (each different)    |
+
+## 🎯 When to Use Which?
+
+### Choose SQL When:
+
+- 🏦 You need accuracy (banking, healthcare)
+- 🔗 Data is highly related
+- 📊 Complex queries and reports
+
+### Choose NoSQL When:
+
+- 📱 Building a fast, simple app
+- 🌊 Data doesn't fit tables well (social media posts)
+- 📈 Need to scale very large
+
+## 💡 Good News!
+
+You don't always have to choose! Many apps use **both**:
+
+- SQL for core business data
+- NoSQL for caching, sessions, or analytics
+
+<ProgressCheckpoint section="sql-vs-nosql" xpReward={25} />

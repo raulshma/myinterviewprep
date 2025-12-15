@@ -1,0 +1,125 @@
+# INNER JOIN: Performance and Optimization
+
+Master join performance tuning and advanced patterns.
+
+## Join Algorithms
+
+SQL engines use different algorithms:
+
+| Algorithm   | Best For               | How It Works                          |
+| ----------- | ---------------------- | ------------------------------------- |
+| Nested Loop | Small tables, indexed  | For each row in A, seek matching in B |
+| Hash Match  | No indexes, large data | Build hash table, probe               |
+| Merge Join  | Both inputs sorted     | Merge like merge-sort                 |
+
+```sql
+-- SQL Server: View join type in execution plan
+SET STATISTICS PROFILE ON;
+SELECT * FROM orders o JOIN customers c ON o.customer_id = c.id;
+
+-- Force specific algorithm (use sparingly)
+SELECT * FROM orders o
+INNER LOOP JOIN customers c ON o.customer_id = c.id;
+```
+
+## Index Strategy
+
+```sql
+-- Critical: Index foreign key columns
+CREATE INDEX IX_orders_customer_id ON orders(customer_id);
+
+-- Covering index for specific queries
+CREATE INDEX IX_orders_customer_date
+ON orders(customer_id, order_date)
+INCLUDE (total);
+
+-- This query becomes index-only:
+SELECT customer_id, order_date, total
+FROM orders WHERE customer_id = @id;
+```
+
+## Join Order Optimization
+
+```sql
+-- Optimizer chooses join order, but order matters for:
+-- 1. Early row reduction
+-- 2. Index utilization
+
+-- Start with most selective table when possible
+-- Filter early
+
+-- Example: Filter in subquery vs after join
+-- Faster if orders table is large:
+SELECT c.*, o.*
+FROM customers c
+INNER JOIN (
+    SELECT * FROM orders WHERE order_date > '2024-01-01'
+) o ON c.id = o.customer_id;
+```
+
+## Avoiding Common Pitfalls
+
+```sql
+-- Cartesian product from missing ON
+SELECT * FROM orders, customers;  -- Every combination!
+-- Always use explicit JOIN with ON
+
+-- Function on join column prevents index use
+SELECT * FROM orders o
+JOIN customers c ON LOWER(o.customer_code) = LOWER(c.code);  -- No index!
+-- Better: Store normalized, compare directly
+
+-- Type mismatch can hurt performance
+SELECT * FROM t1
+JOIN t2 ON t1.id = CAST(t2.id AS INT);  -- Implicit conversion!
+```
+
+## Large-Scale Joins
+
+```sql
+-- Partition-wise join (if tables are partitioned)
+-- Joins only matching partitions
+
+-- Batch processing pattern
+DECLARE @batch_size INT = 10000;
+DECLARE @offset INT = 0;
+
+WHILE 1 = 1
+BEGIN
+    SELECT c.*, o.total
+    FROM customers c
+    INNER JOIN orders o ON c.id = o.customer_id
+    ORDER BY c.id
+    OFFSET @offset ROWS FETCH NEXT @batch_size ROWS ONLY;
+
+    IF @@ROWCOUNT < @batch_size BREAK;
+    SET @offset = @offset + @batch_size;
+END;
+```
+
+## Parallel Execution
+
+```sql
+-- Enable parallelism (SQL Server)
+SELECT c.*, o.*
+FROM customers c
+INNER JOIN orders o ON c.id = o.customer_id
+OPTION (MAXDOP 4);  -- Use 4 cores
+
+-- Check for parallel plan
+-- Look for "Parallelism" operator in execution plan
+```
+
+## Statistics and Cardinality
+
+```sql
+-- Accurate statistics = better join plans
+UPDATE STATISTICS customers;
+UPDATE STATISTICS orders;
+
+-- Check cardinality estimates
+SET STATISTICS PROFILE ON;
+-- Compare estimated vs actual rows
+```
+
+<ProgressCheckpoint section="inner-join-performance" xpReward={55} />

@@ -1,0 +1,67 @@
+# Selective Projection: Choose Your Columns Wisely
+
+Why SELECT \* can hurt performance!
+
+## 🚫 The Problem with SELECT \*
+
+```sql
+-- SELECT * retrieves ALL columns
+SELECT * FROM customers;
+-- Returns: id, name, email, phone, address, city, state, zip,
+--          created_at, updated_at, notes, preferences_json, ...
+
+-- Often you only need a few:
+SELECT id, name, email FROM customers;
+```
+
+## ⚡ Why Selecting Fewer Columns Helps
+
+| Benefit                | Explanation                  |
+| ---------------------- | ---------------------------- |
+| **Less Data Transfer** | Fewer bytes over network     |
+| **Less Memory**        | Smaller result set in memory |
+| **Covering Index**     | May enable index-only scan   |
+| **Faster Execution**   | Less I/O from disk           |
+
+## 📊 Real Impact Example
+
+```sql
+-- Table: users with 20 columns, 1 million rows
+
+-- Slow: SELECT * (reads all columns)
+SELECT * FROM users WHERE status = 'active';
+-- Reads: ~500 MB
+
+-- Fast: Select needed columns only
+SELECT id, name, email FROM users WHERE status = 'active';
+-- Reads: ~50 MB
+```
+
+## 🎯 Best Practice
+
+```sql
+-- BAD: Select all columns
+SELECT * FROM orders o
+JOIN customers c ON o.customer_id = c.id;
+
+-- GOOD: Select only what you need
+SELECT o.id, o.order_date, o.total, c.name
+FROM orders o
+JOIN customers c ON o.customer_id = c.id;
+```
+
+## 💡 When SELECT \* is OK
+
+- Quick exploration in development
+- Ad-hoc queries in management tools
+- When you need ALL columns
+- When creating backup/clone tables
+
+```sql
+-- OK for backup
+SELECT * INTO orders_backup FROM orders;
+```
+
+<QueryOptimizer mode="beginner" />
+
+<ProgressCheckpoint section="projection-basics" xpReward={20} />

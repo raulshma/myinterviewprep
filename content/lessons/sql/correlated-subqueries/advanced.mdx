@@ -1,0 +1,133 @@
+# Correlated Subqueries: Performance Deep Dive
+
+Optimize and understand correlated subquery execution.
+
+## Execution Analysis
+
+```sql
+-- Correlated subquery execution:
+-- For each row in outer query:
+--   1. Substitute outer column values into inner query
+--   2. Execute inner query
+--   3. Use result in outer WHERE/SELECT
+
+-- Number of inner executions = rows in outer query
+-- Can be O(n²) if not optimized!
+```
+
+## Query Plan Inspection
+
+```sql
+-- SQL Server: Check plan for nested loops
+SET STATISTICS PROFILE ON;
+SELECT * FROM products p
+WHERE price > (SELECT AVG(price) FROM products WHERE category = p.category);
+SET STATISTICS PROFILE OFF;
+
+-- Look for:
+-- • Nested Loops (outer references) = correlated
+-- • Table Spool = subquery materialized
+-- • Index Seek in inner = good
+```
+
+## Optimization Strategies
+
+### Pre-compute Aggregates
+
+```sql
+-- Slow: Correlates per row
+SELECT * FROM products p
+WHERE price > (SELECT AVG(price) FROM products WHERE category = p.category);
+
+-- Fast: Pre-compute with CTE
+WITH category_avg AS (
+    SELECT category, AVG(price) AS avg_price
+    FROM products
+    GROUP BY category
+)
+SELECT p.* FROM products p
+JOIN category_avg ca ON p.category = ca.category
+WHERE p.price > ca.avg_price;
+```
+
+### Lateral Joins
+
+```sql
+-- SQL Server CROSS/OUTER APPLY
+SELECT c.*, o.last_order_date, o.order_count
+FROM customers c
+OUTER APPLY (
+    SELECT
+        MAX(order_date) AS last_order_date,
+        COUNT(*) AS order_count
+    FROM orders
+    WHERE customer_id = c.id
+) o;
+
+-- PostgreSQL LATERAL
+SELECT c.*, o.*
+FROM customers c
+LEFT JOIN LATERAL (
+    SELECT MAX(order_date), COUNT(*)
+    FROM orders WHERE customer_id = c.id
+) o ON true;
+```
+
+## Semi-Join Optimization
+
+```sql
+-- EXISTS often optimizes to semi-join
+SELECT * FROM customers c
+WHERE EXISTS (SELECT 1 FROM orders WHERE customer_id = c.id);
+
+-- Execution plan shows "Left Semi Join" - efficient!
+-- Only checks for existence, doesn't retrieve data
+```
+
+## Anti-Join Patterns
+
+```sql
+-- NOT EXISTS (anti-join)
+SELECT * FROM products p
+WHERE NOT EXISTS (
+    SELECT 1 FROM order_items WHERE product_id = p.id
+);
+
+-- Equivalent anti-join via LEFT JOIN
+SELECT p.* FROM products p
+LEFT JOIN order_items oi ON p.id = oi.product_id
+WHERE oi.product_id IS NULL;
+```
+
+## Index Requirements
+
+```sql
+-- For correlated subquery performance, index the correlation column:
+CREATE INDEX IX_orders_customer ON orders(customer_id);
+
+-- Now this is efficient:
+SELECT * FROM customers c
+WHERE EXISTS (SELECT 1 FROM orders WHERE customer_id = c.id);
+-- Index seek on customer_id instead of table scan
+```
+
+## Complex Correlation
+
+```sql
+-- Multiple correlation columns
+SELECT * FROM products p
+WHERE price > (
+    SELECT AVG(price) FROM products
+    WHERE category = p.category AND brand = p.brand
+);
+
+-- Self-correlation for gaps
+SELECT * FROM orders o
+WHERE NOT EXISTS (
+    SELECT 1 FROM orders o2
+    WHERE o2.order_date = DATEADD(DAY, 1, o.order_date)
+    AND o2.customer_id = o.customer_id
+);
+```
+
+<ProgressCheckpoint section="correlated-advanced" xpReward={55} />

@@ -1,0 +1,102 @@
+# UPPER, LOWER, TRIM: Practical Patterns
+
+Real-world string normalization and formatting.
+
+## Data Normalization
+
+```sql
+-- Clean and normalize on insert
+INSERT INTO customers (email, name)
+VALUES (
+    LOWER(TRIM(@email)),
+    UPPER(LEFT(TRIM(@name), 1)) + LOWER(SUBSTRING(TRIM(@name), 2, LEN(TRIM(@name))))
+);
+
+-- Bulk cleanup
+UPDATE customers
+SET
+    email = LOWER(TRIM(email)),
+    phone = REPLACE(REPLACE(phone, ' ', ''), '-', '');
+```
+
+## Proper Case Function
+
+```sql
+-- SQL Server: Create proper case function
+CREATE FUNCTION dbo.ProperCase(@text VARCHAR(8000))
+RETURNS VARCHAR(8000)
+AS
+BEGIN
+    DECLARE @i INT = 2, @result VARCHAR(8000);
+    SET @result = UPPER(LEFT(@text, 1)) + LOWER(SUBSTRING(@text, 2, LEN(@text)));
+
+    WHILE @i <= LEN(@text)
+    BEGIN
+        IF SUBSTRING(@text, @i - 1, 1) IN (' ', '-', '''')
+            SET @result = LEFT(@result, @i - 1) + UPPER(SUBSTRING(@result, @i, 1)) + SUBSTRING(@result, @i + 1, LEN(@result));
+        SET @i = @i + 1;
+    END;
+
+    RETURN @result;
+END;
+
+-- Usage
+SELECT dbo.ProperCase('JOHN DOE-SMITH');  -- 'John Doe-Smith'
+```
+
+## TRIM with Specific Characters
+
+```sql
+-- SQL Server 2017+ / PostgreSQL
+SELECT TRIM('x' FROM 'xxxHelloxxx');  -- 'Hello'
+SELECT TRIM(BOTH 'x' FROM 'xxxHelloxxx');  -- 'Hello'
+SELECT TRIM(LEADING '0' FROM '00123');  -- '123'
+SELECT TRIM(TRAILING '.' FROM 'Hello...');  -- 'Hello'
+
+-- Remove multiple characters
+SELECT TRIM('.,! ' FROM '...Hello, World!...');  -- 'Hello, World'
+```
+
+## Search Optimization
+
+```sql
+-- Computed column for case-insensitive search
+ALTER TABLE users ADD email_lower AS LOWER(email) PERSISTED;
+CREATE INDEX IX_users_email_lower ON users(email_lower);
+
+-- Fast case-insensitive search
+WHERE email_lower = LOWER(@search_email);
+```
+
+## Collation-Aware Operations
+
+```sql
+-- Case sensitivity depends on collation
+-- SQL Server
+SELECT * FROM users
+WHERE name COLLATE Latin1_General_CI_AS = 'john';  -- CI = Case Insensitive
+
+-- Force case sensitive
+SELECT * FROM users
+WHERE name COLLATE Latin1_General_CS_AS = 'John';  -- CS = Case Sensitive
+```
+
+## Whitespace Variations
+
+```sql
+-- Different whitespace characters
+SELECT
+    REPLACE(REPLACE(REPLACE(
+        text, CHAR(9), ' '),   -- Tab
+        CHAR(10), ' '),        -- Line feed
+        CHAR(13), ' ')         -- Carriage return
+    AS cleaned
+FROM data;
+
+-- Collapse multiple spaces to one
+-- Requires multiple passes or regex
+```
+
+<StringFunctionPlayground mode="intermediate" />
+
+<ProgressCheckpoint section="upper-lower-practical" xpReward={30} />

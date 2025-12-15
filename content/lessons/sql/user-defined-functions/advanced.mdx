@@ -1,0 +1,107 @@
+# User-Defined Functions: Advanced Topics
+
+Performance, CLR functions, and optimization.
+
+## Performance Considerations
+
+```sql
+-- Scalar functions can be slow (row-by-row execution)
+-- Bad: Scalar in WHERE
+SELECT * FROM orders WHERE dbo.fn_slow_check(total) = 1;
+
+-- Better: Inline table function
+CREATE FUNCTION fn_valid_orders_inline()
+RETURNS TABLE
+AS
+RETURN (SELECT * FROM orders WHERE total > 0 AND status IN ('active', 'pending'));
+
+-- Now a simple join
+SELECT * FROM fn_valid_orders_inline();
+```
+
+## Inlining Scalar Functions (SQL Server 2019+)
+
+```sql
+-- SQL Server 2019: Scalar UDF inlining
+CREATE FUNCTION fn_inline_example(@value INT)
+RETURNS INT
+WITH INLINE = ON  -- Default if eligible
+AS
+BEGIN
+    RETURN @value * 2;
+END;
+
+-- Optimizer inlines the function into the query plan
+```
+
+## CLR Functions (SQL Server)
+
+```sql
+-- For complex logic, use CLR (C#/VB.NET)
+CREATE ASSEMBLY MyAssembly FROM 'C:\path\to\MyFunctions.dll';
+
+CREATE FUNCTION fn_regex_match(@input NVARCHAR(MAX), @pattern NVARCHAR(MAX))
+RETURNS BIT
+AS EXTERNAL NAME MyAssembly.UserFunctions.RegexMatch;
+
+-- Use .NET library functions
+SELECT * FROM data WHERE dbo.fn_regex_match(text, '\d{3}-\d{4}') = 1;
+```
+
+## Security Functions
+
+```sql
+-- Row-level security function
+CREATE FUNCTION dbo.fn_user_filter(@user_id INT)
+RETURNS TABLE
+WITH SCHEMABINDING
+AS
+RETURN SELECT 1 AS result
+    WHERE @user_id = USER_ID()
+    OR IS_MEMBER('admin') = 1;
+
+-- Apply as security policy
+CREATE SECURITY POLICY user_row_filter
+ADD FILTER PREDICATE dbo.fn_user_filter(user_id) ON my_table;
+```
+
+## Aggregate Functions (SQL Server)
+
+```sql
+-- Custom aggregate using CLR
+[Serializable]
+[SqlUserDefinedAggregate(Format.Native)]
+public class ConcatAggregate : IBinarySerialize
+{
+    // Implement Init, Accumulate, Merge, Terminate
+}
+
+CREATE AGGREGATE dbo.StringConcat(@input NVARCHAR(MAX))
+RETURNS NVARCHAR(MAX)
+EXTERNAL NAME MyAssembly.ConcatAggregate;
+
+-- Use like built-in aggregate
+SELECT dbo.StringConcat(name) FROM products GROUP BY category;
+```
+
+## Window Function Alternatives
+
+```sql
+-- When window functions aren't enough
+CREATE FUNCTION fn_running_total(@customer_id INT)
+RETURNS TABLE
+AS
+RETURN (
+    SELECT
+        o.id,
+        o.order_date,
+        o.total,
+        SUM(o.total) OVER (ORDER BY o.order_date) AS running_total
+    FROM orders o
+    WHERE o.customer_id = @customer_id
+);
+```
+
+<StoredProcedureBuilder mode="advanced" />
+
+<ProgressCheckpoint section="udf-advanced" xpReward={50} />

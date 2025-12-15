@@ -1,0 +1,101 @@
+# Query Optimization Techniques: Advanced Strategies
+
+Enterprise-level optimization approaches.
+
+## Query Hints
+
+```sql
+-- Force specific behavior (use sparingly)
+
+-- Index hint
+SELECT * FROM orders WITH (INDEX(IX_orders_date)) WHERE order_date > '2024-01-01';
+
+-- Join hint
+SELECT * FROM orders o INNER HASH JOIN customers c ON o.customer_id = c.id;
+
+-- Parallelism hint
+SELECT * FROM large_table OPTION (MAXDOP 4);
+
+-- Recompile hint
+SELECT * FROM orders WHERE status = @status OPTION (RECOMPILE);
+```
+
+## Plan Guides
+
+```sql
+-- Force plan for queries you can't modify
+EXEC sp_create_plan_guide
+    @name = N'Order_Query_Guide',
+    @stmt = N'SELECT * FROM orders WHERE customer_id = @id',
+    @type = N'SQL',
+    @hints = N'OPTION (OPTIMIZE FOR (@id = 1))';
+```
+
+## Query Store Forcing
+
+```sql
+-- Force a known-good execution plan
+EXEC sp_query_store_force_plan @query_id = 42, @plan_id = 8;
+
+-- Remove forcing
+EXEC sp_query_store_unforce_plan @query_id = 42, @plan_id = 8;
+```
+
+## Intelligent Query Processing
+
+```sql
+-- SQL Server 2019+ automatic optimizations
+
+-- Adaptive joins: Switch between loop/hash at runtime
+-- Memory grant feedback: Adjust memory based on actual usage
+-- Batch mode on rowstore: Use batch processing even without columnstore
+-- Scalar UDF inlining: Inline function code into query
+
+-- Enable with compatibility level
+ALTER DATABASE mydb SET COMPATIBILITY_LEVEL = 150;
+```
+
+## Resource Governor
+
+```sql
+-- Limit resources for specific workloads
+CREATE RESOURCE POOL ReportPool WITH (MAX_CPU_PERCENT = 20);
+CREATE WORKLOAD GROUP Reports USING ReportPool;
+
+CREATE FUNCTION dbo.fn_classifier()
+RETURNS SYSNAME
+AS
+BEGIN
+    IF APP_NAME() LIKE 'Report%' RETURN 'Reports';
+    RETURN 'default';
+END;
+
+ALTER RESOURCE GOVERNOR WITH (CLASSIFIER_FUNCTION = dbo.fn_classifier);
+ALTER RESOURCE GOVERNOR RECONFIGURE;
+```
+
+## Materialized Calculations
+
+```sql
+-- Pre-calculate expensive aggregations
+CREATE TABLE daily_summary (
+    summary_date DATE PRIMARY KEY,
+    total_orders INT,
+    total_revenue DECIMAL(15,2),
+    avg_order_value DECIMAL(10,2)
+);
+
+-- Refresh periodically
+INSERT INTO daily_summary
+SELECT DATE(order_date), COUNT(*), SUM(total), AVG(total)
+FROM orders
+WHERE DATE(order_date) = DATEADD(DAY, -1, CAST(GETDATE() AS DATE))
+GROUP BY DATE(order_date);
+
+-- Fast dashboard queries
+SELECT * FROM daily_summary WHERE summary_date >= DATEADD(MONTH, -1, GETDATE());
+```
+
+<QueryOptimizer mode="advanced" />
+
+<ProgressCheckpoint section="optimization-advanced" xpReward={55} />

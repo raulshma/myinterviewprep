@@ -1,0 +1,141 @@
+# SUM Function: Advanced Techniques
+
+Enterprise patterns for complex aggregation scenarios.
+
+## Precision and Overflow
+
+```sql
+-- Avoid overflow with large sums
+SELECT SUM(CAST(quantity AS BIGINT) * price) AS huge_total
+FROM massive_orders;
+
+-- Maintain decimal precision
+SELECT SUM(CAST(price AS DECIMAL(19,4))) AS precise_total
+FROM financial_transactions;
+```
+
+## Window Function SUMs
+
+```sql
+-- Moving average (7-day window)
+SELECT
+    order_date,
+    total,
+    AVG(total) OVER (
+        ORDER BY order_date
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ) AS moving_avg_7day,
+    SUM(total) OVER (
+        ORDER BY order_date
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ) AS rolling_sum_7day
+FROM daily_sales;
+
+-- Percentage of partition
+SELECT
+    department,
+    employee_name,
+    salary,
+    salary * 100.0 / SUM(salary) OVER (PARTITION BY department) AS pct_of_dept
+FROM employees;
+```
+
+## ROLLUP and CUBE
+
+```sql
+-- Subtotals with ROLLUP
+SELECT
+    COALESCE(region, 'ALL REGIONS') AS region,
+    COALESCE(category, 'ALL CATEGORIES') AS category,
+    SUM(sales) AS total_sales
+FROM sales_data
+GROUP BY ROLLUP(region, category);
+
+-- All combinations with CUBE
+SELECT
+    region, category, product,
+    SUM(sales) AS total_sales
+FROM sales_data
+GROUP BY CUBE(region, category, product);
+```
+
+## Filtered Aggregates (SQL:2003)
+
+```sql
+-- PostgreSQL: FILTER clause
+SELECT
+    SUM(total) AS all_orders,
+    SUM(total) FILTER (WHERE status = 'completed') AS completed_orders,
+    SUM(total) FILTER (WHERE EXTRACT(YEAR FROM order_date) = 2024) AS this_year
+FROM orders;
+
+-- SQL Server equivalent
+SELECT
+    SUM(total) AS all_orders,
+    SUM(CASE WHEN status = 'completed' THEN total END) AS completed_orders
+FROM orders;
+```
+
+## Optimizing SUM Queries
+
+```sql
+-- Index for SUM queries
+CREATE INDEX IX_orders_status_total ON orders(status) INCLUDE (total);
+
+-- Now this is efficient:
+SELECT status, SUM(total)
+FROM orders
+GROUP BY status;
+
+-- Materialized aggregates for huge tables
+CREATE TABLE daily_totals AS
+SELECT
+    CAST(order_date AS DATE) AS day,
+    SUM(total) AS daily_total
+FROM orders
+GROUP BY CAST(order_date AS DATE);
+```
+
+## SUM with JSON/Arrays
+
+```sql
+-- PostgreSQL: Sum from JSON array
+SELECT
+    order_id,
+    SUM((item->>'price')::DECIMAL * (item->>'quantity')::INT) AS total
+FROM orders,
+    jsonb_array_elements(items) AS item
+GROUP BY order_id;
+
+-- SQL Server: Sum from JSON
+SELECT
+    o.id,
+    SUM(CAST(JSON_VALUE(i.value, '$.price') AS DECIMAL(10,2)))
+FROM orders o
+CROSS APPLY OPENJSON(o.items) i
+GROUP BY o.id;
+```
+
+## Handling Large Result Sets
+
+```sql
+-- Approximate sum for analytics (PostgreSQL)
+-- Consider using approximate aggregation extensions
+
+-- Batch processing for huge tables
+DECLARE @batch_sum DECIMAL(19,4) = 0;
+DECLARE @offset INT = 0;
+WHILE 1 = 1
+BEGIN
+    SELECT @batch_sum = @batch_sum + COALESCE(SUM(amount), 0)
+    FROM (
+        SELECT amount FROM large_table
+        ORDER BY id
+        OFFSET @offset ROWS FETCH NEXT 100000 ROWS ONLY
+    ) batch;
+    IF @@ROWCOUNT = 0 BREAK;
+    SET @offset = @offset + 100000;
+END;
+```
+
+<ProgressCheckpoint section="sum-advanced" xpReward={40} />

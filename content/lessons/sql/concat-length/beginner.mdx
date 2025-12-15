@@ -1,0 +1,78 @@
+# CONCAT and LENGTH: String Building Blocks
+
+Combine strings and measure their length!
+
+## 🔗 CONCAT: Joining Strings
+
+```sql
+SELECT CONCAT('Hello', ' ', 'World');  -- 'Hello World'
+SELECT CONCAT(first_name, ' ', last_name) AS full_name FROM users;
+```
+
+## 📝 CONCAT Syntax by Database
+
+```sql
+-- Standard CONCAT
+SELECT CONCAT(first, second, third);
+
+-- SQL Server + operator
+SELECT first_name + ' ' + last_name;
+
+-- PostgreSQL || operator
+SELECT first_name || ' ' || last_name;
+
+-- MySQL CONCAT_WS (with separator)
+SELECT CONCAT_WS(', ', city, state, country);  -- 'NYC, NY, USA'
+```
+
+## 📏 LENGTH: Measuring Strings
+
+```sql
+SELECT LENGTH('Hello');  -- 5
+SELECT LEN('Hello');     -- 5 (SQL Server)
+```
+
+## 🎯 Practical Examples
+
+```sql
+-- Full name with title
+SELECT CONCAT(title, ' ', first_name, ' ', last_name) AS formal_name
+FROM employees;
+
+-- Check string length
+SELECT name FROM products WHERE LENGTH(name) > 50;
+
+-- Username validation
+SELECT username,
+    CASE
+        WHEN LENGTH(username) < 3 THEN 'Too short'
+        WHEN LENGTH(username) > 20 THEN 'Too long'
+        ELSE 'Valid'
+    END AS status
+FROM users;
+```
+
+## ⚡ NULL Handling
+
+```sql
+-- CONCAT with NULL
+SELECT CONCAT('Hello', NULL, 'World');  -- 'HelloWorld' (NULL ignored in most DBs)
+
+-- + operator with NULL (SQL Server)
+SELECT 'Hello' + NULL + 'World';  -- NULL! (entire result is NULL)
+
+-- Safe concatenation
+SELECT CONCAT(COALESCE(first, ''), ' ', COALESCE(last, ''));
+```
+
+## 📊 Quick Reference
+
+| Function   | Purpose             | Example                            |
+| ---------- | ------------------- | ---------------------------------- |
+| CONCAT     | Join strings        | `CONCAT('a', 'b')` → 'ab'          |
+| LENGTH/LEN | String length       | `LENGTH('abc')` → 3                |
+| CONCAT_WS  | Join with separator | `CONCAT_WS('-', 'a', 'b')` → 'a-b' |
+
+<StringFunctionPlayground mode="beginner" />
+
+<ProgressCheckpoint section="concat-length-basics" xpReward={25} />

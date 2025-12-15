@@ -1,0 +1,15 @@
+{
+  "id": "case-expression",
+  "title": "CASE Expression",
+  "description": "Implement conditional logic in SQL queries.",
+  "milestone": "advanced-functions",
+  "order": 3,
+  "sections": ["simple-case", "searched-case", "patterns"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["numeric-functions-2"],
+  "tags": ["sql", "case", "conditional", "expressions"]
+}

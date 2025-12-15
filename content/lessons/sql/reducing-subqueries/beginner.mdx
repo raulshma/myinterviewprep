@@ -1,0 +1,77 @@
+# Reducing Subquery Overhead
+
+Make your queries faster by optimizing subqueries!
+
+## 🔍 What's the Problem?
+
+Subqueries can be slow when run for every row:
+
+```sql
+-- SLOW: Subquery runs for EACH row
+SELECT name,
+    (SELECT COUNT(*) FROM orders WHERE customer_id = c.id) AS order_count
+FROM customers c;
+```
+
+## 🎯 Convert to JOIN
+
+```sql
+-- FAST: JOIN runs once
+SELECT c.name, COUNT(o.id) AS order_count
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+GROUP BY c.id, c.name;
+```
+
+## 📊 Correlated vs Non-Correlated
+
+```sql
+-- Correlated: References outer query (potentially slow)
+SELECT * FROM products p
+WHERE price > (SELECT AVG(price) FROM products WHERE category_id = p.category_id);
+
+-- Non-correlated: Independent (usually faster)
+SELECT * FROM products
+WHERE price > (SELECT AVG(price) FROM products);
+```
+
+## ✅ Quick Fixes
+
+| Slow Pattern              | Fast Alternative     |
+| ------------------------- | -------------------- |
+| Scalar subquery in SELECT | LEFT JOIN + GROUP BY |
+| IN (SELECT ...)           | EXISTS or JOIN       |
+| Correlated subquery       | CTE or derived table |
+
+## 🔧 IN to EXISTS
+
+```sql
+-- IN: May scan entire subquery result
+SELECT * FROM customers
+WHERE id IN (SELECT customer_id FROM orders WHERE total > 100);
+
+-- EXISTS: Stops at first match
+SELECT * FROM customers c
+WHERE EXISTS (
+    SELECT 1 FROM orders o
+    WHERE o.customer_id = c.id AND o.total > 100
+);
+```
+
+## 💡 Use CTEs
+
+```sql
+-- CTE: Calculate once, use many times
+WITH order_stats AS (
+    SELECT customer_id, COUNT(*) AS cnt, SUM(total) AS total
+    FROM orders
+    GROUP BY customer_id
+)
+SELECT c.name, s.cnt, s.total
+FROM customers c
+JOIN order_stats s ON c.id = s.customer_id;
+```
+
+<QueryOptimizer mode="beginner" />
+
+<ProgressCheckpoint section="subqueries-basics" xpReward={25} />

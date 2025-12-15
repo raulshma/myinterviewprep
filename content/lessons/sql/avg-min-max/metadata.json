@@ -1,0 +1,15 @@
+{
+  "id": "avg-min-max",
+  "title": "AVG, MIN, MAX Functions",
+  "description": "Calculate averages and find extremes with aggregate functions.",
+  "milestone": "aggregate-queries",
+  "order": 3,
+  "sections": ["avg-basics", "min-max", "combined-aggregates"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 35 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 45 }
+  },
+  "prerequisites": ["count-function"],
+  "tags": ["sql", "aggregate", "avg", "min", "max"]
+}

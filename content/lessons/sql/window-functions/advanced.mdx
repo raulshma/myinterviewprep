@@ -1,0 +1,211 @@
+# Advanced Window Function Patterns
+
+Master complex analytics, optimization, and real-world business intelligence queries.
+
+## NTILE: Quartiles and Percentiles
+
+Divide rows into N equal buckets:
+
+```sql
+-- Divide customers into 4 tiers by total order value
+WITH CustomerValue AS (
+    SELECT
+        o.CustomerID,
+        SUM(od.Quantity * od.UnitPrice) AS TotalSpent
+    FROM Orders o
+    JOIN [Order Details] od ON o.OrderID = od.OrderID
+    GROUP BY o.CustomerID
+)
+SELECT
+    CustomerID,
+    TotalSpent,
+    NTILE(4) OVER (ORDER BY TotalSpent DESC) AS CustomerTier
+FROM CustomerValue;
+```
+
+Tier 1 = Top 25% spenders, Tier 4 = Bottom 25%
+
+<WindowFunctionExplorer mode="advanced" />
+
+## PERCENT_RANK and CUME_DIST
+
+### PERCENT_RANK: Percentile (0-1)
+
+```sql
+-- What percentile is each product's price?
+SELECT
+    ProductName,
+    UnitPrice,
+    ROUND(PERCENT_RANK() OVER (ORDER BY UnitPrice), 2) AS PricePercentile
+FROM Products;
+```
+
+### CUME_DIST: Cumulative Distribution
+
+```sql
+-- What percentage of products cost this much or less?
+SELECT
+    ProductName,
+    UnitPrice,
+    ROUND(CUME_DIST() OVER (ORDER BY UnitPrice), 2) AS CumulativePct
+FROM Products;
+```
+
+## Complex Northwind Analytics
+
+### Identify Sales Trends
+
+```sql
+-- Flag months with declining sales
+WITH MonthlySales AS (
+    SELECT
+        YEAR(o.OrderDate) AS Year,
+        MONTH(o.OrderDate) AS Month,
+        SUM(od.Quantity * od.UnitPrice) AS Revenue
+    FROM Orders o
+    JOIN [Order Details] od ON o.OrderID = od.OrderID
+    GROUP BY YEAR(o.OrderDate), MONTH(o.OrderDate)
+)
+SELECT
+    Year, Month, Revenue,
+    LAG(Revenue) OVER (ORDER BY Year, Month) AS PrevMonth,
+    CASE
+        WHEN Revenue < LAG(Revenue) OVER (ORDER BY Year, Month)
+        THEN 'DECLINING'
+        ELSE 'GROWING'
+    END AS Trend
+FROM MonthlySales;
+```
+
+### Gap Analysis: Days Between Orders
+
+```sql
+SELECT
+    CustomerID,
+    OrderDate,
+    DATEDIFF(day,
+        LAG(OrderDate) OVER (PARTITION BY CustomerID ORDER BY OrderDate),
+        OrderDate
+    ) AS DaysSinceLastOrder,
+    CASE
+        WHEN DATEDIFF(day,
+            LAG(OrderDate) OVER (PARTITION BY CustomerID ORDER BY OrderDate),
+            OrderDate) > 90
+        THEN 'AT RISK'
+        ELSE 'ACTIVE'
+    END AS CustomerStatus
+FROM Orders;
+```
+
+### Running Inventory Balance
+
+```sql
+-- Track inventory changes over time
+WITH InventoryChanges AS (
+    SELECT
+        od.ProductID,
+        o.OrderDate,
+        -od.Quantity AS Change,  -- Orders decrease stock
+        'ORDER' AS Type
+    FROM [Order Details] od
+    JOIN Orders o ON od.OrderID = o.OrderID
+
+    -- Could add UNION with restocking records if available
+)
+SELECT
+    ProductID,
+    OrderDate,
+    Change,
+    SUM(Change) OVER (
+        PARTITION BY ProductID
+        ORDER BY OrderDate
+        ROWS UNBOUNDED PRECEDING
+    ) AS RunningBalance
+FROM InventoryChanges;
+```
+
+## Window Function Performance
+
+### Index Strategy
+
+```sql
+-- Create covering index for window queries
+CREATE INDEX idx_orders_customer_date
+ON Orders(CustomerID, OrderDate)
+INCLUDE (Freight);
+```
+
+### Avoid Repeated Windows
+
+```sql
+-- BAD: Window calculated twice
+SELECT
+    OrderID,
+    ROW_NUMBER() OVER (ORDER BY OrderDate) AS RowNum,
+    COUNT(*) OVER () AS TotalOrders
+FROM Orders;
+
+-- BETTER: Use CTE to materialize once
+WITH NumberedOrders AS (
+    SELECT
+        OrderID,
+        OrderDate,
+        ROW_NUMBER() OVER (ORDER BY OrderDate) AS RowNum
+    FROM Orders
+)
+SELECT *, (SELECT COUNT(*) FROM Orders) AS TotalOrders
+FROM NumberedOrders;
+```
+
+## Advanced: Multiple Windows in One Query
+
+```sql
+SELECT
+    o.OrderID,
+    c.CompanyName,
+    c.Country,
+    o.OrderDate,
+    SUM(od.Quantity * od.UnitPrice) AS OrderValue,
+
+    -- Rank within customer
+    ROW_NUMBER() OVER (PARTITION BY o.CustomerID ORDER BY o.OrderDate) AS CustOrderNum,
+
+    -- Running total by customer
+    SUM(SUM(od.Quantity * od.UnitPrice)) OVER (
+        PARTITION BY o.CustomerID
+        ORDER BY o.OrderDate
+    ) AS CustRunningTotal,
+
+    -- Rank within country
+    RANK() OVER (PARTITION BY c.Country ORDER BY SUM(od.Quantity * od.UnitPrice) DESC) AS CountryRank,
+
+    -- Compare to previous order
+    LAG(SUM(od.Quantity * od.UnitPrice)) OVER (
+        PARTITION BY o.CustomerID
+        ORDER BY o.OrderDate
+    ) AS PrevOrderValue
+
+FROM Orders o
+JOIN [Order Details] od ON o.OrderID = od.OrderID
+JOIN Customers c ON o.CustomerID = c.CustomerID
+GROUP BY o.OrderID, c.CompanyName, c.Country, o.OrderDate, o.CustomerID
+ORDER BY c.Country, o.CustomerID, o.OrderDate;
+```
+
+## Named Windows (SQL:2003+)
+
+Reuse window definitions:
+
+```sql
+SELECT
+    ProductName,
+    CategoryID,
+    UnitPrice,
+    ROW_NUMBER() OVER w AS RowInCategory,
+    RANK() OVER w AS RankInCategory,
+    AVG(UnitPrice) OVER w AS CategoryAvg
+FROM Products
+WINDOW w AS (PARTITION BY CategoryID ORDER BY UnitPrice DESC);
+```
+
+<ProgressCheckpoint section="aggregate-over" xpReward={95} />

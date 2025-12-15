@@ -1,0 +1,101 @@
+# TIMESTAMP: Advanced Topics
+
+High-precision time, distributed systems, and performance.
+
+## High-Precision Timestamps
+
+```sql
+-- SQL Server: DATETIME2 with nanoseconds
+SELECT SYSDATETIME();  -- 2024-03-15 14:30:00.1234567
+
+-- PostgreSQL: Microsecond precision
+SELECT clock_timestamp();  -- Actual current time (not transaction time)
+
+-- Oracle: TIMESTAMP with precision
+TIMESTAMP(9)  -- Up to nanoseconds
+```
+
+## Transaction Time vs Wall Clock
+
+```sql
+-- PostgreSQL
+SELECT NOW();              -- Same throughout transaction
+SELECT clock_timestamp();  -- Actual time at execution
+
+-- In long transaction:
+SELECT NOW();  -- 14:30:00 (transaction start)
+-- ... 10 minutes later ...
+SELECT NOW();  -- Still 14:30:00!
+SELECT clock_timestamp();  -- 14:40:00 (actual)
+```
+
+## Distributed System Considerations
+
+```sql
+-- Problem: Clock skew between servers
+-- Solution: Use database-generated timestamps
+
+-- Bad: Application generates timestamp
+INSERT INTO events (time) VALUES (@app_time);
+
+-- Good: Database generates timestamp
+INSERT INTO events (time) VALUES (DEFAULT);
+-- With: time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+```
+
+## Event Ordering
+
+```sql
+-- For ordering, consider using:
+-- 1. Auto-increment ID + timestamp
+-- 2. Sequence-based ordering
+-- 3. Logical clocks (application level)
+
+CREATE TABLE events (
+    id BIGINT IDENTITY PRIMARY KEY,
+    event_time DATETIME2(7) DEFAULT SYSDATETIME(),
+    INDEX IX_time (event_time)
+);
+
+-- Query with both for stable ordering
+SELECT * FROM events ORDER BY event_time, id;
+```
+
+## Timestamp Indexing
+
+```sql
+-- Range queries benefit from index
+CREATE INDEX IX_events_time ON events(event_time);
+
+-- Avoid functions on indexed column
+-- Slow:
+WHERE DATE(event_time) = '2024-03-15'
+
+-- Fast:
+WHERE event_time >= '2024-03-15' AND event_time < '2024-03-16'
+```
+
+## Temporal Data Patterns
+
+```sql
+-- Slowly Changing Dimension Type 2
+CREATE TABLE product_history (
+    product_id INT,
+    name VARCHAR(100),
+    price DECIMAL(10,2),
+    valid_from TIMESTAMP,
+    valid_to TIMESTAMP,  -- NULL = current
+    current_flag BIT
+);
+
+-- Get current version
+SELECT * FROM product_history WHERE valid_to IS NULL;
+
+-- Get version at specific time
+SELECT * FROM product_history
+WHERE '2024-01-15' BETWEEN valid_from AND COALESCE(valid_to, '9999-12-31');
+```
+
+<DateTimeExplorer mode="advanced" />
+
+<ProgressCheckpoint section="timestamp-advanced" xpReward={50} />

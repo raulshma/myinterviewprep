@@ -1,0 +1,87 @@
+# DROP TABLE: Removing Tables
+
+Learn to permanently delete tables from your database.
+
+## ⚠️ Warning First!
+
+DROP TABLE **permanently deletes**:
+
+- All data in the table
+- The table structure itself
+- All indexes and constraints
+
+**There is no undo!**
+
+## 🗑️ Basic Syntax
+
+```sql
+DROP TABLE table_name;
+```
+
+## 📝 Simple Example
+
+```sql
+-- Delete the temp_data table
+DROP TABLE temp_data;
+```
+
+## ✅ Using IF EXISTS
+
+Avoid errors if the table doesn't exist:
+
+```sql
+-- SQL Server 2016+ / PostgreSQL / MySQL
+DROP TABLE IF EXISTS temp_data;
+
+-- Older SQL Server
+IF OBJECT_ID('temp_data', 'U') IS NOT NULL
+    DROP TABLE temp_data;
+```
+
+## 🔗 Handling Foreign Keys
+
+If other tables reference yours:
+
+```sql
+-- This fails if other tables have foreign keys to customers:
+DROP TABLE customers;
+-- Error: Cannot drop, referenced by FK
+
+-- Solution 1: Drop referencing tables first
+DROP TABLE orders;
+DROP TABLE customers;
+
+-- Solution 2: Drop the foreign key first
+ALTER TABLE orders DROP CONSTRAINT FK_orders_customers;
+DROP TABLE customers;
+```
+
+## 📊 Drop Multiple Tables
+
+```sql
+DROP TABLE IF EXISTS table1, table2, table3;
+```
+
+## 💡 Before You Drop
+
+1. **Backup first** if data matters
+2. **Check dependencies** (foreign keys, views, procedures)
+3. **Verify table name** - no undo!
+
+```sql
+-- Create backup first
+SELECT * INTO customers_backup FROM customers;
+
+-- Then drop
+DROP TABLE customers;
+```
+
+## 🎯 Quick Reference
+
+| Command                  | What It Does                       |
+| ------------------------ | ---------------------------------- |
+| `DROP TABLE x`           | Deletes table x                    |
+| `DROP TABLE IF EXISTS x` | Deletes if exists, no error if not |
+| `DROP TABLE x, y, z`     | Deletes multiple tables            |
+
+<ProgressCheckpoint section="drop-table-basics" xpReward={20} />

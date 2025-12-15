@@ -1,0 +1,124 @@
+# SAVEPOINT: Advanced Implementation
+
+Savepoint internals and complex scenarios.
+
+## Savepoint Implementation
+
+```sql
+-- Savepoints use transaction log markers
+-- ROLLBACK TO sp undoes log entries after marker
+-- More efficient than full rollback
+
+-- Log structure:
+-- [BEGIN TRAN] [INSERT A] [SAVEPOINT sp1] [UPDATE B] [SAVEPOINT sp2] [DELETE C]
+-- ROLLBACK TO sp1: Undoes DELETE and UPDATE
+-- COMMIT: Only INSERT A persisted
+```
+
+## Savepoints with Triggers
+
+```sql
+-- Triggers and savepoints can interact unexpectedly
+CREATE TRIGGER tr_order ON orders AFTER INSERT
+AS
+BEGIN
+    -- This runs in same transaction as INSERT
+    SAVE TRANSACTION in_trigger;
+
+    BEGIN TRY
+        -- Trigger logic
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TO in_trigger;
+        -- Trigger failed, but INSERT succeeds
+    END CATCH;
+END;
+```
+
+## Nested Procedure Savepoints
+
+```sql
+CREATE PROCEDURE usp_outer AS
+BEGIN
+    BEGIN TRANSACTION;
+        INSERT INTO log VALUES ('outer start');
+
+        SAVE TRANSACTION before_inner;
+        BEGIN TRY
+            EXEC usp_inner;  -- Might fail
+        END TRY
+        BEGIN CATCH
+            ROLLBACK TRANSACTION before_inner;
+        END CATCH;
+
+    COMMIT;
+END;
+
+CREATE PROCEDURE usp_inner AS
+BEGIN
+    -- Has own savepoint for partial rollback
+    SAVE TRANSACTION inner_sp;
+    -- ... work ...
+END;
+```
+
+## Savepoints and Constraint Violations
+
+```sql
+BEGIN TRANSACTION;
+    SAVEPOINT sp1;
+
+    -- Deferred constraint check
+    INSERT INTO parent (id) VALUES (1);
+    INSERT INTO child (parent_id) VALUES (1);  -- FK OK
+
+    SAVEPOINT sp2;
+
+    DELETE FROM parent WHERE id = 1;  -- Would violate FK!
+
+    -- Constraint checked at COMMIT
+    -- ROLLBACK TO sp2 happens before check
+    ROLLBACK TO sp2;
+
+COMMIT;  -- Success, constraint satisfied
+```
+
+## Performance Considerations
+
+```sql
+-- Savepoints add overhead
+-- - Log marker written
+-- - Undo information tracked per savepoint
+
+-- Best practices:
+-- 1. Use sparingly in performance-critical code
+-- 2. Don't create savepoints in tight loops
+-- 3. Release when no longer needed (PostgreSQL)
+
+-- Monitoring savepoints
+SELECT * FROM sys.dm_tran_active_transactions
+WHERE transaction_state = 2;  -- Active with savepoints
+```
+
+## Application Framework Integration
+
+```sql
+-- Many ORMs use savepoints for nested transactions
+-- Entity Framework example:
+
+-- Outer transaction starts
+using (var scope = new TransactionScope())
+{
+    // SQL: BEGIN TRANSACTION
+
+    using (var nested = new TransactionScope(TransactionScopeOption.RequiresNew))
+    {
+        // SQL: SAVE TRANSACTION xxx
+        // ... work ...
+    }  // SQL: might ROLLBACK TO xxx
+
+    scope.Complete();  // SQL: COMMIT
+}
+```
+
+<ProgressCheckpoint section="savepoint-advanced" xpReward={40} />

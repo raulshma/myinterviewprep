@@ -1,0 +1,76 @@
+# ACID Properties: Transaction Foundations
+
+Learn the four guarantees that keep your data safe!
+
+## 🔒 What is ACID?
+
+ACID stands for four guarantees every database transaction provides:
+
+| Letter | Property    | Meaning                      |
+| ------ | ----------- | ---------------------------- |
+| **A**  | Atomicity   | All or nothing               |
+| **C**  | Consistency | Valid state to valid state   |
+| **I**  | Isolation   | Transactions don't interfere |
+| **D**  | Durability  | Committed = permanent        |
+
+## ⚛️ Atomicity: All or Nothing
+
+A transaction either completes entirely or not at all:
+
+```sql
+BEGIN TRANSACTION;
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;  -- Withdraw
+    UPDATE accounts SET balance = balance + 100 WHERE id = 2;  -- Deposit
+COMMIT;
+-- Either BOTH happen or NEITHER happens
+```
+
+If the second UPDATE fails, the first is rolled back!
+
+## ✅ Consistency: Rules Always Apply
+
+Database moves from one valid state to another:
+
+```sql
+-- Balance can't go negative
+ALTER TABLE accounts ADD CONSTRAINT CK_balance CHECK (balance >= 0);
+
+BEGIN TRANSACTION;
+    UPDATE accounts SET balance = balance - 1000 WHERE id = 1;
+    -- If this violates the constraint, transaction fails
+COMMIT;
+```
+
+## 🔐 Isolation: No Interference
+
+Concurrent transactions don't affect each other:
+
+```sql
+-- Transaction A reads balance = 500
+-- Transaction B updates balance to 400
+-- Transaction A still sees 500 until B commits
+```
+
+## 💾 Durability: Committed = Saved
+
+Once committed, data survives crashes:
+
+```sql
+COMMIT;  -- After this, even a power failure won't lose the data
+```
+
+## 🎯 Real World Example
+
+Bank transfer - must be ACID!
+
+```sql
+BEGIN TRANSACTION;
+    -- Withdraw from sender
+    UPDATE accounts SET balance = balance - 500 WHERE id = @sender;
+
+    -- Deposit to receiver
+    UPDATE accounts SET balance = balance + 500 WHERE id = @receiver;
+COMMIT;  -- Both accounts updated, or neither
+```
+
+<ProgressCheckpoint section="acid-basics" xpReward={25} />

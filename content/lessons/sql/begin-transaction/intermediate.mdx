@@ -1,0 +1,101 @@
+# BEGIN TRANSACTION: Practical Usage
+
+Transaction patterns for real applications.
+
+## Named Transactions (SQL Server)
+
+```sql
+BEGIN TRANSACTION TransferFunds;
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+    UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+COMMIT TRANSACTION TransferFunds;
+
+-- Name appears in logs, aids debugging
+```
+
+## Setting Transaction Options
+
+```sql
+-- SQL Server: Set isolation level with begin
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+BEGIN TRANSACTION;
+    -- Uses serializable isolation
+COMMIT;
+
+-- PostgreSQL: Options in BEGIN
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+COMMIT;
+```
+
+## Error Handling Pattern
+
+```sql
+-- SQL Server TRY/CATCH
+BEGIN TRY
+    BEGIN TRANSACTION;
+        UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+        UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+    COMMIT;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK;
+    THROW;  -- Re-raise error
+END CATCH;
+```
+
+## Checking Transaction State
+
+```sql
+-- SQL Server: Check if in transaction
+IF @@TRANCOUNT > 0
+    PRINT 'In transaction';
+ELSE
+    PRINT 'No active transaction';
+
+-- PostgreSQL
+SELECT pg_current_xact_id_if_assigned();
+-- Returns NULL if no transaction
+```
+
+## Nested Transactions
+
+```sql
+-- SQL Server: Nested BEGIN increases @@TRANCOUNT
+BEGIN TRANSACTION;  -- @@TRANCOUNT = 1
+    UPDATE ...;
+    BEGIN TRANSACTION;  -- @@TRANCOUNT = 2
+        UPDATE ...;
+    COMMIT;  -- @@TRANCOUNT = 1 (not actually committed!)
+COMMIT;  -- @@TRANCOUNT = 0 (NOW committed)
+
+-- ONLY the outermost COMMIT actually commits!
+```
+
+## Read-Only Transactions
+
+```sql
+-- PostgreSQL: Optimize for reads
+BEGIN TRANSACTION READ ONLY;
+    SELECT * FROM accounts;
+    SELECT * FROM orders;
+COMMIT;
+-- Database can optimize, no write locks needed
+
+-- SQL Server: Use snapshot isolation
+SET TRANSACTION ISOLATION LEVEL SNAPSHOT;
+BEGIN TRANSACTION;
+    SELECT ...;  -- Reads as of transaction start
+COMMIT;
+```
+
+## Transaction Timeout
+
+```sql
+-- SQL Server: Set lock timeout
+SET LOCK_TIMEOUT 5000;  -- 5 seconds
+BEGIN TRANSACTION;
+    -- Will timeout if can't get locks in 5 seconds
+COMMIT;
+```
+
+<ProgressCheckpoint section="begin-transaction-practical" xpReward={30} />

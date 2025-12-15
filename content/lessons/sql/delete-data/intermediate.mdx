@@ -1,0 +1,149 @@
+# DELETE: Practical Patterns
+
+Master safe and efficient DELETE operations for real applications.
+
+## Soft Delete Pattern
+
+Instead of actually deleting, mark as deleted:
+
+```sql
+-- Add columns for soft delete
+ALTER TABLE users ADD
+    is_deleted BIT DEFAULT 0,
+    deleted_at DATETIME NULL,
+    deleted_by INT NULL;
+
+-- "Delete" a user
+UPDATE users
+SET
+    is_deleted = 1,
+    deleted_at = GETDATE(),
+    deleted_by = @current_user_id
+WHERE id = @user_id;
+
+-- Filter deleted records in all queries
+SELECT * FROM users WHERE is_deleted = 0;
+
+-- Create a view for convenience
+CREATE VIEW active_users AS
+SELECT * FROM users WHERE is_deleted = 0;
+```
+
+## DELETE with JOINs
+
+```sql
+-- SQL Server: DELETE with JOIN
+DELETE o
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id
+WHERE c.status = 'inactive';
+
+-- PostgreSQL/MySQL: Using subquery or USING
+DELETE FROM orders
+WHERE customer_id IN (
+    SELECT id FROM customers WHERE status = 'inactive'
+);
+
+-- PostgreSQL: USING syntax
+DELETE FROM orders
+USING customers
+WHERE orders.customer_id = customers.id
+AND customers.status = 'inactive';
+```
+
+## Archive Before Delete
+
+```sql
+-- Archive then delete pattern
+BEGIN TRANSACTION;
+
+-- Copy to archive table
+INSERT INTO orders_archive
+SELECT *, GETDATE() AS archived_at
+FROM orders
+WHERE order_date < '2020-01-01';
+
+-- Delete from main table
+DELETE FROM orders
+WHERE order_date < '2020-01-01';
+
+COMMIT;
+```
+
+## Returning Deleted Rows
+
+```sql
+-- SQL Server: OUTPUT clause
+DELETE FROM orders
+OUTPUT DELETED.id, DELETED.customer_id, DELETED.total
+WHERE status = 'expired';
+
+-- PostgreSQL: RETURNING clause
+DELETE FROM orders
+WHERE status = 'expired'
+RETURNING id, customer_id, total;
+```
+
+## Cascading Deletes
+
+```sql
+-- Via foreign key constraint
+ALTER TABLE order_items
+ADD CONSTRAINT FK_orders
+FOREIGN KEY (order_id) REFERENCES orders(id)
+ON DELETE CASCADE;
+
+-- Now deleting an order deletes its items
+DELETE FROM orders WHERE id = 123;
+-- order_items for order 123 are also deleted
+
+-- Manual cascade
+BEGIN TRANSACTION;
+DELETE FROM order_items WHERE order_id = 123;
+DELETE FROM order_notes WHERE order_id = 123;
+DELETE FROM orders WHERE id = 123;
+COMMIT;
+```
+
+## Batched Delete for Large Tables
+
+```sql
+DECLARE @batch_size INT = 10000;
+DECLARE @deleted INT = 1;
+
+WHILE @deleted > 0
+BEGIN
+    DELETE TOP (@batch_size) FROM large_logs
+    WHERE created_at < DATEADD(day, -90, GETDATE());
+
+    SET @deleted = @@ROWCOUNT;
+
+    -- Prevent log file growth
+    CHECKPOINT;
+END
+```
+
+## Transaction Safety
+
+```sql
+BEGIN TRANSACTION;
+
+-- Preview what will be deleted
+SELECT COUNT(*) FROM orders WHERE status = 'cancelled';
+
+-- Perform delete
+DELETE FROM orders WHERE status = 'cancelled';
+
+-- Check result
+IF @@ROWCOUNT > 1000
+BEGIN
+    PRINT 'Too many rows affected, rolling back';
+    ROLLBACK;
+END
+ELSE
+BEGIN
+    COMMIT;
+END
+```
+
+<ProgressCheckpoint section="delete-intermediate" xpReward={40} />

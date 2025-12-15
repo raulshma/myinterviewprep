@@ -1,0 +1,15 @@
+{
+  "id": "drop-table",
+  "title": "DROP TABLE",
+  "description": "Safely remove tables from your database.",
+  "milestone": "ddl",
+  "order": 3,
+  "sections": ["drop-basics", "if-exists", "cascade"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 15, "xpReward": 45 }
+  },
+  "prerequisites": ["alter-table"],
+  "tags": ["sql", "ddl", "drop-table"]
+}

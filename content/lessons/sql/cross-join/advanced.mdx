@@ -1,0 +1,111 @@
+# CROSS JOIN: Advanced Patterns
+
+Expert patterns and performance considerations.
+
+## LATERAL/CROSS APPLY Alternative
+
+```sql
+-- Generate multiple rows per input using CROSS APPLY
+SELECT c.name, n.number
+FROM customers c
+CROSS APPLY (
+    SELECT TOP (c.order_count) ROW_NUMBER() OVER (ORDER BY (SELECT 1)) AS number
+    FROM master.dbo.spt_values  -- System table with many rows
+) n;
+
+-- Each customer gets (order_count) numbered rows
+```
+
+## Explosive Combination Control
+
+```sql
+-- Limit cardinality before CROSS JOIN
+SELECT *
+FROM (SELECT TOP 10 * FROM products) p
+CROSS JOIN (SELECT TOP 5 * FROM categories) c;
+-- Max 50 rows instead of potentially millions
+```
+
+## Numbers Table Pattern
+
+```sql
+-- Create reusable numbers table
+;WITH numbers AS (
+    SELECT 1 AS n
+    UNION ALL SELECT n + 1 FROM numbers WHERE n < 1000
+)
+SELECT * INTO #numbers FROM numbers OPTION (MAXRECURSION 1000);
+
+-- Use with CROSS JOIN
+SELECT d.date, n.n AS period
+FROM dates d
+CROSS JOIN #numbers n
+WHERE n.n <= 24;  -- 24 periods per day
+```
+
+## Performance Considerations
+
+```sql
+-- CROSS JOIN is O(n×m)
+-- 10,000 × 10,000 = 100,000,000 rows!
+
+-- Always filter when possible:
+SELECT *
+FROM large_table_a a
+CROSS JOIN large_table_b b
+WHERE a.category = b.category;  -- This is really an INNER JOIN!
+
+-- Use explicit INNER JOIN instead:
+SELECT * FROM large_table_a a
+INNER JOIN large_table_b b ON a.category = b.category;
+```
+
+## Pivot Data Generation
+
+```sql
+-- Generate month columns for pivot
+SELECT
+    product_id,
+    SUM(CASE WHEN month = 1 THEN amount END) AS Jan,
+    SUM(CASE WHEN month = 2 THEN amount END) AS Feb,
+    -- ...
+FROM sales
+GROUP BY product_id;
+
+-- Or ensure all months exist first:
+SELECT p.id, m.month, COALESCE(s.amount, 0)
+FROM products p
+CROSS JOIN (SELECT DISTINCT MONTH(sale_date) AS month FROM sales) m
+LEFT JOIN (SELECT product_id, MONTH(sale_date) AS month, SUM(amount) AS amount
+           FROM sales GROUP BY product_id, MONTH(sale_date)) s
+ON p.id = s.product_id AND m.month = s.month;
+```
+
+## Test Data Generation
+
+```sql
+-- Generate large test dataset
+INSERT INTO test_orders (customer_id, product_id, amount)
+SELECT
+    c.id,
+    p.id,
+    ABS(CHECKSUM(NEWID())) % 1000  -- Random amount
+FROM customers c
+CROSS JOIN products p
+CROSS JOIN (SELECT TOP 10 1 AS n FROM sys.objects) multiplier;
+-- 10 orders per customer-product combination
+```
+
+## Query Plan Hints
+
+```sql
+-- Force nested loops for small CROSS JOIN
+SELECT *
+FROM small_a a
+CROSS JOIN small_b b
+OPTION (LOOP JOIN);
+
+-- Default is usually hash for larger sets
+```
+
+<ProgressCheckpoint section="cross-join-advanced" xpReward={40} />

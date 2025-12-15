@@ -1,0 +1,100 @@
+# Introduction to Window Functions
+
+Window functions are like having X-ray vision for your data - they let you see patterns across rows without collapsing them!
+
+## 🔍 What Makes Window Functions Special?
+
+Unlike `GROUP BY` which **combines rows**, window functions perform calculations **while keeping all rows visible**.
+
+| GROUP BY                 | Window Function                             |
+| :----------------------- | :------------------------------------------ |
+| 5 orders → 1 row (total) | 5 orders → 5 rows (each with running total) |
+| Loses individual details | Keeps all details visible                   |
+
+> **Think of it like:** Adding a "class average" column to a report card - each student keeps their own row, but now sees the average too!
+
+## Try the Interactive Explorer
+
+See how different window functions transform Northwind data:
+
+<WindowFunctionExplorer mode="beginner" />
+
+## The OVER Clause Structure
+
+Every window function has this pattern:
+
+```sql
+FUNCTION() OVER (
+    PARTITION BY column    -- Optional: separate groups
+    ORDER BY column        -- Optional: sequence within groups
+)
+```
+
+## ROW_NUMBER(): Sequential Numbering
+
+Assign a unique number to each row:
+
+```sql
+-- Number all Northwind products by price (most expensive = 1)
+SELECT
+    ProductName,
+    UnitPrice,
+    ROW_NUMBER() OVER (ORDER BY UnitPrice DESC) AS PriceRank
+FROM Products;
+```
+
+| ProductName             | UnitPrice | PriceRank |
+| :---------------------- | :-------- | :-------- |
+| Côte de Blaye           | 263.50    | 1         |
+| Thüringer Rostbratwurst | 123.79    | 2         |
+| Mishi Kobe Niku         | 97.00     | 3         |
+
+## PARTITION BY: Groups Within Groups
+
+Rank products **within their category**:
+
+```sql
+SELECT
+    CategoryID,
+    ProductName,
+    UnitPrice,
+    ROW_NUMBER() OVER (
+        PARTITION BY CategoryID
+        ORDER BY UnitPrice DESC
+    ) AS RankInCategory
+FROM Products;
+```
+
+Now each category has its own ranking starting from 1!
+
+## RANK vs DENSE_RANK vs ROW_NUMBER
+
+What happens when there are ties?
+
+| Function   | Tied Values Get   | Next Value                   |
+| :--------- | :---------------- | :--------------------------- |
+| ROW_NUMBER | Different numbers | Sequential                   |
+| RANK       | Same rank         | **Skips** (1, 2, 2, 4)       |
+| DENSE_RANK | Same rank         | **Consecutive** (1, 2, 2, 3) |
+
+```sql
+-- Compare all three with Northwind order quantities
+SELECT
+    Quantity,
+    ROW_NUMBER() OVER (ORDER BY Quantity DESC) AS RowNum,
+    RANK() OVER (ORDER BY Quantity DESC) AS Rank,
+    DENSE_RANK() OVER (ORDER BY Quantity DESC) AS DenseRank
+FROM [Order Details]
+WHERE OrderID = 10248;
+```
+
+## Key Takeaways ✓
+
+1. Window functions calculate **across rows** without grouping
+2. `OVER()` defines the **window** (scope) of calculation
+3. `PARTITION BY` creates **groups** (like mini-tables)
+4. `ORDER BY` determines **sequence** within each partition
+5. ROW_NUMBER = unique sequential numbers
+6. RANK/DENSE_RANK = handle ties differently
+
+<ProgressCheckpoint section="row-number-rank" xpReward={35} />

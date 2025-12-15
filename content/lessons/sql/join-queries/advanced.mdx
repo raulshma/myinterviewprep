@@ -1,0 +1,188 @@
+# Expert-Level JOIN Optimization
+
+Let&apos;s dive into performance optimization, advanced patterns, and edge cases.
+
+## JOIN Algorithm Internals
+
+Databases choose between three main JOIN algorithms:
+
+### 1. Nested Loop Join
+
+```
+For each row in outer table:
+    For each row in inner table:
+        If join condition matches:
+            Output combined row
+```
+
+- **Complexity:** O(n × m)
+- **Best for:** Small tables, indexed inner table
+
+### 2. Hash Join
+
+```
+Build hash table from smaller table
+Probe with larger table
+```
+
+- **Complexity:** O(n + m)
+- **Best for:** Large tables, equality joins, no index
+
+### 3. Merge Join
+
+```
+Sort both tables on join key
+Merge sorted streams
+```
+
+- **Complexity:** O(n log n + m log m)
+- **Best for:** Pre-sorted data, range joins
+
+<JoinVisualizer mode="advanced" />
+
+## Execution Plan Analysis
+
+Read execution plans to understand JOIN performance:
+
+```sql
+EXPLAIN ANALYZE
+SELECT c.name, COUNT(o.id)
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+GROUP BY c.id, c.name;
+```
+
+Key metrics to watch:
+
+- **Rows estimated vs actual**
+- **Loops** in nested loop joins
+- **Memory usage** in hash joins
+- **Sort operations** before merge joins
+
+## Index Strategies for JOINs
+
+### Create indexes on foreign keys
+
+```sql
+-- Essential for JOIN performance
+CREATE INDEX idx_orders_customer_id
+ON orders(customer_id);
+
+-- Composite index for filtered JOINs
+CREATE INDEX idx_orders_customer_date
+ON orders(customer_id, order_date);
+```
+
+### Covering indexes avoid table lookups
+
+```sql
+-- If you only need these columns, this index "covers" the query
+CREATE INDEX idx_orders_covering
+ON orders(customer_id, order_date, total_amount);
+```
+
+## LATERAL JOIN (Modern SQL)
+
+Execute a subquery for each row of the outer query:
+
+```sql
+-- Get the 3 most recent orders per customer
+SELECT c.name, recent.*
+FROM customers c
+CROSS JOIN LATERAL (
+    SELECT order_date, total
+    FROM orders o
+    WHERE o.customer_id = c.id
+    ORDER BY order_date DESC
+    LIMIT 3
+) recent;
+```
+
+PostgreSQL uses `LATERAL`, SQL Server uses `CROSS APPLY` / `OUTER APPLY`.
+
+## Semi-Join Optimization
+
+EXISTS often outperforms IN for large datasets:
+
+```sql
+-- Semi-join with EXISTS (usually faster)
+SELECT * FROM products p
+WHERE EXISTS (
+    SELECT 1 FROM order_items oi
+    WHERE oi.product_id = p.id
+);
+
+-- vs IN subquery
+SELECT * FROM products
+WHERE id IN (SELECT product_id FROM order_items);
+```
+
+The optimizer may rewrite these equivalently, but EXISTS can short-circuit.
+
+## Common JOIN Pitfalls
+
+### 1. Cartesian Product Explosion
+
+```sql
+-- WRONG: Missing JOIN condition!
+SELECT * FROM orders, order_items;  -- Returns n × m rows!
+
+-- CORRECT
+SELECT * FROM orders
+JOIN order_items ON orders.id = order_items.order_id;
+```
+
+### 2. NULL Gotchas in JOINs
+
+```sql
+-- NULL never equals NULL
+SELECT * FROM a JOIN b ON a.val = b.val;
+-- Rows where a.val IS NULL won't match rows where b.val IS NULL
+
+-- Use IS NOT DISTINCT FROM (PostgreSQL) or COALESCE
+SELECT * FROM a JOIN b
+ON a.val IS NOT DISTINCT FROM b.val;
+```
+
+### 3. Duplicate Rows from Multiple JOINs
+
+```sql
+-- If order has multiple items, you get duplicate order info
+SELECT orders.*, items.*
+FROM orders
+JOIN order_items items ON orders.id = items.order_id;
+-- Same order appears once per item
+
+-- Solution: Aggregate or use DISTINCT
+SELECT DISTINCT orders.id, orders.date
+FROM orders
+JOIN order_items items ON orders.id = items.order_id;
+```
+
+## Advanced: Temporal JOINs
+
+Join on overlapping date ranges:
+
+```sql
+SELECT e.name, p.project_name
+FROM employees e
+JOIN project_assignments p
+ON e.id = p.employee_id
+AND e.employment_start <= p.end_date
+AND (e.employment_end IS NULL OR e.employment_end >= p.start_date);
+```
+
+## Performance Benchmark Patterns
+
+```sql
+-- Force specific join order (PostgreSQL)
+SET join_collapse_limit = 1;
+
+-- Use STRAIGHT_JOIN to force order (MySQL)
+SELECT STRAIGHT_JOIN * FROM a JOIN b ON ...;
+
+-- Disable hash join (testing)
+SET enable_hashjoin = off;  -- PostgreSQL
+```
+
+<ProgressCheckpoint section="full-outer-join" xpReward={85} />

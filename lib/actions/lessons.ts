@@ -95,6 +95,28 @@ export async function lessonExists(lessonPath: string): Promise<boolean> {
   }
 }
 
+import { buildLessonCandidatePaths } from '@/lib/utils/lesson-paths';
+
+/**
+ * Resolve lesson path from URL segments
+ * Tries multiple path patterns to find the lesson
+ */
+export async function resolveLessonPath(
+  milestoneId: string,
+  lessonId: string,
+  roadmapSlug?: string
+): Promise<string | null> {
+  const candidatePaths = buildLessonCandidatePaths(milestoneId, lessonId, roadmapSlug);
+  
+  for (const candidate of candidatePaths) {
+    if (await lessonExists(candidate)) {
+      return candidate;
+    }
+  }
+  
+  return null;
+}
+
 /**
  * Get all lesson paths for a milestone
  */
@@ -163,6 +185,11 @@ export async function findLessonPath(milestoneId: string, objective: LearningObj
   if (finalSlug) {
     addPath(`${milestoneId}/${finalSlug}`);
   }
+
+  // For SQL roadmap: lessons are in sql/{lessonId}/ structure
+  // Try sql/ prefix as a fallback for SQL lessons
+  addPath(`sql/${lessonId}`);
+  addPath(`sql/${finalSlug}`);
 
   for (const candidate of candidatePaths) {
     if (await lessonExists(candidate)) {

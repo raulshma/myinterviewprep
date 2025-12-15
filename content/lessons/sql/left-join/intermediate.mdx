@@ -1,0 +1,103 @@
+# LEFT JOIN: Practical Patterns
+
+Master LEFT JOIN for real-world scenarios.
+
+## LEFT JOIN with Aggregates
+
+```sql
+-- All customers with their order count (including 0)
+SELECT
+    c.name,
+    COUNT(o.id) AS order_count,
+    COALESCE(SUM(o.total), 0) AS total_spent
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+GROUP BY c.id, c.name;
+
+-- Note: COUNT(o.id) returns 0 for no matches
+-- COUNT(*) would return 1!
+```
+
+## Multiple LEFT JOINs
+
+```sql
+SELECT
+    c.name,
+    o.id AS order_id,
+    p.name AS product
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+LEFT JOIN order_items oi ON o.id = oi.order_id
+LEFT JOIN products p ON oi.product_id = p.id;
+```
+
+## COALESCE for NULL Handling
+
+```sql
+SELECT
+    c.name,
+    COALESCE(o.total, 0) AS order_total,
+    COALESCE(o.status, 'No orders') AS status
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id;
+```
+
+## Filter Placement: ON vs WHERE
+
+```sql
+-- ON: Filters BEFORE join (preserves all left rows)
+SELECT c.*, o.*
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id AND o.status = 'completed';
+-- Returns all customers, but only completed orders
+
+-- WHERE: Filters AFTER join (may eliminate left rows)
+SELECT c.*, o.*
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+WHERE o.status = 'completed';
+-- Only returns customers who have completed orders!
+```
+
+## Anti-Join Pattern
+
+```sql
+-- Find items NOT in another table
+SELECT p.*
+FROM products p
+LEFT JOIN order_items oi ON p.id = oi.product_id
+WHERE oi.id IS NULL;
+
+-- Equivalent using NOT EXISTS (often faster):
+SELECT p.* FROM products p
+WHERE NOT EXISTS (SELECT 1 FROM order_items WHERE product_id = p.id);
+```
+
+## LEFT JOIN vs Subquery
+
+```sql
+-- LEFT JOIN approach
+SELECT c.*, o.order_count
+FROM customers c
+LEFT JOIN (
+    SELECT customer_id, COUNT(*) AS order_count
+    FROM orders GROUP BY customer_id
+) o ON c.id = o.customer_id;
+
+-- Subquery approach
+SELECT c.*,
+    (SELECT COUNT(*) FROM orders WHERE customer_id = c.id) AS order_count
+FROM customers c;
+```
+
+## Preserving NULL Relationships
+
+```sql
+-- Include products even if category is null
+SELECT p.name, c.name AS category
+FROM products p
+LEFT JOIN categories c ON p.category_id = c.id;
+-- Products with NULL category_id still appear
+```
+
+<ProgressCheckpoint section="left-join-patterns" xpReward={40} />

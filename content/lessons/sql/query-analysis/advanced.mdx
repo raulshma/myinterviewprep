@@ -1,0 +1,119 @@
+# Query Analysis: Advanced Topics
+
+Enterprise performance diagnostics.
+
+## Execution Plan Operators
+
+```sql
+-- Key operators to understand:
+/*
+Seek Operations (Fast):
+- Index Seek: Direct lookup using index
+- Clustered Index Seek: Direct lookup on clustered index
+
+Scan Operations (Potentially Slow):
+- Table Scan: Read entire heap table
+- Clustered Index Scan: Read entire clustered index
+- Index Scan: Read entire non-clustered index
+
+Join Types:
+- Nested Loop: Best for small result sets
+- Merge Join: Best for sorted inputs
+- Hash Join: Best for large unsorted sets
+
+Other:
+- Sort: Expensive if no index
+- Spool: Stores intermediate results
+- Key Lookup: Index + table access (consider covering index)
+*/
+```
+
+## Cost Analysis
+
+```sql
+-- Estimated vs Actual comparison
+SET STATISTICS PROFILE ON;
+SELECT * FROM complex_query;
+
+/*
+Watch for discrepancies:
+- EstimateRows: 10  ActualRows: 10000  (statistics outdated!)
+- Large sort operations (may spill to disk)
+- Key Lookups with high row counts
+*/
+```
+
+## Wait Statistics
+
+```sql
+-- SQL Server: What's causing delays?
+SELECT
+    wait_type,
+    waiting_tasks_count,
+    wait_time_ms,
+    max_wait_time_ms
+FROM sys.dm_os_wait_stats
+WHERE wait_time_ms > 0
+AND wait_type NOT IN ('SLEEP_TASK', 'BROKER_TASK_STOP', ...)
+ORDER BY wait_time_ms DESC;
+
+-- Common waits:
+-- PAGEIOLATCH: Disk I/O waits
+-- LCK: Lock waits
+-- ASYNC_NETWORK_IO: Client can't consume data fast enough
+```
+
+## Query Hints for Analysis
+
+```sql
+-- Force specific plan
+SELECT * FROM orders WITH (INDEX(IX_orders_customer))
+WHERE customer_id = 123;
+
+-- Get plan without execution
+SET SHOWPLAN_XML ON;
+SELECT * FROM complex_query;
+SET SHOWPLAN_XML OFF;
+
+-- Force recompile for fresh plan
+SELECT * FROM orders WHERE customer_id = @id
+OPTION (RECOMPILE);
+```
+
+## Plan Cache Analysis
+
+```sql
+-- Find cached plans with issues
+SELECT TOP 20
+    cp.objtype,
+    cp.cacheobjtype,
+    SUBSTRING(qt.text, qs.statement_start_offset/2 + 1,
+        (CASE qs.statement_end_offset WHEN -1 THEN DATALENGTH(qt.text) ELSE qs.statement_end_offset END - qs.statement_start_offset)/2 + 1) AS query,
+    qs.execution_count,
+    qs.total_logical_reads / qs.execution_count AS avg_logical_reads,
+    qs.total_worker_time / qs.execution_count / 1000 AS avg_cpu_ms
+FROM sys.dm_exec_cached_plans cp
+JOIN sys.dm_exec_query_stats qs ON cp.plan_handle = qs.plan_handle
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) qt
+ORDER BY qs.total_logical_reads DESC;
+```
+
+## Plan Regression Detection
+
+```sql
+-- Query Store: Find regressed queries
+SELECT
+    q.query_id,
+    qt.query_sql_text,
+    first_value(rs.avg_duration) OVER (PARTITION BY q.query_id ORDER BY rs.last_execution_time) AS old_duration,
+    last_value(rs.avg_duration) OVER (PARTITION BY q.query_id ORDER BY rs.last_execution_time) AS new_duration
+FROM sys.query_store_query q
+JOIN sys.query_store_query_text qt ON q.query_text_id = qt.query_text_id
+JOIN sys.query_store_plan p ON q.query_id = p.query_id
+JOIN sys.query_store_runtime_stats rs ON p.plan_id = rs.plan_id
+HAVING new_duration > old_duration * 2;  -- 2x slower
+```
+
+<QueryOptimizer mode="advanced" />
+
+<ProgressCheckpoint section="query-analysis-advanced" xpReward={55} />

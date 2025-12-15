@@ -1,0 +1,80 @@
+# Check Constraints: Custom Data Validation
+
+Enforce your own business rules at the database level!
+
+## ✅ What is a CHECK Constraint?
+
+A CHECK constraint validates data before it's inserted or updated:
+
+```sql
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    price DECIMAL(10,2) CHECK (price > 0)  -- Must be positive!
+);
+```
+
+## 📝 Enforcement in Action
+
+```sql
+INSERT INTO products VALUES (1, 'Widget', 29.99);  -- OK
+INSERT INTO products VALUES (2, 'Gadget', -5.00);  -- ERROR!
+-- The INSERT statement conflicted with the CHECK constraint
+```
+
+## 🎯 Common CHECK Patterns
+
+| Rule            | CHECK Constraint                           |
+| --------------- | ------------------------------------------ |
+| Positive number | `CHECK (price > 0)`                        |
+| Range           | `CHECK (age BETWEEN 0 AND 150)`            |
+| Specific values | `CHECK (status IN ('draft', 'published'))` |
+| Percentage      | `CHECK (discount BETWEEN 0 AND 1)`         |
+| Non-empty       | `CHECK (LEN(name) > 0)`                    |
+
+## 📊 More Examples
+
+```sql
+CREATE TABLE employees (
+    id INT PRIMARY KEY,
+    name VARCHAR(100) CHECK (LEN(name) >= 2),
+    age INT CHECK (age >= 18 AND age <= 100),
+    salary DECIMAL(10,2) CHECK (salary >= 0),
+    status VARCHAR(20) CHECK (status IN ('active', 'inactive', 'terminated'))
+);
+```
+
+## 💡 Named CHECK Constraints
+
+Give your constraints meaningful names:
+
+```sql
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    quantity INT,
+    discount DECIMAL(3,2),
+
+    CONSTRAINT CK_orders_quantity CHECK (quantity > 0),
+    CONSTRAINT CK_orders_discount CHECK (discount BETWEEN 0 AND 0.5)
+);
+```
+
+## ➕ Adding CHECK to Existing Table
+
+```sql
+ALTER TABLE products
+ADD CONSTRAINT CK_products_price CHECK (price > 0);
+```
+
+## 🔧 Multiple Columns in One CHECK
+
+```sql
+CREATE TABLE rentals (
+    id INT PRIMARY KEY,
+    start_date DATE,
+    end_date DATE,
+    CHECK (end_date >= start_date)  -- End must be after start
+);
+```
+
+<ProgressCheckpoint section="check-basics" xpReward={20} />

@@ -1,0 +1,129 @@
+# ROLLBACK: Advanced Scenarios
+
+Complex rollback scenarios and transaction states.
+
+## XACT_STATE and Transaction States
+
+```sql
+-- SQL Server: Check transaction state
+BEGIN TRY
+    BEGIN TRANSACTION;
+        -- Operations that might fail
+    COMMIT;
+END TRY
+BEGIN CATCH
+    -- Check if transaction is committable
+    IF XACT_STATE() = -1
+    BEGIN
+        -- Uncommittable, MUST rollback
+        ROLLBACK;
+    END
+    ELSE IF XACT_STATE() = 1
+    BEGIN
+        -- Committable, could commit or rollback
+        ROLLBACK;  -- Or COMMIT if partial success acceptable
+    END;
+    -- XACT_STATE() = 0 means no transaction
+
+    THROW;
+END CATCH;
+```
+
+## Partial Rollback with Savepoints
+
+```sql
+BEGIN TRANSACTION;
+    INSERT INTO audit_log VALUES ('Starting batch');
+
+    SAVE TRANSACTION before_updates;
+
+    UPDATE table1 SET ...;
+    UPDATE table2 SET ...;
+
+    IF @error_occurred = 1
+    BEGIN
+        ROLLBACK TRANSACTION before_updates;
+        -- Updates undone, audit_log INSERT preserved
+    END;
+
+COMMIT;  -- Audit log committed
+```
+
+## Nested Transaction Rollback
+
+```sql
+-- SQL Server: Nested transaction behavior
+BEGIN TRANSACTION outer_tran;  -- @@TRANCOUNT = 1
+    INSERT INTO t1 VALUES (1);
+
+    BEGIN TRANSACTION inner_tran;  -- @@TRANCOUNT = 2
+        INSERT INTO t2 VALUES (1);
+    COMMIT;  -- @@TRANCOUNT = 1, not really committed!
+
+    ROLLBACK;  -- @@TRANCOUNT = 0, BOTH inserts rolled back!
+
+-- ROLLBACK always rolls back to outermost transaction
+```
+
+## Connection Abort Recovery
+
+```sql
+-- What happens when connection drops?
+-- 1. Server detects disconnect
+-- 2. Uncommitted transaction rolled back
+-- 3. Locks released
+
+-- Application pattern for recovery:
+-- - Use short transactions
+-- - Implement idempotent operations
+-- - Use transaction IDs for duplicate detection
+
+CREATE TABLE processed_transactions (
+    transaction_id UNIQUEIDENTIFIER PRIMARY KEY,
+    processed_at DATETIME
+);
+
+-- Before operation:
+IF NOT EXISTS (SELECT 1 FROM processed_transactions WHERE transaction_id = @txn_id)
+BEGIN
+    BEGIN TRANSACTION;
+        -- Do work
+        INSERT INTO processed_transactions VALUES (@txn_id, GETDATE());
+    COMMIT;
+END;
+```
+
+## Rollback Performance
+
+```sql
+-- Rollback can be slow for large transactions
+-- Must undo all changes by reading undo log
+
+-- Monitor long rollbacks
+SELECT
+    session_id,
+    percent_complete,
+    estimated_completion_time
+FROM sys.dm_exec_requests
+WHERE command = 'ROLLBACK';
+
+-- Best practice: Smaller transactions
+-- Instead of one huge transaction, use batches
+```
+
+## Implicit Rollback Triggers
+
+```sql
+-- Errors that cause automatic rollback:
+-- - Deadlock
+-- - Lock timeout
+-- - Statement timeout
+-- - Out of log space
+-- - KILL command
+
+-- Check for implicit rollback
+IF @@TRANCOUNT = 0 AND @was_in_transaction = 1
+    PRINT 'Transaction was implicitly rolled back';
+```
+
+<ProgressCheckpoint section="rollback-advanced" xpReward={40} />

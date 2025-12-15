@@ -1,0 +1,72 @@
+# Data Integrity Constraints
+
+Ensure your data is always valid and consistent!
+
+## 🎯 What Are Constraints?
+
+Constraints are rules that enforce data quality:
+
+```sql
+CREATE TABLE users (
+    id INT PRIMARY KEY,           -- Unique identifier
+    email VARCHAR(100) NOT NULL,  -- Required field
+    age INT CHECK (age >= 0)      -- Valid range
+);
+```
+
+## 📝 Types of Constraints
+
+| Constraint  | Purpose                | Example                               |
+| ----------- | ---------------------- | ------------------------------------- |
+| PRIMARY KEY | Unique identifier      | `id INT PRIMARY KEY`                  |
+| FOREIGN KEY | References other table | `REFERENCES customers(id)`            |
+| NOT NULL    | Required value         | `name VARCHAR(50) NOT NULL`           |
+| UNIQUE      | No duplicates          | `email VARCHAR(100) UNIQUE`           |
+| CHECK       | Custom validation      | `CHECK (price > 0)`                   |
+| DEFAULT     | Fallback value         | `status VARCHAR(20) DEFAULT 'active'` |
+
+## 🔑 Primary Key
+
+```sql
+-- Uniquely identifies each row
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+-- Composite primary key
+CREATE TABLE order_items (
+    order_id INT,
+    product_id INT,
+    PRIMARY KEY (order_id, product_id)
+);
+```
+
+## 🔗 Foreign Key
+
+```sql
+-- Links to another table
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    customer_id INT REFERENCES customers(id),
+    order_date DATE
+);
+
+-- Can't insert order for non-existent customer!
+INSERT INTO orders (id, customer_id) VALUES (1, 999);
+-- Error: Foreign key violation
+```
+
+## ✅ CHECK Constraint
+
+```sql
+-- Custom validation rules
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    price DECIMAL(10,2) CHECK (price > 0),
+    quantity INT CHECK (quantity >= 0),
+    status VARCHAR(20) CHECK (status IN ('active', 'inactive', 'discontinued'))
+);
+```
+
+<ProgressCheckpoint section="integrity-basics" xpReward={25} />

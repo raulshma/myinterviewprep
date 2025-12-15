@@ -1,0 +1,15 @@
+{
+  "id": "query-optimization-techniques",
+  "title": "Query Optimization Techniques",
+  "description": "Comprehensive strategies to optimize SQL queries.",
+  "milestone": "performance",
+  "order": 6,
+  "sections": ["rewrites", "hints", "caching"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
+    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
+    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+  },
+  "prerequisites": ["selective-projection"],
+  "tags": ["sql", "performance", "optimization", "tuning"]
+}

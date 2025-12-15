@@ -1,0 +1,28 @@
+{
+  "id": "what-is-rdbms",
+  "title": "What are Relational Databases?",
+  "description": "Understand the fundamentals of relational databases and how they organize data into tables, rows, and columns.",
+  "milestone": "learn-basics",
+  "order": 1,
+  "sections": [
+    "introduction",
+    "tables-and-relations",
+    "rdbms-concepts"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 65
+    }
+  },
+  "prerequisites": [],
+  "tags": ["sql", "database", "rdbms", "tables", "fundamentals"]
+}

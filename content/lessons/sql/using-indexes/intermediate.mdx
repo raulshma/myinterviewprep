@@ -1,0 +1,90 @@
+# Using Indexes Effectively: Practical Patterns
+
+Optimize real-world query scenarios.
+
+## Composite Index Usage
+
+```sql
+-- Index: (customer_id, order_date)
+
+-- Uses full index (both columns)
+SELECT * FROM orders
+WHERE customer_id = 123 AND order_date = '2024-01-15';
+
+-- Uses partial index (leftmost column)
+SELECT * FROM orders WHERE customer_id = 123;
+
+-- Does NOT use index (skips first column)
+SELECT * FROM orders WHERE order_date = '2024-01-15';
+```
+
+## Covering Indexes
+
+```sql
+-- Without covering index: Index seek + Key Lookup
+SELECT order_date, total FROM orders WHERE customer_id = 123;
+
+-- With covering index: Index-only scan!
+CREATE INDEX IX_orders_covering ON orders(customer_id)
+INCLUDE (order_date, total);
+
+-- Query now avoids accessing table
+```
+
+## OR Conditions
+
+```sql
+-- OR may prevent index use
+SELECT * FROM products WHERE category_id = 1 OR category_id = 2;
+
+-- Better: Use IN
+SELECT * FROM products WHERE category_id IN (1, 2);
+
+-- Or UNION for different columns
+SELECT * FROM products WHERE category_id = 1
+UNION ALL
+SELECT * FROM products WHERE is_featured = 1;
+```
+
+## Index Hints
+
+```sql
+-- Force index usage (SQL Server)
+SELECT * FROM orders WITH (INDEX(IX_orders_date))
+WHERE order_date > '2024-01-01' AND customer_id = 123;
+
+-- PostgreSQL: Discourage seq scan
+SET enable_seqscan = OFF;
+SELECT * FROM orders WHERE order_date > '2024-01-01';
+SET enable_seqscan = ON;
+```
+
+## Join Column Indexes
+
+```sql
+-- Ensure foreign keys are indexed
+CREATE INDEX IX_orders_customer ON orders(customer_id);
+CREATE INDEX IX_order_items_order ON order_items(order_id);
+
+-- Now joins are fast
+SELECT o.*, i.*
+FROM orders o
+JOIN order_items i ON o.id = i.order_id
+WHERE o.customer_id = 123;
+```
+
+## Expressions and Computed Columns
+
+```sql
+-- Can't index UPPER(email) directly
+-- Solution: Computed column (SQL Server)
+ALTER TABLE users ADD email_lower AS LOWER(email);
+CREATE INDEX IX_users_email_lower ON users(email_lower);
+
+-- PostgreSQL: Expression index
+CREATE INDEX IX_users_email_lower ON users(LOWER(email));
+```
+
+<IndexVisualizer mode="intermediate" />
+
+<ProgressCheckpoint section="using-indexes-practical" xpReward={40} />

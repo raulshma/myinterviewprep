@@ -1,0 +1,132 @@
+# Check Constraints: Advanced Patterns
+
+Expert-level CHECK constraint techniques and alternatives.
+
+## Limitations and Workarounds
+
+### Subqueries Not Allowed
+
+```sql
+-- This DOES NOT work in CHECK:
+CHECK (customer_id IN (SELECT id FROM customers))
+-- Use FOREIGN KEY instead!
+
+-- This DOES NOT work:
+CHECK (price < (SELECT MAX(price) FROM products))
+-- Use TRIGGER instead
+```
+
+### Cross-Row Validation
+
+```sql
+-- CHECK can't validate across rows
+-- For: "No more than 5 orders per customer per day"
+-- Use trigger:
+CREATE TRIGGER TR_limit_orders
+ON orders
+AFTER INSERT
+AS
+BEGIN
+    IF EXISTS (
+        SELECT customer_id, CAST(order_date AS DATE)
+        FROM orders
+        GROUP BY customer_id, CAST(order_date AS DATE)
+        HAVING COUNT(*) > 5
+    )
+    BEGIN
+        RAISERROR('Maximum 5 orders per day', 16, 1);
+        ROLLBACK;
+    END
+END;
+```
+
+## Function-Based Checks
+
+```sql
+-- SQL Server: Use scalar function in CHECK
+CREATE FUNCTION dbo.IsValidEmail(@email VARCHAR(100))
+RETURNS BIT
+AS
+BEGIN
+    RETURN CASE WHEN @email LIKE '%@%.%' THEN 1 ELSE 0 END;
+END;
+
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    email VARCHAR(100) CHECK (dbo.IsValidEmail(email) = 1)
+);
+```
+
+## Domain Constraints (PostgreSQL)
+
+```sql
+-- Reusable type with constraint
+CREATE DOMAIN positive_int AS INT CHECK (VALUE > 0);
+CREATE DOMAIN email AS VARCHAR(100) CHECK (VALUE ~ '^[^@]+@[^@]+\.[^@]+$');
+
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    price positive_int,
+    contact_email email
+);
+```
+
+## Constraint Naming Convention
+
+```sql
+-- Pattern: CK_[table]_[description]
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    quantity INT,
+    discount DECIMAL(3,2),
+
+    CONSTRAINT CK_orders_quantity_positive CHECK (quantity > 0),
+    CONSTRAINT CK_orders_discount_range CHECK (discount BETWEEN 0 AND 0.5),
+    CONSTRAINT CK_orders_discount_tiers CHECK (
+        discount IN (0, 0.05, 0.10, 0.15, 0.20)
+    )
+);
+```
+
+## Performance Considerations
+
+```sql
+-- Simple CHECKs are very fast
+CHECK (status IN ('A', 'B', 'C'))  -- Fast
+
+-- Complex CHECKs add overhead
+CHECK (LEN(REPLACE(REPLACE(phone, '-', ''), ' ', '')) = 10)  -- Slower
+
+-- Function calls are slowest
+CHECK (dbo.ValidateData(column) = 1)  -- Slowest
+```
+
+## CHECK vs Application Validation
+
+| Aspect          | CHECK Constraint | Application |
+| --------------- | ---------------- | ----------- |
+| Location        | Database         | Code        |
+| Bypass possible | Hard             | Easy        |
+| Error messages  | Generic          | Custom      |
+| Performance     | Very fast        | Varies      |
+| Maintenance     | Schema migration | Code deploy |
+| Complexity      | Limited          | Unlimited   |
+
+## Best Practices
+
+```sql
+-- 1. Use CHECK for simple, immutable rules
+CHECK (quantity > 0)
+
+-- 2. Use FOREIGN KEY for reference validation
+FOREIGN KEY (status_id) REFERENCES statuses(id)
+
+-- 3. Use TRIGGER for complex, cross-row validations
+
+-- 4. Use APPLICATION for business rules that change often
+
+-- 5. Always name your constraints
+CONSTRAINT CK_meaningful_name CHECK (...)
+```
+
+<ProgressCheckpoint section="check-advanced" xpReward={40} />

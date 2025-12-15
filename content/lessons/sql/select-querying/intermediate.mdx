@@ -1,0 +1,120 @@
+# SELECT: Intermediate Techniques
+
+Build more sophisticated queries with expressions, functions, and advanced patterns.
+
+## Column Expressions
+
+```sql
+SELECT
+    -- String concatenation
+    first_name + ' ' + last_name AS full_name,
+
+    -- Math operations
+    quantity * unit_price AS line_total,
+    quantity * unit_price * (1 - discount) AS discounted_total,
+
+    -- Built-in functions
+    UPPER(email) AS email_upper,
+    LEN(description) AS desc_length,
+
+    -- Date operations
+    DATEDIFF(day, order_date, ship_date) AS days_to_ship
+FROM orders;
+```
+
+## CASE Expressions
+
+Conditional logic in your SELECT:
+
+```sql
+SELECT
+    product_name,
+    price,
+    CASE
+        WHEN price > 100 THEN 'Premium'
+        WHEN price > 50 THEN 'Standard'
+        ELSE 'Budget'
+    END AS price_tier,
+
+    CASE category
+        WHEN 'Electronics' THEN 'Tech'
+        WHEN 'Books' THEN 'Media'
+        ELSE 'Other'
+    END AS category_group
+FROM products;
+```
+
+## NULL Handling
+
+```sql
+SELECT
+    customer_name,
+    -- Replace NULL with default
+    COALESCE(phone, 'No phone') AS phone,
+    COALESCE(email, secondary_email, 'No email') AS contact_email,
+
+    -- NULL-safe comparison
+    ISNULL(discount, 0) AS effective_discount,
+
+    -- Show NULL indicators
+    CASE WHEN email IS NULL THEN 'Missing' ELSE 'Present' END AS email_status
+FROM customers;
+```
+
+## Working with Dates
+
+```sql
+SELECT
+    order_id,
+    order_date,
+    YEAR(order_date) AS order_year,
+    MONTH(order_date) AS order_month,
+    DATENAME(weekday, order_date) AS day_of_week,
+    FORMAT(order_date, 'MMMM dd, yyyy') AS formatted_date,
+    GETDATE() AS current_time,
+    DATEDIFF(day, order_date, GETDATE()) AS days_ago
+FROM orders;
+```
+
+## Subqueries in SELECT
+
+```sql
+SELECT
+    c.customer_name,
+    c.city,
+    -- Scalar subquery
+    (SELECT COUNT(*) FROM orders WHERE customer_id = c.id) AS order_count,
+    (SELECT MAX(order_date) FROM orders WHERE customer_id = c.id) AS last_order
+FROM customers c;
+```
+
+## TOP/LIMIT for Pagination
+
+```sql
+-- SQL Server
+SELECT TOP 10 * FROM products ORDER BY price DESC;
+
+-- With OFFSET
+SELECT * FROM products
+ORDER BY price DESC
+OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY;
+
+-- PostgreSQL/MySQL
+SELECT * FROM products ORDER BY price DESC LIMIT 10;
+SELECT * FROM products ORDER BY price DESC LIMIT 10 OFFSET 20;
+```
+
+## DISTINCT Variations
+
+```sql
+-- Distinct single column
+SELECT DISTINCT category FROM products;
+
+-- Distinct combination of columns
+SELECT DISTINCT city, country FROM customers;
+
+-- Count distinct values
+SELECT COUNT(DISTINCT category) AS category_count FROM products;
+```
+
+<ProgressCheckpoint section="select-intermediate" xpReward={45} />

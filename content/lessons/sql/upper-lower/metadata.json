@@ -1,0 +1,15 @@
+{
+  "id": "upper-lower",
+  "title": "UPPER, LOWER, and TRIM",
+  "description": "Change case and remove whitespace from strings.",
+  "milestone": "string-functions",
+  "order": 3,
+  "sections": ["case-functions", "trim", "formatting"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 15, "xpReward": 40 }
+  },
+  "prerequisites": ["substring-replace"],
+  "tags": ["sql", "functions", "string", "upper", "lower", "trim"]
+}

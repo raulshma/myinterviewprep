@@ -1,0 +1,185 @@
+# CREATE TABLE: Advanced Design Patterns
+
+Master enterprise table design with partitioning, temporal tables, and vendor-specific features.
+
+## Table Partitioning
+
+### Range Partitioning (SQL Server)
+
+```sql
+-- Create partition function
+CREATE PARTITION FUNCTION pf_orders_date (DATE)
+AS RANGE RIGHT FOR VALUES ('2022-01-01', '2023-01-01', '2024-01-01');
+
+-- Create partition scheme
+CREATE PARTITION SCHEME ps_orders_date
+AS PARTITION pf_orders_date
+TO (fg_2021, fg_2022, fg_2023, fg_2024);
+
+-- Create partitioned table
+CREATE TABLE orders (
+    id INT IDENTITY PRIMARY KEY,
+    order_date DATE NOT NULL,
+    customer_id INT,
+    total DECIMAL(10,2)
+) ON ps_orders_date(order_date);
+```
+
+### PostgreSQL Declarative Partitioning
+
+```sql
+CREATE TABLE orders (
+    id SERIAL,
+    order_date DATE NOT NULL,
+    total DECIMAL(10,2)
+) PARTITION BY RANGE (order_date);
+
+CREATE TABLE orders_2023 PARTITION OF orders
+    FOR VALUES FROM ('2023-01-01') TO ('2024-01-01');
+
+CREATE TABLE orders_2024 PARTITION OF orders
+    FOR VALUES FROM ('2024-01-01') TO ('2025-01-01');
+```
+
+## Temporal Tables
+
+```sql
+-- SQL Server: System-versioned temporal tables
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    price DECIMAL(10,2),
+    valid_from DATETIME2 GENERATED ALWAYS AS ROW START,
+    valid_to DATETIME2 GENERATED ALWAYS AS ROW END,
+    PERIOD FOR SYSTEM_TIME (valid_from, valid_to)
+) WITH (SYSTEM_VERSIONING = ON (HISTORY_TABLE = dbo.products_history));
+
+-- Query historical data
+SELECT * FROM products FOR SYSTEM_TIME AS OF '2024-01-01';
+```
+
+## Advanced Column Types
+
+```sql
+-- PostgreSQL JSON columns
+CREATE TABLE events (
+    id SERIAL PRIMARY KEY,
+    event_type VARCHAR(50),
+    payload JSONB NOT NULL,
+    metadata JSONB DEFAULT '{}'::jsonb
+);
+
+-- PostgreSQL arrays
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(200),
+    tags TEXT[] DEFAULT '{}'
+);
+
+-- SQL Server XML
+CREATE TABLE configurations (
+    id INT PRIMARY KEY,
+    config_xml XML
+);
+```
+
+## Table-Level Security
+
+```sql
+-- Row-Level Security (PostgreSQL)
+CREATE TABLE documents (
+    id SERIAL PRIMARY KEY,
+    content TEXT,
+    owner_id INT
+);
+
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY documents_owner_policy ON documents
+    USING (owner_id = current_user_id());
+
+-- Column-Level Encryption (SQL Server)
+CREATE TABLE sensitive_data (
+    id INT PRIMARY KEY,
+    ssn VARBINARY(256),  -- Encrypted
+    clear_name VARCHAR(100)
+);
+```
+
+## Optimized Table Design
+
+### Column Order for Performance
+
+```sql
+-- Fixed-length columns first, then variable
+CREATE TABLE efficient_table (
+    -- Fixed length (no offset calculation)
+    id INT,
+    status TINYINT,
+    type_code CHAR(3),
+    amount DECIMAL(10,2),
+    created_at DATETIME,
+
+    -- Variable length (require offsets)
+    name VARCHAR(100),
+    description VARCHAR(MAX)
+);
+```
+
+### Sparse Columns (SQL Server)
+
+```sql
+-- For columns with many NULLs
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    optional_field1 VARCHAR(100) SPARSE,
+    optional_field2 VARCHAR(100) SPARSE,
+    optional_field3 INT SPARSE
+);
+```
+
+## Create Table As Select
+
+```sql
+-- Copy structure and data
+SELECT * INTO new_customers
+FROM customers
+WHERE country = 'USA';
+
+-- Copy structure only (no data)
+SELECT * INTO customers_backup
+FROM customers
+WHERE 1 = 0;
+
+-- PostgreSQL: CREATE TABLE AS
+CREATE TABLE monthly_summary AS
+SELECT
+    DATE_TRUNC('month', order_date) AS month,
+    SUM(total) AS revenue
+FROM orders
+GROUP BY DATE_TRUNC('month', order_date);
+```
+
+## Version-Controlled Schema
+
+```sql
+-- Migration pattern: numbered scripts
+-- V001_create_users.sql
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    email VARCHAR(100) NOT NULL
+);
+
+-- V002_add_profile_columns.sql
+ALTER TABLE users ADD profile_picture VARCHAR(255);
+ALTER TABLE users ADD bio TEXT;
+
+-- Track applied migrations
+CREATE TABLE schema_migrations (
+    version VARCHAR(10) PRIMARY KEY,
+    applied_at DATETIME DEFAULT GETDATE()
+);
+```
+
+<ProgressCheckpoint section="create-table-advanced" xpReward={60} />

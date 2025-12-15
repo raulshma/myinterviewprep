@@ -1,0 +1,96 @@
+# SQL Operators: Making Comparisons and Calculations
+
+Operators help you do math, compare values, and combine conditions!
+
+## ➕ Arithmetic Operators (Math)
+
+Just like a calculator!
+
+| Operator | Meaning   | Example  | Result |
+| -------- | --------- | -------- | ------ |
+| `+`      | Add       | `5 + 3`  | 8      |
+| `-`      | Subtract  | `10 - 4` | 6      |
+| `*`      | Multiply  | `6 * 7`  | 42     |
+| `/`      | Divide    | `20 / 4` | 5      |
+| `%`      | Remainder | `17 % 5` | 2      |
+
+```sql
+SELECT
+    product_name,
+    price,
+    price * 0.9 AS discounted_price  -- 10% off!
+FROM products;
+```
+
+## ⚖️ Comparison Operators
+
+Compare two values:
+
+| Operator     | Meaning          | Example               |
+| ------------ | ---------------- | --------------------- |
+| `=`          | Equals           | `age = 25`            |
+| `<>` or `!=` | Not equals       | `status <> 'deleted'` |
+| `>`          | Greater than     | `price > 100`         |
+| `<`          | Less than        | `quantity < 10`       |
+| `>=`         | Greater or equal | `rating >= 4`         |
+| `<=`         | Less or equal    | `stock <= 5`          |
+
+```sql
+SELECT * FROM products
+WHERE price > 50;
+```
+
+## 🔗 Logical Operators
+
+Combine conditions:
+
+| Operator | Meaning     | When TRUE                  |
+| -------- | ----------- | -------------------------- |
+| `AND`    | Both true   | Both conditions must match |
+| `OR`     | Either true | At least one matches       |
+| `NOT`    | Opposite    | Condition is FALSE         |
+
+```sql
+-- AND: Must match BOTH conditions
+SELECT * FROM products
+WHERE price > 50 AND in_stock = TRUE;
+
+-- OR: Match either condition
+SELECT * FROM products
+WHERE category = 'Electronics' OR category = 'Computers';
+
+-- NOT: Exclude matches
+SELECT * FROM products
+WHERE NOT category = 'Clothing';
+```
+
+## 🎯 Special Operators
+
+| Operator  | Meaning       | Example                        |
+| --------- | ------------- | ------------------------------ |
+| `BETWEEN` | In a range    | `price BETWEEN 10 AND 50`      |
+| `IN`      | In a list     | `status IN ('new', 'pending')` |
+| `LIKE`    | Pattern match | `name LIKE 'A%'`               |
+| `IS NULL` | Is missing    | `email IS NULL`                |
+
+```sql
+-- BETWEEN (includes both ends)
+SELECT * FROM products WHERE price BETWEEN 10 AND 100;
+
+-- IN (match any value in list)
+SELECT * FROM orders WHERE status IN ('pending', 'processing');
+
+-- LIKE patterns
+SELECT * FROM customers WHERE name LIKE 'J%';  -- Starts with J
+```
+
+## 💡 Quick Reference
+
+```
+Math:      +  -  *  /  %
+Compare:   =  <>  >  <  >=  <=
+Logic:     AND  OR  NOT
+Special:   BETWEEN  IN  LIKE  IS NULL
+```
+
+<ProgressCheckpoint section="sql-operators" xpReward={20} />

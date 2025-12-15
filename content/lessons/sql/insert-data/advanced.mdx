@@ -1,0 +1,124 @@
+# INSERT: High-Performance Patterns
+
+Optimize INSERT operations for high-volume data loading.
+
+## Bulk Insert Performance
+
+### Batching Strategy
+
+```sql
+-- Bad: Individual inserts (very slow)
+INSERT INTO logs (message) VALUES ('msg1');
+INSERT INTO logs (message) VALUES ('msg2');
+-- ... repeated 10,000 times (10,000 round trips)
+
+-- Better: Batch inserts (fewer round trips)
+INSERT INTO logs (message) VALUES
+('msg1'), ('msg2'), ('msg3'), ... ('msg100');
+-- Repeat 100 times (100 round trips)
+
+-- Best: Bulk copy operations
+BULK INSERT logs FROM '/data/logs.csv' WITH (FIELDTERMINATOR = ',');
+```
+
+### Performance Tips
+
+```sql
+-- 1. Disable indexes during bulk load
+ALTER INDEX ALL ON target_table DISABLE;
+-- Load data...
+ALTER INDEX ALL ON target_table REBUILD;
+
+-- 2. Use minimal logging (SQL Server)
+ALTER DATABASE db SET RECOVERY BULK_LOGGED;
+INSERT INTO large_table WITH (TABLOCK)
+SELECT * FROM source;
+ALTER DATABASE db SET RECOVERY FULL;
+
+-- 3. Drop and recreate constraints
+ALTER TABLE orders NOCHECK CONSTRAINT FK_customer;
+-- Bulk insert...
+ALTER TABLE orders CHECK CONSTRAINT FK_customer;
+```
+
+## Sequence and Identity Management
+
+```sql
+-- Allow explicit identity values (SQL Server)
+SET IDENTITY_INSERT customers ON;
+INSERT INTO customers (id, name) VALUES (1000, 'Legacy Customer');
+SET IDENTITY_INSERT customers OFF;
+
+-- Reset sequence (PostgreSQL)
+SELECT setval('customers_id_seq', (SELECT MAX(id) FROM customers));
+
+-- Restart identity (SQL Server)
+DBCC CHECKIDENT ('customers', RESEED, 1000);
+```
+
+## Concurrent Insert Handling
+
+### Optimistic Concurrency
+
+```sql
+-- Check and insert pattern
+BEGIN TRANSACTION;
+
+IF NOT EXISTS (SELECT 1 FROM reservations WHERE seat_id = @seat)
+BEGIN
+    INSERT INTO reservations (seat_id, user_id) VALUES (@seat, @user);
+    COMMIT;
+END
+ELSE
+BEGIN
+    ROLLBACK;
+    RAISERROR('Seat already taken', 16, 1);
+END
+```
+
+### Serialization for Critical Inserts
+
+```sql
+-- Ensure exclusive access
+INSERT INTO account_transactions (account_id, amount)
+SELECT @account_id, @amount
+WHERE NOT EXISTS (
+    SELECT 1 FROM account_transactions WITH (UPDLOCK, HOLDLOCK)
+    WHERE account_id = @account_id
+    AND transaction_date = CAST(GETDATE() AS DATE)
+);
+```
+
+## INSERT Performance Monitoring
+
+```sql
+-- SQL Server: Monitor insert operations
+SELECT
+    qs.total_logical_writes,
+    qs.execution_count,
+    SUBSTRING(qt.text, qs.statement_start_offset/2 + 1, 100) AS query
+FROM sys.dm_exec_query_stats qs
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) qt
+WHERE qt.text LIKE '%INSERT%'
+ORDER BY qs.total_logical_writes DESC;
+```
+
+## ETL Insert Patterns
+
+```sql
+-- Incremental load pattern
+INSERT INTO target_table (id, data, updated_at)
+SELECT s.id, s.data, s.updated_at
+FROM staging_table s
+LEFT JOIN target_table t ON s.id = t.id
+WHERE t.id IS NULL  -- Only new records
+   OR t.updated_at < s.updated_at;  -- Or updated records
+
+-- Using EXCEPT for delta detection
+INSERT INTO target_table (col1, col2)
+SELECT col1, col2 FROM source_table
+EXCEPT
+SELECT col1, col2 FROM target_table;
+```
+
+<ProgressCheckpoint section="insert-advanced" xpReward={55} />

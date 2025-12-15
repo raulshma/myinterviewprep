@@ -1,0 +1,28 @@
+{
+  "id": "aggregate-functions",
+  "title": "Aggregate Functions",
+  "description": "Summarize and analyze data with SUM, COUNT, AVG, MIN, MAX, GROUP BY, and HAVING.",
+  "milestone": "sql",
+  "order": 6,
+  "sections": [
+    "sum-count",
+    "avg-min-max",
+    "group-by-having"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 55
+    },
+    "advanced": {
+      "estimatedMinutes": 40,
+      "xpReward": 85
+    }
+  },
+  "prerequisites": ["dml"],
+  "tags": ["sql", "aggregate", "sum", "count", "avg", "group-by"]
+}

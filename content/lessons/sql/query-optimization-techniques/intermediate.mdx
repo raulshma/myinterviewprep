@@ -1,0 +1,94 @@
+# Query Optimization Techniques: Practical Patterns
+
+Real-world optimization strategies.
+
+## Query Rewriting
+
+```sql
+-- Original: OR can prevent index use
+SELECT * FROM products WHERE category = 'A' OR category = 'B';
+
+-- Better: UNION ALL may use index twice
+SELECT * FROM products WHERE category = 'A'
+UNION ALL
+SELECT * FROM products WHERE category = 'B';
+
+-- Best: IN uses index efficiently
+SELECT * FROM products WHERE category IN ('A', 'B');
+```
+
+## Batch Processing
+
+```sql
+-- BAD: Update all at once (locks entire table)
+UPDATE orders SET status = 'archived' WHERE order_date < '2020-01-01';
+
+-- GOOD: Process in batches
+WHILE 1=1
+BEGIN
+    UPDATE TOP (1000) orders
+    SET status = 'archived'
+    WHERE order_date < '2020-01-01' AND status <> 'archived';
+
+    IF @@ROWCOUNT = 0 BREAK;
+
+    WAITFOR DELAY '00:00:01';  -- Brief pause
+END;
+```
+
+## Temp Tables for Complex Queries
+
+```sql
+-- Store intermediate results
+SELECT customer_id, SUM(total) AS lifetime_value
+INTO #customer_totals
+FROM orders
+GROUP BY customer_id;
+
+CREATE INDEX IX_temp ON #customer_totals(customer_id);
+
+-- Use in subsequent queries
+SELECT c.*, t.lifetime_value
+FROM customers c
+JOIN #customer_totals t ON c.id = t.customer_id;
+```
+
+## Avoiding Implicit Conversions
+
+```sql
+-- BAD: String compared to int (conversion per row)
+SELECT * FROM orders WHERE customer_id = '123';  -- customer_id is INT
+
+-- GOOD: Matching types
+SELECT * FROM orders WHERE customer_id = 123;
+
+-- Check for implicit conversions in execution plan
+```
+
+## Parameterized Queries
+
+```sql
+-- Reuses execution plan
+EXEC sp_executesql
+    N'SELECT * FROM orders WHERE customer_id = @id',
+    N'@id INT',
+    @id = 123;
+
+-- Each unique value reuses same plan
+-- vs. dynamic SQL which creates new plan each time
+```
+
+## Deferred Execution
+
+```sql
+-- Use EXISTS instead of COUNT for existence check
+-- BAD: Counts all matching rows
+IF (SELECT COUNT(*) FROM orders WHERE customer_id = 123) > 0
+
+-- GOOD: Stops at first match
+IF EXISTS (SELECT 1 FROM orders WHERE customer_id = 123)
+```
+
+<QueryOptimizer mode="intermediate" />
+
+<ProgressCheckpoint section="optimization-practical" xpReward={45} />

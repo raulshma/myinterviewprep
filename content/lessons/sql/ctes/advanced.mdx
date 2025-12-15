@@ -1,0 +1,96 @@
+# CTEs: Advanced Topics
+
+Expert-level CTE techniques.
+
+## CTE Performance
+
+```sql
+-- CTEs may be inlined or materialized
+-- Check execution plan to see behavior
+
+-- Create index if CTE used multiple times
+WITH large_cte AS (
+    SELECT customer_id, SUM(total) AS sum_total
+    FROM orders
+    GROUP BY customer_id
+)
+SELECT * FROM large_cte WHERE sum_total > 1000
+UNION ALL
+SELECT * FROM large_cte WHERE sum_total < 100;
+-- May compute large_cte twice!
+
+-- Alternative: Use temp table for reuse
+SELECT customer_id, SUM(total) AS sum_total
+INTO #totals
+FROM orders
+GROUP BY customer_id;
+```
+
+## CTE vs Temp Table Decision
+
+```sql
+/*
+Use CTE when:
+- Single use in query
+- Simpler syntax
+- Query optimization can inline
+
+Use Temp Table when:
+- Multiple uses
+- Need indexes
+- Complex intermediate results
+*/
+```
+
+## Modular Query Design
+
+```sql
+-- Build complex analytics step by step
+WITH
+-- Layer 1: Data extraction
+raw_events AS (
+    SELECT * FROM events WHERE event_date >= '2024-01-01'
+),
+-- Layer 2: Session identification
+sessions AS (
+    SELECT *,
+        SUM(CASE WHEN gap_minutes > 30 THEN 1 ELSE 0 END)
+            OVER (PARTITION BY user_id ORDER BY event_time) AS session_id
+    FROM (
+        SELECT *, DATEDIFF(MINUTE, LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time), event_time) AS gap_minutes
+        FROM raw_events
+    ) t
+),
+-- Layer 3: Aggregation
+session_metrics AS (
+    SELECT user_id, session_id,
+        MIN(event_time) AS start_time,
+        MAX(event_time) AS end_time,
+        COUNT(*) AS event_count
+    FROM sessions
+    GROUP BY user_id, session_id
+),
+-- Layer 4: Final calculations
+user_summary AS (
+    SELECT user_id,
+        COUNT(*) AS session_count,
+        AVG(event_count) AS avg_events_per_session
+    FROM session_metrics
+    GROUP BY user_id
+)
+SELECT * FROM user_summary;
+```
+
+## CTE Column Aliasing
+
+```sql
+-- Explicit column names
+WITH sales(product, year, amount) AS (
+    SELECT product_name, YEAR(sale_date), SUM(sale_amount)
+    FROM sales
+    GROUP BY product_name, YEAR(sale_date)
+)
+SELECT * FROM sales;
+```
+
+<ProgressCheckpoint section="cte-advanced" xpReward={50} />

@@ -1,0 +1,86 @@
+# COUNT Function: Counting Rows
+
+Learn to count records in your database!
+
+## 🔢 What is COUNT?
+
+COUNT tells you how many rows match your query:
+
+```sql
+SELECT COUNT(*) FROM customers;
+-- Returns: Number of customers (e.g., 150)
+```
+
+## 📊 COUNT Variations
+
+| Syntax                   | What It Counts  |
+| ------------------------ | --------------- |
+| `COUNT(*)`               | All rows        |
+| `COUNT(column)`          | Non-NULL values |
+| `COUNT(DISTINCT column)` | Unique values   |
+
+## 📝 Basic Examples
+
+```sql
+-- Total orders
+SELECT COUNT(*) AS total_orders FROM orders;
+
+-- Orders with tracking numbers
+SELECT COUNT(tracking_number) AS tracked_orders FROM orders;
+
+-- Unique customers with orders
+SELECT COUNT(DISTINCT customer_id) AS unique_customers FROM orders;
+```
+
+## 🎯 COUNT with GROUP BY
+
+```sql
+-- Orders per customer
+SELECT customer_id, COUNT(*) AS order_count
+FROM orders
+GROUP BY customer_id;
+
+-- Products per category
+SELECT category, COUNT(*) AS product_count
+FROM products
+GROUP BY category;
+```
+
+## ⚡ COUNT with WHERE
+
+```sql
+-- Active customers
+SELECT COUNT(*) FROM customers WHERE is_active = 1;
+
+-- Orders this year
+SELECT COUNT(*) FROM orders WHERE YEAR(order_date) = 2024;
+```
+
+## 💡 COUNT(\*) vs COUNT(column)
+
+```sql
+-- Sample data: some emails are NULL
+-- | id | email          |
+-- |----|----------------|
+-- | 1  | alice@test.com |
+-- | 2  | NULL           |
+-- | 3  | bob@test.com   |
+
+SELECT COUNT(*) FROM users;      -- Returns 3 (all rows)
+SELECT COUNT(email) FROM users;  -- Returns 2 (non-NULL only)
+```
+
+## 🌟 Quick Examples
+
+```sql
+-- How many products?
+SELECT COUNT(*) FROM products;
+
+-- How many have discounts?
+SELECT COUNT(discount_price) FROM products;
+
+-- How many categories?
+SELECT COUNT(DISTINCT category) FROM products;
+```
+
+<ProgressCheckpoint section="count-basics" xpReward={20} />

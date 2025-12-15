@@ -1,0 +1,71 @@
+# NOT NULL Constraint
+
+Ensure columns always have values!
+
+## 🚫 What is NOT NULL?
+
+NOT NULL prevents empty values in a column:
+
+```sql
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,  -- Required!
+    email VARCHAR(100) NOT NULL,    -- Required!
+    nickname VARCHAR(50)            -- Optional (allows NULL)
+);
+```
+
+## 📝 Why Use NOT NULL?
+
+| With NOT NULL             | Without NOT NULL    |
+| ------------------------- | ------------------- |
+| Column always has a value | Column can be empty |
+| Prevents incomplete data  | Allows missing data |
+| Need value on insert      | Can skip value      |
+
+## 🔧 Basic Examples
+
+```sql
+-- This works:
+INSERT INTO users (id, username, email) VALUES (1, 'john', 'john@email.com');
+
+-- This FAILS:
+INSERT INTO users (id, username) VALUES (2, 'jane');
+-- Error: Column 'email' cannot be null
+```
+
+## ⚠️ NULL vs Empty String
+
+```sql
+-- These are different!
+NULL           -- No value at all
+''             -- Empty string (a value)
+
+-- NOT NULL allows empty string
+INSERT INTO users (id, username, email) VALUES (3, 'bob', '');  -- Works!
+```
+
+## 📊 Adding NOT NULL to Existing Table
+
+```sql
+-- First, update any NULL values
+UPDATE users SET nickname = 'Unknown' WHERE nickname IS NULL;
+
+-- Then add the constraint
+ALTER TABLE users ALTER COLUMN nickname VARCHAR(50) NOT NULL;
+```
+
+## 💡 Best Practice
+
+Make columns NOT NULL by default, only allow NULL when truly optional:
+
+```sql
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    customer_id INT NOT NULL,      -- Always required
+    order_date DATE NOT NULL,      -- Always required
+    notes VARCHAR(500)             -- Optional
+);
+```
+
+<ProgressCheckpoint section="not-null-basics" xpReward={20} />

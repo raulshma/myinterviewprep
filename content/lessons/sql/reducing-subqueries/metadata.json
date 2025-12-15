@@ -1,0 +1,15 @@
+{
+  "id": "reducing-subqueries",
+  "title": "Reducing Subquery Overhead",
+  "description": "Optimize or eliminate expensive subqueries.",
+  "milestone": "performance",
+  "order": 4,
+  "sections": ["subquery-analysis", "join-alternatives", "cte-optimization"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["optimizing-joins"],
+  "tags": ["sql", "performance", "subqueries", "optimization"]
+}

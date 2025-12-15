@@ -1,0 +1,109 @@
+# Index Optimization: Advanced Strategies
+
+Enterprise optimization and automated tuning.
+
+## Index Intersection
+
+```sql
+-- Multiple single-column indexes can combine
+CREATE INDEX IX_status ON orders(status);
+CREATE INDEX IX_customer ON orders(customer_id);
+
+SELECT * FROM orders WHERE status = 'active' AND customer_id = 123;
+-- Optimizer may use "Index Intersection" of both
+
+-- Usually better: One composite index
+CREATE INDEX IX_status_customer ON orders(status, customer_id);
+```
+
+## Tipping Point Analysis
+
+```sql
+-- When does scan become cheaper than seek?
+-- Generally: ~25-30% of table = scan preferred
+
+-- Check cardinality
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(CASE WHEN status = 'active' THEN 1 END) AS active_count,
+    COUNT(CASE WHEN status = 'active' THEN 1 END) * 100.0 / COUNT(*) AS pct
+FROM orders;
+
+-- If 'active' is 80% of rows, scan may be better than index
+```
+
+## Parameter Sniffing Issues
+
+```sql
+-- Cached plan may be wrong for different values
+-- Solution 1: RECOMPILE
+SELECT * FROM orders WHERE customer_id = @id OPTION (RECOMPILE);
+
+-- Solution 2: OPTIMIZE FOR UNKNOWN
+SELECT * FROM orders WHERE customer_id = @id OPTION (OPTIMIZE FOR UNKNOWN);
+
+-- Solution 3: Plan guides
+EXEC sp_create_plan_guide ...;
+```
+
+## Automated Index Tuning
+
+```sql
+-- SQL Server: Automatic tuning (2017+)
+ALTER DATABASE mydb SET AUTOMATIC_TUNING (CREATE_INDEX = ON);
+ALTER DATABASE mydb SET AUTOMATIC_TUNING (DROP_INDEX = ON);
+
+-- Query Store recommendations
+SELECT * FROM sys.dm_db_tuning_recommendations;
+```
+
+## Index Design Advisor
+
+```sql
+-- SQL Server Database Engine Tuning Advisor (DTA)
+-- Feed it a workload trace, get index recommendations
+
+-- PostgreSQL: pg_stat_statements + manual analysis
+-- Or third-party tools (pgHero, etc.)
+```
+
+## Memory-Optimized Indexes
+
+```sql
+-- SQL Server: In-Memory OLTP
+CREATE TABLE orders_mem (
+    id INT PRIMARY KEY NONCLUSTERED,
+    customer_id INT,
+    order_date DATETIME2,
+    INDEX IX_customer HASH (customer_id) WITH (BUCKET_COUNT = 1000000),
+    INDEX IX_date NONCLUSTERED (order_date)
+) WITH (MEMORY_OPTIMIZED = ON);
+
+-- Hash index: O(1) for equality
+-- Range index: For range queries
+```
+
+## Index Consolidation
+
+```sql
+-- Find redundant indexes
+WITH index_cols AS (
+    SELECT
+        OBJECT_NAME(i.object_id) AS table_name,
+        i.name AS index_name,
+        STRING_AGG(c.name, ',') WITHIN GROUP (ORDER BY ic.key_ordinal) AS columns
+    FROM sys.indexes i
+    JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+    JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+    GROUP BY i.object_id, i.name
+)
+SELECT a.*, b.*
+FROM index_cols a
+JOIN index_cols b ON a.table_name = b.table_name
+    AND a.index_name < b.index_name
+    AND a.columns LIKE b.columns + '%';  -- b is prefix of a
+```
+
+<IndexVisualizer mode="advanced" />
+
+<ProgressCheckpoint section="index-optimization-advanced" xpReward={55} />

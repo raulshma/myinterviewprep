@@ -1,0 +1,15 @@
+{
+  "id": "recursive-queries",
+  "title": "Recursive Queries",
+  "description": "Traverse hierarchies with recursive CTEs.",
+  "milestone": "advanced-sql",
+  "order": 5,
+  "sections": ["recursion-basics", "hierarchies", "graphs"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
+    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
+    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+  },
+  "prerequisites": ["ctes"],
+  "tags": ["sql", "advanced", "recursive", "hierarchy"]
+}

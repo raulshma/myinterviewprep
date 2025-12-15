@@ -1,0 +1,114 @@
+# Unique Constraints: Composite and Filtered
+
+Master composite unique constraints and advanced scenarios.
+
+## Composite UNIQUE
+
+Ensure uniqueness across multiple columns:
+
+```sql
+-- Same product can't be in same category twice
+CREATE TABLE product_categories (
+    product_id INT,
+    category_id INT,
+    UNIQUE (product_id, category_id)
+);
+
+-- Each combination must be unique
+INSERT INTO product_categories VALUES (1, 1);  -- OK
+INSERT INTO product_categories VALUES (1, 2);  -- OK (different category)
+INSERT INTO product_categories VALUES (2, 1);  -- OK (different product)
+INSERT INTO product_categories VALUES (1, 1);  -- ERROR! Duplicate
+```
+
+## NULL Behavior
+
+```sql
+-- Most databases: Multiple NULLs allowed in UNIQUE column
+CREATE TABLE profiles (
+    id INT PRIMARY KEY,
+    phone VARCHAR(20) UNIQUE
+);
+
+INSERT INTO profiles VALUES (1, '555-1234');  -- OK
+INSERT INTO profiles VALUES (2, NULL);        -- OK
+INSERT INTO profiles VALUES (3, NULL);        -- OK in SQL Server/PostgreSQL
+-- (Some DBs treat NULLs as equal)
+```
+
+## Unique with WHERE (Filtered)
+
+```sql
+-- SQL Server: Unique only among active users
+CREATE UNIQUE INDEX UQ_active_email
+ON users(email)
+WHERE is_active = 1;
+
+-- Allows: inactive users with duplicate emails
+-- Prevents: two active users with same email
+
+-- PostgreSQL
+CREATE UNIQUE INDEX UQ_active_email
+ON users(email)
+WHERE is_active = true;
+```
+
+## Case Sensitivity
+
+```sql
+-- Email uniqueness should be case-insensitive
+-- SQL Server: Use case-insensitive collation
+ALTER TABLE users
+ADD CONSTRAINT UQ_email UNIQUE (email);
+-- Works if column has CI collation (Latin1_General_CI_AS)
+
+-- PostgreSQL: Use expression index
+CREATE UNIQUE INDEX UQ_email_lower ON users(LOWER(email));
+```
+
+## Unique Index vs Constraint
+
+```sql
+-- These are functionally similar
+ALTER TABLE users ADD CONSTRAINT UQ_email UNIQUE (email);
+
+CREATE UNIQUE INDEX IX_email ON users(email);
+
+-- Differences:
+-- • CONSTRAINT is logical, INDEX is physical
+-- • Foreign keys only reference constraints (some DBs)
+-- • Both enforce uniqueness equally
+```
+
+## Handling Constraint Violations
+
+```sql
+-- Check before insert
+IF NOT EXISTS (SELECT 1 FROM users WHERE email = @email)
+    INSERT INTO users (email) VALUES (@email);
+
+-- Upsert patterns
+-- PostgreSQL
+INSERT INTO users (email, name) VALUES ('test@email.com', 'Test')
+ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name;
+
+-- SQL Server (MERGE)
+MERGE INTO users AS target
+USING (SELECT 'test@email.com' AS email, 'Test' AS name) AS source
+ON target.email = source.email
+WHEN MATCHED THEN UPDATE SET name = source.name
+WHEN NOT MATCHED THEN INSERT (email, name) VALUES (source.email, source.name);
+```
+
+## Multiple Unique on Same Column
+
+```sql
+-- Can have both constraint and separate index
+ALTER TABLE users ADD CONSTRAINT UQ_email UNIQUE (email);
+
+-- Plus a composite unique with another column
+ALTER TABLE tenants ADD CONSTRAINT UQ_tenant_email UNIQUE (tenant_id, email);
+-- Same email can exist in different tenants
+```
+
+<ProgressCheckpoint section="unique-composite" xpReward={30} />

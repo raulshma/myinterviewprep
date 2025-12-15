@@ -1,0 +1,105 @@
+# Security Best Practices: Practical Implementation
+
+Real-world database security patterns.
+
+## Encryption at Rest
+
+```sql
+-- SQL Server: Transparent Data Encryption (TDE)
+CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'StrongPassword123!';
+CREATE CERTIFICATE TDECert WITH SUBJECT = 'TDE Certificate';
+CREATE DATABASE ENCRYPTION KEY WITH ALGORITHM = AES_256
+    ENCRYPTION BY SERVER CERTIFICATE TDECert;
+ALTER DATABASE mydb SET ENCRYPTION ON;
+
+-- PostgreSQL: Uses filesystem encryption (pg_crypto for column-level)
+CREATE EXTENSION pgcrypto;
+INSERT INTO users (data) VALUES (pgp_sym_encrypt('sensitive', 'key'));
+```
+
+## Column-Level Encryption
+
+```sql
+-- SQL Server: Always Encrypted
+ALTER TABLE users
+ALTER COLUMN ssn NVARCHAR(11)
+ENCRYPTED WITH (
+    COLUMN_ENCRYPTION_KEY = MyCEK,
+    ENCRYPTION_TYPE = Deterministic,
+    ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256'
+);
+
+-- Application decrypts, database never sees plain text
+```
+
+## Audit Logging
+
+```sql
+-- Create audit table
+CREATE TABLE security_audit (
+    id INT IDENTITY PRIMARY KEY,
+    action_type VARCHAR(20),
+    table_name VARCHAR(100),
+    user_name VARCHAR(100),
+    old_values NVARCHAR(MAX),
+    new_values NVARCHAR(MAX),
+    action_time DATETIME2 DEFAULT SYSDATETIME()
+);
+
+-- Trigger-based auditing
+CREATE TRIGGER tr_users_audit ON users
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    INSERT INTO security_audit (action_type, table_name, user_name, old_values, new_values)
+    SELECT
+        CASE WHEN EXISTS(SELECT 1 FROM deleted) AND EXISTS(SELECT 1 FROM inserted) THEN 'UPDATE'
+             WHEN EXISTS(SELECT 1 FROM deleted) THEN 'DELETE'
+             ELSE 'INSERT' END,
+        'users', SYSTEM_USER,
+        (SELECT * FROM deleted FOR JSON PATH),
+        (SELECT * FROM inserted FOR JSON PATH);
+END;
+```
+
+## Input Validation
+
+```sql
+-- Validate data types and ranges
+CREATE PROCEDURE sp_create_user
+    @username NVARCHAR(50),
+    @email NVARCHAR(100),
+    @age INT
+AS
+BEGIN
+    -- Validate username (alphanumeric only)
+    IF @username NOT LIKE '%[^a-zA-Z0-9]%' OR LEN(@username) < 3
+        THROW 50001, 'Invalid username', 1;
+
+    -- Validate email format
+    IF @email NOT LIKE '%_@_%._%'
+        THROW 50002, 'Invalid email', 1;
+
+    -- Validate age range
+    IF @age < 0 OR @age > 150
+        THROW 50003, 'Invalid age', 1;
+
+    INSERT INTO users (username, email, age) VALUES (@username, @email, @age);
+END;
+```
+
+## Secure Connection
+
+```sql
+-- SQL Server: Force encryption
+ALTER ENDPOINT db_endpoint
+FOR TSQL() AS TCP (LISTENER_PORT = 1433)
+WITH (ENCRYPTION = REQUIRED);
+
+-- Connection string
+Server=myserver;Database=mydb;Encrypt=True;TrustServerCertificate=False;
+```
+
+<SecurityPermissionDemo mode="intermediate" />
+
+<ProgressCheckpoint section="security-practical" xpReward={45} />

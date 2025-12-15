@@ -1,0 +1,15 @@
+{
+  "id": "sql-data-types",
+  "title": "SQL Data Types",
+  "description": "Understand the different data types available in SQL for storing numbers, text, dates, and more.",
+  "milestone": "basic-sql-syntax",
+  "order": 2,
+  "sections": ["numeric-types", "string-types", "date-types", "other-types"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 20, "xpReward": 55 }
+  },
+  "prerequisites": ["sql-keywords"],
+  "tags": ["sql", "data-types", "varchar", "integer", "date"]
+}

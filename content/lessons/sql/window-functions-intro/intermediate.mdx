@@ -1,0 +1,84 @@
+# Window Functions: Practical Patterns
+
+Real-world window function applications.
+
+## Frame Specifications
+
+```sql
+-- Default frame: RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+
+-- Custom frames:
+SELECT order_date, amount,
+    -- Last 3 rows average
+    AVG(amount) OVER (ORDER BY order_date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS moving_avg,
+
+    -- All previous rows
+    SUM(amount) OVER (ORDER BY order_date ROWS UNBOUNDED PRECEDING) AS running_total,
+
+    -- Surrounding rows
+    AVG(amount) OVER (ORDER BY order_date ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) AS smoothed
+FROM orders;
+```
+
+## Multiple Windows
+
+```sql
+SELECT product_id, category, sales,
+    -- Multiple calculations in one query
+    SUM(sales) OVER (PARTITION BY category) AS category_total,
+    SUM(sales) OVER () AS grand_total,
+    sales * 100.0 / SUM(sales) OVER (PARTITION BY category) AS category_pct
+FROM products;
+```
+
+## Named Windows
+
+```sql
+-- PostgreSQL: Define window once, reuse
+SELECT name, department, salary,
+    SUM(salary) OVER dept_window AS dept_total,
+    AVG(salary) OVER dept_window AS dept_avg,
+    COUNT(*) OVER dept_window AS dept_count
+FROM employees
+WINDOW dept_window AS (PARTITION BY department);
+```
+
+## Aggregate Window Functions
+
+```sql
+SELECT
+    order_date,
+    amount,
+    -- Various aggregates
+    SUM(amount) OVER w AS running_sum,
+    AVG(amount) OVER w AS running_avg,
+    MIN(amount) OVER w AS running_min,
+    MAX(amount) OVER w AS running_max,
+    COUNT(*) OVER w AS running_count
+FROM orders
+WINDOW w AS (ORDER BY order_date ROWS UNBOUNDED PRECEDING);
+```
+
+## Filtering Window Results
+
+```sql
+-- Can't use window function in WHERE directly
+-- Use subquery or CTE
+WITH ranked AS (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC) AS rn
+    FROM employees
+)
+SELECT * FROM ranked WHERE rn <= 3;  -- Top 3 per department
+```
+
+## Performance Considerations
+
+```sql
+-- Index on ORDER BY columns helps
+CREATE INDEX IX_orders_date ON orders(order_date);
+
+-- Partition column index also helps
+CREATE INDEX IX_orders_customer_date ON orders(customer_id, order_date);
+```
+
+<ProgressCheckpoint section="window-intro-practical" xpReward={45} />

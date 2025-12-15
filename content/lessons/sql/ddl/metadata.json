@@ -1,0 +1,29 @@
+{
+  "id": "ddl-operations",
+  "title": "Data Definition Language (DDL)",
+  "description": "Learn to create and modify database structures - tables, schemas, and constraints.",
+  "milestone": "sql",
+  "order": 4,
+  "sections": [
+    "create-table",
+    "alter-table",
+    "drop-table",
+    "truncate-table"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 55
+    },
+    "advanced": {
+      "estimatedMinutes": 40,
+      "xpReward": 85
+    }
+  },
+  "prerequisites": ["basic-sql-syntax"],
+  "tags": ["sql", "ddl", "create", "alter", "drop", "schema"]
+}

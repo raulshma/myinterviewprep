@@ -1,0 +1,111 @@
+# Correlated Subqueries: Practical Patterns
+
+Master correlated subqueries for complex business logic.
+
+## Row Numbering Without Window Functions
+
+```sql
+-- Rank within group (pre-SQL 2005 approach)
+SELECT
+    p.*,
+    (SELECT COUNT(*) FROM products p2
+     WHERE p2.category = p.category AND p2.price > p.price) + 1 AS price_rank
+FROM products p;
+```
+
+## Find Duplicates
+
+```sql
+-- Find rows with duplicates
+SELECT * FROM users u
+WHERE EXISTS (
+    SELECT 1 FROM users u2
+    WHERE u2.email = u.email AND u2.id <> u.id
+);
+```
+
+## Correlated UPDATE
+
+```sql
+-- Update order totals from line items
+UPDATE orders o
+SET total = (
+    SELECT SUM(quantity * price)
+    FROM order_items
+    WHERE order_id = o.id
+);
+
+-- Set status based on related data
+UPDATE customers c
+SET status = 'VIP'
+WHERE (
+    SELECT SUM(total) FROM orders WHERE customer_id = c.id
+) > 10000;
+```
+
+## Correlated DELETE
+
+```sql
+-- Delete orphaned records
+DELETE FROM order_items oi
+WHERE NOT EXISTS (
+    SELECT 1 FROM orders WHERE id = oi.order_id
+);
+
+-- Delete duplicates (keep first)
+DELETE FROM users u
+WHERE id > (
+    SELECT MIN(id) FROM users u2 WHERE u2.email = u.email
+);
+```
+
+## Top N Per Group
+
+```sql
+-- Top 3 products per category by price
+SELECT * FROM products p
+WHERE (
+    SELECT COUNT(*) FROM products p2
+    WHERE p2.category = p.category AND p2.price > p.price
+) < 3;
+
+-- Better: Use ROW_NUMBER window function
+SELECT * FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) AS rn
+    FROM products
+) ranked WHERE rn <= 3;
+```
+
+## EXISTS vs IN vs JOIN
+
+```sql
+-- EXISTS: Best when subquery table is large
+SELECT * FROM customers c
+WHERE EXISTS (SELECT 1 FROM orders WHERE customer_id = c.id);
+
+-- IN: Best when subquery result is small
+SELECT * FROM customers
+WHERE id IN (SELECT DISTINCT customer_id FROM vip_orders);
+
+-- JOIN: Good for retrieving related data
+SELECT c.* FROM customers c
+INNER JOIN (SELECT DISTINCT customer_id FROM orders) o ON c.id = o.customer_id;
+```
+
+## Avoiding Correlated with Window Functions
+
+```sql
+-- Correlated (runs per row):
+SELECT p.*,
+    (SELECT AVG(price) FROM products WHERE category = p.category) AS cat_avg
+FROM products p;
+
+-- Window function (single pass):
+SELECT p.*,
+    AVG(price) OVER (PARTITION BY category) AS cat_avg
+FROM products p;
+```
+
+<ProgressCheckpoint section="correlated-practical" xpReward={45} />
+</Parameter>
+<Parameter name="Complexity">4

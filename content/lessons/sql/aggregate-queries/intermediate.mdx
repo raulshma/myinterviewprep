@@ -1,0 +1,138 @@
+# Advanced Aggregate Patterns
+
+Explore complex grouping, multiple aggregates, and analytical queries.
+
+## Multiple Aggregates in One Query
+
+```sql
+-- Comprehensive category statistics
+SELECT
+    c.CategoryName,
+    COUNT(p.ProductID) AS ProductCount,
+    SUM(p.UnitsInStock) AS TotalStock,
+    ROUND(AVG(p.UnitPrice), 2) AS AvgPrice,
+    MIN(p.UnitPrice) AS MinPrice,
+    MAX(p.UnitPrice) AS MaxPrice
+FROM Categories c
+JOIN Products p ON c.CategoryID = p.CategoryID
+GROUP BY c.CategoryID, c.CategoryName
+ORDER BY ProductCount DESC;
+```
+
+## GROUP BY with Expressions
+
+```sql
+-- Orders grouped by year and month
+SELECT
+    YEAR(OrderDate) AS OrderYear,
+    MONTH(OrderDate) AS OrderMonth,
+    COUNT(*) AS OrderCount,
+    SUM(Freight) AS TotalFreight
+FROM Orders
+GROUP BY YEAR(OrderDate), MONTH(OrderDate)
+ORDER BY OrderYear, OrderMonth;
+
+-- Products grouped by price range
+SELECT
+    CASE
+        WHEN UnitPrice < 10 THEN 'Budget'
+        WHEN UnitPrice < 30 THEN 'Standard'
+        WHEN UnitPrice < 60 THEN 'Premium'
+        ELSE 'Luxury'
+    END AS PriceCategory,
+    COUNT(*) AS ProductCount,
+    AVG(UnitPrice) AS AvgPrice
+FROM Products
+GROUP BY
+    CASE
+        WHEN UnitPrice < 10 THEN 'Budget'
+        WHEN UnitPrice < 30 THEN 'Standard'
+        WHEN UnitPrice < 60 THEN 'Premium'
+        ELSE 'Luxury'
+    END;
+```
+
+## Complex HAVING Conditions
+
+```sql
+-- Categories with more than 5 products AND average price > $20
+SELECT
+    c.CategoryName,
+    COUNT(p.ProductID) AS ProductCount,
+    AVG(p.UnitPrice) AS AvgPrice
+FROM Categories c
+JOIN Products p ON c.CategoryID = p.CategoryID
+GROUP BY c.CategoryID, c.CategoryName
+HAVING COUNT(p.ProductID) > 5 AND AVG(p.UnitPrice) > 20;
+
+-- Customers whose total orders exceed $10,000
+SELECT
+    c.CustomerID,
+    c.CompanyName,
+    COUNT(DISTINCT o.OrderID) AS OrderCount,
+    SUM(od.Quantity * od.UnitPrice) AS TotalSpent
+FROM Customers c
+JOIN Orders o ON c.CustomerID = o.CustomerID
+JOIN [Order Details] od ON o.OrderID = od.OrderID
+GROUP BY c.CustomerID, c.CompanyName
+HAVING SUM(od.Quantity * od.UnitPrice) > 10000
+ORDER BY TotalSpent DESC;
+```
+
+## Aggregates with JOINs
+
+```sql
+-- Average order value per employee
+SELECT
+    e.EmployeeID,
+    e.FirstName + ' ' + e.LastName AS EmployeeName,
+    COUNT(DISTINCT o.OrderID) AS OrderCount,
+    ROUND(AVG(order_totals.OrderTotal), 2) AS AvgOrderValue
+FROM Employees e
+JOIN Orders o ON e.EmployeeID = o.EmployeeID
+JOIN (
+    SELECT OrderID, SUM(Quantity * UnitPrice) AS OrderTotal
+    FROM [Order Details]
+    GROUP BY OrderID
+) order_totals ON o.OrderID = order_totals.OrderID
+GROUP BY e.EmployeeID, e.FirstName, e.LastName
+ORDER BY AvgOrderValue DESC;
+```
+
+## Conditional Aggregation
+
+```sql
+-- Count orders by status in columns
+SELECT
+    CustomerID,
+    COUNT(*) AS TotalOrders,
+    SUM(CASE WHEN ShippedDate IS NOT NULL THEN 1 ELSE 0 END) AS ShippedOrders,
+    SUM(CASE WHEN ShippedDate IS NULL THEN 1 ELSE 0 END) AS PendingOrders
+FROM Orders
+GROUP BY CustomerID;
+
+-- Pivot-like aggregation
+SELECT
+    YEAR(OrderDate) AS OrderYear,
+    SUM(CASE WHEN MONTH(OrderDate) = 1 THEN Freight ELSE 0 END) AS Jan,
+    SUM(CASE WHEN MONTH(OrderDate) = 2 THEN Freight ELSE 0 END) AS Feb,
+    SUM(CASE WHEN MONTH(OrderDate) = 3 THEN Freight ELSE 0 END) AS Mar,
+    SUM(Freight) AS Total
+FROM Orders
+GROUP BY YEAR(OrderDate);
+```
+
+## Aggregate with DISTINCT
+
+```sql
+-- Count unique customers per country
+SELECT
+    Country,
+    COUNT(CustomerID) AS TotalCustomers,
+    COUNT(DISTINCT City) AS UniqueCities
+FROM Customers
+GROUP BY Country
+ORDER BY TotalCustomers DESC;
+```
+
+<ProgressCheckpoint section="avg-min-max" xpReward={55} />

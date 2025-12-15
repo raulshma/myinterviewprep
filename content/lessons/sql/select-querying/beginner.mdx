@@ -1,0 +1,91 @@
+# SELECT: Reading Data from Tables
+
+The SELECT statement is your window into the database. Let's learn how to ask for data!
+
+## 🔍 Your First Query
+
+```sql
+SELECT * FROM customers;
+```
+
+This says: "Show me **everything** from the **customers** table"
+
+| Symbol      | Meaning            |
+| ----------- | ------------------ |
+| `SELECT`    | I want to see...   |
+| `*`         | ...all columns     |
+| `FROM`      | ...from this table |
+| `customers` | the table name     |
+
+## 📊 Choosing Specific Columns
+
+Instead of `*` (everything), list the columns you want:
+
+```sql
+SELECT first_name, last_name, email
+FROM customers;
+```
+
+**Result:**
+| first_name | last_name | email |
+|------------|-----------|-------|
+| Alice | Smith | alice@email.com |
+| Bob | Jones | bob@email.com |
+
+## ✨ Renaming Columns with AS
+
+Make your results clearer with aliases:
+
+```sql
+SELECT
+    first_name AS "First Name",
+    last_name AS "Last Name",
+    email AS "Email Address"
+FROM customers;
+```
+
+## ➕ Calculated Columns
+
+Do math in your query!
+
+```sql
+SELECT
+    product_name,
+    price,
+    price * 0.9 AS sale_price  -- 10% discount
+FROM products;
+```
+
+**Result:**
+| product_name | price | sale_price |
+|--------------|-------|------------|
+| Widget | 100.00 | 90.00 |
+| Gadget | 50.00 | 45.00 |
+
+## 🎯 Quick Tips
+
+1. **Always name your columns** - easier to read than \*
+2. **Use AS for clarity** - rename confusing columns
+3. **Order matters** - columns appear in the order you list them
+
+```sql
+-- Shows: name first, then price
+SELECT product_name, price FROM products;
+
+-- Shows: price first, then name
+SELECT price, product_name FROM products;
+```
+
+## 🔄 DISTINCT - Removing Duplicates
+
+See only unique values:
+
+```sql
+-- Shows all cities (might repeat)
+SELECT city FROM customers;
+
+-- Shows each city only once
+SELECT DISTINCT city FROM customers;
+```
+
+<ProgressCheckpoint section="select-basics" xpReward={25} />

@@ -1,0 +1,97 @@
+# AVG, MIN, MAX: Finding Averages and Extremes
+
+Calculate averages and find the highest and lowest values!
+
+## 📊 The Three Functions
+
+| Function | What It Does      | Example             |
+| -------- | ----------------- | ------------------- |
+| `AVG()`  | Calculate average | Average order value |
+| `MIN()`  | Find smallest     | Cheapest product    |
+| `MAX()`  | Find largest      | Highest salary      |
+
+## 📝 Basic Examples
+
+```sql
+-- Average order value
+SELECT AVG(total) AS average_order FROM orders;
+
+-- Cheapest and most expensive products
+SELECT
+    MIN(price) AS cheapest,
+    MAX(price) AS most_expensive
+FROM products;
+```
+
+## 🎯 All Together
+
+```sql
+SELECT
+    COUNT(*) AS total_products,
+    AVG(price) AS average_price,
+    MIN(price) AS cheapest,
+    MAX(price) AS most_expensive,
+    SUM(price) AS total_value
+FROM products;
+```
+
+## 📊 With GROUP BY
+
+```sql
+-- Stats by category
+SELECT
+    category,
+    COUNT(*) AS product_count,
+    AVG(price) AS avg_price,
+    MIN(price) AS min_price,
+    MAX(price) AS max_price
+FROM products
+GROUP BY category;
+```
+
+## 💡 MIN/MAX with Text
+
+MIN and MAX work on strings too (alphabetical):
+
+```sql
+SELECT
+    MIN(name) AS first_alphabetically,
+    MAX(name) AS last_alphabetically
+FROM customers;
+-- First: "Aaron", Last: "Zoe"
+```
+
+## 📅 MIN/MAX with Dates
+
+```sql
+SELECT
+    MIN(order_date) AS first_order,
+    MAX(order_date) AS latest_order
+FROM orders;
+```
+
+## ⚠️ NULL Handling
+
+AVG, MIN, and MAX ignore NULL values:
+
+```sql
+-- Values: 10, 20, NULL, 40
+SELECT AVG(score) FROM tests;  -- Returns 23.33 (not 17.5!)
+-- (10 + 20 + 40) / 3 = 23.33
+```
+
+## 🌟 Quick Reference
+
+```sql
+-- Employee salary stats
+SELECT
+    department,
+    COUNT(*) AS employees,
+    AVG(salary) AS avg_salary,
+    MIN(salary) AS lowest_salary,
+    MAX(salary) AS highest_salary
+FROM employees
+GROUP BY department;
+```
+
+<ProgressCheckpoint section="avg-min-max-basics" xpReward={25} />

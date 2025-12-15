@@ -1,0 +1,74 @@
+# Optimizing JOIN Operations
+
+Write JOINs that perform well!
+
+## 🎯 The Basics of Fast JOINs
+
+JOINs combine data from multiple tables. Key to performance:
+
+```sql
+-- FAST: Join on indexed columns
+SELECT o.*, c.name
+FROM orders o
+JOIN customers c ON o.customer_id = c.id;
+-- customer_id should be indexed!
+```
+
+## 📋 Ensure Indexes on JOIN Columns
+
+```sql
+-- Foreign key columns need indexes
+CREATE INDEX IX_orders_customer ON orders(customer_id);
+CREATE INDEX IX_order_items_order ON order_items(order_id);
+
+-- Now JOINs are fast!
+SELECT * FROM orders o
+JOIN order_items i ON o.id = i.order_id;
+```
+
+## 📊 Data Type Matching
+
+```sql
+-- BAD: Mismatched types cause conversions
+SELECT * FROM orders o
+JOIN customers c ON o.customer_id = CAST(c.id AS VARCHAR);
+-- Prevents index use!
+
+-- GOOD: Same types
+SELECT * FROM orders o
+JOIN customers c ON o.customer_id = c.id;
+```
+
+## 🚫 Avoid Functions in JOIN
+
+```sql
+-- BAD: Function prevents index use
+SELECT * FROM orders o
+JOIN customers c ON LOWER(o.customer_code) = LOWER(c.code);
+
+-- GOOD: Pre-normalize data
+-- Store lowercased values, then join directly
+```
+
+## ✅ JOIN Best Practices
+
+| Do                  | Don't                     |
+| ------------------- | ------------------------- |
+| Index JOIN columns  | Join on unindexed columns |
+| Match data types    | Mix VARCHAR with INT      |
+| Use explicit JOINs  | Use old comma syntax      |
+| Join on few columns | Join on many columns      |
+
+## 💡 Select Only Needed Columns
+
+```sql
+-- BAD: SELECT * retrieves everything
+SELECT * FROM orders o JOIN customers c ON o.customer_id = c.id;
+
+-- GOOD: Select only what you need
+SELECT o.id, o.total, c.name FROM orders o JOIN customers c ON o.customer_id = c.id;
+```
+
+<QueryOptimizer mode="beginner" />
+
+<ProgressCheckpoint section="optimizing-joins-basics" xpReward={25} />

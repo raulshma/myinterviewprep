@@ -1,0 +1,114 @@
+# SAVEPOINT: Practical Patterns
+
+Real-world savepoint usage for complex operations.
+
+## Batch Processing with Recovery
+
+```sql
+BEGIN TRANSACTION;
+    DECLARE @batch INT = 1;
+
+    WHILE @batch <= 10
+    BEGIN
+        SAVE TRANSACTION batch_start;
+
+        BEGIN TRY
+            -- Process batch
+            UPDATE records SET processed = 1
+            WHERE batch_id = @batch;
+
+            IF @@ROWCOUNT = 0
+                THROW 50001, 'No records in batch', 1;
+        END TRY
+        BEGIN CATCH
+            ROLLBACK TRANSACTION batch_start;
+            -- Log failed batch, continue with next
+            INSERT INTO failed_batches VALUES (@batch, ERROR_MESSAGE());
+        END CATCH;
+
+        SET @batch = @batch + 1;
+    END;
+COMMIT;
+```
+
+## Optional Operation Pattern
+
+```sql
+BEGIN TRANSACTION;
+    -- Required: Create order
+    INSERT INTO orders (customer_id, total) VALUES (@cust, @total);
+    SET @order_id = SCOPE_IDENTITY();
+
+    -- Optional: Apply discount
+    SAVE TRANSACTION before_discount;
+    BEGIN TRY
+        EXEC usp_apply_discount @order_id;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION before_discount;
+        -- Order created, discount failed (acceptable)
+    END CATCH;
+
+    -- Optional: Send notification
+    SAVE TRANSACTION before_notify;
+    BEGIN TRY
+        EXEC usp_send_notification @order_id;
+    END TRY
+    BEGIN CATCH
+        ROLLBACK TRANSACTION before_notify;
+        -- Order created, notification failed (acceptable)
+    END CATCH;
+
+COMMIT;
+```
+
+## Multiple Savepoints
+
+```sql
+BEGIN TRANSACTION;
+    SAVEPOINT sp1;
+    INSERT INTO t1 VALUES (1);
+
+    SAVEPOINT sp2;
+    INSERT INTO t2 VALUES (2);
+
+    SAVEPOINT sp3;
+    INSERT INTO t3 VALUES (3);
+
+    -- Can rollback to any savepoint
+    ROLLBACK TO sp2;  -- t3 insert undone
+
+    -- Note: sp3 is gone after rolling back past it
+    -- ROLLBACK TO sp3;  -- Error! sp3 no longer exists
+
+COMMIT;  -- t1, t2 committed
+```
+
+## Savepoint Naming
+
+```sql
+-- Use descriptive names
+SAVE TRANSACTION before_customer_update;
+SAVE TRANSACTION after_validation;
+SAVE TRANSACTION pre_notification;
+
+-- Or timestamp-based for logging
+DECLARE @sp_name NVARCHAR(50) = 'sp_' + REPLACE(CONVERT(VARCHAR, GETDATE(), 114), ':', '');
+SAVE TRANSACTION @sp_name;
+```
+
+## Release Savepoint (PostgreSQL)
+
+```sql
+BEGIN;
+    SAVEPOINT sp1;
+    INSERT INTO t VALUES (1);
+
+    -- Savepoint no longer needed
+    RELEASE SAVEPOINT sp1;
+
+    -- Can't rollback to sp1 anymore
+COMMIT;
+```
+
+<ProgressCheckpoint section="savepoint-patterns" xpReward={30} />

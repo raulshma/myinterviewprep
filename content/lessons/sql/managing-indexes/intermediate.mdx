@@ -1,0 +1,87 @@
+# Managing Indexes: Practical Patterns
+
+Real-world index creation and management.
+
+## Composite Indexes
+
+```sql
+-- Index on multiple columns
+CREATE INDEX IX_orders_cust_date ON orders(customer_id, order_date);
+
+-- Order matters!
+-- Good for: WHERE customer_id = X
+-- Good for: WHERE customer_id = X AND order_date = Y
+-- Bad for: WHERE order_date = Y (alone)
+```
+
+## Covering Indexes
+
+```sql
+-- Include columns for index-only queries
+CREATE INDEX IX_orders_covering ON orders(customer_id)
+INCLUDE (order_date, total, status);
+
+-- This query never reads the table!
+SELECT order_date, total, status
+FROM orders
+WHERE customer_id = 123;
+```
+
+## Filtered Indexes
+
+```sql
+-- SQL Server: Index subset of rows
+CREATE INDEX IX_active_orders ON orders(customer_id)
+WHERE status = 'active';
+
+-- Much smaller index, faster for active orders
+SELECT * FROM orders WHERE status = 'active' AND customer_id = 123;
+
+-- PostgreSQL: Partial index
+CREATE INDEX IX_active ON orders(customer_id) WHERE status = 'active';
+```
+
+## Index Management
+
+```sql
+-- Rebuild fragmented index
+ALTER INDEX IX_orders_customer ON orders REBUILD;
+
+-- Reorganize (lighter operation)
+ALTER INDEX IX_orders_customer ON orders REORGANIZE;
+
+-- Check fragmentation
+SELECT * FROM sys.dm_db_index_physical_stats(
+    DB_ID(), OBJECT_ID('orders'), NULL, NULL, 'LIMITED'
+);
+```
+
+## Viewing Existing Indexes
+
+```sql
+-- SQL Server
+SELECT i.name, c.name AS column_name, i.type_desc
+FROM sys.indexes i
+JOIN sys.index_columns ic ON i.index_id = ic.index_id AND i.object_id = ic.object_id
+JOIN sys.columns c ON ic.column_id = c.column_id AND ic.object_id = c.object_id
+WHERE i.object_id = OBJECT_ID('orders');
+
+-- PostgreSQL
+SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'orders';
+```
+
+## Disable/Enable Indexes
+
+```sql
+-- Disable for bulk operations
+ALTER INDEX IX_orders_customer ON orders DISABLE;
+
+-- Bulk insert...
+
+-- Re-enable
+ALTER INDEX IX_orders_customer ON orders REBUILD;
+```
+
+<IndexVisualizer mode="intermediate" />
+
+<ProgressCheckpoint section="managing-indexes-practical" xpReward={45} />

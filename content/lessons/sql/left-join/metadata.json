@@ -1,0 +1,15 @@
+{
+  "id": "left-join",
+  "title": "LEFT JOIN",
+  "description": "Keep all rows from the left table, match from right.",
+  "milestone": "join-queries",
+  "order": 2,
+  "sections": ["left-basics", "null-handling", "patterns"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["inner-join"],
+  "tags": ["sql", "join", "left-join", "outer-join"]
+}

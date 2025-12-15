@@ -1,0 +1,15 @@
+{
+  "id": "dynamic-sql",
+  "title": "Dynamic SQL",
+  "description": "Build and execute SQL at runtime.",
+  "milestone": "advanced-sql",
+  "order": 7,
+  "sections": ["basics", "security", "patterns"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
+    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
+    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+  },
+  "prerequisites": ["pivot-unpivot"],
+  "tags": ["sql", "advanced", "dynamic", "runtime"]
+}

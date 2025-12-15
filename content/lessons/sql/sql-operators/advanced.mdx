@@ -1,0 +1,163 @@
+# SQL Operators: Advanced Techniques
+
+Explore advanced operator usage, optimization, and vendor-specific features.
+
+## Three-Valued Logic (NULL Handling)
+
+SQL uses **three-valued logic**: TRUE, FALSE, and UNKNOWN.
+
+| Expression        | Result  |
+| ----------------- | ------- |
+| TRUE AND UNKNOWN  | UNKNOWN |
+| FALSE AND UNKNOWN | FALSE   |
+| TRUE OR UNKNOWN   | TRUE    |
+| FALSE OR UNKNOWN  | UNKNOWN |
+| NOT UNKNOWN       | UNKNOWN |
+
+```sql
+-- Gotcha: NULL comparisons in WHERE
+WHERE column = NULL     -- Never matches!
+WHERE column <> NULL    -- Never matches!
+
+-- Common mistake: filtering nulls with NOT IN
+WHERE id NOT IN (SELECT id FROM t WHERE id IS NOT NULL)
+-- If subquery returns NULL, result set is empty!
+
+-- Solution: Use NOT EXISTS or filter NULLs
+WHERE NOT EXISTS (SELECT 1 FROM t WHERE t.id = main.id)
+```
+
+## Operator Precedence Complete
+
+| Priority    | Operators                             |
+| ----------- | ------------------------------------- |
+| 1 (highest) | `~` (bitwise NOT)                     |
+| 2           | `*`, `/`, `%`                         |
+| 3           | `+`, `-`                              |
+| 4           | `=`, `>`, `<`, `>=`, `<=`, `<>`, `!=` |
+| 5           | `NOT`                                 |
+| 6           | `AND`                                 |
+| 7 (lowest)  | `OR`                                  |
+
+## Advanced Pattern Matching
+
+### Regular Expressions
+
+```sql
+-- PostgreSQL
+WHERE email ~ '^[a-z]+@'
+WHERE email !~ 'spam'
+WHERE email ~* 'PATTERN'  -- Case insensitive
+
+-- MySQL
+WHERE email REGEXP '^[a-z]+@'
+WHERE email RLIKE 'pattern'
+
+-- SQL Server (via LIKE or CLR)
+WHERE email LIKE '%[0-9]%'  -- Limited pattern support
+-- Full regex requires CLR functions
+```
+
+### SIMILAR TO (PostgreSQL)
+
+```sql
+-- SQL standard regex-like syntax
+WHERE name SIMILAR TO '(John|Jane)%'
+WHERE name SIMILAR TO '[A-Z][a-z]{2,}'
+```
+
+## Optimization Considerations
+
+### SARGable vs Non-SARGable
+
+**SARGable** (Search ARGument ABLE) = Can use index
+
+```sql
+-- SARGable (uses index)
+WHERE created_date >= '2024-01-01'
+WHERE name LIKE 'A%'
+WHERE id IN (1, 2, 3)
+
+-- Non-SARGable (no index)
+WHERE YEAR(created_date) = 2024
+WHERE name LIKE '%smith'
+WHERE id + 0 = 5
+WHERE UPPER(name) = 'JOHN'
+```
+
+### Operator Performance
+
+```sql
+-- Slow: Function on column
+WHERE DATEPART(YEAR, order_date) = 2024
+
+-- Fast: Range comparison
+WHERE order_date >= '2024-01-01'
+  AND order_date < '2025-01-01'
+
+-- Slow: OR can prevent index merge
+WHERE column1 = 'a' OR column2 = 'b'
+
+-- Consider: UNION for separate index scans
+SELECT * FROM t WHERE column1 = 'a'
+UNION ALL
+SELECT * FROM t WHERE column2 = 'b' AND column1 <> 'a'
+```
+
+## Vendor-Specific Operators
+
+### PostgreSQL
+
+```sql
+-- JSONB operators
+WHERE data @> '{"key": "value"}'  -- Contains
+WHERE data ? 'key'                 -- Has key
+WHERE data ->> 'key' = 'value'    -- Get as text
+
+-- Array operators
+WHERE tags @> ARRAY['sql']        -- Contains
+WHERE tags && ARRAY['sql', 'db']  -- Overlaps
+WHERE 'sql' = ANY(tags)           -- Element in array
+
+-- Range operators
+WHERE daterange @> '2024-01-15'::date  -- Contains date
+```
+
+### SQL Server
+
+```sql
+-- APPLY operator (like correlated subquery)
+SELECT * FROM customers
+CROSS APPLY (
+    SELECT TOP 3 * FROM orders
+    WHERE orders.customer_id = customers.id
+    ORDER BY order_date DESC
+) recent_orders;
+
+-- String operators
+WHERE name COLLATE Latin1_General_BIN = 'John'  -- Binary comparison
+```
+
+### MySQL
+
+```sql
+-- NULL-safe equality
+WHERE column <=> NULL  -- TRUE if column IS NULL
+
+-- Regexp mode
+WHERE name REGEXP BINARY '^[A-Z]'  -- Case-sensitive
+```
+
+## Boolean Expression Optimization
+
+```sql
+-- De Morgan's Laws for query rewriting
+NOT (A AND B) = (NOT A) OR (NOT B)
+NOT (A OR B) = (NOT A) AND (NOT B)
+
+-- Example: These are equivalent
+WHERE NOT (status = 'draft' AND visible = 1)
+WHERE status <> 'draft' OR visible <> 1
+```
+
+<ProgressCheckpoint section="advanced-operators" xpReward={50} />

@@ -1,0 +1,104 @@
+# SQL Statements: The Four Basic Operations
+
+Learn CRUD - the four things you can do with data!
+
+## 🔄 What is CRUD?
+
+| Letter | Action | SQL Statement |
+| ------ | ------ | ------------- |
+| **C**  | Create | `INSERT`      |
+| **R**  | Read   | `SELECT`      |
+| **U**  | Update | `UPDATE`      |
+| **D**  | Delete | `DELETE`      |
+
+## 📖 SELECT - Reading Data
+
+The most common SQL statement - get data from tables!
+
+```sql
+-- Get everything
+SELECT * FROM customers;
+
+-- Get specific columns
+SELECT name, email FROM customers;
+
+-- Get filtered results
+SELECT name, email
+FROM customers
+WHERE city = 'New York';
+```
+
+## ➕ INSERT - Adding Data
+
+Add new rows to a table:
+
+```sql
+-- Insert one row
+INSERT INTO customers (name, email, city)
+VALUES ('Alice', 'alice@email.com', 'Boston');
+
+-- Insert multiple rows
+INSERT INTO customers (name, email, city)
+VALUES
+    ('Bob', 'bob@email.com', 'Chicago'),
+    ('Carol', 'carol@email.com', 'Miami');
+```
+
+## ✏️ UPDATE - Changing Data
+
+Modify existing rows:
+
+```sql
+-- Update one column
+UPDATE customers
+SET city = 'Los Angeles'
+WHERE name = 'Alice';
+
+-- Update multiple columns
+UPDATE customers
+SET email = 'newemail@email.com',
+    city = 'Seattle'
+WHERE name = 'Bob';
+```
+
+> ⚠️ **Always use WHERE!** Without it, you'll update ALL rows!
+
+## 🗑️ DELETE - Removing Data
+
+Remove rows from a table:
+
+```sql
+-- Delete specific rows
+DELETE FROM customers
+WHERE name = 'Carol';
+
+-- Delete all rows (careful!)
+DELETE FROM customers;  -- Empties the whole table!
+```
+
+> ⚠️ **Always use WHERE!** Without it, you'll delete everything!
+
+## 📝 Quick Reference
+
+```sql
+-- READ (get data)
+SELECT columns FROM table WHERE condition;
+
+-- CREATE (add data)
+INSERT INTO table (columns) VALUES (values);
+
+-- UPDATE (change data)
+UPDATE table SET column = value WHERE condition;
+
+-- DELETE (remove data)
+DELETE FROM table WHERE condition;
+```
+
+## 🎯 Remember!
+
+1. **SELECT** = "Show me..."
+2. **INSERT** = "Add this..."
+3. **UPDATE** = "Change this..."
+4. **DELETE** = "Remove this..."
+
+<ProgressCheckpoint section="sql-statements" xpReward={25} />

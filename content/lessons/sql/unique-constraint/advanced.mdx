@@ -1,0 +1,132 @@
+# Unique Constraints: Enterprise Patterns
+
+Advanced unique constraint patterns for complex business requirements.
+
+## Soft Delete and Uniqueness
+
+```sql
+-- Problem: Deleted users block new registrations
+CREATE TABLE users (
+    id INT PRIMARY KEY,
+    email VARCHAR(100) UNIQUE,
+    is_deleted BIT DEFAULT 0
+);
+
+-- Can't reuse alice@email.com even after soft delete
+
+-- Solution: Filtered unique index
+DROP INDEX IF EXISTS UQ_users_email;
+CREATE UNIQUE INDEX UQ_active_email ON users(email) WHERE is_deleted = 0;
+
+-- Alternative: Include deleted_at in uniqueness
+ALTER TABLE users ADD deleted_at DATETIME NULL;
+ALTER TABLE users ADD CONSTRAINT UQ_email_deleted UNIQUE (email, deleted_at);
+-- Active: (alice@email.com, NULL), Deleted: (alice@email.com, 2024-01-01)
+```
+
+## Multi-Tenant Uniqueness
+
+```sql
+-- Email unique within each tenant, not globally
+CREATE TABLE tenant_users (
+    id INT PRIMARY KEY,
+    tenant_id INT NOT NULL,
+    email VARCHAR(100) NOT NULL,
+
+    CONSTRAINT UQ_tenant_email UNIQUE (tenant_id, email)
+);
+
+-- OK: Same email in different tenants
+INSERT INTO tenant_users VALUES (1, 1, 'admin@email.com');
+INSERT INTO tenant_users VALUES (2, 2, 'admin@email.com');
+
+-- ERROR: Duplicate in same tenant
+INSERT INTO tenant_users VALUES (3, 1, 'admin@email.com');
+```
+
+## Performance Optimization
+
+```sql
+-- Unique constraint creates unique index
+-- Include additional columns to cover queries
+
+-- SQL Server: Unique with included columns
+CREATE UNIQUE INDEX UQ_users_email ON users(email) INCLUDE (name, status);
+
+-- Now this query uses only the index:
+SELECT name, status FROM users WHERE email = 'test@email.com';
+```
+
+## Deferrable Unique (PostgreSQL)
+
+```sql
+-- Check at commit, not immediately
+CREATE TABLE t (
+    id INT PRIMARY KEY,
+    value INT UNIQUE DEFERRABLE INITIALLY DEFERRED
+);
+
+BEGIN;
+-- Temporarily allows duplicates within transaction
+UPDATE t SET value = value + 1;  -- Might create temp duplicates
+COMMIT;  -- Checks uniqueness here
+```
+
+## Alternative: Application-Level Uniqueness
+
+```sql
+-- When database constraints aren't sufficient
+-- Use combination of:
+
+-- 1. Advisory lock
+SELECT pg_advisory_lock(hashtext('user:' || email));
+-- Check and insert
+SELECT pg_advisory_unlock(hashtext('user:' || email));
+
+-- 2. Optimistic locking with version
+UPDATE users
+SET email = @new_email, version = version + 1
+WHERE id = @id AND version = @expected_version;
+
+-- 3. Separate lookup table
+CREATE TABLE email_registry (
+    email VARCHAR(100) PRIMARY KEY,
+    user_id INT UNIQUE NOT NULL REFERENCES users(id)
+);
+```
+
+## Handling Large Unique Indexes
+
+```sql
+-- Long columns in unique index
+-- Problem: Index key too large
+
+-- Solution 1: Hash column
+ALTER TABLE documents ADD content_hash BINARY(32);
+CREATE UNIQUE INDEX UQ_docs_hash ON documents(content_hash);
+
+-- Solution 2: Partial unique on prefix (where applicable)
+-- CREATE UNIQUE INDEX UQ_url ON pages(LEFT(url, 255));
+-- (Requires application awareness of limit)
+```
+
+## Monitoring Unique Constraints
+
+```sql
+-- SQL Server: Find all unique constraints
+SELECT
+    i.name AS constraint_name,
+    t.name AS table_name,
+    c.name AS column_name
+FROM sys.indexes i
+JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+JOIN sys.tables t ON i.object_id = t.object_id
+WHERE i.is_unique = 1 AND i.is_primary_key = 0;
+
+-- Check for constraint violations
+SELECT email, COUNT(*) FROM users
+GROUP BY email HAVING COUNT(*) > 1;
+```
+
+<ProgressCheckpoint section="unique-enterprise" xpReward={45} />

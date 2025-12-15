@@ -1,0 +1,167 @@
+# Advanced Transaction Control
+
+Let&apos;s explore SAVEPOINT, error handling, and transaction patterns with the Northwind database.
+
+## SAVEPOINT: Partial Rollbacks
+
+Instead of rolling back an entire transaction, you can create checkpoints:
+
+```sql
+BEGIN;
+
+-- Order from Northwind Customer
+INSERT INTO Orders (CustomerID, OrderDate, ShipCity)
+VALUES ('BLONP', CURRENT_DATE, 'Strasbourg');
+
+SAVEPOINT order_created;
+
+-- Try to add order details
+INSERT INTO OrderDetails (OrderID, ProductID, Quantity)
+VALUES (11078, 1, 100);  -- What if this fails?
+
+-- Oops! Not enough stock
+ROLLBACK TO order_created;  -- Order still exists!
+
+-- Try with a different product
+INSERT INTO OrderDetails (OrderID, ProductID, Quantity)
+VALUES (11078, 2, 5);
+
+COMMIT;  -- Order + corrected details saved
+```
+
+<TransactionSimulator mode="intermediate" />
+
+## Transaction Best Practices
+
+### 1. Keep Transactions Short
+
+```sql
+-- BAD: Long transaction blocks others
+BEGIN;
+SELECT * FROM Products;  -- User browses for 10 minutes!
+UPDATE Products SET UnitPrice = 20.00 WHERE ProductID = 1;
+COMMIT;
+
+-- GOOD: Only wrap the critical operations
+BEGIN;
+UPDATE Products SET UnitPrice = 20.00 WHERE ProductID = 1;
+COMMIT;
+```
+
+### 2. Avoid User Interaction Inside Transactions
+
+Transactions hold locks - don&apos;t make users wait!
+
+### 3. Handle Errors Properly
+
+```sql
+-- SQL Server example with TRY-CATCH
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+    UPDATE Products
+    SET UnitsInStock = UnitsInStock - 50
+    WHERE ProductID = 77;
+
+    -- This will fail if UnitsInStock goes negative (with CHECK constraint)
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION;
+    SELECT ERROR_MESSAGE() AS ErrorMessage;
+END CATCH;
+```
+
+## Northwind Order Processing Pattern
+
+Here&apos;s a complete order transaction with error handling:
+
+```sql
+BEGIN;
+
+-- Declare order ID variable
+DECLARE @NewOrderID INT;
+
+-- 1. Insert the order header
+INSERT INTO Orders (CustomerID, EmployeeID, OrderDate, ShipCountry)
+VALUES ('QUICK', 4, CURRENT_DATE, 'Germany');
+
+SET @NewOrderID = SCOPE_IDENTITY();
+SAVEPOINT after_order;
+
+-- 2. Add multiple order lines
+INSERT INTO [Order Details] (OrderID, ProductID, UnitPrice, Quantity)
+VALUES
+    (@NewOrderID, 11, 21.00, 10),
+    (@NewOrderID, 42, 14.00, 25),
+    (@NewOrderID, 72, 34.80, 5);
+
+SAVEPOINT after_details;
+
+-- 3. Update inventory for each product
+UPDATE Products SET UnitsInStock = UnitsInStock - 10 WHERE ProductID = 11;
+UPDATE Products SET UnitsInStock = UnitsInStock - 25 WHERE ProductID = 42;
+UPDATE Products SET UnitsInStock = UnitsInStock - 5 WHERE ProductID = 72;
+
+-- 4. Check for negative inventory (business rule)
+IF EXISTS (SELECT 1 FROM Products WHERE UnitsInStock < 0)
+BEGIN
+    ROLLBACK TO after_order;
+    PRINT 'Insufficient stock - order details cancelled';
+END
+ELSE
+BEGIN
+    COMMIT;
+    PRINT 'Order completed successfully!';
+END
+```
+
+## Nested Transactions
+
+Most databases don&apos;t truly support nested transactions. What happens:
+
+```sql
+BEGIN;              -- Transaction counter = 1
+    BEGIN;          -- Counter = 2 (nested)
+        UPDATE Products SET UnitPrice = 20 WHERE ProductID = 1;
+    COMMIT;         -- Counter = 1 (no actual commit!)
+
+    ROLLBACK;       -- Counter = 0 - EVERYTHING is rolled back!
+```
+
+> **Important:** Inner COMMIT doesn&apos;t save anything. The outer ROLLBACK still undoes everything.
+
+## Implicit vs Explicit Transactions
+
+```sql
+-- IMPLICIT: Each statement is its own transaction
+UPDATE Products SET UnitPrice = 25 WHERE ProductID = 1;
+-- Automatically committed if successful
+
+-- EXPLICIT: You control transaction boundaries
+BEGIN;
+UPDATE Products SET UnitPrice = 25 WHERE ProductID = 1;
+UPDATE Products SET UnitPrice = 30 WHERE ProductID = 2;
+COMMIT;
+```
+
+## Deadlock Prevention
+
+Two transactions waiting for each other = deadlock!
+
+```sql
+-- Transaction 1                    -- Transaction 2
+BEGIN;                              BEGIN;
+UPDATE Products SET... WHERE ID=1;  UPDATE Products SET... WHERE ID=2;
+UPDATE Products SET... WHERE ID=2;  UPDATE Products SET... WHERE ID=1;
+-- Waiting for T2...                -- Waiting for T1... DEADLOCK!
+```
+
+**Solutions:**
+
+- Always lock tables in the same order
+- Keep transactions short
+- Use appropriate isolation levels
+
+<ProgressCheckpoint section="rollback-savepoint" xpReward={55} />

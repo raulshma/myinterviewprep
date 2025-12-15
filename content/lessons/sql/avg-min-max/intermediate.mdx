@@ -1,0 +1,123 @@
+# AVG, MIN, MAX: Practical Applications
+
+Master these aggregates for real analytics scenarios.
+
+## Conditional Aggregates
+
+```sql
+SELECT
+    AVG(CASE WHEN status = 'completed' THEN total END) AS avg_completed,
+    AVG(CASE WHEN status = 'pending' THEN total END) AS avg_pending,
+    MIN(CASE WHEN category = 'Premium' THEN price END) AS min_premium,
+    MAX(CASE WHEN category = 'Budget' THEN price END) AS max_budget
+FROM orders o
+JOIN products p ON o.product_id = p.id;
+```
+
+## Finding Rows with MIN/MAX
+
+```sql
+-- Product with highest price (subquery)
+SELECT * FROM products
+WHERE price = (SELECT MAX(price) FROM products);
+
+-- Using TOP/LIMIT
+SELECT TOP 1 * FROM products ORDER BY price DESC;
+SELECT * FROM products ORDER BY price DESC LIMIT 1;
+
+-- Multiple per group with ROW_NUMBER
+SELECT * FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY category ORDER BY price DESC) AS rn
+    FROM products
+) ranked WHERE rn = 1;
+```
+
+## AVG Precision Control
+
+```sql
+-- Default: May have many decimals
+SELECT AVG(price) FROM products;  -- 45.7891234...
+
+-- Rounded
+SELECT ROUND(AVG(price), 2) AS avg_price FROM products;  -- 45.79
+
+-- Cast for precision
+SELECT CAST(AVG(price) AS DECIMAL(10,2)) AS avg_price FROM products;
+```
+
+## Moving Averages
+
+```sql
+-- 7-day moving average
+SELECT
+    order_date,
+    total,
+    AVG(total) OVER (
+        ORDER BY order_date
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+    ) AS ma_7day
+FROM daily_sales;
+
+-- YTD max
+SELECT
+    order_date,
+    total,
+    MAX(total) OVER (
+        ORDER BY order_date
+        ROWS UNBOUNDED PRECEDING
+    ) AS max_to_date
+FROM daily_sales;
+```
+
+## Weighted Average
+
+```sql
+-- Simple average treats all equally
+SELECT AVG(rating) FROM reviews;  -- 4.2
+
+-- Weighted by number of votes
+SELECT
+    SUM(rating * vote_count) / SUM(vote_count) AS weighted_avg
+FROM products;
+```
+
+## Median (No Built-in Function)
+
+```sql
+-- SQL Server
+SELECT
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price)
+        OVER () AS median_price
+FROM products;
+
+-- PostgreSQL
+SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY price) AS median
+FROM products;
+
+-- Cross-database approach
+SELECT AVG(price) AS median_price
+FROM (
+    SELECT price,
+           ROW_NUMBER() OVER (ORDER BY price) AS rn,
+           COUNT(*) OVER () AS cnt
+    FROM products
+) t
+WHERE rn IN (cnt/2, cnt/2 + 1, (cnt+1)/2);
+```
+
+## Multiple Statistics
+
+```sql
+SELECT
+    category,
+    COUNT(*) AS n,
+    MIN(price) AS min_val,
+    MAX(price) AS max_val,
+    AVG(price) AS mean,
+    MAX(price) - MIN(price) AS range,
+    STDEV(price) AS std_dev  -- Standard deviation
+FROM products
+GROUP BY category;
+```
+
+<ProgressCheckpoint section="avg-min-max-practical" xpReward={35} />

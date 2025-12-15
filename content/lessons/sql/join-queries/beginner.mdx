@@ -1,0 +1,113 @@
+# Understanding SQL JOINs
+
+JOINs are the magic that makes relational databases powerful. They let you combine data from multiple tables into one result!
+
+## 🤝 What is a JOIN?
+
+Imagine you have two lists:
+
+- **Employees**: Names and department IDs
+- **Departments**: Department IDs and names
+
+A JOIN combines these lists so you can see **which employee works in which department**.
+
+> **Think of it like:** Matching puzzle pieces - each piece (row) connects where the patterns (keys) match!
+
+## Try It Out!
+
+Use the interactive visualizer below to see how each type of JOIN works:
+
+<JoinVisualizer mode="beginner" />
+
+## The Four Main JOIN Types
+
+### 1. INNER JOIN 🎯
+
+**Returns only matching rows from both tables.**
+
+```sql
+SELECT employees.name, departments.name
+FROM employees
+INNER JOIN departments
+ON employees.dept_id = departments.id;
+```
+
+| Result              |
+| :------------------ |
+| Alice - Engineering |
+| Bob - Marketing     |
+
+_Employees without a department? Not included!_
+_Departments without employees? Not included!_
+
+---
+
+### 2. LEFT JOIN ⬅️
+
+**Returns ALL rows from the left table, plus matches from the right.**
+
+```sql
+SELECT employees.name, departments.name
+FROM employees
+LEFT JOIN departments
+ON employees.dept_id = departments.id;
+```
+
+| Result                                              |
+| :-------------------------------------------------- |
+| Alice - Engineering                                 |
+| Bob - Marketing                                     |
+| Charlie - NULL ← No department, but still included! |
+
+---
+
+### 3. RIGHT JOIN ➡️
+
+**Returns ALL rows from the right table, plus matches from the left.**
+
+```sql
+SELECT employees.name, departments.name
+FROM employees
+RIGHT JOIN departments
+ON employees.dept_id = departments.id;
+```
+
+| Result                                           |
+| :----------------------------------------------- |
+| Alice - Engineering                              |
+| Bob - Marketing                                  |
+| NULL - Sales ← No employees, but still included! |
+
+---
+
+### 4. FULL OUTER JOIN 🔄
+
+**Returns ALL rows from BOTH tables.**
+
+```sql
+SELECT employees.name, departments.name
+FROM employees
+FULL OUTER JOIN departments
+ON employees.dept_id = departments.id;
+```
+
+_Everyone is included - matched or not!_
+
+## Visual Memory Trick 🧠
+
+| JOIN Type  | What You Get                    |
+| :--------- | :------------------------------ |
+| INNER      | Only the matches (intersection) |
+| LEFT       | All from left + matches         |
+| RIGHT      | All from right + matches        |
+| FULL OUTER | Everything from both sides      |
+
+## Key Takeaways ✓
+
+1. **JOINs connect tables** using matching column values
+2. **INNER JOIN** = only matching rows
+3. **LEFT/RIGHT JOIN** = all from one side
+4. **NULL appears** when there&apos;s no match
+5. The **ON clause** specifies which columns to match
+
+<ProgressCheckpoint section="inner-join" xpReward={30} />

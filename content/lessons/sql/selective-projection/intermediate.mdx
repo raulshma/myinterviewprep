@@ -1,0 +1,93 @@
+# Selective Projection: Practical Patterns
+
+Real-world column selection strategies.
+
+## Covering Index Benefits
+
+```sql
+-- Index: IX_orders_customer INCLUDE (order_date, total)
+CREATE INDEX IX_orders_covering ON orders(customer_id) INCLUDE (order_date, total);
+
+-- Query reads ONLY from index (no table access)
+SELECT customer_id, order_date, total
+FROM orders
+WHERE customer_id = 123;
+
+-- Adding more columns forces table lookup
+SELECT customer_id, order_date, total, notes  -- notes not in index!
+FROM orders
+WHERE customer_id = 123;
+```
+
+## Large Object Columns
+
+```sql
+-- LOB columns (TEXT, BLOB, JSON) are expensive
+-- Table: documents (id, title, content_text, file_blob)
+
+-- BAD: Reads huge blob for each row
+SELECT * FROM documents WHERE category = 'reports';
+
+-- GOOD: Skip large columns
+SELECT id, title, created_at FROM documents WHERE category = 'reports';
+
+-- Only get blob when needed
+SELECT file_blob FROM documents WHERE id = 123;
+```
+
+## DISTINCT with Column Selection
+
+```sql
+-- DISTINCT performance depends on columns
+
+-- Fast: DISTINCT on few, small columns
+SELECT DISTINCT category_id, status FROM products;
+
+-- Slow: DISTINCT on many columns
+SELECT DISTINCT * FROM products;
+```
+
+## Views and Column Selection
+
+```sql
+-- View selecting specific columns
+CREATE VIEW vw_customer_summary AS
+SELECT id, name, email, status FROM customers;
+
+-- Query against view is efficient
+SELECT name, email FROM vw_customer_summary WHERE status = 'active';
+
+-- Avoid views with SELECT *
+CREATE VIEW vw_bad AS SELECT * FROM customers;  -- Fragile if table changes
+```
+
+## Computed Columns on Demand
+
+```sql
+-- Only compute expensive expressions when needed
+SELECT id, name, total
+FROM orders;  -- Fast
+
+-- Expensive calculation only when requested
+SELECT id, name, total,
+    (SELECT SUM(quantity * price) FROM order_items WHERE order_id = o.id) AS calculated_total
+FROM orders o
+WHERE id = 123;  -- Only for one order
+```
+
+## Column Aliasing for Clarity
+
+```sql
+-- When selecting specific columns, use clear aliases
+SELECT
+    c.id AS customer_id,
+    c.name AS customer_name,
+    o.id AS order_id,
+    o.total AS order_total
+FROM customers c
+JOIN orders o ON c.id = o.customer_id;
+```
+
+<QueryOptimizer mode="intermediate" />
+
+<ProgressCheckpoint section="projection-practical" xpReward={35} />

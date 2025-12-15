@@ -1,0 +1,97 @@
+# SAVEPOINT: Transaction Checkpoints
+
+Create restore points within a transaction for partial rollback!
+
+## 📍 What is a SAVEPOINT?
+
+A savepoint marks a point in a transaction you can rollback to:
+
+```sql
+BEGIN TRANSACTION;
+    INSERT INTO log VALUES ('Started');
+
+    SAVE TRANSACTION my_savepoint;  -- Create checkpoint
+
+    UPDATE accounts SET balance = 0;  -- Risky operation
+
+    ROLLBACK TRANSACTION my_savepoint;  -- Undo just the UPDATE
+
+COMMIT;  -- The INSERT is committed!
+```
+
+## 📝 Syntax
+
+```sql
+-- SQL Server
+SAVE TRANSACTION savepoint_name;
+ROLLBACK TRANSACTION savepoint_name;
+
+-- PostgreSQL / Standard SQL
+SAVEPOINT savepoint_name;
+ROLLBACK TO savepoint_name;
+```
+
+## 🎯 Why Use Savepoints?
+
+Without savepoints:
+
+```sql
+BEGIN TRANSACTION;
+    Step 1;  -- ✓ Success
+    Step 2;  -- ✓ Success
+    Step 3;  -- ✗ Fails
+ROLLBACK;    -- Undoes ALL steps!
+```
+
+With savepoints:
+
+```sql
+BEGIN TRANSACTION;
+    Step 1;
+    SAVE TRANSACTION after_step1;
+    Step 2;
+    SAVE TRANSACTION after_step2;
+    Step 3;  -- Fails!
+    ROLLBACK TRANSACTION after_step2;  -- Only undo Step 3
+COMMIT;  -- Steps 1 and 2 saved!
+```
+
+## 📊 Visual Example
+
+```
+BEGIN TRANSACTION
+    ↓
+[ INSERT log ]
+    ↓
+SAVEPOINT sp1  <--- Can return here
+    ↓
+[ UPDATE data ]
+    ↓
+SAVEPOINT sp2  <--- Or here
+    ↓
+[ DELETE old ]  --- Error!
+    ↓
+ROLLBACK TO sp2 --- Back to sp2
+    ↓
+COMMIT --- INSERT and UPDATE saved!
+```
+
+## 💡 Simple Example
+
+```sql
+BEGIN TRANSACTION;
+    INSERT INTO orders (customer_id) VALUES (1);
+
+    SAVE TRANSACTION before_items;
+
+    INSERT INTO order_items VALUES (1, 'A');
+    INSERT INTO order_items VALUES (1, 'B');
+    INSERT INTO order_items VALUES (1, 'C');  -- Fails!
+
+    ROLLBACK TRANSACTION before_items;  -- Undo items only
+
+    -- Order exists, no items
+COMMIT;
+```
+
+<ProgressCheckpoint section="savepoint-basics" xpReward={20} />

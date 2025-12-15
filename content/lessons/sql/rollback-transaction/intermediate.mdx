@@ -1,0 +1,112 @@
+# ROLLBACK: Error Handling Patterns
+
+Structured approaches to transaction error handling.
+
+## TRY/CATCH Pattern (SQL Server)
+
+```sql
+BEGIN TRY
+    BEGIN TRANSACTION;
+        UPDATE accounts SET balance = balance - 500 WHERE id = 1;
+        UPDATE accounts SET balance = balance + 500 WHERE id = 2;
+    COMMIT;
+    PRINT 'Transfer successful';
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK;
+
+    PRINT 'Error: ' + ERROR_MESSAGE();
+    -- Log error, re-throw, etc.
+END CATCH;
+```
+
+## PostgreSQL Exception Handling
+
+```sql
+DO $$
+BEGIN
+    BEGIN
+        UPDATE accounts SET balance = balance - 500 WHERE id = 1;
+        UPDATE accounts SET balance = balance + 500 WHERE id = 2;
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            RAISE NOTICE 'Error: %', SQLERRM;
+    END;
+END $$;
+```
+
+## Conditional Rollback
+
+```sql
+BEGIN TRANSACTION;
+    UPDATE inventory SET quantity = quantity - @order_qty WHERE product_id = @product;
+
+    -- Check if inventory went negative
+    IF EXISTS (SELECT 1 FROM inventory WHERE product_id = @product AND quantity < 0)
+    BEGIN
+        ROLLBACK;
+        RAISERROR('Insufficient inventory', 16, 1);
+        RETURN;
+    END;
+
+    INSERT INTO orders (product_id, quantity) VALUES (@product, @order_qty);
+COMMIT;
+```
+
+## Rollback with Logging
+
+```sql
+BEGIN TRY
+    BEGIN TRANSACTION;
+        -- Critical operation
+        DELETE FROM archive WHERE date < '2020-01-01';
+    COMMIT;
+END TRY
+BEGIN CATCH
+    DECLARE @error_msg NVARCHAR(4000) = ERROR_MESSAGE();
+
+    IF @@TRANCOUNT > 0 ROLLBACK;
+
+    -- Log error (outside transaction)
+    INSERT INTO error_log (message, occurred_at)
+    VALUES (@error_msg, GETDATE());
+
+    THROW;
+END CATCH;
+```
+
+## Automatic Rollback Scenarios
+
+```sql
+-- 1. Constraint violation
+BEGIN TRANSACTION;
+    INSERT INTO orders (customer_id) VALUES (99999);  -- FK violation
+    -- Transaction auto-aborted in some databases
+
+-- 2. Connection lost
+-- Uncommitted transactions roll back
+
+-- 3. Timeout
+SET LOCK_TIMEOUT 5000;
+-- Lock wait timeout = rollback
+
+-- 4. Deadlock victim
+-- Chosen victim transaction is rolled back
+```
+
+## Testing with Rollback
+
+```sql
+-- Preview changes without saving
+BEGIN TRANSACTION;
+    UPDATE prices SET amount = amount * 1.5;
+
+    -- View results
+    SELECT * FROM prices;
+
+ROLLBACK;  -- Always rollback in testing
+-- Original prices restored
+```
+
+<ProgressCheckpoint section="rollback-patterns" xpReward={30} />

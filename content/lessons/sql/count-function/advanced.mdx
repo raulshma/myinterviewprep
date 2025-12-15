@@ -1,0 +1,138 @@
+# COUNT Function: Advanced Techniques
+
+Enterprise patterns for high-performance counting.
+
+## Approximate COUNT
+
+```sql
+-- For huge tables, approximate is much faster
+
+-- SQL Server (on indexed tables)
+SELECT SUM(row_count) AS approximate_count
+FROM sys.dm_db_partition_stats
+WHERE object_id = OBJECT_ID('large_table')
+AND index_id < 2;
+
+-- PostgreSQL: Use statistics
+SELECT reltuples::BIGINT AS approximate_count
+FROM pg_class
+WHERE relname = 'large_table';
+
+-- HyperLogLog extensions for DISTINCT counts
+```
+
+## Window COUNT
+
+```sql
+-- Running count
+SELECT
+    order_date,
+    COUNT(*) OVER (ORDER BY order_date) AS running_count
+FROM orders;
+
+-- Count per partition
+SELECT
+    customer_id,
+    order_id,
+    COUNT(*) OVER (PARTITION BY customer_id) AS customer_order_count
+FROM orders;
+
+-- Rank by count
+SELECT
+    category,
+    COUNT(*) AS cnt,
+    RANK() OVER (ORDER BY COUNT(*) DESC) AS popularity_rank
+FROM products
+GROUP BY category;
+```
+
+## Count with FILTER (SQL:2003)
+
+```sql
+-- PostgreSQL: FILTER clause
+SELECT
+    COUNT(*) AS total,
+    COUNT(*) FILTER (WHERE status = 'active') AS active,
+    COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '30 days') AS recent
+FROM users;
+
+-- SQL Server: CASE expression
+SELECT
+    COUNT(*) AS total,
+    COUNT(CASE WHEN status = 'active' THEN 1 END) AS active
+FROM users;
+```
+
+## COUNT and GROUPING SETS
+
+```sql
+SELECT
+    COALESCE(region, 'All Regions') AS region,
+    COALESCE(category, 'All Categories') AS category,
+    COUNT(*) AS product_count
+FROM products
+GROUP BY GROUPING SETS (
+    (region, category),
+    (region),
+    (category),
+    ()
+);
+```
+
+## Performance Optimization
+
+```sql
+-- For COUNT with no WHERE, use statistics
+-- For COUNT with WHERE, ensure proper indexing
+
+-- Good: Indexed column filter
+SELECT COUNT(*) FROM orders WHERE status = 'pending';
+-- Create: CREATE INDEX IX_orders_status ON orders(status);
+
+-- For COUNT(column), covering index helps
+CREATE INDEX IX_orders_tracking ON orders(status) INCLUDE (tracking_number);
+-- This query becomes index-only:
+SELECT COUNT(tracking_number) FROM orders WHERE status = 'shipped';
+```
+
+## Counting Across Tables
+
+```sql
+-- Multiple table counts in one query
+SELECT
+    (SELECT COUNT(*) FROM customers) AS customer_count,
+    (SELECT COUNT(*) FROM orders) AS order_count,
+    (SELECT COUNT(*) FROM products) AS product_count;
+
+-- Using UNION ALL for different conditions
+SELECT 'active_customers' AS metric, COUNT(*) AS value FROM customers WHERE is_active = 1
+UNION ALL
+SELECT 'pending_orders', COUNT(*) FROM orders WHERE status = 'pending'
+UNION ALL
+SELECT 'low_stock_products', COUNT(*) FROM products WHERE stock < 10;
+```
+
+## Histogram/Distribution
+
+```sql
+-- Count distribution by range
+SELECT
+    CASE
+        WHEN price < 10 THEN 'Under $10'
+        WHEN price < 50 THEN '$10-$49'
+        WHEN price < 100 THEN '$50-$99'
+        ELSE '$100+'
+    END AS price_range,
+    COUNT(*) AS product_count
+FROM products
+GROUP BY
+    CASE
+        WHEN price < 10 THEN 'Under $10'
+        WHEN price < 50 THEN '$10-$49'
+        WHEN price < 100 THEN '$50-$99'
+        ELSE '$100+'
+    END
+ORDER BY MIN(price);
+```
+
+<ProgressCheckpoint section="count-advanced" xpReward={40} />

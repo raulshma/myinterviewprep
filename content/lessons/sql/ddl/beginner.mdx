@@ -1,0 +1,108 @@
+# Data Definition Language (DDL)
+
+DDL is about creating and modifying the **structure** of your database - the containers that hold your data.
+
+## 🏗️ DDL vs DML
+
+| DDL (Structure)            | DML (Data)                     |
+| :------------------------- | :----------------------------- |
+| CREATE, ALTER, DROP        | SELECT, INSERT, UPDATE, DELETE |
+| Defines tables and columns | Works with rows (records)      |
+| Changes the schema         | Changes the data               |
+
+> **Think of it like:** DDL builds the filing cabinet, DML fills it with documents!
+
+## CREATE TABLE
+
+Create a new table to store data:
+
+```sql
+-- Create a simple Suppliers table (like in Northwind)
+CREATE TABLE Suppliers (
+    SupplierID INT PRIMARY KEY,
+    CompanyName VARCHAR(100) NOT NULL,
+    ContactName VARCHAR(50),
+    Country VARCHAR(50),
+    Phone VARCHAR(24)
+);
+
+-- Create Products table with more options
+CREATE TABLE Products (
+    ProductID INT PRIMARY KEY IDENTITY(1,1),
+    ProductName VARCHAR(100) NOT NULL,
+    UnitPrice DECIMAL(10, 2) DEFAULT 0.00,
+    UnitsInStock INT DEFAULT 0,
+    Discontinued BIT DEFAULT 0,
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
+```
+
+### Common Data Types
+
+| Type         | Description                 | Example             |
+| :----------- | :-------------------------- | :------------------ |
+| INT          | Whole numbers               | 42, -100            |
+| VARCHAR(n)   | Variable text up to n chars | 'Hello World'       |
+| DECIMAL(p,s) | Precise numbers             | 19.99               |
+| DATE         | Date only                   | 2024-01-15          |
+| DATETIME     | Date and time               | 2024-01-15 14:30:00 |
+| BIT          | Boolean (0 or 1)            | 1 (true)            |
+
+## ALTER TABLE
+
+Modify an existing table:
+
+```sql
+-- Add a new column
+ALTER TABLE Customers
+ADD Email VARCHAR(255);
+
+-- Remove a column
+ALTER TABLE Customers
+DROP COLUMN Fax;
+
+-- Modify a column (change data type)
+ALTER TABLE Products
+ALTER COLUMN ProductName VARCHAR(200);
+```
+
+## DROP TABLE
+
+Delete a table completely:
+
+```sql
+-- Remove a table entirely
+DROP TABLE TempOrders;
+
+-- Safe drop (won't error if table doesn't exist)
+DROP TABLE IF EXISTS TempOrders;
+```
+
+> ⚠️ **Warning:** DROP TABLE deletes the table AND all its data permanently!
+
+## TRUNCATE TABLE
+
+Remove all rows quickly (keeps the table structure):
+
+```sql
+-- Empty the table but keep its structure
+TRUNCATE TABLE OrdersArchive;
+```
+
+**TRUNCATE vs DELETE:**
+| TRUNCATE | DELETE |
+|:---------|:-------|
+| Faster | Slower for large tables |
+| Resets identity counter | Keeps identity counter |
+| Cannot use WHERE | Can filter with WHERE |
+| Cannot rollback (usually) | Can rollback |
+
+## Key Takeaways ✓
+
+1. **CREATE TABLE** defines new tables with columns
+2. **ALTER TABLE** modifies existing table structure
+3. **DROP TABLE** permanently removes a table
+4. **TRUNCATE TABLE** empties a table quickly
+5. DDL changes are often **irreversible** - be careful!
+
+<ProgressCheckpoint section="create-table" xpReward={30} />

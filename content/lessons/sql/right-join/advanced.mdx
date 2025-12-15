@@ -1,0 +1,89 @@
+# RIGHT JOIN: Advanced Considerations
+
+Performance and edge cases for RIGHT JOIN.
+
+## Query Optimizer Behavior
+
+```sql
+-- Most optimizers treat as equivalent:
+SELECT * FROM a RIGHT JOIN b ON ...
+SELECT * FROM b LEFT JOIN a ON ...
+
+-- Check execution plans to verify
+SET STATISTICS PROFILE ON;
+-- Both should show same plan
+```
+
+## RIGHT JOIN with Aggregates
+
+```sql
+-- Count all items, including those with no sales
+SELECT
+    p.name,
+    COALESCE(SUM(s.quantity), 0) AS total_sold,
+    COALESCE(COUNT(s.id), 0) AS sale_count
+FROM sales s
+RIGHT JOIN products p ON s.product_id = p.id
+GROUP BY p.id, p.name;
+
+-- Equivalent to:
+SELECT
+    p.name,
+    COALESCE(SUM(s.quantity), 0) AS total_sold,
+    COALESCE(COUNT(s.id), 0) AS sale_count
+FROM products p
+LEFT JOIN sales s ON p.id = s.product_id
+GROUP BY p.id, p.name;
+```
+
+## RIGHT JOIN in UNION Queries
+
+```sql
+-- Simulate FULL OUTER JOIN without native support
+SELECT a.*, b.* FROM a LEFT JOIN b ON a.id = b.a_id
+UNION
+SELECT a.*, b.* FROM a RIGHT JOIN b ON a.id = b.a_id;
+```
+
+## Database-Specific Notes
+
+```sql
+-- MySQL: Supports RIGHT JOIN
+-- PostgreSQL: Supports RIGHT JOIN
+-- SQL Server: Supports RIGHT JOIN
+-- SQLite: Supports RIGHT JOIN (3.39.0+)
+-- Oracle: Supports RIGHT JOIN
+
+-- All major databases support RIGHT JOIN
+-- But LEFT JOIN is universally preferred for readability
+```
+
+## Performance Comparison
+
+```sql
+-- Generally, RIGHT JOIN has same performance as equivalent LEFT JOIN
+-- The optimizer rewrites internally
+
+-- Exception: Hints may behave differently
+SELECT * FROM a RIGHT LOOP JOIN b ON ...
+-- vs
+SELECT * FROM b LEFT LOOP JOIN a ON ...
+-- May have different behavior with specific hints
+```
+
+## Best Practice Summary
+
+```sql
+-- 1. Prefer LEFT JOIN (universally understood)
+-- 2. Use RIGHT JOIN only when:
+--    - Complex query makes reordering difficult
+--    - Maintaining existing code style
+--    - Specific edge cases
+
+-- 3. Document RIGHT JOIN usage
+-- Shows all products including those never ordered
+SELECT * FROM orders o
+RIGHT JOIN products p ON o.product_id = p.id;
+```
+
+<ProgressCheckpoint section="right-join-advanced" xpReward={40} />

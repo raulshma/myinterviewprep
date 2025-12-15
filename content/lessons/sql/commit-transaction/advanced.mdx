@@ -1,0 +1,96 @@
+# COMMIT: Advanced Internals
+
+Understand what happens under the hood during COMMIT.
+
+## Write-Ahead Logging (WAL)
+
+```sql
+-- COMMIT process:
+-- 1. Write commit record to transaction log (sequential write, fast)
+-- 2. Flush log to disk (fsync)
+-- 3. Return success to client
+-- 4. Later: Write data pages to disk (checkpoint)
+
+-- Data pages written lazily, but log is durable
+-- Recovery replays log to reconstruct committed transactions
+```
+
+## Commit Durability Options
+
+```sql
+-- SQL Server: Delayed durability (faster, less safe)
+ALTER DATABASE MyDB SET DELAYED_DURABILITY = ALLOWED;
+
+BEGIN TRANSACTION;
+    -- Operations
+COMMIT WITH (DELAYED_DURABILITY = ON);
+-- Returns before log flush - risk of data loss on crash
+
+-- Full durability (default, safest)
+COMMIT;  -- Waits for disk flush
+```
+
+## Commit Performance Factors
+
+```sql
+-- Log file performance critical for COMMIT
+-- Recommendations:
+-- 1. Separate disk for log file
+-- 2. Fast storage (SSD/NVMe)
+-- 3. Battery-backed write cache
+
+-- Check log write wait time
+SELECT wait_type, wait_time_ms
+FROM sys.dm_os_wait_stats
+WHERE wait_type = 'WRITELOG';
+```
+
+## Group Commit
+
+```sql
+-- Multiple transactions can share log flush
+-- Database automatically groups commits
+
+-- Transaction A: COMMIT (waits for flush)
+-- Transaction B: COMMIT (waits for flush)
+-- Database: Single flush for both!
+
+-- Improves throughput under high concurrency
+```
+
+## Commit in Nested Transactions
+
+```sql
+-- SQL Server behavior
+BEGIN TRANSACTION;  -- @@TRANCOUNT = 1
+    INSERT INTO t1 ...;
+
+    BEGIN TRANSACTION;  -- @@TRANCOUNT = 2 (savepoint internally)
+        INSERT INTO t2 ...;
+    COMMIT;  -- @@TRANCOUNT = 1, NOT actually committed!
+
+COMMIT;  -- @@TRANCOUNT = 0, NOW both inserts are committed
+
+-- Only outermost COMMIT actually persists changes
+```
+
+## Monitoring Commits
+
+```sql
+-- SQL Server: Transaction rate
+SELECT
+    cntr_value AS transactions_per_sec
+FROM sys.dm_os_performance_counters
+WHERE counter_name = 'Transactions/sec';
+
+-- Long-running uncommitted transactions
+SELECT
+    s.session_id,
+    t.transaction_begin_time,
+    DATEDIFF(MINUTE, t.transaction_begin_time, GETDATE()) AS minutes_open
+FROM sys.dm_tran_active_transactions t
+JOIN sys.dm_tran_session_transactions st ON t.transaction_id = st.transaction_id
+JOIN sys.dm_exec_sessions s ON st.session_id = s.session_id;
+```
+
+<ProgressCheckpoint section="commit-advanced" xpReward={35} />

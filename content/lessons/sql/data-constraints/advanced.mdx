@@ -1,0 +1,169 @@
+# Advanced Constraint Patterns
+
+Master complex validation, exclusion constraints, and constraint-based design.
+
+## Complex CHECK Constraints
+
+```sql
+-- Multi-column validation
+CREATE TABLE OrderDetails (
+    OrderID INT,
+    ProductID INT,
+    UnitPrice DECIMAL(10,2),
+    Quantity SMALLINT,
+    Discount DECIMAL(4,2),
+
+    CONSTRAINT CK_OrderDetails_Discount
+        CHECK (Discount >= 0 AND Discount <= 0.25),
+
+    CONSTRAINT CK_OrderDetails_Total
+        CHECK (UnitPrice * Quantity * (1 - Discount) > 0)
+);
+
+-- Conditional logic in CHECK
+CREATE TABLE Employees (
+    EmployeeID INT PRIMARY KEY,
+    HireDate DATE NOT NULL,
+    TerminationDate DATE,
+    Salary DECIMAL(10,2),
+
+    CONSTRAINT CK_Employees_Dates
+        CHECK (TerminationDate IS NULL OR TerminationDate > HireDate),
+
+    CONSTRAINT CK_Employees_Salary
+        CHECK (Salary BETWEEN 30000 AND 500000)
+);
+```
+
+## Exclusion Constraints (PostgreSQL)
+
+Prevent overlapping ranges:
+
+```sql
+-- Prevent overlapping room bookings
+CREATE TABLE room_bookings (
+    booking_id SERIAL PRIMARY KEY,
+    room_id INT,
+    start_time TIMESTAMP,
+    end_time TIMESTAMP,
+
+    EXCLUDE USING GIST (
+        room_id WITH =,
+        tsrange(start_time, end_time) WITH &&
+    )
+);
+```
+
+## Deferrable Constraints
+
+Delay constraint checking until transaction commits:
+
+```sql
+-- Create deferrable FK
+ALTER TABLE OrderDetails
+ADD CONSTRAINT FK_OrderDetails_Orders
+    FOREIGN KEY (OrderID) REFERENCES Orders(OrderID)
+    DEFERRABLE INITIALLY DEFERRED;
+
+-- Now you can insert in any order within a transaction
+BEGIN;
+INSERT INTO OrderDetails (OrderID, ProductID, Quantity)
+VALUES (99999, 1, 10);  -- Order doesn't exist yet
+
+INSERT INTO Orders (OrderID, CustomerID, OrderDate)
+VALUES (99999, 'ALFKI', CURRENT_DATE);  -- Now it exists
+
+COMMIT;  -- Constraint checked here
+```
+
+## Constraint Validation on Large Tables
+
+```sql
+-- Add constraint without validating existing data (fast)
+ALTER TABLE Products WITH NOCHECK
+ADD CONSTRAINT CK_Products_ValidPrice CHECK (UnitPrice >= 0);
+
+-- Later, verify existing data
+ALTER TABLE Products WITH CHECK
+CHECK CONSTRAINT CK_Products_ValidPrice;
+
+-- Find rows that would violate the constraint
+SELECT * FROM Products WHERE UnitPrice < 0;
+```
+
+## Trigger-Based Constraints
+
+For complex validation beyond CHECK capabilities:
+
+```sql
+-- Ensure order total doesn't exceed customer credit limit
+CREATE TRIGGER TR_Orders_CreditCheck
+ON OrderDetails
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM Orders o
+        JOIN Customers c ON o.CustomerID = c.CustomerID
+        WHERE o.OrderID IN (SELECT OrderID FROM inserted)
+        AND (
+            SELECT SUM(Quantity * UnitPrice)
+            FROM OrderDetails
+            WHERE OrderID = o.OrderID
+        ) > c.CreditLimit
+    )
+    BEGIN
+        RAISERROR('Order exceeds customer credit limit', 16, 1);
+        ROLLBACK;
+    END
+END;
+```
+
+## Constraint Naming Conventions
+
+Consistent naming makes maintenance easier:
+
+```sql
+-- Format: [Type]_[Table]_[Column(s)]
+CONSTRAINT PK_Products PRIMARY KEY (ProductID)
+CONSTRAINT FK_Products_CategoryID FOREIGN KEY (CategoryID) REFERENCES Categories
+CONSTRAINT UQ_Employees_Email UNIQUE (Email)
+CONSTRAINT CK_Products_UnitPrice CHECK (UnitPrice >= 0)
+CONSTRAINT DF_Orders_OrderDate DEFAULT (GETDATE())
+```
+
+## Schema-Level Constraints
+
+```sql
+-- Unique across tables (using indexed view in SQL Server)
+CREATE VIEW dbo.UniqueEmails
+WITH SCHEMABINDING
+AS
+SELECT Email FROM dbo.Customers
+UNION ALL
+SELECT Email FROM dbo.Suppliers;
+
+CREATE UNIQUE CLUSTERED INDEX IX_UniqueEmails
+ON dbo.UniqueEmails(Email);
+-- Now Email must be unique across BOTH tables
+```
+
+## Constraint Performance Impact
+
+```sql
+-- Foreign keys require indexes on referenced column
+-- This is automatic for PRIMARY KEY, but not UNIQUE
+CREATE INDEX IX_Orders_CustomerID ON Orders(CustomerID);
+
+-- Disable constraints for bulk loading
+ALTER TABLE Products NOCHECK CONSTRAINT ALL;
+
+BULK INSERT Products FROM 'products.csv'
+WITH (FIELDTERMINATOR = ',', ROWTERMINATOR = '\n');
+
+-- Re-enable with validation
+ALTER TABLE Products WITH CHECK CHECK CONSTRAINT ALL;
+```
+
+<ProgressCheckpoint section="unique-notnull-check" xpReward={80} />

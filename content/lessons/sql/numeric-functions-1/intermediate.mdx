@@ -1,0 +1,89 @@
+# Numeric Functions: Practical Applications
+
+Apply numeric functions in real-world scenarios.
+
+## Financial Calculations
+
+```sql
+-- Calculate tax (round to 2 decimals)
+SELECT
+    price,
+    ROUND(price * 0.08, 2) AS tax,
+    ROUND(price * 1.08, 2) AS total
+FROM products;
+
+-- Currency conversion with precision
+SELECT
+    amount,
+    ROUND(amount * exchange_rate, 2) AS converted
+FROM transactions;
+```
+
+## TRUNCATE vs ROUND
+
+```sql
+-- TRUNCATE cuts off, doesn't round
+SELECT ROUND(4.567, 2);    -- 4.57 (rounds)
+SELECT TRUNCATE(4.567, 2); -- 4.56 (cuts) -- MySQL
+SELECT ROUND(4.567, 2, 1); -- 4.56 (truncate mode) -- SQL Server
+```
+
+## SIGN Function
+
+```sql
+-- Returns -1, 0, or 1
+SELECT SIGN(-50);  -- -1
+SELECT SIGN(0);    -- 0
+SELECT SIGN(50);   -- 1
+
+-- Useful for comparisons
+SELECT
+    CASE SIGN(actual - budget)
+        WHEN 1 THEN 'Over budget'
+        WHEN -1 THEN 'Under budget'
+        ELSE 'On target'
+    END AS status
+FROM projects;
+```
+
+## Power and Roots
+
+```sql
+-- POWER / SQRT
+SELECT POWER(2, 3);   -- 8 (2³)
+SELECT SQRT(16);      -- 4
+SELECT POWER(27, 1.0/3); -- 3 (cube root)
+
+-- Compound interest
+SELECT principal * POWER(1 + rate, years) AS future_value
+FROM investments;
+```
+
+## Modulo Operations
+
+```sql
+-- Check if even/odd
+SELECT id, CASE WHEN id % 2 = 0 THEN 'Even' ELSE 'Odd' END FROM items;
+
+-- Get last two digits
+SELECT number, number % 100 AS last_two_digits FROM data;
+
+-- Distribute across groups
+SELECT id, (id - 1) % 3 AS group_number FROM items;  -- Groups 0, 1, 2
+```
+
+## NULL Handling
+
+```sql
+-- Math with NULL returns NULL
+SELECT 5 + NULL;    -- NULL
+SELECT 5 * NULL;    -- NULL
+SELECT ABS(NULL);   -- NULL
+
+-- Use COALESCE for defaults
+SELECT price * COALESCE(quantity, 0) AS total FROM orders;
+```
+
+<NumericFunctionExplorer mode="intermediate" />
+
+<ProgressCheckpoint section="numeric-practical" xpReward={40} />

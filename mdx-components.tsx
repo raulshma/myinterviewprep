@@ -220,6 +220,23 @@ import { ProtobufSchemaBuilder } from '@/components/learn/interactive/grpc/Proto
 import { GrpcServiceBuilder } from '@/components/learn/interactive/grpc/GrpcServiceBuilder';
 import { StreamingPatternVisualizer } from '@/components/learn/interactive/grpc/StreamingPatternVisualizer';
 
+// SQL Lesson Components
+import {
+  RdbmsConceptVisualizer,
+  JoinVisualizer,
+  SubqueryPlayground,
+  TransactionSimulator,
+  WindowFunctionExplorer,
+  NumericFunctionExplorer,
+  StringFunctionPlayground,
+  DateTimeExplorer,
+  ViewBuilder,
+  IndexVisualizer,
+  SecurityPermissionDemo,
+  StoredProcedureBuilder,
+  QueryOptimizer,
+} from '@/components/learn/interactive/sql';
+
 /**
  * MDX Components Configuration
  * This file provides custom components for MDX content rendering.
@@ -457,6 +474,21 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ProtobufSchemaBuilder,
     GrpcServiceBuilder,
     StreamingPatternVisualizer,
+
+    // SQL Lesson Components
+    RdbmsConceptVisualizer,
+    JoinVisualizer,
+    SubqueryPlayground,
+    TransactionSimulator,
+    WindowFunctionExplorer,
+    NumericFunctionExplorer,
+    StringFunctionPlayground,
+    DateTimeExplorer,
+    ViewBuilder,
+    IndexVisualizer,
+    SecurityPermissionDemo,
+    StoredProcedureBuilder,
+    QueryOptimizer,
 
     // Enhanced HTML elements with proper styling
     h1: ({ children, ...props }) => (

@@ -1,0 +1,81 @@
+# LAG and LEAD Functions
+
+Look at previous and next rows!
+
+## ⬅️ LAG: Previous Row
+
+Get value from the previous row:
+
+```sql
+SELECT order_date, total,
+    LAG(total) OVER (ORDER BY order_date) AS previous_total
+FROM orders;
+
+-- Result:
+-- 2024-01-01, 100, NULL  (no previous)
+-- 2024-01-02, 150, 100
+-- 2024-01-03, 200, 150
+```
+
+## ➡️ LEAD: Next Row
+
+Get value from the next row:
+
+```sql
+SELECT order_date, total,
+    LEAD(total) OVER (ORDER BY order_date) AS next_total
+FROM orders;
+
+-- Result:
+-- 2024-01-01, 100, 150
+-- 2024-01-02, 150, 200
+-- 2024-01-03, 200, NULL  (no next)
+```
+
+## 📊 Calculate Changes
+
+```sql
+SELECT order_date, total,
+    LAG(total) OVER (ORDER BY order_date) AS prev_total,
+    total - LAG(total) OVER (ORDER BY order_date) AS change
+FROM orders;
+
+-- Shows daily change in totals
+```
+
+## 🎯 Offset and Default
+
+```sql
+-- Look back 2 rows, default to 0
+SELECT date, value,
+    LAG(value, 2, 0) OVER (ORDER BY date) AS value_2_ago
+FROM metrics;
+
+-- LAG(column, offset, default)
+-- offset: how many rows back (default 1)
+-- default: value if no row exists (default NULL)
+```
+
+## 💡 Compare with Previous/Next
+
+```sql
+SELECT product, month, sales,
+    LAG(sales) OVER (ORDER BY month) AS prev_sales,
+    CASE
+        WHEN sales > LAG(sales) OVER (ORDER BY month) THEN 'Up'
+        WHEN sales < LAG(sales) OVER (ORDER BY month) THEN 'Down'
+        ELSE 'Same'
+    END AS trend
+FROM monthly_sales;
+```
+
+## 📋 With PARTITION BY
+
+```sql
+-- Compare within each customer
+SELECT customer_id, order_date, total,
+    LAG(total) OVER (PARTITION BY customer_id ORDER BY order_date) AS prev_order
+FROM orders;
+```
+
+<ProgressCheckpoint section="lag-lead-basics" xpReward={25} />

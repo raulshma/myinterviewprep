@@ -1,0 +1,129 @@
+# Isolation Levels: Implementation Deep Dive
+
+How databases implement isolation and advanced patterns.
+
+## Locking vs MVCC
+
+### Lock-Based (Traditional)
+
+```sql
+-- Read Committed (lock-based)
+-- Read: Acquire shared lock, release immediately after read
+-- Write: Acquire exclusive lock, hold until commit
+
+-- Problem: Readers block writers, writers block readers
+```
+
+### MVCC (Multi-Version Concurrency Control)
+
+```sql
+-- PostgreSQL, Oracle, SQL Server Snapshot
+-- Each transaction sees consistent snapshot
+-- Old versions kept for concurrent readers
+
+-- Advantage: Readers never block writers
+-- Disadvantage: More storage for versions, version cleanup
+```
+
+## SQL Server Lock Hints
+
+```sql
+-- Override isolation level per statement
+SELECT * FROM accounts WITH (NOLOCK);  -- Like READ UNCOMMITTED
+SELECT * FROM accounts WITH (HOLDLOCK);  -- Like SERIALIZABLE
+SELECT * FROM accounts WITH (UPDLOCK);  -- Upgrade to update lock
+
+-- Read with update intent
+SELECT * FROM accounts WITH (UPDLOCK, ROWLOCK)
+WHERE id = 1;
+```
+
+## Deadlock Prevention
+
+```sql
+-- Serializable can cause more deadlocks
+-- Strategies:
+-- 1. Access tables in consistent order
+-- 2. Use shorter transactions
+-- 3. Use optimistic concurrency
+
+-- Deadlock handling
+BEGIN TRY
+    SET DEADLOCK_PRIORITY LOW;  -- This transaction yields
+    BEGIN TRANSACTION;
+        -- Work
+    COMMIT;
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER() = 1205  -- Deadlock victim
+        -- Retry logic
+END CATCH;
+```
+
+## Optimistic Concurrency
+
+```sql
+-- Alternative to high isolation: Optimistic locking
+-- 1. Read row with version
+SELECT id, value, version FROM data WHERE id = 1;
+
+-- 2. Update only if version unchanged
+UPDATE data
+SET value = @new_value, version = version + 1
+WHERE id = 1 AND version = @original_version;
+
+-- 3. Check if update succeeded
+IF @@ROWCOUNT = 0
+    THROW 50001, 'Concurrent modification detected', 1;
+```
+
+## PostgreSQL Serializable Snapshot
+
+```sql
+-- PostgreSQL SSI: Serializable without blocking
+SET TRANSACTION ISOLATION LEVEL SERIALIZABLE;
+-- Uses predicate locks, detects conflicts at commit
+-- May abort transaction if conflict detected
+
+BEGIN;
+    SELECT * FROM accounts WHERE balance > 1000;
+    -- If concurrent transaction modifies balance
+    -- This transaction might be aborted at commit
+COMMIT;  -- Might fail with serialization_failure
+```
+
+## Performance Tuning
+
+```sql
+-- Monitor isolation level impact
+-- SQL Server
+SELECT
+    wait_type,
+    wait_time_ms
+FROM sys.dm_os_wait_stats
+WHERE wait_type LIKE 'LCK%'
+ORDER BY wait_time_ms DESC;
+
+-- Lock wait analysis
+SELECT
+    request_session_id,
+    resource_type,
+    resource_associated_entity_id,
+    request_mode,
+    request_status
+FROM sys.dm_tran_locks
+WHERE request_status = 'WAIT';
+```
+
+## Best Practices Summary
+
+```sql
+-- 1. Default to Read Committed for most operations
+-- 2. Use Snapshot for read-heavy workloads
+-- 3. Use Serializable only when truly needed
+-- 4. Keep transactions short at high isolation
+-- 5. Consider optimistic concurrency as alternative
+-- 6. Test under realistic concurrency
+```
+
+<ProgressCheckpoint section="isolation-advanced" xpReward={55} />

@@ -1,0 +1,101 @@
+# SQL Keywords: Comprehensive Guide
+
+Let's explore the full range of SQL keywords and their practical applications.
+
+## Keyword Categories
+
+### DML Keywords (Data Manipulation)
+
+| Keyword  | Usage            | Example                                |
+| -------- | ---------------- | -------------------------------------- |
+| `SELECT` | Retrieve rows    | `SELECT * FROM orders`                 |
+| `INSERT` | Add rows         | `INSERT INTO orders VALUES (...)`      |
+| `UPDATE` | Modify rows      | `UPDATE orders SET status = 'shipped'` |
+| `DELETE` | Remove rows      | `DELETE FROM orders WHERE id = 5`      |
+| `MERGE`  | Upsert operation | `MERGE INTO target USING source...`    |
+
+### DDL Keywords (Data Definition)
+
+| Keyword    | Usage            | Example                                    |
+| ---------- | ---------------- | ------------------------------------------ |
+| `CREATE`   | Make new objects | `CREATE TABLE users (...)`                 |
+| `ALTER`    | Modify structure | `ALTER TABLE users ADD email VARCHAR(100)` |
+| `DROP`     | Delete objects   | `DROP TABLE old_users`                     |
+| `TRUNCATE` | Empty table fast | `TRUNCATE TABLE logs`                      |
+
+### Query Clause Keywords
+
+```sql
+SELECT column1, column2          -- What to retrieve
+FROM table_name                  -- Where to look
+WHERE condition                  -- Row filter
+GROUP BY column                  -- Aggregate grouping
+HAVING aggregate_condition       -- Group filter
+ORDER BY column ASC/DESC         -- Sort results
+LIMIT n OFFSET m                 -- Pagination (MySQL/PostgreSQL)
+-- or TOP n (SQL Server)
+```
+
+## Logical Keywords
+
+### Boolean Operators
+
+```sql
+SELECT * FROM products
+WHERE price > 100
+  AND category = 'Electronics'
+  OR featured = TRUE
+  AND NOT discontinued;
+```
+
+### Comparison Keywords
+
+| Keyword   | Meaning         | Example                              |
+| --------- | --------------- | ------------------------------------ |
+| `BETWEEN` | Range inclusive | `WHERE price BETWEEN 10 AND 50`      |
+| `IN`      | List match      | `WHERE status IN ('new', 'pending')` |
+| `LIKE`    | Pattern match   | `WHERE name LIKE 'A%'`               |
+| `IS NULL` | Null check      | `WHERE deleted_at IS NULL`           |
+| `EXISTS`  | Subquery check  | `WHERE EXISTS (SELECT 1 FROM...)`    |
+
+## Set Operation Keywords
+
+```sql
+-- Combine result sets
+SELECT name FROM customers
+UNION ALL             -- All rows (with duplicates)
+SELECT name FROM suppliers;
+
+SELECT name FROM customers
+UNION                 -- Distinct rows only
+SELECT name FROM suppliers;
+
+SELECT name FROM customers
+INTERSECT             -- Common rows
+SELECT name FROM suppliers;
+
+SELECT name FROM customers
+EXCEPT                -- In first but not second
+SELECT name FROM suppliers;
+```
+
+## Join Keywords
+
+| Keyword           | Result                    |
+| ----------------- | ------------------------- |
+| `INNER JOIN`      | Only matching rows        |
+| `LEFT JOIN`       | All left + matching right |
+| `RIGHT JOIN`      | All right + matching left |
+| `FULL OUTER JOIN` | All rows from both        |
+| `CROSS JOIN`      | Cartesian product         |
+
+## Transaction Keywords
+
+```sql
+BEGIN TRANSACTION;    -- Start transaction
+COMMIT;               -- Save changes
+ROLLBACK;             -- Undo changes
+SAVEPOINT name;       -- Mark point to rollback to
+```
+
+<ProgressCheckpoint section="comprehensive-keywords" xpReward={35} />

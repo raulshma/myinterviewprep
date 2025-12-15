@@ -1,0 +1,15 @@
+{
+  "id": "modifying-views",
+  "title": "Modifying Views",
+  "description": "Update and alter existing SQL views.",
+  "milestone": "views",
+  "order": 2,
+  "sections": ["alter-view", "create-or-replace", "patterns"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 15, "xpReward": 40 }
+  },
+  "prerequisites": ["creating-views"],
+  "tags": ["sql", "views", "alter", "modify"]
+}

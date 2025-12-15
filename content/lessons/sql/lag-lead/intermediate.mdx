@@ -1,0 +1,81 @@
+# LAG and LEAD: Practical Patterns
+
+Real-world applications for row comparison.
+
+## Time Gap Analysis
+
+```sql
+SELECT user_id, event_time,
+    LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event,
+    DATEDIFF(MINUTE,
+        LAG(event_time) OVER (PARTITION BY user_id ORDER BY event_time),
+        event_time) AS minutes_since_last
+FROM user_events;
+```
+
+## Percent Change
+
+```sql
+SELECT month, revenue,
+    LAG(revenue) OVER (ORDER BY month) AS prev_revenue,
+    ROUND((revenue - LAG(revenue) OVER (ORDER BY month)) * 100.0 /
+        NULLIF(LAG(revenue) OVER (ORDER BY month), 0), 2) AS pct_change
+FROM monthly_revenue;
+```
+
+## Year-Over-Year Comparison
+
+```sql
+SELECT
+    month,
+    year,
+    sales,
+    LAG(sales, 12) OVER (ORDER BY year, month) AS same_month_last_year,
+    sales - LAG(sales, 12) OVER (ORDER BY year, month) AS yoy_change
+FROM monthly_sales;
+```
+
+## Running Differences
+
+```sql
+SELECT
+    stock_date,
+    closing_price,
+    closing_price - LAG(closing_price) OVER (ORDER BY stock_date) AS daily_change,
+    CASE
+        WHEN closing_price > LAG(closing_price) OVER (ORDER BY stock_date) THEN '📈'
+        WHEN closing_price < LAG(closing_price) OVER (ORDER BY stock_date) THEN '📉'
+        ELSE '➡️'
+    END AS direction
+FROM stock_prices;
+```
+
+## First and Last Values
+
+```sql
+SELECT customer_id, order_date, total,
+    FIRST_VALUE(total) OVER (PARTITION BY customer_id ORDER BY order_date) AS first_order,
+    LAST_VALUE(total) OVER (PARTITION BY customer_id ORDER BY order_date
+        ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS last_order
+FROM orders;
+```
+
+## Streak Detection
+
+```sql
+-- Detect winning/losing streaks
+WITH changes AS (
+    SELECT game_date, result,
+        CASE WHEN result = LAG(result) OVER (ORDER BY game_date) THEN 0 ELSE 1 END AS new_streak
+    FROM games
+),
+streaks AS (
+    SELECT *, SUM(new_streak) OVER (ORDER BY game_date) AS streak_id
+    FROM changes
+)
+SELECT result, MIN(game_date) AS streak_start, COUNT(*) AS streak_length
+FROM streaks
+GROUP BY result, streak_id;
+```
+
+<ProgressCheckpoint section="lag-lead-practical" xpReward={40} />

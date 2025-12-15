@@ -1,0 +1,108 @@
+# Managing Indexes: Advanced Topics
+
+Index internals and enterprise management.
+
+## B-Tree Structure
+
+```sql
+-- Most indexes use B-tree structure
+-- Balanced tree enables O(log n) lookups
+
+/*
+     [Root Node]
+    /     |     \
+[Node]  [Node]  [Node]
+ / \     / \     / \
+[Leaf] [Leaf] [Leaf]...
+*/
+
+-- Leaf pages contain actual data (clustered) or pointers (non-clustered)
+```
+
+## Index Types by Database
+
+```sql
+-- SQL Server
+-- Clustered, Non-clustered, Columnstore, Full-text, Spatial, XML
+
+-- PostgreSQL
+-- B-tree (default), Hash, GiST, SP-GiST, GIN, BRIN
+
+-- Examples:
+CREATE INDEX IX_json ON docs USING GIN (data jsonb_path_ops);  -- PostgreSQL
+CREATE COLUMNSTORE INDEX IX_col ON facts(...);                  -- SQL Server
+```
+
+## Columnstore Indexes
+
+```sql
+-- SQL Server: For analytics/OLAP
+CREATE CLUSTERED COLUMNSTORE INDEX IX_facts ON sales_facts;
+
+-- Best for:
+-- - Large tables (millions of rows)
+-- - Analytics queries (aggregations)
+-- - Infrequently updated data
+```
+
+## Online Index Operations
+
+```sql
+-- SQL Server Enterprise: Build without blocking
+CREATE INDEX IX_orders_customer ON orders(customer_id)
+WITH (ONLINE = ON);
+
+-- PostgreSQL: Concurrent index creation
+CREATE INDEX CONCURRENTLY IX_orders_customer ON orders(customer_id);
+
+-- Allows reads and writes during creation
+```
+
+## Index Maintenance Strategy
+
+```sql
+-- Automated maintenance job
+CREATE PROCEDURE sp_maintain_indexes
+AS
+BEGIN
+    DECLARE @sql NVARCHAR(MAX) = '';
+
+    SELECT @sql = @sql +
+        CASE
+            WHEN avg_fragmentation_in_percent > 30
+            THEN 'ALTER INDEX ' + name + ' ON ' + object_name + ' REBUILD;'
+            WHEN avg_fragmentation_in_percent > 10
+            THEN 'ALTER INDEX ' + name + ' ON ' + object_name + ' REORGANIZE;'
+            ELSE ''
+        END
+    FROM (
+        SELECT i.name, OBJECT_NAME(i.object_id) AS object_name,
+               ps.avg_fragmentation_in_percent
+        FROM sys.indexes i
+        CROSS APPLY sys.dm_db_index_physical_stats(DB_ID(), i.object_id, i.index_id, NULL, 'LIMITED') ps
+        WHERE ps.avg_fragmentation_in_percent > 10
+    ) fragmented;
+
+    EXEC sp_executesql @sql;
+END;
+```
+
+## Missing Index Analysis
+
+```sql
+-- SQL Server: Find recommended indexes
+SELECT
+    mid.statement AS table_name,
+    mid.equality_columns,
+    mid.inequality_columns,
+    mid.included_columns,
+    migs.avg_user_impact AS impact_percent
+FROM sys.dm_db_missing_index_details mid
+JOIN sys.dm_db_missing_index_groups mig ON mid.index_handle = mig.index_handle
+JOIN sys.dm_db_missing_index_group_stats migs ON mig.index_group_handle = migs.group_handle
+ORDER BY migs.avg_user_impact DESC;
+```
+
+<IndexVisualizer mode="advanced" />
+
+<ProgressCheckpoint section="managing-indexes-advanced" xpReward={55} />

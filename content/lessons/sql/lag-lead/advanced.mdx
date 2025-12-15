@@ -1,0 +1,90 @@
+# LAG and LEAD: Advanced Topics
+
+Expert-level row comparison techniques.
+
+## NTH_VALUE Function
+
+```sql
+-- Get any position value
+SELECT *,
+    NTH_VALUE(value, 2) OVER (ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS second_value,
+    NTH_VALUE(value, 3) OVER (ORDER BY date ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS third_value
+FROM metrics;
+```
+
+## Complex Period Comparisons
+
+```sql
+-- Compare current with multiple periods
+SELECT
+    reporting_date,
+    metric_value,
+    LAG(metric_value, 1) OVER w AS yesterday,
+    LAG(metric_value, 7) OVER w AS last_week,
+    LAG(metric_value, 30) OVER w AS last_month,
+    AVG(metric_value) OVER (ORDER BY reporting_date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS week_avg
+FROM daily_metrics
+WINDOW w AS (ORDER BY reporting_date);
+```
+
+## Session Attribution
+
+```sql
+-- Attribute events to traffic source
+WITH ordered AS (
+    SELECT *,
+        LAG(event_type) OVER (PARTITION BY user_id ORDER BY event_time) AS prev_event,
+        CASE WHEN event_type = 'page_view' AND referrer IS NOT NULL THEN referrer END AS source
+    FROM events
+),
+attributed AS (
+    SELECT *,
+        LAST_VALUE(source IGNORE NULLS) OVER (
+            PARTITION BY user_id
+            ORDER BY event_time
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) AS attributed_source
+    FROM ordered
+)
+SELECT * FROM attributed;
+```
+
+## Gap and Island with LAG
+
+```sql
+-- Using LAG for island detection
+WITH changes AS (
+    SELECT *,
+        CASE WHEN status <> LAG(status) OVER (PARTITION BY user_id ORDER BY event_time)
+             OR LAG(status) OVER (PARTITION BY user_id ORDER BY event_time) IS NULL
+             THEN 1 ELSE 0 END AS is_new_state
+    FROM user_status_log
+),
+grouped AS (
+    SELECT *,
+        SUM(is_new_state) OVER (PARTITION BY user_id ORDER BY event_time) AS state_group
+    FROM changes
+)
+SELECT
+    user_id, status,
+    MIN(event_time) AS state_start,
+    MAX(event_time) AS state_end
+FROM grouped
+GROUP BY user_id, status, state_group;
+```
+
+## Performance Optimization
+
+```sql
+-- Combine multiple LAG/LEAD on same window
+-- Optimizer may compute window only once
+SELECT
+    id,
+    LAG(a, 1) OVER w AS prev_a,
+    LAG(b, 1) OVER w AS prev_b,
+    LEAD(a, 1) OVER w AS next_a
+FROM data
+WINDOW w AS (PARTITION BY category ORDER BY timestamp);
+```
+
+<ProgressCheckpoint section="lag-lead-advanced" xpReward={50} />

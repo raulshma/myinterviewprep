@@ -1,0 +1,103 @@
+# Numeric Functions: Advanced Topics
+
+Complex calculations and performance considerations.
+
+## Logarithmic Functions
+
+```sql
+-- LOG (natural log), LOG10 (base 10)
+SELECT LOG(2.718);    -- ~1 (natural log)
+SELECT LOG10(100);    -- 2
+SELECT LOG(8) / LOG(2);  -- 3 (log base 2 of 8)
+
+-- PostgreSQL: LOG(base, value)
+SELECT LOG(2, 8);  -- 3
+```
+
+## Trigonometric Functions
+
+```sql
+-- Angles in radians
+SELECT SIN(0);      -- 0
+SELECT COS(0);      -- 1
+SELECT TAN(0);      -- 0
+SELECT PI();        -- 3.14159...
+
+-- Degrees to radians
+SELECT SIN(RADIANS(90));  -- 1
+
+-- Distance calculation (Haversine formula)
+SELECT
+    2 * 6371 * ASIN(SQRT(
+        POWER(SIN(RADIANS(lat2 - lat1) / 2), 2) +
+        COS(RADIANS(lat1)) * COS(RADIANS(lat2)) *
+        POWER(SIN(RADIANS(lon2 - lon1) / 2), 2)
+    )) AS distance_km
+FROM locations;
+```
+
+## Statistical Functions
+
+```sql
+-- Variance and Standard Deviation
+SELECT
+    VAR(score) AS variance,
+    STDEV(score) AS std_dev,
+    AVG(score) AS mean
+FROM test_scores;
+
+-- Z-score calculation
+SELECT
+    score,
+    (score - AVG(score) OVER ()) / STDEV(score) OVER () AS z_score
+FROM test_scores;
+```
+
+## Random Numbers
+
+```sql
+-- SQL Server
+SELECT RAND();           -- 0 to 1
+SELECT FLOOR(RAND() * 10) + 1;  -- 1 to 10
+
+-- PostgreSQL
+SELECT RANDOM();
+SELECT FLOOR(RANDOM() * 10) + 1;
+
+-- Random row
+SELECT TOP 1 * FROM products ORDER BY NEWID();  -- SQL Server
+SELECT * FROM products ORDER BY RANDOM() LIMIT 1;  -- PostgreSQL
+```
+
+## Precision Issues
+
+```sql
+-- Floating point precision problems
+SELECT 0.1 + 0.2;  -- Might be 0.30000000000000004!
+
+-- Use DECIMAL for financial calculations
+SELECT CAST(0.1 AS DECIMAL(10,2)) + CAST(0.2 AS DECIMAL(10,2));  -- 0.30
+
+-- Comparing floats safely
+WHERE ABS(value1 - value2) < 0.0001  -- Within tolerance
+```
+
+## Database-Specific Functions
+
+```sql
+-- SQL Server
+SELECT SQUARE(5);     -- 25
+SELECT EXP(1);        -- e (2.718...)
+
+-- PostgreSQL
+SELECT WIDTH_BUCKET(75, 0, 100, 10);  -- 8 (bucket for 75 in 0-100 range)
+SELECT MOD(10, 3);    -- 1
+
+-- MySQL
+SELECT FORMAT(12345.6789, 2);  -- '12,345.68' (formatted string)
+SELECT CONV(15, 10, 16);       -- 'F' (base conversion)
+```
+
+<NumericFunctionExplorer mode="advanced" />
+
+<ProgressCheckpoint section="numeric-advanced" xpReward={50} />

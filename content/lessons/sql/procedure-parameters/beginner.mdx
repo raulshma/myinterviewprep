@@ -1,0 +1,93 @@
+# Procedure Parameters
+
+Pass data in and out of stored procedures!
+
+## 📥 Input Parameters
+
+Pass values into the procedure:
+
+```sql
+CREATE PROCEDURE sp_get_customer
+    @customer_id INT
+AS
+BEGIN
+    SELECT * FROM customers WHERE id = @customer_id;
+END;
+
+-- Call with parameter
+EXEC sp_get_customer 123;
+EXEC sp_get_customer @customer_id = 123;  -- Named parameter
+```
+
+## 📤 Output Parameters
+
+Get values back from the procedure:
+
+```sql
+CREATE PROCEDURE sp_count_orders
+    @customer_id INT,
+    @order_count INT OUTPUT
+AS
+BEGIN
+    SELECT @order_count = COUNT(*)
+    FROM orders
+    WHERE customer_id = @customer_id;
+END;
+
+-- Call and receive output
+DECLARE @count INT;
+EXEC sp_count_orders 123, @count OUTPUT;
+SELECT @count;  -- See the result
+```
+
+## 🔄 Multiple Parameters
+
+```sql
+CREATE PROCEDURE sp_create_order
+    @customer_id INT,
+    @product_id INT,
+    @quantity INT,
+    @order_id INT OUTPUT
+AS
+BEGIN
+    INSERT INTO orders (customer_id, product_id, quantity)
+    VALUES (@customer_id, @product_id, @quantity);
+
+    SET @order_id = SCOPE_IDENTITY();
+END;
+```
+
+## ⚡ Default Values
+
+Make parameters optional:
+
+```sql
+CREATE PROCEDURE sp_search_products
+    @name NVARCHAR(100) = NULL,
+    @category INT = NULL,
+    @min_price DECIMAL = 0.00
+AS
+BEGIN
+    SELECT * FROM products
+    WHERE (@name IS NULL OR name LIKE '%' + @name + '%')
+    AND (@category IS NULL OR category_id = @category)
+    AND price >= @min_price;
+END;
+
+-- Call with defaults
+EXEC sp_search_products;                    -- Uses all defaults
+EXEC sp_search_products 'laptop';           -- Only name specified
+EXEC sp_search_products @min_price = 100;   -- Named parameter
+```
+
+## 📊 Parameter Types
+
+| Parameter Type | Direction          | Example                               |
+| -------------- | ------------------ | ------------------------------------- |
+| INPUT          | Into procedure     | `@id INT`                             |
+| OUTPUT         | Out from procedure | `@count INT OUTPUT`                   |
+| INPUT/OUTPUT   | Both ways          | `@value INT OUTPUT` (set before call) |
+
+<StoredProcedureBuilder mode="beginner" />
+
+<ProgressCheckpoint section="parameters-basics" xpReward={25} />

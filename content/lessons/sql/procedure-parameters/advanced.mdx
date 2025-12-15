@@ -1,0 +1,133 @@
+# Procedure Parameters: Advanced Topics
+
+Complex parameter scenarios and optimization.
+
+## Cursor Parameters
+
+```sql
+CREATE PROCEDURE sp_process_with_cursor
+    @cursor CURSOR VARYING OUTPUT
+AS
+BEGIN
+    SET @cursor = CURSOR FOR
+        SELECT id, name FROM products WHERE status = 'pending';
+    OPEN @cursor;
+END;
+
+-- Use the cursor
+DECLARE @cur CURSOR;
+DECLARE @id INT, @name VARCHAR(100);
+
+EXEC sp_process_with_cursor @cursor = @cur OUTPUT;
+FETCH NEXT FROM @cur INTO @id, @name;
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    PRINT @name;
+    FETCH NEXT FROM @cur INTO @id, @name;
+END;
+CLOSE @cur;
+DEALLOCATE @cur;
+```
+
+## XML/JSON Parameters
+
+```sql
+-- XML parameter
+CREATE PROCEDURE sp_bulk_insert_xml
+    @data XML
+AS
+BEGIN
+    INSERT INTO products (id, name, price)
+    SELECT
+        x.value('@id', 'INT'),
+        x.value('@name', 'NVARCHAR(100)'),
+        x.value('@price', 'DECIMAL(10,2)')
+    FROM @data.nodes('/products/product') AS t(x);
+END;
+
+-- JSON parameter (SQL Server 2016+)
+CREATE PROCEDURE sp_bulk_insert_json
+    @data NVARCHAR(MAX)
+AS
+BEGIN
+    INSERT INTO products (id, name, price)
+    SELECT id, name, price
+    FROM OPENJSON(@data)
+    WITH (id INT, name NVARCHAR(100), price DECIMAL(10,2));
+END;
+```
+
+## Parameter Sniffing Control
+
+```sql
+-- Force recompile for variable parameters
+CREATE PROCEDURE sp_flexible_search
+    @search NVARCHAR(100)
+WITH RECOMPILE
+AS
+BEGIN
+    SELECT * FROM products WHERE name LIKE @search + '%';
+END;
+
+-- Or use local variable pattern
+CREATE PROCEDURE sp_flexible_search_v2
+    @search NVARCHAR(100)
+AS
+BEGIN
+    DECLARE @local_search NVARCHAR(100) = @search;
+    SELECT * FROM products WHERE name LIKE @local_search + '%';
+END;
+
+-- Or optimize for unknown
+CREATE PROCEDURE sp_flexible_search_v3
+    @search NVARCHAR(100)
+AS
+BEGIN
+    SELECT * FROM products WHERE name LIKE @search + '%'
+    OPTION (OPTIMIZE FOR UNKNOWN);
+END;
+```
+
+## Encrypting Parameters
+
+```sql
+-- Hide sensitive logic
+CREATE PROCEDURE sp_sensitive_operation
+    @password NVARCHAR(100)
+WITH ENCRYPTION
+AS
+BEGIN
+    -- Logic is encrypted in database
+    SELECT * FROM secrets WHERE pwd_hash = HASHBYTES('SHA2_256', @password);
+END;
+
+-- Users can execute but not view source
+```
+
+## Return Multiple Result Sets
+
+```sql
+CREATE PROCEDURE sp_dashboard_data
+    @user_id INT,
+    @summary_count INT OUTPUT,
+    @pending_count INT OUTPUT
+AS
+BEGIN
+    -- Result set 1: User info
+    SELECT * FROM users WHERE id = @user_id;
+
+    -- Result set 2: Recent orders
+    SELECT TOP 10 * FROM orders WHERE user_id = @user_id ORDER BY order_date DESC;
+
+    -- Result set 3: Notifications
+    SELECT * FROM notifications WHERE user_id = @user_id AND is_read = 0;
+
+    -- Output parameters
+    SELECT @summary_count = COUNT(*) FROM orders WHERE user_id = @user_id;
+    SELECT @pending_count = COUNT(*) FROM orders WHERE user_id = @user_id AND status = 'pending';
+END;
+```
+
+<StoredProcedureBuilder mode="advanced" />
+
+<ProgressCheckpoint section="parameters-advanced" xpReward={50} />

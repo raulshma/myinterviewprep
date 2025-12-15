@@ -1,0 +1,15 @@
+{
+  "id": "query-analysis",
+  "title": "Query Analysis",
+  "description": "Analyze and understand query performance.",
+  "milestone": "performance",
+  "order": 1,
+  "sections": ["explain-plans", "statistics", "profiling"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
+    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
+    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+  },
+  "prerequisites": ["procedure-parameters"],
+  "tags": ["sql", "performance", "analysis", "explain"]
+}

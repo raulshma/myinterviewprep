@@ -1,0 +1,15 @@
+{
+  "id": "user-defined-functions",
+  "title": "User-Defined Functions",
+  "description": "Create custom functions for reusable logic.",
+  "milestone": "stored-procedures",
+  "order": 2,
+  "sections": ["scalar-functions", "table-functions", "inline-functions"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["creating-stored-procedures"],
+  "tags": ["sql", "functions", "udf", "stored-procedures"]
+}

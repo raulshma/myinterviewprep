@@ -1,0 +1,68 @@
+# Query Optimization Techniques
+
+Master the art of writing fast SQL!
+
+## 🎯 The Optimization Mindset
+
+1. **Reduce data** - Work with fewer rows
+2. **Use indexes** - Let the database find data fast
+3. **Avoid repetition** - Don't calculate the same thing twice
+
+## 📉 Filter Early
+
+```sql
+-- BAD: Filter after processing all rows
+SELECT * FROM orders
+WHERE customer_id = 123;  -- Filter applied late if no index
+
+-- GOOD: Ensure index exists for filter columns
+CREATE INDEX IX_orders_customer ON orders(customer_id);
+-- Now filter uses index (fast!)
+```
+
+## 📊 Use LIMIT/TOP
+
+```sql
+-- Don't retrieve more than needed
+SELECT TOP 10 * FROM orders ORDER BY order_date DESC;
+
+-- PostgreSQL
+SELECT * FROM orders ORDER BY order_date DESC LIMIT 10;
+
+-- Pagination
+SELECT * FROM orders ORDER BY id OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY;
+```
+
+## ⚡ Avoid SELECT \*
+
+```sql
+-- BAD
+SELECT * FROM customers;
+
+-- GOOD
+SELECT id, name, email FROM customers;
+```
+
+## 🔄 Simplify WHERE Clauses
+
+```sql
+-- BAD: Complex expression
+SELECT * FROM orders WHERE total * 1.08 > 100;
+
+-- GOOD: Simpler expression
+SELECT * FROM orders WHERE total > 92.59;
+```
+
+## 📋 Quick Optimization Checklist
+
+| Check                          | Fix                            |
+| ------------------------------ | ------------------------------ |
+| Missing index on WHERE column? | Add index                      |
+| Using SELECT \*?               | List specific columns          |
+| Function on indexed column?    | Rewrite or add computed column |
+| Retrieving too many rows?      | Add LIMIT/TOP                  |
+| Multiple similar queries?      | Combine or cache               |
+
+<QueryOptimizer mode="beginner" />
+
+<ProgressCheckpoint section="optimization-basics" xpReward={30} />

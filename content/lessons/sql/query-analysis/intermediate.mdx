@@ -1,0 +1,97 @@
+# Query Analysis: Practical Techniques
+
+Deep dive into execution plan analysis.
+
+## SQL Server Execution Plans
+
+```sql
+-- Graphical plan in SSMS
+-- Click "Display Estimated Execution Plan" or Ctrl+L
+SELECT * FROM orders WHERE customer_id = 123;
+
+-- Actual execution plan (includes runtime stats)
+SET STATISTICS PROFILE ON;
+SELECT * FROM orders WHERE customer_id = 123;
+SET STATISTICS PROFILE OFF;
+```
+
+## PostgreSQL EXPLAIN ANALYZE
+
+```sql
+-- Shows actual execution time
+EXPLAIN ANALYZE SELECT * FROM orders WHERE customer_id = 123;
+
+-- Output with buffers
+EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM orders WHERE customer_id = 123;
+
+-- Format as JSON for tools
+EXPLAIN (FORMAT JSON) SELECT * FROM orders WHERE customer_id = 123;
+```
+
+## Reading Execution Plans
+
+```
+HashAggregate  (cost=25.00..26.00 rows=100)
+  Group Key: category_id
+  ->  Seq Scan on products  (cost=0.00..20.00 rows=1000)
+        Filter: (is_active = true)
+```
+
+Reading bottom-up:
+
+1. **Seq Scan** - Reads all products, filters active ones
+2. **HashAggregate** - Groups by category_id
+
+## Identifying Problems
+
+```sql
+-- Problem: Nested Loop with Table Scan
+EXPLAIN ANALYZE
+SELECT * FROM orders o
+JOIN order_items i ON o.id = i.order_id
+WHERE o.customer_id = 123;
+
+-- Look for:
+-- - Nested Loop with high row counts
+-- - Seq Scan on large tables
+-- - Sort operations (can indicate missing index)
+-- - Hash operations with spill to disk
+```
+
+## Statistics Analysis
+
+```sql
+-- SQL Server: View statistics
+DBCC SHOW_STATISTICS ('orders', 'IX_orders_customer');
+
+-- PostgreSQL: View table statistics
+SELECT * FROM pg_stats WHERE tablename = 'orders';
+
+-- Update statistics
+UPDATE STATISTICS orders;  -- SQL Server
+ANALYZE orders;            -- PostgreSQL
+```
+
+## Query Store (SQL Server)
+
+```sql
+-- Enable Query Store
+ALTER DATABASE mydb SET QUERY_STORE = ON;
+
+-- Find top resource consumers
+SELECT TOP 10
+    q.query_id,
+    qt.query_sql_text,
+    rs.avg_duration,
+    rs.avg_cpu_time,
+    rs.avg_logical_io_reads
+FROM sys.query_store_query q
+JOIN sys.query_store_query_text qt ON q.query_text_id = qt.query_text_id
+JOIN sys.query_store_plan p ON q.query_id = p.query_id
+JOIN sys.query_store_runtime_stats rs ON p.plan_id = rs.plan_id
+ORDER BY rs.avg_duration DESC;
+```
+
+<QueryOptimizer mode="intermediate" />
+
+<ProgressCheckpoint section="query-analysis-practical" xpReward={45} />

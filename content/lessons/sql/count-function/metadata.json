@@ -1,0 +1,15 @@
+{
+  "id": "count-function",
+  "title": "COUNT Function",
+  "description": "Count rows and values with the COUNT aggregate function.",
+  "milestone": "aggregate-queries",
+  "order": 2,
+  "sections": ["count-basics", "count-distinct", "count-patterns"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 15, "xpReward": 40 }
+  },
+  "prerequisites": ["sum-function"],
+  "tags": ["sql", "aggregate", "count"]
+}

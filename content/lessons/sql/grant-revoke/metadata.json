@@ -1,0 +1,15 @@
+{
+  "id": "grant-revoke",
+  "title": "GRANT and REVOKE",
+  "description": "Control database access with permission commands.",
+  "milestone": "security",
+  "order": 1,
+  "sections": ["grant-basics", "revoke", "roles"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 25 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 40 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["index-optimization"],
+  "tags": ["sql", "security", "grant", "revoke", "permissions"]
+}

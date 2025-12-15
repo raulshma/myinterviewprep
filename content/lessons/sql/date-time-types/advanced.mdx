@@ -1,0 +1,116 @@
+# Date/Time Types: Advanced Topics
+
+Storage internals, precision, and best practices.
+
+## Storage Internals
+
+```sql
+-- SQL Server: Days since 1900-01-01
+SELECT DATEADD(DAY, DATEDIFF(DAY, 0, GETDATE()), 0);  -- Midnight today
+
+-- PostgreSQL: Microseconds since 2000-01-01
+-- MySQL: Seconds since 1970-01-01 (UNIX epoch)
+
+-- Epoch conversion
+SELECT DATEDIFF(SECOND, '1970-01-01', GETUTCDATE());  -- Unix timestamp
+SELECT DATEADD(SECOND, @unix_ts, '1970-01-01');       -- From Unix timestamp
+```
+
+## High-Precision Time
+
+```sql
+-- SQL Server DATETIME2
+CREATE TABLE precision_log (
+    event_time DATETIME2(7)  -- 100 nanosecond precision
+);
+
+-- SYSDATETIME() for high precision current time
+INSERT INTO precision_log VALUES (SYSDATETIME());
+
+-- Fractional seconds
+SELECT CAST('14:30:00.1234567' AS TIME(7));
+```
+
+## Calendar Table Pattern
+
+```sql
+-- Create reusable calendar table
+CREATE TABLE calendar (
+    date DATE PRIMARY KEY,
+    year INT,
+    month INT,
+    day INT,
+    day_name VARCHAR(10),
+    is_weekend BIT,
+    is_holiday BIT
+);
+
+-- Populate with all dates
+WITH dates AS (
+    SELECT CAST('2020-01-01' AS DATE) AS dt
+    UNION ALL
+    SELECT DATEADD(DAY, 1, dt) FROM dates WHERE dt < '2030-12-31'
+)
+INSERT INTO calendar
+SELECT
+    dt,
+    YEAR(dt), MONTH(dt), DAY(dt),
+    DATENAME(WEEKDAY, dt),
+    CASE WHEN DATEPART(WEEKDAY, dt) IN (1, 7) THEN 1 ELSE 0 END,
+    0
+FROM dates
+OPTION (MAXRECURSION 32767);
+```
+
+## Indexing Date Columns
+
+```sql
+-- Index for date range queries
+CREATE INDEX IX_orders_date ON orders(order_date);
+
+-- Avoid functions on indexed column
+-- Slow:
+WHERE YEAR(order_date) = 2024
+
+-- Fast:
+WHERE order_date >= '2024-01-01' AND order_date < '2025-01-01'
+
+-- Computed column for common extractions
+ALTER TABLE orders ADD order_year AS YEAR(order_date) PERSISTED;
+CREATE INDEX IX_orders_year ON orders(order_year);
+```
+
+## Database-Specific Considerations
+
+```sql
+-- MySQL: DATETIME vs TIMESTAMP
+-- DATETIME: 8 bytes, no timezone conversion
+-- TIMESTAMP: 4 bytes, converts to UTC for storage
+
+-- PostgreSQL: TIMESTAMP vs TIMESTAMPTZ
+-- Always use TIMESTAMPTZ for real-world apps
+
+-- SQL Server: Prefer DATETIME2 over DATETIME
+-- Better precision, larger range, smaller storage for same precision
+```
+
+## Temporal Tables (SQL Server 2016+)
+
+```sql
+-- Automatic history tracking
+CREATE TABLE products (
+    id INT PRIMARY KEY,
+    name VARCHAR(100),
+    price DECIMAL(10,2),
+    valid_from DATETIME2 GENERATED ALWAYS AS ROW START,
+    valid_to DATETIME2 GENERATED ALWAYS AS ROW END,
+    PERIOD FOR SYSTEM_TIME (valid_from, valid_to)
+) WITH (SYSTEM_VERSIONING = ON);
+
+-- Query historical data
+SELECT * FROM products FOR SYSTEM_TIME AS OF '2024-01-01';
+```
+
+<DateTimeExplorer mode="advanced" />
+
+<ProgressCheckpoint section="datetime-types-advanced" xpReward={50} />

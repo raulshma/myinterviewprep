@@ -1,0 +1,114 @@
+# COMMIT: Patterns and Considerations
+
+Practical commit patterns for applications.
+
+## Commit Frequency
+
+```sql
+-- Option 1: Commit per logical unit
+BEGIN TRANSACTION;
+    INSERT INTO orders ...;
+    INSERT INTO order_items ...;
+COMMIT;  -- One transaction per order
+
+-- Option 2: Batch commits
+DECLARE @batch_size INT = 1000;
+DECLARE @count INT = 0;
+
+BEGIN TRANSACTION;
+DECLARE cur CURSOR FOR SELECT id FROM source_data;
+OPEN cur;
+FETCH NEXT FROM cur INTO @id;
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    INSERT INTO target ...;
+    SET @count = @count + 1;
+
+    IF @count % @batch_size = 0
+    BEGIN
+        COMMIT;
+        BEGIN TRANSACTION;
+    END;
+
+    FETCH NEXT FROM cur INTO @id;
+END;
+COMMIT;
+```
+
+## Conditional Commit
+
+```sql
+BEGIN TRANSACTION;
+    UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+    UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+
+    -- Verify before commit
+    IF EXISTS (SELECT 1 FROM accounts WHERE balance < 0)
+    BEGIN
+        PRINT 'Balance would go negative - rolling back';
+        ROLLBACK;
+    END
+    ELSE
+    BEGIN
+        PRINT 'Transfer successful';
+        COMMIT;
+    END;
+```
+
+## Commit with Verification
+
+```sql
+BEGIN TRANSACTION;
+    DELETE FROM orders WHERE status = 'cancelled' AND order_date < DATEADD(YEAR, -1, GETDATE());
+
+    -- Check how many rows affected
+    IF @@ROWCOUNT > 10000
+    BEGIN
+        PRINT 'Too many rows, rolling back';
+        ROLLBACK;
+    END
+    ELSE
+    BEGIN
+        COMMIT;
+    END;
+```
+
+## Two-Phase Commit Pattern
+
+```sql
+-- Application-level 2PC
+-- Phase 1: Prepare (verify all operations can succeed)
+BEGIN TRANSACTION;
+    SELECT @balance = balance FROM accounts WITH (UPDLOCK) WHERE id = 1;
+    IF @balance < @amount
+    BEGIN
+        ROLLBACK;
+        RETURN -1;  -- Not prepared
+    END;
+    -- More validations...
+
+    -- Phase 2: Commit
+    UPDATE accounts SET balance = balance - @amount WHERE id = 1;
+COMMIT;
+```
+
+## Commit and Continue
+
+```sql
+-- PostgreSQL: COMMIT AND CHAIN
+BEGIN;
+    INSERT INTO log ...;
+COMMIT AND CHAIN;  -- Commits and starts new transaction
+    INSERT INTO log ...;
+COMMIT;
+
+-- SQL Server: Explicit new transaction
+BEGIN TRANSACTION;
+    INSERT INTO log ...;
+COMMIT;
+BEGIN TRANSACTION;  -- New transaction
+    INSERT INTO log ...;
+COMMIT;
+```
+
+<ProgressCheckpoint section="commit-patterns" xpReward={25} />

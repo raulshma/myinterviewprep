@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
-import { getLessonMetadata, getLessonContent, getNextLessonSuggestion, getAdjacentLessons } from '@/lib/actions/lessons';
+import { getLessonMetadata, getLessonContent, getNextLessonSuggestion, getAdjacentLessons, resolveLessonPath } from '@/lib/actions/lessons';
 import { LessonPageClient } from './lesson-page-client';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
 import { getUserGamificationAction } from '@/lib/actions/gamification';
@@ -35,9 +35,13 @@ export default async function LearnObjectivePage({
   // Decode URL-encoded objective
   const objectiveSlug = decodeURIComponent(resolvedParams.objective);
   const milestoneId = resolvedParams.milestone;
+  const roadmapSlug = resolvedParams.slug;
   
-  // Find the lesson path
-  const lessonPath = `${milestoneId}/${objectiveSlug}`;
+  // Find the lesson path using proper resolution
+  const lessonPath = await resolveLessonPath(milestoneId, objectiveSlug, roadmapSlug);
+  if (!lessonPath) {
+    notFound();
+  }
   
   // Get lesson metadata
   const metadata = await getLessonMetadata(lessonPath);
@@ -113,9 +117,13 @@ export default async function LearnObjectivePage({
 export async function generateMetadata({ params }: LearnObjectivePageProps) {
   const resolvedParams = await params;
   const objectiveSlug = decodeURIComponent(resolvedParams.objective);
-  const lessonPath = `${resolvedParams.milestone}/${objectiveSlug}`;
+  const lessonPath = await resolveLessonPath(
+    resolvedParams.milestone,
+    objectiveSlug,
+    resolvedParams.slug
+  );
   
-  const metadata = await getLessonMetadata(lessonPath);
+  const metadata = lessonPath ? await getLessonMetadata(lessonPath) : null;
   
   return {
     title: metadata?.title || 'Learn',

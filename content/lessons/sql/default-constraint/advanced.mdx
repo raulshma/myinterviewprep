@@ -1,0 +1,149 @@
+# Default Constraints: Advanced Use Cases
+
+Enterprise patterns for computed columns and complex defaults.
+
+## Computed Columns (Persistent Defaults)
+
+```sql
+-- SQL Server: Computed column (calculated on-the-fly)
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    quantity INT,
+    unit_price DECIMAL(10,2),
+    total AS (quantity * unit_price)  -- Computed
+);
+
+-- Persisted: Stored physically
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    quantity INT,
+    unit_price DECIMAL(10,2),
+    total AS (quantity * unit_price) PERSISTED
+);
+
+-- PostgreSQL: Generated columns
+CREATE TABLE orders (
+    id INT PRIMARY KEY,
+    quantity INT,
+    unit_price DECIMAL(10,2),
+    total DECIMAL(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED
+);
+```
+
+## JSON Defaults
+
+```sql
+-- SQL Server
+CREATE TABLE configs (
+    id INT PRIMARY KEY,
+    settings NVARCHAR(MAX) DEFAULT '{}'
+);
+
+-- PostgreSQL
+CREATE TABLE configs (
+    id INT PRIMARY KEY,
+    settings JSONB DEFAULT '{}'::jsonb,
+    metadata JSONB DEFAULT '{"version": 1}'::jsonb
+);
+```
+
+## Audit Column Patterns
+
+```sql
+CREATE TABLE entities (
+    id INT IDENTITY PRIMARY KEY,
+    data VARCHAR(MAX),
+
+    -- Audit columns with defaults
+    created_at DATETIME DEFAULT GETDATE(),
+    created_by NVARCHAR(100) DEFAULT SYSTEM_USER,
+    modified_at DATETIME DEFAULT GETDATE(),
+    modified_by NVARCHAR(100) DEFAULT SYSTEM_USER,
+    version INT DEFAULT 1
+);
+
+-- Trigger to update modified fields
+CREATE TRIGGER TR_entities_modified
+ON entities
+AFTER UPDATE
+AS
+BEGIN
+    UPDATE e
+    SET
+        modified_at = GETDATE(),
+        modified_by = SYSTEM_USER,
+        version = e.version + 1
+    FROM entities e
+    INNER JOIN inserted i ON e.id = i.id;
+END;
+```
+
+## Tenant-Aware Defaults
+
+```sql
+-- Using session context for defaults
+-- SQL Server
+CREATE TABLE tenant_data (
+    id INT IDENTITY PRIMARY KEY,
+    tenant_id INT DEFAULT
+        CAST(SESSION_CONTEXT(N'tenant_id') AS INT),
+    data VARCHAR(MAX)
+);
+
+-- Set context before inserts
+EXEC sp_set_session_context 'tenant_id', 123;
+INSERT INTO tenant_data (data) VALUES ('test');
+-- tenant_id automatically set to 123
+```
+
+## Conditional Defaults via Views
+
+```sql
+-- Use a view to provide conditional defaults
+CREATE VIEW v_orders_with_defaults AS
+SELECT
+    id,
+    COALESCE(shipping_method,
+        CASE
+            WHEN total > 100 THEN 'express'
+            ELSE 'standard'
+        END
+    ) AS shipping_method,
+    total
+FROM orders;
+
+-- Insert through the view (with INSTEAD OF trigger)
+```
+
+## Migration: Adding Defaults
+
+```sql
+-- Adding default to existing column with data
+
+-- 1. Add constraint (new rows get default)
+ALTER TABLE users ADD CONSTRAINT DF_users_status DEFAULT 'active' FOR status;
+
+-- 2. Update existing NULL values
+UPDATE users SET status = 'active' WHERE status IS NULL;
+
+-- 3. Optionally make NOT NULL
+ALTER TABLE users ALTER COLUMN status VARCHAR(20) NOT NULL;
+```
+
+## Performance Considerations
+
+```sql
+-- Scalar function defaults are slow
+DEFAULT dbo.GetNextNumber()  -- Called for each row
+
+-- Better: Sequence
+DEFAULT NEXT VALUE FOR my_sequence
+
+-- Best: Built-in functions
+DEFAULT GETDATE()
+DEFAULT NEWID()
+```
+
+<ProgressCheckpoint section="default-advanced" xpReward={35} />
+</Parameter>
+<parameter name="Complexity">5

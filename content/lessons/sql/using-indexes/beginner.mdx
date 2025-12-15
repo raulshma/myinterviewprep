@@ -1,0 +1,71 @@
+# Using Indexes Effectively
+
+Make your queries use indexes correctly!
+
+## ✅ When Indexes Are Used
+
+```sql
+-- Direct equality: Uses index
+SELECT * FROM orders WHERE customer_id = 123;
+
+-- Range queries: Uses index
+SELECT * FROM orders WHERE order_date > '2024-01-01';
+
+-- BETWEEN: Uses index
+SELECT * FROM products WHERE price BETWEEN 10 AND 50;
+```
+
+## ❌ When Indexes Are NOT Used
+
+```sql
+-- Function on column: NO index
+SELECT * FROM orders WHERE YEAR(order_date) = 2024;
+
+-- Math on column: NO index
+SELECT * FROM products WHERE price * 1.1 > 100;
+
+-- Implicit conversion: May skip index
+SELECT * FROM users WHERE phone = 1234567890;  -- phone is VARCHAR
+```
+
+## 🔧 Fix Common Problems
+
+```sql
+-- BAD: Function prevents index use
+SELECT * FROM orders WHERE YEAR(order_date) = 2024;
+
+-- GOOD: Use range instead
+SELECT * FROM orders
+WHERE order_date >= '2024-01-01' AND order_date < '2025-01-01';
+
+-- BAD: Math on column
+SELECT * FROM products WHERE price * 1.1 > 100;
+
+-- GOOD: Move math to right side
+SELECT * FROM products WHERE price > 100 / 1.1;
+```
+
+## 📋 Index-Friendly Patterns
+
+| Do This                 | Not This                     |
+| ----------------------- | ---------------------------- |
+| `WHERE col = value`     | `WHERE UPPER(col) = 'VALUE'` |
+| `WHERE col > value`     | `WHERE col + 1 > value`      |
+| `WHERE col LIKE 'abc%'` | `WHERE col LIKE '%abc'`      |
+| `WHERE col IS NULL`     | Works, but consider design   |
+
+## 🎯 LIKE and Indexes
+
+```sql
+-- Uses index (prefix search)
+SELECT * FROM products WHERE name LIKE 'Laptop%';
+
+-- Does NOT use index (suffix search)
+SELECT * FROM products WHERE name LIKE '%Laptop';
+
+-- For full-text search, use Full-Text Index instead
+```
+
+<IndexVisualizer mode="beginner" />
+
+<ProgressCheckpoint section="using-indexes-basics" xpReward={25} />

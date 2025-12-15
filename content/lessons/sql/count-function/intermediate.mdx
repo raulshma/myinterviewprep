@@ -1,0 +1,105 @@
+# COUNT Function: Practical Patterns
+
+Master COUNT for real-world analytics and reporting.
+
+## Conditional Counting
+
+```sql
+SELECT
+    COUNT(*) AS total_orders,
+    COUNT(CASE WHEN status = 'completed' THEN 1 END) AS completed,
+    COUNT(CASE WHEN status = 'pending' THEN 1 END) AS pending,
+    COUNT(CASE WHEN status = 'cancelled' THEN 1 END) AS cancelled
+FROM orders;
+```
+
+## COUNT with JOINs
+
+```sql
+-- Customers with order counts
+SELECT
+    c.name,
+    COUNT(o.id) AS order_count
+FROM customers c
+LEFT JOIN orders o ON c.id = o.customer_id
+GROUP BY c.id, c.name;
+
+-- Why LEFT JOIN? Includes customers with 0 orders
+```
+
+## Counting NULLs
+
+```sql
+-- Count rows WHERE column IS NULL
+SELECT
+    COUNT(*) - COUNT(email) AS missing_emails,
+    COUNT(*) AS total_users
+FROM users;
+
+-- Or more explicitly
+SELECT COUNT(CASE WHEN email IS NULL THEN 1 END) AS missing
+FROM users;
+```
+
+## COUNT DISTINCT Patterns
+
+```sql
+-- Multiple distinct counts
+SELECT
+    COUNT(DISTINCT customer_id) AS unique_customers,
+    COUNT(DISTINCT product_id) AS unique_products,
+    COUNT(*) AS total_line_items
+FROM order_items;
+
+-- Distinct combinations
+SELECT COUNT(DISTINCT CONCAT(city, '-', state)) AS unique_locations
+FROM addresses;
+```
+
+## Existence Check
+
+```sql
+-- More efficient than COUNT for existence
+-- Use EXISTS instead of COUNT(*) > 0
+IF EXISTS (SELECT 1 FROM orders WHERE customer_id = @id)
+    PRINT 'Has orders';
+
+-- Bad: Counts all rows
+IF (SELECT COUNT(*) FROM orders WHERE customer_id = @id) > 0
+    PRINT 'Has orders';
+```
+
+## Pagination with COUNT
+
+```sql
+-- Get page of data with total
+SELECT
+    (SELECT COUNT(*) FROM products WHERE category = 'Electronics') AS total_count,
+    *
+FROM products
+WHERE category = 'Electronics'
+ORDER BY name
+OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY;
+
+-- Window function approach
+SELECT
+    *,
+    COUNT(*) OVER () AS total_count
+FROM products
+WHERE category = 'Electronics'
+ORDER BY name
+OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY;
+```
+
+## Ratio Calculations
+
+```sql
+SELECT
+    category,
+    COUNT(*) AS category_count,
+    COUNT(*) * 100.0 / SUM(COUNT(*)) OVER () AS percentage
+FROM products
+GROUP BY category;
+```
+
+<ProgressCheckpoint section="count-patterns" xpReward={30} />

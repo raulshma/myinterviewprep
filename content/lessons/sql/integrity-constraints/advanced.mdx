@@ -1,0 +1,110 @@
+# Integrity Constraints: Advanced Topics
+
+Complex constraints and performance considerations.
+
+## Deferrable Constraints (PostgreSQL)
+
+```sql
+-- Check at commit instead of each statement
+CREATE TABLE nodes (
+    id INT PRIMARY KEY,
+    parent_id INT REFERENCES nodes(id)
+        DEFERRABLE INITIALLY DEFERRED
+);
+
+-- Insert circular reference
+BEGIN;
+    INSERT INTO nodes VALUES (1, 2);  -- Temporarily invalid
+    INSERT INTO nodes VALUES (2, 1);  -- Now both valid
+COMMIT;  -- Constraint checked here
+```
+
+## Constraint Validation Performance
+
+```sql
+-- Adding FK to large table can be slow
+ALTER TABLE orders ADD CONSTRAINT FK_orders
+    FOREIGN KEY (customer_id) REFERENCES customers(id);
+
+-- Faster: Add without initial check
+ALTER TABLE orders WITH NOCHECK ADD CONSTRAINT FK_orders
+    FOREIGN KEY (customer_id) REFERENCES customers(id);
+
+-- Verify later during maintenance window
+ALTER TABLE orders WITH CHECK CHECK CONSTRAINT FK_orders;
+```
+
+## Exclusion Constraints (PostgreSQL)
+
+```sql
+-- Prevent overlapping date ranges
+CREATE TABLE room_bookings (
+    id INT PRIMARY KEY,
+    room_id INT,
+    booking_range DATERANGE,
+    EXCLUDE USING GIST (room_id WITH =, booking_range WITH &&)
+);
+
+-- Prevents double-booking
+INSERT INTO room_bookings VALUES (1, 1, '[2024-01-01, 2024-01-05)');
+INSERT INTO room_bookings VALUES (2, 1, '[2024-01-03, 2024-01-07)');
+-- Error: Conflicting key value violates exclusion constraint
+```
+
+## Trigger-Based Constraints
+
+```sql
+-- Complex validation beyond CHECK
+CREATE TRIGGER tr_validate_order
+ON orders
+INSTEAD OF INSERT
+AS
+BEGIN
+    -- Custom validation
+    IF EXISTS (
+        SELECT 1 FROM inserted i
+        JOIN customers c ON i.customer_id = c.id
+        WHERE c.credit_limit < i.total_amount
+    )
+    BEGIN
+        THROW 50001, 'Order exceeds customer credit limit', 1;
+        RETURN;
+    END;
+
+    INSERT INTO orders SELECT * FROM inserted;
+END;
+```
+
+## Constraint Indexing
+
+```sql
+-- UNIQUE and PK automatically create indexes
+-- FK columns should also be indexed for performance!
+
+CREATE TABLE orders (
+    id INT PRIMARY KEY,  -- Index created
+    customer_id INT REFERENCES customers(id)  -- No automatic index!
+);
+
+-- Add index for FK performance
+CREATE INDEX IX_orders_customer ON orders(customer_id);
+```
+
+## Constraint Error Handling
+
+```sql
+-- Catch specific constraint violations
+BEGIN TRY
+    INSERT INTO users (id, email) VALUES (1, 'duplicate@email.com');
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER() = 2627  -- PK violation
+        PRINT 'Duplicate ID';
+    ELSE IF ERROR_NUMBER() = 2601  -- Unique violation
+        PRINT 'Duplicate email';
+    ELSE IF ERROR_NUMBER() = 547  -- FK/CHECK violation
+        PRINT 'Constraint violated: ' + ERROR_MESSAGE();
+END CATCH;
+```
+
+<ProgressCheckpoint section="integrity-advanced" xpReward={50} />

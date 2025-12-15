@@ -1,0 +1,166 @@
+# SQL Statements: Practical Applications
+
+Master real-world patterns for SELECT, INSERT, UPDATE, and DELETE.
+
+## SELECT: Advanced Patterns
+
+### Column Expressions
+
+```sql
+SELECT
+    first_name,
+    last_name,
+    first_name + ' ' + last_name AS full_name,
+    salary * 12 AS annual_salary,
+    GETDATE() AS query_time
+FROM employees;
+```
+
+### Subqueries in SELECT
+
+```sql
+SELECT
+    customer_name,
+    (SELECT COUNT(*) FROM orders WHERE customer_id = c.id) AS order_count
+FROM customers c;
+```
+
+### DISTINCT and TOP/LIMIT
+
+```sql
+-- Unique values
+SELECT DISTINCT category FROM products;
+
+-- Top N rows (SQL Server)
+SELECT TOP 10 * FROM orders ORDER BY order_date DESC;
+
+-- Limit (PostgreSQL/MySQL)
+SELECT * FROM orders ORDER BY order_date DESC LIMIT 10;
+```
+
+## INSERT: Advanced Patterns
+
+### INSERT from SELECT
+
+```sql
+-- Copy data from one table to another
+INSERT INTO archive_orders (order_id, customer_id, total)
+SELECT order_id, customer_id, total
+FROM orders
+WHERE order_date < '2023-01-01';
+```
+
+### Default Values
+
+```sql
+-- Using defaults
+INSERT INTO users (name)  -- Other columns get defaults
+VALUES ('John');
+
+-- Explicit default
+INSERT INTO users (name, created_at)
+VALUES ('John', DEFAULT);
+```
+
+### Returning Inserted Data
+
+```sql
+-- SQL Server
+INSERT INTO users (name)
+OUTPUT INSERTED.id, INSERTED.name
+VALUES ('John');
+
+-- PostgreSQL
+INSERT INTO users (name)
+RETURNING id, name;
+```
+
+## UPDATE: Advanced Patterns
+
+### Update with JOIN
+
+```sql
+-- SQL Server
+UPDATE o
+SET o.status = 'vip'
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id
+WHERE c.total_spent > 10000;
+
+-- PostgreSQL
+UPDATE orders o
+SET status = 'vip'
+FROM customers c
+WHERE o.customer_id = c.id
+AND c.total_spent > 10000;
+```
+
+### Update from Subquery
+
+```sql
+UPDATE products
+SET discount_price = price * 0.9
+WHERE category_id IN (
+    SELECT id FROM categories WHERE name = 'Clearance'
+);
+```
+
+### CASE in UPDATE
+
+```sql
+UPDATE employees
+SET bonus = CASE
+    WHEN rating >= 9 THEN salary * 0.20
+    WHEN rating >= 7 THEN salary * 0.10
+    ELSE salary * 0.05
+END;
+```
+
+## DELETE: Advanced Patterns
+
+### Delete with JOIN
+
+```sql
+-- SQL Server
+DELETE o
+FROM orders o
+INNER JOIN customers c ON o.customer_id = c.id
+WHERE c.status = 'inactive';
+
+-- PostgreSQL/MySQL
+DELETE FROM orders
+USING customers
+WHERE orders.customer_id = customers.id
+AND customers.status = 'inactive';
+```
+
+### Soft Delete Pattern
+
+```sql
+-- Instead of DELETE, update a flag
+UPDATE users
+SET
+    deleted_at = GETDATE(),
+    is_active = 0
+WHERE id = 123;
+
+-- Then filter in queries
+SELECT * FROM users WHERE is_active = 1;
+```
+
+## Transaction Safety
+
+```sql
+BEGIN TRANSACTION;
+
+-- Multiple related changes
+UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+
+-- Check for errors, then:
+COMMIT;  -- Save changes
+-- or
+ROLLBACK;  -- Undo if something went wrong
+```
+
+<ProgressCheckpoint section="statements-practical" xpReward={40} />

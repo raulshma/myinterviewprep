@@ -1,0 +1,124 @@
+# SQL Keywords: Advanced Concepts
+
+Explore advanced and vendor-specific keywords for enterprise SQL development.
+
+## Window Function Keywords
+
+```sql
+SELECT
+    employee_id,
+    salary,
+    ROW_NUMBER() OVER (ORDER BY salary DESC) as rank,
+    SUM(salary) OVER (PARTITION BY department) as dept_total,
+    LAG(salary) OVER (ORDER BY hire_date) as prev_salary,
+    LEAD(salary) OVER (ORDER BY hire_date) as next_salary
+FROM employees;
+```
+
+| Keyword               | Purpose                 |
+| --------------------- | ----------------------- |
+| `OVER`                | Defines window          |
+| `PARTITION BY`        | Groups within window    |
+| `ORDER BY`            | Orders within partition |
+| `ROWS/RANGE`          | Frame specification     |
+| `UNBOUNDED PRECEDING` | From start              |
+| `CURRENT ROW`         | Current position        |
+
+## CTE Keywords
+
+```sql
+WITH RECURSIVE cte_name AS (
+    -- Anchor member
+    SELECT id, name, manager_id, 1 as level
+    FROM employees
+    WHERE manager_id IS NULL
+
+    UNION ALL
+
+    -- Recursive member
+    SELECT e.id, e.name, e.manager_id, c.level + 1
+    FROM employees e
+    INNER JOIN cte_name c ON e.manager_id = c.id
+)
+SELECT * FROM cte_name;
+```
+
+## Advanced Control Keywords
+
+### CASE Expression
+
+```sql
+SELECT name,
+    CASE
+        WHEN salary > 100000 THEN 'Executive'
+        WHEN salary > 50000 THEN 'Senior'
+        ELSE 'Junior'
+    END as level
+FROM employees;
+```
+
+### COALESCE and NULLIF
+
+```sql
+SELECT
+    COALESCE(nickname, first_name, 'Unknown') as display_name,
+    NULLIF(bonus, 0) as valid_bonus  -- Returns NULL if bonus = 0
+FROM employees;
+```
+
+## Vendor-Specific Keywords
+
+### SQL Server Specific
+
+| Keyword              | Usage                      |
+| -------------------- | -------------------------- |
+| `TOP`                | Limit rows                 |
+| `OUTPUT`             | Return affected rows       |
+| `CROSS APPLY`        | Table-valued function join |
+| `PIVOT/UNPIVOT`      | Transform rows to columns  |
+| `OPTION (RECOMPILE)` | Hint for execution         |
+
+### PostgreSQL Specific
+
+| Keyword       | Usage                    |
+| ------------- | ------------------------ |
+| `RETURNING`   | Return affected rows     |
+| `ON CONFLICT` | Upsert handling          |
+| `LATERAL`     | Correlated subquery join |
+| `DISTINCT ON` | First row per group      |
+
+### MySQL Specific
+
+| Keyword            | Usage            |
+| ------------------ | ---------------- |
+| `LIMIT...OFFSET`   | Pagination       |
+| `ON DUPLICATE KEY` | Upsert           |
+| `STRAIGHT_JOIN`    | Force join order |
+
+## Reserved vs Non-Reserved Keywords
+
+```sql
+-- Reserved: CANNOT be used as identifiers
+CREATE TABLE SELECT (...);  -- ERROR!
+
+-- Delimited identifiers allow reserved words
+CREATE TABLE [SELECT] (...);   -- SQL Server
+CREATE TABLE "SELECT" (...);   -- PostgreSQL
+CREATE TABLE `SELECT` (...);   -- MySQL
+```
+
+## Query Hints
+
+```sql
+-- SQL Server hints
+SELECT * FROM orders WITH (NOLOCK);
+SELECT * FROM orders OPTION (MAXDOP 4);
+
+-- PostgreSQL hints (via extension)
+/*+ SeqScan(orders) */ SELECT * FROM orders;
+
+-- MySQL hints
+SELECT /*+ INDEX(orders idx_date) */ * FROM orders;
+```
+
+<ProgressCheckpoint section="advanced-keywords" xpReward={50} />

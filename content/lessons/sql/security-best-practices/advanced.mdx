@@ -1,0 +1,106 @@
+# Security Best Practices: Advanced Topics
+
+Enterprise security patterns and compliance.
+
+## Defense in Depth
+
+```sql
+-- Layer 1: Network (Firewall, VPN)
+-- Layer 2: Authentication (Windows Auth, Certificates)
+-- Layer 3: Authorization (GRANT/REVOKE)
+-- Layer 4: Row-Level Security
+-- Layer 5: Column-Level Encryption
+-- Layer 6: Transport Encryption (TLS)
+-- Layer 7: Storage Encryption (TDE)
+-- Layer 8: Audit Logging
+```
+
+## Advanced SQL Injection Defense
+
+```sql
+-- Stored procedure wrapper
+CREATE PROCEDURE sp_safe_search @search NVARCHAR(100)
+AS
+BEGIN
+    -- Whitelist approach for dynamic columns
+    IF @search NOT IN ('name', 'email', 'created_at')
+        THROW 50001, 'Invalid search column', 1;
+
+    DECLARE @sql NVARCHAR(MAX) = N'SELECT * FROM users WHERE ' +
+        QUOTENAME(@search) + N' LIKE @pattern';
+
+    EXEC sp_executesql @sql, N'@pattern NVARCHAR(100)', @pattern = '%search%';
+END;
+
+-- Never use EXEC with user input directly!
+```
+
+## Compliance: GDPR/HIPAA
+
+```sql
+-- Right to erasure (GDPR)
+CREATE PROCEDURE sp_delete_user_data @user_id INT
+AS
+BEGIN
+    -- Soft delete with anonymization
+    UPDATE users SET
+        name = 'Deleted User',
+        email = CONCAT('deleted_', @user_id, '@removed.com'),
+        phone = NULL,
+        is_deleted = 1
+    WHERE id = @user_id;
+
+    -- Log the deletion
+    INSERT INTO gdpr_deletions (user_id, deleted_at, deleted_by)
+    VALUES (@user_id, SYSDATETIME(), SYSTEM_USER);
+END;
+
+-- Data retention policies
+DELETE FROM audit_logs WHERE created_at < DATEADD(YEAR, -7, GETDATE());
+```
+
+## Vulnerability Scanning
+
+```sql
+-- SQL Server: Security Assessment
+EXEC sp_configure 'show advanced options', 1;
+RECONFIGURE;
+EXEC sp_configure 'xp_cmdshell', 0;  -- Disable dangerous feature
+RECONFIGURE;
+
+-- Check for weak passwords
+SELECT name FROM sys.sql_logins
+WHERE PWDCOMPARE('', password_hash) = 1
+OR PWDCOMPARE(name, password_hash) = 1;
+```
+
+## Security Monitoring
+
+```sql
+-- Failed login attempts
+SELECT
+    event_time,
+    client_net_address,
+    REPLACE(REPLACE(session_server_principal_name, 'DOMAIN\', ''), '@domain.com', '') AS user_attempt
+FROM sys.fn_get_audit_file('C:\Audits\*.sqlaudit', NULL, NULL)
+WHERE action_id = 'LGIF'  -- Login Failed
+ORDER BY event_time DESC;
+
+-- Privilege escalation detection
+CREATE TRIGGER tr_security_changes
+ON DATABASE
+FOR DDL_DATABASE_SECURITY_EVENTS
+AS
+BEGIN
+    INSERT INTO security_changes_log
+    SELECT EVENTDATA(), GETDATE(), SYSTEM_USER;
+
+    -- Alert on suspicious changes
+    IF CONTAINS(EVENTDATA(), 'sysadmin') OR CONTAINS(EVENTDATA(), 'db_owner')
+        EXEC msdb.dbo.sp_send_dbmail @recipients = 'security@company.com', ...;
+END;
+```
+
+<SecurityPermissionDemo mode="advanced" />
+
+<ProgressCheckpoint section="security-advanced" xpReward={55} />

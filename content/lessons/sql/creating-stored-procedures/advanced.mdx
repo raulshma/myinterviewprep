@@ -1,0 +1,115 @@
+# Creating Stored Procedures: Advanced Topics
+
+Enterprise patterns and optimization.
+
+## Dynamic SQL
+
+```sql
+CREATE PROCEDURE sp_dynamic_search
+    @table_name NVARCHAR(128),
+    @column_name NVARCHAR(128),
+    @search_value NVARCHAR(100)
+AS
+BEGIN
+    DECLARE @sql NVARCHAR(MAX);
+
+    -- Protect against SQL injection
+    IF NOT EXISTS (SELECT 1 FROM sys.tables WHERE name = @table_name)
+        THROW 50001, 'Invalid table', 1;
+
+    IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID(@table_name) AND name = @column_name)
+        THROW 50002, 'Invalid column', 1;
+
+    SET @sql = N'SELECT * FROM ' + QUOTENAME(@table_name) +
+               N' WHERE ' + QUOTENAME(@column_name) + N' = @value';
+
+    EXEC sp_executesql @sql, N'@value NVARCHAR(100)', @value = @search_value;
+END;
+```
+
+## Procedure Versioning
+
+```sql
+-- Maintain procedural versions
+CREATE PROCEDURE sp_get_customer_v1 @id INT
+AS SELECT id, name FROM customers WHERE id = @id;
+
+CREATE PROCEDURE sp_get_customer_v2 @id INT
+AS SELECT id, name, email, created_at FROM customers WHERE id = @id;
+
+-- Alias for current version
+CREATE SYNONYM sp_get_customer FOR sp_get_customer_v2;
+```
+
+## Option Settings
+
+```sql
+CREATE PROCEDURE sp_optimized_report
+    @start_date DATE,
+    @end_date DATE
+AS
+BEGIN
+    SET NOCOUNT ON;  -- Don't return row counts
+    SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;  -- Fast reads
+
+    SELECT * FROM large_report_table
+    WHERE report_date BETWEEN @start_date AND @end_date;
+END;
+```
+
+## Result Set Caching
+
+```sql
+CREATE PROCEDURE sp_get_categories
+AS
+BEGIN
+    -- Check cache (using table)
+    IF EXISTS (
+        SELECT 1 FROM category_cache
+        WHERE last_updated > DATEADD(HOUR, -1, GETDATE())
+    )
+    BEGIN
+        SELECT * FROM category_cache;
+        RETURN;
+    END;
+
+    -- Refresh cache
+    TRUNCATE TABLE category_cache;
+    INSERT INTO category_cache SELECT *, GETDATE() FROM categories;
+
+    SELECT * FROM category_cache;
+END;
+```
+
+## Native Compilation (SQL Server)
+
+```sql
+-- Memory-optimized stored procedure
+CREATE PROCEDURE sp_fast_insert
+    @id INT,
+    @value NVARCHAR(100)
+WITH NATIVE_COMPILATION, SCHEMABINDING, EXECUTE AS OWNER
+AS
+BEGIN ATOMIC WITH (
+    TRANSACTION ISOLATION LEVEL = SNAPSHOT,
+    LANGUAGE = N'English'
+)
+    INSERT INTO memory_table (id, value) VALUES (@id, @value);
+END;
+```
+
+## Cross-Database Procedures
+
+```sql
+CREATE PROCEDURE sp_cross_db_report
+AS
+BEGIN
+    SELECT a.*, b.*
+    FROM CurrentDB.dbo.orders a
+    JOIN HistoryDB.dbo.archived_orders b ON a.customer_id = b.customer_id;
+END;
+```
+
+<StoredProcedureBuilder mode="advanced" />
+
+<ProgressCheckpoint section="procedures-advanced" xpReward={55} />

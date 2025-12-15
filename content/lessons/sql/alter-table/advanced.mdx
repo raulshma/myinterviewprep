@@ -1,0 +1,147 @@
+# ALTER TABLE: Online Operations and Enterprise Patterns
+
+Master zero-downtime schema changes and advanced ALTER operations.
+
+## Online Schema Changes
+
+### SQL Server Online Index
+
+```sql
+-- Rebuild index without blocking queries
+ALTER INDEX IX_orders_date ON orders
+REBUILD WITH (ONLINE = ON);
+
+-- Add column online (SQL Server 2012+)
+ALTER TABLE orders
+ADD created_by INT NULL WITH (ONLINE = ON);
+```
+
+### PostgreSQL Concurrent Operations
+
+```sql
+-- Create index without blocking writes
+CREATE INDEX CONCURRENTLY IX_orders_customer
+ON orders (customer_id);
+
+-- Drop index concurrently
+DROP INDEX CONCURRENTLY IX_orders_old;
+```
+
+### MySQL Online DDL
+
+```sql
+-- Online ALTER with algorithm selection
+ALTER TABLE orders
+ADD COLUMN notes TEXT,
+ALGORITHM = INPLACE,
+LOCK = NONE;
+```
+
+## Safe Migration Patterns
+
+### Expand Then Contract
+
+```sql
+-- Step 1: Add new column (nullable)
+ALTER TABLE users ADD phone_new VARCHAR(20) NULL;
+
+-- Step 2: Migrate data (can be done in batches)
+UPDATE users SET phone_new = phone WHERE phone_new IS NULL;
+
+-- Step 3: Verify and switch
+ALTER TABLE users DROP COLUMN phone;
+ALTER TABLE users RENAME COLUMN phone_new TO phone;
+```
+
+### Blue-Green Column
+
+```sql
+-- Add new column alongside old
+ALTER TABLE products ADD price_v2 DECIMAL(12,4);
+
+-- Application writes to both:
+UPDATE products SET price = @price, price_v2 = @price WHERE id = @id;
+
+-- When ready, drop old column
+ALTER TABLE products DROP COLUMN price;
+ALTER TABLE products RENAME COLUMN price_v2 TO price;
+```
+
+## Partition Management
+
+```sql
+-- SQL Server: Split partition
+ALTER PARTITION FUNCTION pf_orders()
+SPLIT RANGE ('2025-01-01');
+
+-- Merge partitions
+ALTER PARTITION FUNCTION pf_orders()
+MERGE RANGE ('2020-01-01');
+
+-- Switch partition (instant move)
+ALTER TABLE orders_2023
+SWITCH TO orders PARTITION 3;
+```
+
+## Space and Performance
+
+```sql
+-- Rebuild table (defragment)
+ALTER TABLE large_table REBUILD;
+
+-- SQL Server: Compress table
+ALTER TABLE orders REBUILD WITH (DATA_COMPRESSION = PAGE);
+
+-- PostgreSQL: Cluster on index
+CLUSTER orders USING ix_orders_date;
+```
+
+## Schema Comparison Tools
+
+```sql
+-- Generate difference script
+-- SQL Server: Schema compare in SSDT
+-- PostgreSQL: pg_dump --schema-only
+
+-- Migration frameworks approach
+-- 1. Capture current state
+-- 2. Define target state
+-- 3. Generate diff script
+-- 4. Apply with transaction safety
+```
+
+## Rollback Strategies
+
+```sql
+-- Always have a rollback plan
+-- Save before state:
+SELECT * INTO orders_backup FROM orders WHERE 1=0;
+-- (copies structure only)
+
+-- Or keep undo script ready:
+-- Forward: ALTER TABLE orders ADD new_column INT;
+-- Rollback: ALTER TABLE orders DROP COLUMN new_column;
+
+-- Transaction wrapping (if possible)
+BEGIN TRANSACTION;
+ALTER TABLE orders ADD temp_col INT;
+-- Test...
+ROLLBACK; -- or COMMIT;
+```
+
+## Monitoring ALTER Progress
+
+```sql
+-- SQL Server: Check running ALTER
+SELECT
+    percent_complete,
+    estimated_completion_time,
+    command
+FROM sys.dm_exec_requests
+WHERE command LIKE 'ALTER%';
+
+-- PostgreSQL: Check running operations
+SELECT * FROM pg_stat_progress_create_index;
+```
+
+<ProgressCheckpoint section="alter-table-advanced" xpReward={55} />

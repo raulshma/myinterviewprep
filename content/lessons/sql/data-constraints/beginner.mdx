@@ -1,0 +1,117 @@
+# SQL Constraints
+
+Constraints are rules that keep your data clean and consistent. They prevent bad data from entering your database!
+
+## 🔒 Why Constraints Matter
+
+Without constraints:
+
+- Duplicate customer IDs could exist
+- Orders could reference non-existent customers
+- Prices could be negative
+- Required fields could be empty
+
+> **Think of constraints as:** Bouncers at a club - they check if data meets the rules before letting it in!
+
+## PRIMARY KEY
+
+Uniquely identifies each row in a table. Every table should have one!
+
+```sql
+-- ProductID is the primary key - no duplicates allowed
+CREATE TABLE Products (
+    ProductID INT PRIMARY KEY,
+    ProductName VARCHAR(100) NOT NULL
+);
+
+-- Auto-incrementing primary key
+CREATE TABLE Orders (
+    OrderID INT PRIMARY KEY IDENTITY(1,1),  -- Starts at 1, increments by 1
+    OrderDate DATE
+);
+
+-- Composite primary key (multiple columns)
+CREATE TABLE OrderDetails (
+    OrderID INT,
+    ProductID INT,
+    Quantity INT,
+    PRIMARY KEY (OrderID, ProductID)  -- Combination must be unique
+);
+```
+
+**Rules:**
+
+- Must be unique for every row
+- Cannot be NULL
+- Only ONE primary key per table
+
+## FOREIGN KEY
+
+Links tables together by referencing another table&apos;s primary key:
+
+```sql
+-- Orders reference Customers
+CREATE TABLE Orders (
+    OrderID INT PRIMARY KEY,
+    CustomerID CHAR(5),
+    OrderDate DATE,
+
+    FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID)
+);
+```
+
+Now if you try to insert an order with a CustomerID that doesn&apos;t exist in Customers, it will **fail**!
+
+```sql
+-- This will FAIL if 'XXXXX' doesn't exist in Customers
+INSERT INTO Orders (OrderID, CustomerID, OrderDate)
+VALUES (99999, 'XXXXX', '2024-01-15');
+-- Error: Foreign key violation!
+```
+
+## NOT NULL
+
+Prevents empty values:
+
+```sql
+CREATE TABLE Customers (
+    CustomerID CHAR(5) PRIMARY KEY,
+    CompanyName VARCHAR(100) NOT NULL,  -- Required!
+    ContactName VARCHAR(50)              -- Optional (can be NULL)
+);
+```
+
+## UNIQUE
+
+Values must be unique (but can be NULL):
+
+```sql
+CREATE TABLE Employees (
+    EmployeeID INT PRIMARY KEY,
+    Email VARCHAR(255) UNIQUE,  -- No duplicate emails allowed
+    Phone VARCHAR(24) UNIQUE    -- No duplicate phones
+);
+```
+
+## CHECK
+
+Validates data meets custom conditions:
+
+```sql
+CREATE TABLE Products (
+    ProductID INT PRIMARY KEY,
+    ProductName VARCHAR(100),
+    UnitPrice DECIMAL(10,2) CHECK (UnitPrice >= 0),  -- No negative prices
+    UnitsInStock INT CHECK (UnitsInStock >= 0)
+);
+```
+
+## Key Takeaways ✓
+
+1. **PRIMARY KEY** - Unique ID for each row (required)
+2. **FOREIGN KEY** - Links to another table
+3. **NOT NULL** - Value is required
+4. **UNIQUE** - No duplicates allowed
+5. **CHECK** - Custom validation rules
+
+<ProgressCheckpoint section="primary-key" xpReward={25} />

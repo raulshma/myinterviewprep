@@ -1,0 +1,93 @@
+# Window Functions: Advanced Topics
+
+Expert-level window function techniques.
+
+## Frame Types: ROWS vs RANGE vs GROUPS
+
+```sql
+-- ROWS: Exact row counts
+AVG(amount) OVER (ORDER BY date ROWS BETWEEN 2 PRECEDING AND CURRENT ROW)
+-- Always exactly 3 rows (or fewer at start)
+
+-- RANGE: Value-based (includes ties)
+AVG(amount) OVER (ORDER BY date RANGE BETWEEN INTERVAL '2' DAY PRECEDING AND CURRENT ROW)
+-- All rows within 2 days
+
+-- GROUPS (SQL:2011): Group-based
+FIRST_VALUE(amount) OVER (ORDER BY category GROUPS 1 PRECEDING)
+-- Previous distinct group
+```
+
+## EXCLUDE Options
+
+```sql
+-- PostgreSQL: Exclude current row or ties
+SELECT amount,
+    AVG(amount) OVER (ORDER BY amount ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING
+                      EXCLUDE CURRENT ROW) AS avg_neighbors
+FROM sales;
+
+-- Options: EXCLUDE CURRENT ROW, EXCLUDE TIES, EXCLUDE GROUP
+```
+
+## FILTER Clause
+
+```sql
+-- PostgreSQL: Apply conditions to window aggregates
+SELECT
+    department,
+    COUNT(*) OVER (PARTITION BY department) AS total,
+    COUNT(*) FILTER (WHERE salary > 50000) OVER (PARTITION BY department) AS high_earners
+FROM employees;
+```
+
+## Window Function Ordering
+
+```sql
+-- Execution order:
+-- 1. FROM, JOIN
+-- 2. WHERE
+-- 3. GROUP BY
+-- 4. HAVING
+-- 5. Window functions <-- HERE
+-- 6. SELECT
+-- 7. DISTINCT
+-- 8. ORDER BY
+-- 9. LIMIT
+
+-- Window functions can reference SELECT aliases in OVER clause
+```
+
+## Cumulative Distribution
+
+```sql
+SELECT score,
+    CUME_DIST() OVER (ORDER BY score) AS cumulative_distribution,
+    PERCENT_RANK() OVER (ORDER BY score) AS percent_rank,
+    NTILE(4) OVER (ORDER BY score) AS quartile
+FROM test_results;
+```
+
+## Complex Analytics Example
+
+```sql
+-- Year-over-year growth by product
+WITH monthly_sales AS (
+    SELECT
+        product_id,
+        DATE_TRUNC('month', sale_date) AS month,
+        SUM(amount) AS total
+    FROM sales
+    GROUP BY product_id, DATE_TRUNC('month', sale_date)
+)
+SELECT
+    product_id,
+    month,
+    total,
+    LAG(total, 12) OVER (PARTITION BY product_id ORDER BY month) AS last_year,
+    (total - LAG(total, 12) OVER (PARTITION BY product_id ORDER BY month)) /
+        NULLIF(LAG(total, 12) OVER (PARTITION BY product_id ORDER BY month), 0) * 100 AS yoy_growth_pct
+FROM monthly_sales;
+```
+
+<ProgressCheckpoint section="window-intro-advanced" xpReward={55} />

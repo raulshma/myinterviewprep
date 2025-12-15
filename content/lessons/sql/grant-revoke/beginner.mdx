@@ -1,0 +1,77 @@
+# GRANT and REVOKE: Database Permissions
+
+Control who can do what in your database!
+
+## 🔐 What is GRANT?
+
+GRANT gives permissions to users:
+
+```sql
+GRANT SELECT ON products TO john;
+-- John can now read from products table
+```
+
+## 🚫 What is REVOKE?
+
+REVOKE removes permissions:
+
+```sql
+REVOKE SELECT ON products FROM john;
+-- John can no longer read products
+```
+
+## 📝 Common Permissions
+
+| Permission | Allows         |
+| ---------- | -------------- |
+| SELECT     | Read data      |
+| INSERT     | Add rows       |
+| UPDATE     | Modify rows    |
+| DELETE     | Remove rows    |
+| EXECUTE    | Run procedures |
+| ALL        | Everything     |
+
+## 🎯 Basic Examples
+
+```sql
+-- Grant single permission
+GRANT SELECT ON customers TO analyst_user;
+
+-- Grant multiple permissions
+GRANT SELECT, INSERT, UPDATE ON orders TO app_user;
+
+-- Grant all permissions
+GRANT ALL ON products TO admin_user;
+
+-- Grant on all tables
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_user;
+```
+
+## 👥 Granting to Roles
+
+```sql
+-- Create a role
+CREATE ROLE sales_team;
+
+-- Grant to role
+GRANT SELECT ON orders TO sales_team;
+GRANT SELECT ON customers TO sales_team;
+
+-- Add users to role
+GRANT sales_team TO john;
+GRANT sales_team TO jane;
+```
+
+## ↩️ Revoke Examples
+
+```sql
+-- Remove single permission
+REVOKE INSERT ON orders FROM temp_user;
+
+-- Remove all permissions
+REVOKE ALL ON products FROM former_employee;
+```
+
+<SecurityPermissionDemo mode="beginner" />
+
+<ProgressCheckpoint section="grant-revoke-basics" xpReward={25} />

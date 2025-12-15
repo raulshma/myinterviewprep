@@ -11,6 +11,7 @@ export const RoadmapCategorySchema = z.enum([
   'system-design',
   'full-stack',
   'dotnet',
+  'sql',
 ]);
 
 // Node types for visual differentiation

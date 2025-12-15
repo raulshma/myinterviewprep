@@ -1,0 +1,77 @@
+# Introduction to Window Functions
+
+Calculate across rows without losing data!
+
+## 🎯 What Are Window Functions?
+
+Window functions perform calculations across a set of rows related to the current row:
+
+```sql
+SELECT name, salary,
+    AVG(salary) OVER () AS company_avg
+FROM employees;
+
+-- Result shows each employee WITH the company average
+-- John, 50000, 55000
+-- Jane, 60000, 55000
+```
+
+## 🔍 Window vs GROUP BY
+
+```sql
+-- GROUP BY: Collapses rows
+SELECT department, AVG(salary) FROM employees GROUP BY department;
+-- Result: 3 rows (one per department)
+
+-- Window: Keeps all rows
+SELECT name, department, AVG(salary) OVER (PARTITION BY department)
+FROM employees;
+-- Result: All employees with their department average
+```
+
+## 📝 Basic Syntax
+
+```sql
+function_name() OVER (
+    [PARTITION BY column]
+    [ORDER BY column]
+)
+```
+
+## 📊 Common Window Functions
+
+| Function       | Purpose            |
+| -------------- | ------------------ |
+| `ROW_NUMBER()` | Unique row number  |
+| `RANK()`       | Rank with gaps     |
+| `SUM() OVER`   | Running total      |
+| `AVG() OVER`   | Moving average     |
+| `LAG()`        | Previous row value |
+| `LEAD()`       | Next row value     |
+
+## 🚀 Simple Examples
+
+```sql
+-- Running total
+SELECT order_date, amount,
+    SUM(amount) OVER (ORDER BY order_date) AS running_total
+FROM orders;
+
+-- Row numbers
+SELECT name,
+    ROW_NUMBER() OVER (ORDER BY hire_date) AS employee_number
+FROM employees;
+```
+
+## 💡 PARTITION BY
+
+Divide rows into groups:
+
+```sql
+-- Running total PER customer
+SELECT customer_id, order_date, amount,
+    SUM(amount) OVER (PARTITION BY customer_id ORDER BY order_date) AS customer_total
+FROM orders;
+```
+
+<ProgressCheckpoint section="window-intro-basics" xpReward={30} />

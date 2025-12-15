@@ -1,0 +1,121 @@
+# Primary Keys: Design Patterns
+
+Master primary key design for real-world database applications.
+
+## Composite Primary Keys
+
+Multiple columns form the key together:
+
+```sql
+-- Order items identified by order + product
+CREATE TABLE order_items (
+    order_id INT,
+    product_id INT,
+    quantity INT,
+    price DECIMAL(10,2),
+    PRIMARY KEY (order_id, product_id)
+);
+
+-- Each combination of order_id + product_id must be unique
+INSERT INTO order_items VALUES (1, 100, 2, 19.99);  -- OK
+INSERT INTO order_items VALUES (1, 101, 1, 29.99);  -- OK
+INSERT INTO order_items VALUES (1, 100, 3, 19.99);  -- ERROR: Duplicate
+```
+
+## Natural vs Surrogate Keys
+
+| Type      | Description      | Example                  |
+| --------- | ---------------- | ------------------------ |
+| Natural   | Business data    | email, SSN, ISBN         |
+| Surrogate | System-generated | auto-increment INT, UUID |
+
+```sql
+-- Natural key
+CREATE TABLE countries (
+    code CHAR(2) PRIMARY KEY,  -- 'US', 'UK', 'DE'
+    name VARCHAR(100)
+);
+
+-- Surrogate key (preferred for most cases)
+CREATE TABLE users (
+    id INT IDENTITY PRIMARY KEY,
+    email VARCHAR(100) UNIQUE,
+    name VARCHAR(100)
+);
+```
+
+## UUID/GUID Primary Keys
+
+```sql
+-- SQL Server
+CREATE TABLE documents (
+    id UNIQUEIDENTIFIER DEFAULT NEWID() PRIMARY KEY,
+    title VARCHAR(200)
+);
+
+-- PostgreSQL
+CREATE TABLE documents (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    title VARCHAR(200)
+);
+
+-- Insert without specifying ID
+INSERT INTO documents (title) VALUES ('My Document');
+```
+
+### UUID Pros and Cons
+
+| Pros                                 | Cons                           |
+| ------------------------------------ | ------------------------------ |
+| Globally unique                      | Larger storage (16 bytes vs 4) |
+| No collisions in distributed systems | Slower indexes                 |
+| Can generate client-side             | Harder to read/debug           |
+| No sequence bottleneck               | Random inserts = page splits   |
+
+## Identity Column Options
+
+```sql
+-- SQL Server: Custom start and increment
+CREATE TABLE invoices (
+    id INT IDENTITY(1000, 10) PRIMARY KEY  -- Start at 1000, increment by 10
+);
+
+-- PostgreSQL: GENERATED ALWAYS
+CREATE TABLE invoices (
+    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY
+);
+
+-- Get last inserted ID
+-- SQL Server
+SELECT SCOPE_IDENTITY();
+
+-- PostgreSQL
+INSERT INTO invoices (...) RETURNING id;
+
+-- MySQL
+SELECT LAST_INSERT_ID();
+```
+
+## Adding Primary Key to Existing Table
+
+```sql
+-- First ensure no NULLs or duplicates
+SELECT id, COUNT(*) FROM existing_table GROUP BY id HAVING COUNT(*) > 1;
+
+-- Add the constraint
+ALTER TABLE existing_table
+ADD CONSTRAINT PK_existing PRIMARY KEY (id);
+```
+
+## Primary Key with Other Constraints
+
+```sql
+CREATE TABLE products (
+    id INT IDENTITY PRIMARY KEY,
+    sku VARCHAR(50) NOT NULL UNIQUE,  -- Also unique, but not PK
+    name VARCHAR(100) NOT NULL,
+    created_at DATETIME DEFAULT GETDATE()
+);
+```
+
+<ProgressCheckpoint section="primary-key-patterns" xpReward={40} />

@@ -1,0 +1,87 @@
+# GROUP BY: Organizing Data into Groups
+
+Learn to group rows together for powerful summaries!
+
+## 📊 What is GROUP BY?
+
+GROUP BY collects rows into groups so you can calculate totals per group:
+
+```sql
+-- Without GROUP BY: One total for all
+SELECT SUM(total) FROM orders;  -- 50,000
+
+-- With GROUP BY: Total per customer
+SELECT customer_id, SUM(total) FROM orders GROUP BY customer_id;
+-- Customer 1: 5,000
+-- Customer 2: 12,000
+-- ...
+```
+
+## 📝 Basic Syntax
+
+```sql
+SELECT column, AGGREGATE_FUNCTION(other_column)
+FROM table
+GROUP BY column;
+```
+
+## 🎯 Simple Examples
+
+```sql
+-- Orders per customer
+SELECT customer_id, COUNT(*) AS order_count
+FROM orders
+GROUP BY customer_id;
+
+-- Revenue per category
+SELECT category, SUM(price) AS category_revenue
+FROM products
+GROUP BY category;
+
+-- Employees per department
+SELECT department, COUNT(*) AS employee_count
+FROM employees
+GROUP BY department;
+```
+
+## ⚠️ The Golden Rule
+
+> Every column in SELECT must be in GROUP BY or an aggregate function!
+
+```sql
+-- CORRECT
+SELECT category, AVG(price)
+FROM products
+GROUP BY category;
+
+-- WRONG - name not in GROUP BY or aggregate
+SELECT category, name, AVG(price)
+FROM products
+GROUP BY category;
+-- Error!
+```
+
+## 📊 Multiple Aggregates
+
+```sql
+SELECT
+    category,
+    COUNT(*) AS product_count,
+    AVG(price) AS avg_price,
+    MIN(price) AS min_price,
+    MAX(price) AS max_price,
+    SUM(stock) AS total_stock
+FROM products
+GROUP BY category;
+```
+
+## 🔄 With ORDER BY
+
+```sql
+SELECT category, SUM(sales) AS total_sales
+FROM products
+GROUP BY category
+ORDER BY total_sales DESC;  -- Highest sales first
+```
+
+<ProgressCheckpoint section="groupby-basics" xpReward={25} />

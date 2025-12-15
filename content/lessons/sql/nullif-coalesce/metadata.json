@@ -1,0 +1,15 @@
+{
+  "id": "nullif-coalesce",
+  "title": "NULLIF and COALESCE",
+  "description": "Handle NULL values with specialized functions.",
+  "milestone": "advanced-functions",
+  "order": 4,
+  "sections": ["coalesce", "nullif", "isnull-patterns"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 15, "xpReward": 40 }
+  },
+  "prerequisites": ["case-expression"],
+  "tags": ["sql", "null", "coalesce", "nullif"]
+}

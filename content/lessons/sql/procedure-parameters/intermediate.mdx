@@ -1,0 +1,120 @@
+# Procedure Parameters: Practical Patterns
+
+Advanced parameter techniques.
+
+## Table-Valued Parameters
+
+```sql
+-- Create table type
+CREATE TYPE OrderItemType AS TABLE (
+    product_id INT,
+    quantity INT,
+    price DECIMAL(10,2)
+);
+
+-- Procedure accepting table parameter
+CREATE PROCEDURE sp_create_order_with_items
+    @customer_id INT,
+    @items OrderItemType READONLY
+AS
+BEGIN
+    DECLARE @order_id INT;
+
+    INSERT INTO orders (customer_id, order_date)
+    VALUES (@customer_id, GETDATE());
+
+    SET @order_id = SCOPE_IDENTITY();
+
+    INSERT INTO order_items (order_id, product_id, quantity, price)
+    SELECT @order_id, product_id, quantity, price FROM @items;
+
+    SELECT @order_id AS new_order_id;
+END;
+
+-- Call with table variable
+DECLARE @items OrderItemType;
+INSERT INTO @items VALUES (1, 2, 99.99), (2, 1, 49.99);
+EXEC sp_create_order_with_items 123, @items;
+```
+
+## Parameter Validation
+
+```sql
+CREATE PROCEDURE sp_update_email
+    @user_id INT,
+    @new_email NVARCHAR(100)
+AS
+BEGIN
+    -- Validate user_id
+    IF @user_id IS NULL OR @user_id <= 0
+        THROW 50001, 'Invalid user ID', 1;
+
+    -- Validate email format
+    IF @new_email IS NULL OR @new_email NOT LIKE '%_@_%._%'
+        THROW 50002, 'Invalid email format', 1;
+
+    -- Check user exists
+    IF NOT EXISTS (SELECT 1 FROM users WHERE id = @user_id)
+        THROW 50003, 'User not found', 1;
+
+    -- Perform update
+    UPDATE users SET email = @new_email WHERE id = @user_id;
+END;
+```
+
+## Dynamic Default Values
+
+```sql
+CREATE PROCEDURE sp_create_log_entry
+    @message NVARCHAR(500),
+    @severity VARCHAR(20) = 'INFO',
+    @timestamp DATETIME = NULL
+AS
+BEGIN
+    -- Set default at runtime
+    IF @timestamp IS NULL
+        SET @timestamp = GETDATE();
+
+    INSERT INTO logs (message, severity, timestamp)
+    VALUES (@message, @severity, @timestamp);
+END;
+```
+
+## Named vs Positional Parameters
+
+```sql
+-- Position-based (must be in order)
+EXEC sp_proc 'value1', 'value2', 'value3';
+
+-- Named (any order)
+EXEC sp_proc @param3 = 'value3', @param1 = 'value1', @param2 = 'value2';
+
+-- Mixed (positional first, then named)
+EXEC sp_proc 'value1', @param3 = 'value3';
+```
+
+## Optional Parameters Pattern
+
+```sql
+CREATE PROCEDURE sp_search_orders
+    @customer_id INT = NULL,
+    @status VARCHAR(20) = NULL,
+    @start_date DATE = NULL,
+    @end_date DATE = NULL,
+    @min_total DECIMAL = NULL,
+    @max_total DECIMAL = NULL
+AS
+BEGIN
+    SELECT * FROM orders
+    WHERE (@customer_id IS NULL OR customer_id = @customer_id)
+      AND (@status IS NULL OR status = @status)
+      AND (@start_date IS NULL OR order_date >= @start_date)
+      AND (@end_date IS NULL OR order_date <= @end_date)
+      AND (@min_total IS NULL OR total >= @min_total)
+      AND (@max_total IS NULL OR total <= @max_total);
+END;
+```
+
+<StoredProcedureBuilder mode="intermediate" />
+
+<ProgressCheckpoint section="parameters-practical" xpReward={40} />

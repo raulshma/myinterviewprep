@@ -1,0 +1,116 @@
+# Data Manipulation Language (DML)
+
+DML is all about working with the actual data in your tables. Think of it as the "verbs" of SQL - the actions you can perform!
+
+## 🎯 The Four Core Operations (CRUD)
+
+| Operation  | SQL Command | What It Does         |
+| :--------- | :---------- | :------------------- |
+| **C**reate | INSERT      | Add new data         |
+| **R**ead   | SELECT      | Retrieve data        |
+| **U**pdate | UPDATE      | Modify existing data |
+| **D**elete | DELETE      | Remove data          |
+
+> **Remember:** Most of your SQL work will be SELECT queries. Master them first!
+
+## SELECT - Reading Data
+
+The most important SQL command. Let&apos;s start simple with Northwind:
+
+```sql
+-- Get all customers
+SELECT * FROM Customers;
+
+-- Get specific columns
+SELECT CompanyName, ContactName, Country
+FROM Customers;
+```
+
+### WHERE - Filtering Results
+
+```sql
+-- Customers from Germany
+SELECT CompanyName, Country
+FROM Customers
+WHERE Country = 'Germany';
+
+-- Products that cost more than $50
+SELECT ProductName, UnitPrice
+FROM Products
+WHERE UnitPrice > 50;
+
+-- Multiple conditions
+SELECT ProductName, UnitPrice, UnitsInStock
+FROM Products
+WHERE UnitPrice > 20 AND UnitsInStock > 0;
+```
+
+### ORDER BY - Sorting Results
+
+```sql
+-- Cheapest to most expensive
+SELECT ProductName, UnitPrice
+FROM Products
+ORDER BY UnitPrice ASC;
+
+-- Most expensive first
+SELECT ProductName, UnitPrice
+FROM Products
+ORDER BY UnitPrice DESC;
+```
+
+## INSERT - Adding New Data
+
+```sql
+-- Add a new customer to Northwind
+INSERT INTO Customers (CustomerID, CompanyName, ContactName, Country)
+VALUES ('NEWCO', 'New Company Ltd', 'John Smith', 'USA');
+
+-- Insert multiple rows at once
+INSERT INTO Products (ProductName, UnitPrice, UnitsInStock)
+VALUES
+    ('Widget A', 19.99, 100),
+    ('Widget B', 29.99, 50),
+    ('Widget C', 9.99, 200);
+```
+
+## UPDATE - Modifying Data
+
+```sql
+-- Update a single product price
+UPDATE Products
+SET UnitPrice = 25.00
+WHERE ProductID = 1;
+
+-- Update multiple fields
+UPDATE Customers
+SET ContactName = 'Maria Anders',
+    Phone = '030-0074321'
+WHERE CustomerID = 'ALFKI';
+```
+
+> ⚠️ **Warning:** Always use WHERE with UPDATE! Without it, you&apos;ll change EVERY row!
+
+## DELETE - Removing Data
+
+```sql
+-- Delete a specific order detail
+DELETE FROM [Order Details]
+WHERE OrderID = 10248 AND ProductID = 11;
+
+-- Delete all discontinued products (be careful!)
+DELETE FROM Products
+WHERE Discontinued = 1;
+```
+
+> ⚠️ **Warning:** DELETE without WHERE removes ALL rows!
+
+## Key Takeaways ✓
+
+1. **SELECT** reads data (most common)
+2. **INSERT** adds new rows
+3. **UPDATE** modifies existing rows
+4. **DELETE** removes rows
+5. **Always use WHERE** with UPDATE and DELETE!
+
+<ProgressCheckpoint section="select-queries" xpReward={35} />

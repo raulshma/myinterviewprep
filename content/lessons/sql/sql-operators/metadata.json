@@ -1,0 +1,15 @@
+{
+  "id": "sql-operators",
+  "title": "SQL Operators",
+  "description": "Master arithmetic, comparison, and logical operators for building powerful SQL expressions.",
+  "milestone": "basic-sql-syntax",
+  "order": 3,
+  "sections": ["arithmetic", "comparison", "logical", "special"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 12, "xpReward": 35 },
+    "advanced": { "estimatedMinutes": 18, "xpReward": 50 }
+  },
+  "prerequisites": ["sql-data-types"],
+  "tags": ["sql", "operators", "comparison", "logical", "arithmetic"]
+}

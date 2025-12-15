@@ -1,0 +1,87 @@
+# SUM Function: Adding Up Values
+
+Learn to calculate totals in your database!
+
+## ➕ What is SUM?
+
+SUM adds up all values in a column:
+
+```sql
+SELECT SUM(price) FROM products;
+-- Returns: Total of all product prices
+```
+
+## 📝 Basic Examples
+
+```sql
+-- Total revenue from all orders
+SELECT SUM(total) AS total_revenue FROM orders;
+
+-- Total quantity in inventory
+SELECT SUM(quantity) AS total_items FROM inventory;
+
+-- Total salaries
+SELECT SUM(salary) AS payroll FROM employees;
+```
+
+## 📊 SUM with GROUP BY
+
+Calculate totals for each group:
+
+```sql
+-- Revenue per customer
+SELECT customer_id, SUM(total) AS customer_total
+FROM orders
+GROUP BY customer_id;
+
+-- Inventory per category
+SELECT category, SUM(quantity) AS category_stock
+FROM products
+GROUP BY category;
+```
+
+## 🎯 SUM with Conditions
+
+```sql
+-- Total of only high-value orders
+SELECT SUM(total) AS high_value_total
+FROM orders
+WHERE total > 100;
+
+-- Total per status
+SELECT status, SUM(total) AS status_total
+FROM orders
+GROUP BY status;
+```
+
+## 💡 NULL Handling
+
+SUM ignores NULL values:
+
+```sql
+-- If values are: 10, 20, NULL, 30
+SELECT SUM(amount) FROM payments;
+-- Returns: 60 (NULL is ignored)
+```
+
+## 🔢 SUM with Expressions
+
+```sql
+-- Calculate extended totals
+SELECT SUM(quantity * price) AS grand_total
+FROM order_items;
+
+-- Sum with discount applied
+SELECT SUM(price * (1 - discount)) AS discounted_total
+FROM products;
+```
+
+## ⚡ Quick Reference
+
+| Query                    | Result                     |
+| ------------------------ | -------------------------- |
+| `SUM(column)`            | Total of all values        |
+| `SUM(column) + GROUP BY` | Totals per group           |
+| `SUM(a * b)`             | Total of calculated values |
+
+<ProgressCheckpoint section="sum-basics" xpReward={20} />

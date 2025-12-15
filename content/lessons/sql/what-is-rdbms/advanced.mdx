@@ -1,0 +1,122 @@
+# Advanced RDBMS Concepts and Theory
+
+Let's explore the theoretical foundations and advanced concepts that power relational databases.
+
+## Codd's 12 Rules
+
+Edgar Codd defined 12 rules (actually 13, numbered 0-12) that a "true" relational database should follow:
+
+| Rule | Name                      | Key Point                                      |
+| ---- | ------------------------- | ---------------------------------------------- |
+| 0    | Foundation                | Must use relational capabilities alone         |
+| 1    | Information               | All data stored in tables                      |
+| 2    | Guaranteed Access         | Every value accessible by table + key + column |
+| 3    | Null Values               | NULLs represent missing information            |
+| 4    | Dynamic Catalog           | Schema stored in tables too                    |
+| 5    | Comprehensive Sublanguage | One language for all operations                |
+
+> **Note:** No DBMS fully implements all 12 rules, but they remain the theoretical ideal.
+
+## Normal Forms
+
+**Normalization** reduces data redundancy and improves integrity:
+
+### First Normal Form (1NF)
+
+- Each column contains atomic (indivisible) values
+- No repeating groups
+
+```sql
+-- NOT 1NF (multiple values in one cell)
+| Name  | PhoneNumbers        |
+|-------|---------------------|
+| Alice | 123-4567, 987-6543  |
+
+-- 1NF (separate rows)
+| Name  | PhoneNumber |
+|-------|-------------|
+| Alice | 123-4567    |
+| Alice | 987-6543    |
+```
+
+### Second Normal Form (2NF)
+
+- Must be in 1NF
+- All non-key columns depend on the entire primary key
+
+### Third Normal Form (3NF)
+
+- Must be in 2NF
+- No transitive dependencies (non-key → non-key)
+
+<RdbmsConceptVisualizer mode="advanced" />
+
+## Query Optimization Internals
+
+How does the database execute your query?
+
+### Query Processing Pipeline
+
+1. **Parser** - Validates SQL syntax
+2. **Optimizer** - Creates execution plan
+3. **Executor** - Runs the plan
+4. **Buffer Manager** - Handles memory/disk I/O
+
+### Cost-Based Optimization
+
+The optimizer estimates costs based on:
+
+- Table statistics (row counts, cardinality)
+- Index availability
+- Join algorithms (nested loop, hash, merge)
+- Memory constraints
+
+```sql
+-- View execution plan (SQL Server)
+SET STATISTICS IO ON;
+EXPLAIN SELECT * FROM Orders WHERE CustomerID = 5;
+```
+
+## Concurrency Control
+
+How databases handle multiple simultaneous users:
+
+### Locking Strategies
+
+| Lock Type         | Description                 | Use Case               |
+| ----------------- | --------------------------- | ---------------------- |
+| **Shared (S)**    | Read lock, multiple allowed | SELECT queries         |
+| **Exclusive (X)** | Write lock, only one        | INSERT/UPDATE/DELETE   |
+| **Intent**        | Signal intention to lock    | Hierarchy optimization |
+
+### Isolation Levels
+
+| Level            | Dirty Read | Non-Repeatable Read | Phantom |
+| ---------------- | ---------- | ------------------- | ------- |
+| READ UNCOMMITTED | ✓          | ✓                   | ✓       |
+| READ COMMITTED   | ✗          | ✓                   | ✓       |
+| REPEATABLE READ  | ✗          | ✗                   | ✓       |
+| SERIALIZABLE     | ✗          | ✗                   | ✗       |
+
+## Storage Engines
+
+Different engines optimize for different workloads:
+
+| Engine      | DBMS       | Optimized For         |
+| ----------- | ---------- | --------------------- |
+| InnoDB      | MySQL      | ACID, row locking     |
+| MyISAM      | MySQL      | Read-heavy, full-text |
+| B-tree      | PostgreSQL | General purpose       |
+| Columnstore | SQL Server | Analytics (OLAP)      |
+
+## CAP Theorem Considerations
+
+For distributed databases, you can only guarantee 2 of 3:
+
+- **C**onsistency - All nodes see same data
+- **A**vailability - System responds to every request
+- **P**artition tolerance - Works despite network failures
+
+Traditional RDBMS prioritize **C** and **A** (single-node), while distributed systems must choose **P** + one other.
+
+<ProgressCheckpoint section="advanced-rdbms" xpReward={65} />

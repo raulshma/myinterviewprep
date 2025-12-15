@@ -1,0 +1,157 @@
+# FROM, WHERE, ORDER BY: Performance and Optimization
+
+Master query optimization for production-grade performance.
+
+## WHERE Clause Optimization
+
+### SARGable Predicates
+
+**SARGable** = Search ARGument ABLE (can use indexes)
+
+```sql
+-- ✅ SARGable (uses index)
+WHERE order_date >= '2024-01-01'
+WHERE customer_id = 123
+WHERE name LIKE 'Smith%'
+
+-- ❌ Non-SARGable (no index)
+WHERE YEAR(order_date) = 2024
+WHERE LEFT(name, 3) = 'Smi'
+WHERE price * 2 > 100
+WHERE column + 0 = value
+```
+
+### Fix Non-SARGable Queries
+
+```sql
+-- Bad: Function on column
+WHERE YEAR(order_date) = 2024
+
+-- Good: Range comparison
+WHERE order_date >= '2024-01-01' AND order_date < '2025-01-01'
+
+-- Bad: Math on column
+WHERE price / 2 > 50
+
+-- Good: Math on constant
+WHERE price > 100
+```
+
+### Predicate Order
+
+SQL Server evaluates WHERE left-to-right (short-circuit):
+
+```sql
+-- Put cheap, selective predicates first
+WHERE status = 'active'              -- Fast, filters 90%
+  AND CONTAINS(description, 'term')  -- Slow full-text search
+
+-- Avoid division by zero with order
+WHERE denominator <> 0 AND numerator / denominator > 0.5
+```
+
+## FROM Clause Advanced
+
+### Common Table Expressions (CTEs)
+
+```sql
+WITH high_value_customers AS (
+    SELECT customer_id, SUM(total) AS lifetime_value
+    FROM orders
+    GROUP BY customer_id
+    HAVING SUM(total) > 10000
+),
+recent_orders AS (
+    SELECT customer_id, order_id, order_date
+    FROM orders
+    WHERE order_date >= DATEADD(MONTH, -3, GETDATE())
+)
+SELECT
+    hvc.customer_id,
+    hvc.lifetime_value,
+    COUNT(ro.order_id) AS recent_order_count
+FROM high_value_customers hvc
+LEFT JOIN recent_orders ro ON hvc.customer_id = ro.customer_id
+GROUP BY hvc.customer_id, hvc.lifetime_value;
+```
+
+### Recursive CTEs
+
+```sql
+WITH RECURSIVE org_chart AS (
+    -- Anchor: Start with CEO
+    SELECT id, name, manager_id, 1 AS level
+    FROM employees
+    WHERE manager_id IS NULL
+
+    UNION ALL
+
+    -- Recursive: Get reports
+    SELECT e.id, e.name, e.manager_id, oc.level + 1
+    FROM employees e
+    INNER JOIN org_chart oc ON e.manager_id = oc.id
+)
+SELECT * FROM org_chart ORDER BY level, name;
+```
+
+## ORDER BY Performance
+
+### Index-Aligned Sorting
+
+```sql
+-- Index on (status, order_date DESC)
+-- This query uses index for both filter AND sort
+SELECT * FROM orders
+WHERE status = 'pending'
+ORDER BY order_date DESC;
+
+-- This doesn't (different sort direction)
+SELECT * FROM orders
+WHERE status = 'pending'
+ORDER BY order_date ASC;  -- Index is DESC, query wants ASC
+```
+
+### Avoiding Sorts
+
+```sql
+-- TOP without ORDER BY (undefined order, but fast)
+SELECT TOP 1 * FROM large_table;  -- Just needs any row
+
+-- EXISTS instead of COUNT for existence check
+WHERE EXISTS (SELECT 1 FROM orders WHERE customer_id = c.id)
+-- vs
+WHERE (SELECT COUNT(*) FROM orders WHERE customer_id = c.id) > 0
+```
+
+## Execution Plan Analysis
+
+```sql
+-- SQL Server: Show execution plan
+SET SHOWPLAN_TEXT ON;
+GO
+SELECT * FROM orders WHERE customer_id = 123;
+GO
+SET SHOWPLAN_TEXT OFF;
+
+-- Look for:
+-- • Index Seek (good) vs Index Scan (usually bad)
+-- • Table Scan (very bad on large tables)
+-- • Sort operator (expensive if large)
+-- • Key Lookup (might need covering index)
+```
+
+## Dynamic WHERE Clauses
+
+```sql
+-- Pattern for optional filters
+SELECT * FROM products
+WHERE
+    (@category IS NULL OR category = @category)
+    AND (@min_price IS NULL OR price >= @min_price)
+    AND (@max_price IS NULL OR price <= @max_price);
+
+-- With OPTION (RECOMPILE) for varying parameters
+OPTION (RECOMPILE);
+```
+
+<ProgressCheckpoint section="from-where-orderby-advanced" xpReward={55} />

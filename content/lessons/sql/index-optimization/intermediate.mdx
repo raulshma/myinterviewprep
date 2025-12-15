@@ -1,0 +1,98 @@
+# Index Optimization: Query Tuning
+
+Optimize index usage for complex queries.
+
+## Execution Plan Analysis
+
+```sql
+-- SQL Server: Detailed plan
+SET STATISTICS PROFILE ON;
+SELECT * FROM orders WHERE customer_id = 123;
+
+-- Look for:
+-- - EstimatedRows vs ActualRows (statistics accuracy)
+-- - Scan vs Seek operations
+-- - Key Lookups (expensive)
+```
+
+## Covering Index Optimization
+
+```sql
+-- Problem: Key Lookup (index + table access)
+SELECT order_date, total FROM orders WHERE customer_id = 123;
+-- Uses customer_id index, but needs table for other columns
+
+-- Solution: Include needed columns
+CREATE INDEX IX_orders_customer ON orders(customer_id)
+INCLUDE (order_date, total);
+-- Now index-only scan!
+```
+
+## Index Order Optimization
+
+```sql
+-- Composite index column order matters!
+CREATE INDEX IX_orders ON orders(status, customer_id, order_date);
+
+-- This uses the index:
+WHERE status = 'active' AND customer_id = 123
+WHERE status = 'active'
+
+-- This doesn't (skips first column):
+WHERE customer_id = 123
+
+-- Put most selective columns first (usually)
+-- Put equality columns before range columns
+```
+
+## Index and Statistics
+
+```sql
+-- Outdated statistics = bad query plans
+UPDATE STATISTICS orders;
+UPDATE STATISTICS orders IX_orders_customer;
+
+-- Rebuild also updates statistics
+ALTER INDEX IX_orders_customer ON orders REBUILD;
+
+-- Check statistics freshness
+SELECT
+    OBJECT_NAME(object_id) AS table_name,
+    name AS stats_name,
+    STATS_DATE(object_id, stats_id) AS last_updated
+FROM sys.stats
+WHERE object_id = OBJECT_ID('orders');
+```
+
+## Index Usage Analysis
+
+```sql
+-- SQL Server: Find unused indexes
+SELECT
+    OBJECT_NAME(i.object_id) AS table_name,
+    i.name AS index_name,
+    ius.user_seeks,
+    ius.user_scans,
+    ius.user_lookups,
+    ius.user_updates
+FROM sys.indexes i
+JOIN sys.dm_db_index_usage_stats ius ON i.object_id = ius.object_id AND i.index_id = ius.index_id
+WHERE ius.database_id = DB_ID()
+AND i.name IS NOT NULL
+ORDER BY ius.user_seeks + ius.user_scans ASC;
+```
+
+## Index Hints
+
+```sql
+-- Force specific index (use sparingly)
+SELECT * FROM orders WITH (INDEX(IX_orders_date))
+WHERE customer_id = 123 AND order_date > '2024-01-01';
+
+-- PostgreSQL
+SET enable_seqscan = OFF;  -- Discourage table scans
+```
+
+<IndexVisualizer mode="intermediate" />
+
+<ProgressCheckpoint section="index-optimization-tuning" xpReward={45} />

@@ -1,0 +1,15 @@
+{
+  "id": "inner-join",
+  "title": "INNER JOIN",
+  "description": "Combine rows from tables where join conditions match.",
+  "milestone": "join-queries",
+  "order": 1,
+  "sections": ["join-basics", "multiple-tables", "best-practices"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 12, "xpReward": 30 },
+    "intermediate": { "estimatedMinutes": 18, "xpReward": 45 },
+    "advanced": { "estimatedMinutes": 22, "xpReward": 55 }
+  },
+  "prerequisites": ["subquery-types"],
+  "tags": ["sql", "join", "inner-join"]
+}

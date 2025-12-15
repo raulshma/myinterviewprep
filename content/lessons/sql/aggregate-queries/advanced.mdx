@@ -1,0 +1,144 @@
+# Expert Aggregate Techniques
+
+Master ROLLUP, CUBE, GROUPING SETS, and statistical functions.
+
+## ROLLUP - Subtotals and Grand Total
+
+```sql
+-- Sales by category and product with subtotals
+SELECT
+    COALESCE(c.CategoryName, '** ALL CATEGORIES **') AS Category,
+    COALESCE(p.ProductName, '** Category Total **') AS Product,
+    SUM(od.Quantity * od.UnitPrice) AS TotalSales
+FROM Categories c
+JOIN Products p ON c.CategoryID = p.CategoryID
+JOIN [Order Details] od ON p.ProductID = od.ProductID
+GROUP BY ROLLUP(c.CategoryName, p.ProductName)
+ORDER BY c.CategoryName, p.ProductName;
+
+-- Year/Month totals with subtotals
+SELECT
+    COALESCE(CAST(YEAR(OrderDate) AS VARCHAR), 'Grand Total') AS Year,
+    COALESCE(CAST(MONTH(OrderDate) AS VARCHAR), 'Year Total') AS Month,
+    COUNT(*) AS OrderCount,
+    SUM(Freight) AS TotalFreight
+FROM Orders
+GROUP BY ROLLUP(YEAR(OrderDate), MONTH(OrderDate));
+```
+
+## CUBE - All Dimension Combinations
+
+```sql
+-- All possible subtotals across dimensions
+SELECT
+    COALESCE(Country, 'All Countries') AS Country,
+    COALESCE(City, 'All Cities') AS City,
+    COUNT(*) AS CustomerCount
+FROM Customers
+GROUP BY CUBE(Country, City)
+ORDER BY Country, City;
+```
+
+## GROUPING SETS - Custom Groupings
+
+```sql
+-- Specific combinations only
+SELECT
+    c.CategoryName,
+    YEAR(o.OrderDate) AS OrderYear,
+    SUM(od.Quantity * od.UnitPrice) AS TotalSales
+FROM Categories c
+JOIN Products p ON c.CategoryID = p.CategoryID
+JOIN [Order Details] od ON p.ProductID = od.ProductID
+JOIN Orders o ON od.OrderID = o.OrderID
+GROUP BY GROUPING SETS (
+    (c.CategoryName, YEAR(o.OrderDate)),  -- By category and year
+    (c.CategoryName),                       -- By category only
+    (YEAR(o.OrderDate)),                    -- By year only
+    ()                                       -- Grand total
+);
+```
+
+## GROUPING Function
+
+Identify which rows are subtotals:
+
+```sql
+SELECT
+    CASE WHEN GROUPING(c.CategoryName) = 1 THEN 'All' ELSE c.CategoryName END AS Category,
+    CASE WHEN GROUPING(p.ProductName) = 1 THEN 'Subtotal' ELSE p.ProductName END AS Product,
+    SUM(od.Quantity * od.UnitPrice) AS Sales,
+    GROUPING(c.CategoryName) AS IsCategoryTotal,
+    GROUPING(p.ProductName) AS IsProductTotal
+FROM Categories c
+JOIN Products p ON c.CategoryID = p.CategoryID
+JOIN [Order Details] od ON p.ProductID = od.ProductID
+GROUP BY ROLLUP(c.CategoryName, p.ProductName);
+```
+
+## Statistical Aggregates
+
+```sql
+-- Standard deviation and variance
+SELECT
+    CategoryID,
+    COUNT(*) AS ProductCount,
+    AVG(UnitPrice) AS AvgPrice,
+    STDEV(UnitPrice) AS PriceStdDev,
+    VAR(UnitPrice) AS PriceVariance
+FROM Products
+GROUP BY CategoryID;
+
+-- Percentile calculations (SQL Server 2012+)
+SELECT DISTINCT
+    CategoryID,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY UnitPrice)
+        OVER (PARTITION BY CategoryID) AS MedianPrice,
+    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY UnitPrice)
+        OVER (PARTITION BY CategoryID) AS Q1Price,
+    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY UnitPrice)
+        OVER (PARTITION BY CategoryID) AS Q3Price
+FROM Products;
+```
+
+## STRING_AGG / LISTAGG
+
+Concatenate values across rows:
+
+```sql
+-- List all products per category (SQL Server 2017+ / PostgreSQL)
+SELECT
+    c.CategoryName,
+    STRING_AGG(p.ProductName, ', ') WITHIN GROUP (ORDER BY p.ProductName) AS ProductList
+FROM Categories c
+JOIN Products p ON c.CategoryID = p.CategoryID
+GROUP BY c.CategoryID, c.CategoryName;
+
+-- MySQL GROUP_CONCAT
+SELECT
+    CategoryID,
+    GROUP_CONCAT(ProductName ORDER BY ProductName SEPARATOR ', ') AS ProductList
+FROM Products
+GROUP BY CategoryID;
+```
+
+## Aggregate Optimization
+
+```sql
+-- Avoid SELECT * with aggregates
+-- BAD
+SELECT *, COUNT(*) OVER() FROM Products;
+
+-- GOOD - Only select needed columns
+SELECT ProductName, UnitPrice, COUNT(*) OVER() AS TotalProducts
+FROM Products;
+
+-- Use indexed columns in GROUP BY
+CREATE INDEX IX_Orders_CustomerID ON Orders(CustomerID);
+
+SELECT CustomerID, COUNT(*) AS OrderCount
+FROM Orders
+GROUP BY CustomerID;  -- Uses index scan
+```
+
+<ProgressCheckpoint section="group-by-having" xpReward={85} />

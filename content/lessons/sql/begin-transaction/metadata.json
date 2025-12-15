@@ -1,0 +1,15 @@
+{
+  "id": "begin-transaction",
+  "title": "BEGIN TRANSACTION",
+  "description": "Start a database transaction to group operations.",
+  "milestone": "transactions",
+  "order": 2,
+  "sections": ["begin-basics", "syntax-variations", "best-practices"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 15, "xpReward": 40 }
+  },
+  "prerequisites": ["acid-properties"],
+  "tags": ["sql", "transactions", "begin"]
+}

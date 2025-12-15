@@ -1,0 +1,149 @@
+# Foreign Key Actions and Constraint Management
+
+Learn about referential actions and managing constraints in production.
+
+## ON DELETE and ON UPDATE Actions
+
+Control what happens when referenced data changes:
+
+```sql
+CREATE TABLE OrderDetails (
+    OrderDetailID INT PRIMARY KEY,
+    OrderID INT,
+    ProductID INT,
+    Quantity INT,
+
+    -- When order is deleted, delete its details too
+    FOREIGN KEY (OrderID) REFERENCES Orders(OrderID)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    -- When product is deleted, set to NULL
+    FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+        ON DELETE SET NULL
+        ON UPDATE NO ACTION
+);
+```
+
+### Referential Actions
+
+| Action      | What Happens                           |
+| :---------- | :------------------------------------- |
+| CASCADE     | Delete/update child rows automatically |
+| SET NULL    | Set foreign key to NULL                |
+| SET DEFAULT | Set to default value                   |
+| NO ACTION   | Block the delete/update (default)      |
+| RESTRICT    | Same as NO ACTION in most databases    |
+
+## Northwind Relationship Examples
+
+```sql
+-- Categories → Products (one-to-many)
+ALTER TABLE Products
+ADD CONSTRAINT FK_Products_Categories
+    FOREIGN KEY (CategoryID)
+    REFERENCES Categories(CategoryID)
+    ON DELETE SET NULL;  -- If category deleted, product stays but loses category
+
+-- Orders → Order Details (one-to-many)
+ALTER TABLE [Order Details]
+ADD CONSTRAINT FK_OrderDetails_Orders
+    FOREIGN KEY (OrderID)
+    REFERENCES Orders(OrderID)
+    ON DELETE CASCADE;  -- Delete order = delete all its details
+
+-- Employees self-reference (manager hierarchy)
+ALTER TABLE Employees
+ADD CONSTRAINT FK_Employees_Manager
+    FOREIGN KEY (ReportsTo)
+    REFERENCES Employees(EmployeeID)
+    ON DELETE SET NULL;  -- If manager deleted, employees become manager-less
+```
+
+## Named Constraints
+
+Always name your constraints for easier management:
+
+```sql
+CREATE TABLE Products (
+    ProductID INT,
+    ProductName VARCHAR(100),
+    UnitPrice DECIMAL(10,2),
+    UnitsInStock INT,
+
+    CONSTRAINT PK_Products PRIMARY KEY (ProductID),
+    CONSTRAINT CK_Products_Price CHECK (UnitPrice >= 0),
+    CONSTRAINT CK_Products_Stock CHECK (UnitsInStock >= 0)
+);
+```
+
+## Managing Existing Constraints
+
+```sql
+-- Add constraint to existing table
+ALTER TABLE Products
+ADD CONSTRAINT FK_Products_Suppliers
+    FOREIGN KEY (SupplierID) REFERENCES Suppliers(SupplierID);
+
+-- Drop a constraint
+ALTER TABLE Products
+DROP CONSTRAINT FK_Products_Suppliers;
+
+-- Disable constraint temporarily (SQL Server)
+ALTER TABLE Products NOCHECK CONSTRAINT FK_Products_Categories;
+
+-- Re-enable and check existing data
+ALTER TABLE Products CHECK CONSTRAINT FK_Products_Categories;
+
+-- View all constraints
+SELECT * FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+WHERE TABLE_NAME = 'Products';
+```
+
+## Composite Foreign Keys
+
+```sql
+-- Order details references both order and product
+CREATE TABLE OrderDetails (
+    OrderID INT,
+    ProductID INT,
+    Quantity INT,
+    UnitPrice DECIMAL(10,2),
+
+    PRIMARY KEY (OrderID, ProductID),
+
+    FOREIGN KEY (OrderID) REFERENCES Orders(OrderID),
+    FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+);
+
+-- Self-referencing composite (rare but possible)
+CREATE TABLE EmployeeProjects (
+    EmployeeID INT,
+    ProjectID INT,
+    ManagerID INT,
+    ManagerProjectID INT,
+
+    PRIMARY KEY (EmployeeID, ProjectID),
+    FOREIGN KEY (ManagerID, ManagerProjectID)
+        REFERENCES EmployeeProjects(EmployeeID, ProjectID)
+);
+```
+
+## Default Values
+
+```sql
+CREATE TABLE Orders (
+    OrderID INT PRIMARY KEY IDENTITY,
+    CustomerID CHAR(5),
+    OrderDate DATE DEFAULT GETDATE(),
+    Status VARCHAR(20) DEFAULT 'Pending',
+    Freight DECIMAL(10,2) DEFAULT 0.00
+);
+
+-- Insert without specifying defaults
+INSERT INTO Orders (CustomerID)
+VALUES ('ALFKI');
+-- OrderDate, Status, Freight get default values
+```
+
+<ProgressCheckpoint section="foreign-key" xpReward={50} />
