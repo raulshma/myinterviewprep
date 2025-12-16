@@ -127,13 +127,16 @@ export function SidebarNav({
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
     
-    // Don't navigate if already on this route
-    if (isActiveRoute(href)) return;
-    
     setLoadingHref(href);
     
     startTransition(() => {
-      router.push(href);
+      if (isActiveRoute(href)) {
+        // Force re-navigation by replacing with the same route
+        router.replace(href);
+        router.refresh();
+      } else {
+        router.push(href);
+      }
     });
   };
 
