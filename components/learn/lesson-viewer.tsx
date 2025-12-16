@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, BookOpen, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
@@ -22,7 +22,8 @@ import { useMDXComponents } from '@/mdx-components';
 import { cn } from '@/lib/utils';
 import { getLessonCompletionXp } from '@/lib/gamification';
 import { markSectionCompleteAction } from '@/lib/actions/gamification';
-import type { ExperienceLevel, LessonProgress, UserGamification } from '@/lib/db/schemas/lesson-progress';
+import type { ExperienceLevel, LessonProgress } from '@/lib/db/schemas/lesson-progress';
+import type { UserGamification, CompletedLesson } from '@/lib/db/schemas/user';
 
 interface LessonCompletionResult {
   newBadges?: string[];
@@ -89,13 +90,13 @@ export function LessonViewer({
     // Initialize from gamification data if available
     if (initialGamification?.completedLessons) {
       return initialGamification.completedLessons
-        .filter(l => l.lessonId === lessonId && l.completedAt)
-        .map(l => l.experienceLevel as ExperienceLevel);
+        .filter((l: CompletedLesson) => l.lessonId === lessonId && l.completedAt)
+        .map((l: CompletedLesson) => l.experienceLevel as ExperienceLevel);
     }
     return [];
   });
   
-  const completedSections = progressByLevel[level];
+  const completedSections = useMemo(() => progressByLevel[level], [progressByLevel, level]);
   
   const [gamification, setGamification] = useState(initialGamification);
   const [newBadge, setNewBadge] = useState<{ id: string; earnedAt: Date } | null>(null);
@@ -142,7 +143,11 @@ export function LessonViewer({
     onSectionComplete?.(sectionId);
   }, [level, progressByLevel, lessonId, onSectionComplete]);
 
-  const components = useMDXComponents({
+  // Get base MDX components at the top level (hooks rule)
+  const baseMdxComponents = useMDXComponents({});
+  
+  const components = useMemo(() => ({
+    ...baseMdxComponents,
     // Override ProgressCheckpoint to track completion
     ProgressCheckpoint: ({ section, xpReward }: { section: string; xpReward?: number }) => {
       const isCompleted = completedSections.includes(section);
@@ -155,7 +160,7 @@ export function LessonViewer({
         />
       );
     },
-  });
+  }), [baseMdxComponents, completedSections, handleSectionComplete]);
 
   // Handle level change with progress preservation (Requirements 10.1, 10.2, 10.4)
   const handleLevelChange = async (newLevel: ExperienceLevel) => {
