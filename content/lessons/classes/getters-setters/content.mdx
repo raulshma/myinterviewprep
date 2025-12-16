@@ -1,0 +1,483 @@
+# Getters and Setters: Controlled Property Access
+
+Getters and setters are like smart doorways to your object's data. Instead of directly accessing properties, you go through these "doorways" that can validate, transform, or compute values on the fly. They look like properties but act like methods!
+
+---
+
+## Section 1: Understanding Accessors
+
+### The Smart Thermostat Analogy 🌡️
+
+Imagine a smart thermostat:
+- When you **read** the temperature, it converts from internal Celsius to your preferred Fahrenheit
+- When you **set** the temperature, it validates the range and converts back to Celsius
+
+```javascript
+class Thermostat {
+  #celsius;  // Internal storage
+  
+  get temperature() {
+    // Convert to Fahrenheit when reading
+    return this.#celsius * 9/5 + 32;
+  }
+  
+  set temperature(fahrenheit) {
+    // Validate and convert when setting
+    if (fahrenheit < 50 || fahrenheit > 90) {
+      throw new Error('Temperature out of range!');
+    }
+    this.#celsius = (fahrenheit - 32) * 5/9;
+  }
+}
+```
+
+<InfoBox type="info">
+**Getters** (`get`) are called when you read a property. **Setters** (`set`) are called when you assign to a property. Together, they're called **accessors** and provide controlled access to data.
+</InfoBox>
+
+<CodePlayground
+  initialCode={`// Basic getter and setter example
+
+class Thermostat {
+  #celsius = 20;  // Internal storage in Celsius
+  
+  // Getter - called when reading 'temperature'
+  get temperature() {
+    console.log('📖 Getting temperature...');
+    return this.#celsius * 9/5 + 32;  // Return Fahrenheit
+  }
+  
+  // Setter - called when assigning to 'temperature'
+  set temperature(fahrenheit) {
+    console.log(\`✏️ Setting temperature to \${fahrenheit}°F...\`);
+    if (fahrenheit < 32 || fahrenheit > 100) {
+      throw new Error('Temperature must be between 32°F and 100°F');
+    }
+    this.#celsius = (fahrenheit - 32) * 5/9;
+  }
+  
+  // Read-only property (getter only)
+  get celsius() {
+    return this.#celsius;
+  }
+}
+
+const thermo = new Thermostat();
+
+// Using getter - looks like property access!
+console.log('Current temp:', thermo.temperature + '°F');
+console.log('In Celsius:', thermo.celsius.toFixed(1) + '°C');
+
+// Using setter - looks like assignment!
+thermo.temperature = 72;
+console.log('\\nAfter setting to 72°F:');
+console.log('Temperature:', thermo.temperature + '°F');
+console.log('In Celsius:', thermo.celsius.toFixed(1) + '°C');
+
+// Validation in action
+try {
+  thermo.temperature = 150;  // Too hot!
+} catch (e) {
+  console.log('\\n❌ Error:', e.message);
+}`}
+  height={450}
+/>
+
+<ProgressCheckpoint section="understanding-accessors" xpReward={15} />
+
+---
+
+## Section 2: Getter Syntax
+
+### Creating Computed Properties
+
+Getters are perfect for values that are calculated from other data:
+
+<CodePlayground
+  initialCode={`// Getters for computed properties
+
+class Rectangle {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+  }
+  
+  // Computed property - calculated on access
+  get area() {
+    return this.width * this.height;
+  }
+  
+  get perimeter() {
+    return 2 * (this.width + this.height);
+  }
+  
+  get diagonal() {
+    return Math.sqrt(this.width ** 2 + this.height ** 2);
+  }
+  
+  get isSquare() {
+    return this.width === this.height;
+  }
+  
+  // Getter returning formatted string
+  get dimensions() {
+    return \`\${this.width} × \${this.height}\`;
+  }
+}
+
+const rect = new Rectangle(10, 5);
+
+// Access computed values like properties (no parentheses!)
+console.log('Dimensions:', rect.dimensions);
+console.log('Area:', rect.area);
+console.log('Perimeter:', rect.perimeter);
+console.log('Diagonal:', rect.diagonal.toFixed(2));
+console.log('Is square?', rect.isSquare);
+
+// Change dimensions - computed values update automatically!
+rect.width = 7;
+rect.height = 7;
+console.log('\\nAfter changing to 7×7:');
+console.log('Dimensions:', rect.dimensions);
+console.log('Area:', rect.area);
+console.log('Is square?', rect.isSquare);`}
+  height={420}
+/>
+
+<KeyConcept title="Computed vs Stored">
+Getters compute values on-demand rather than storing them. This means:
+- Always up-to-date (no stale data)
+- No extra memory for derived values
+- Slight performance cost on each access (usually negligible)
+</KeyConcept>
+
+### Getters for Data Formatting
+
+<CodePlayground
+  initialCode={`// Getters for formatting and derived data
+
+class Person {
+  constructor(firstName, lastName, birthYear) {
+    this.firstName = firstName;
+    this.lastName = lastName;
+    this.birthYear = birthYear;
+  }
+  
+  // Combine data
+  get fullName() {
+    return \`\${this.firstName} \${this.lastName}\`;
+  }
+  
+  // Calculate from current date
+  get age() {
+    return new Date().getFullYear() - this.birthYear;
+  }
+  
+  // Format for display
+  get initials() {
+    return \`\${this.firstName[0]}.\${this.lastName[0]}.\`;
+  }
+  
+  // Conditional logic
+  get isAdult() {
+    return this.age >= 18;
+  }
+  
+  // Complex formatting
+  get profile() {
+    return {
+      name: this.fullName,
+      age: this.age,
+      initials: this.initials,
+      adult: this.isAdult
+    };
+  }
+}
+
+const person = new Person('Alice', 'Johnson', 1995);
+
+console.log('Full name:', person.fullName);
+console.log('Age:', person.age);
+console.log('Initials:', person.initials);
+console.log('Is adult?', person.isAdult);
+console.log('\\nProfile:', person.profile);`}
+  height={400}
+/>
+
+<ProgressCheckpoint section="getter-syntax" xpReward={20} />
+
+---
+
+## Section 3: Setter Syntax
+
+### Validation and Transformation
+
+Setters are perfect for validating and transforming input:
+
+<CodePlayground
+  initialCode={`// Setters for validation
+
+class User {
+  #email;
+  #age;
+  #username;
+  
+  constructor(username, email, age) {
+    // Use setters for validation even in constructor!
+    this.username = username;
+    this.email = email;
+    this.age = age;
+  }
+  
+  // Username: min length, lowercase
+  get username() {
+    return this.#username;
+  }
+  
+  set username(value) {
+    if (value.length < 3) {
+      throw new Error('Username must be at least 3 characters');
+    }
+    this.#username = value.toLowerCase().trim();
+  }
+  
+  // Email: format validation
+  get email() {
+    return this.#email;
+  }
+  
+  set email(value) {
+    if (!value.includes('@')) {
+      throw new Error('Invalid email format');
+    }
+    this.#email = value.toLowerCase().trim();
+  }
+  
+  // Age: range validation
+  get age() {
+    return this.#age;
+  }
+  
+  set age(value) {
+    const num = Number(value);
+    if (isNaN(num) || num < 0 || num > 150) {
+      throw new Error('Age must be between 0 and 150');
+    }
+    this.#age = Math.floor(num);
+  }
+}
+
+// Valid user
+const user = new User('AliceSmith', 'Alice@Example.COM', 25);
+console.log('Username:', user.username);  // alicesmith
+console.log('Email:', user.email);        // alice@example.com
+console.log('Age:', user.age);            // 25
+
+// Update with validation
+user.age = '30';  // String converted to number
+console.log('\\nUpdated age:', user.age);
+
+// Invalid updates
+try {
+  user.username = 'ab';  // Too short!
+} catch (e) {
+  console.log('\\n❌', e.message);
+}
+
+try {
+  user.email = 'not-an-email';  // No @!
+} catch (e) {
+  console.log('❌', e.message);
+}`}
+  height={500}
+/>
+
+### Setters with Side Effects
+
+<CodePlayground
+  initialCode={`// Setters that trigger actions
+
+class ShoppingCart {
+  #items = [];
+  #onUpdate = null;
+  
+  get items() {
+    return [...this.#items];  // Return copy to prevent direct mutation
+  }
+  
+  get total() {
+    return this.#items.reduce((sum, item) => sum + item.price * item.qty, 0);
+  }
+  
+  get itemCount() {
+    return this.#items.reduce((sum, item) => sum + item.qty, 0);
+  }
+  
+  // Setter that triggers callback
+  set onUpdate(callback) {
+    this.#onUpdate = callback;
+  }
+  
+  #notifyUpdate() {
+    if (this.#onUpdate) {
+      this.#onUpdate({
+        items: this.items,
+        total: this.total,
+        count: this.itemCount
+      });
+    }
+  }
+  
+  addItem(name, price, qty = 1) {
+    const existing = this.#items.find(i => i.name === name);
+    if (existing) {
+      existing.qty += qty;
+    } else {
+      this.#items.push({ name, price, qty });
+    }
+    this.#notifyUpdate();
+  }
+  
+  removeItem(name) {
+    const index = this.#items.findIndex(i => i.name === name);
+    if (index > -1) {
+      this.#items.splice(index, 1);
+      this.#notifyUpdate();
+    }
+  }
+}
+
+const cart = new ShoppingCart();
+
+// Set up update listener
+cart.onUpdate = (state) => {
+  console.log(\`🛒 Cart updated: \${state.count} items, $\${state.total.toFixed(2)}\`);
+};
+
+cart.addItem('Apple', 1.50, 3);
+cart.addItem('Bread', 2.99);
+cart.addItem('Apple', 1.50, 2);  // Add more apples
+cart.removeItem('Bread');
+
+console.log('\\nFinal cart:', cart.items);`}
+  height={450}
+/>
+
+<ProgressCheckpoint section="setter-syntax" xpReward={20} />
+
+---
+
+## Section 4: Practical Patterns
+
+### Read-Only Properties
+
+Create read-only properties with only a getter:
+
+```javascript
+class Circle {
+  #radius;
+  
+  constructor(radius) {
+    this.#radius = radius;
+  }
+  
+  // Read-only - no setter!
+  get radius() {
+    return this.#radius;
+  }
+  
+  get area() {
+    return Math.PI * this.#radius ** 2;
+  }
+}
+
+const c = new Circle(5);
+console.log(c.radius);  // 5
+c.radius = 10;          // Silently fails (or throws in strict mode)
+```
+
+### Lazy Initialization
+
+<CodePlayground
+  initialCode={`// Lazy initialization with getters
+
+class DataLoader {
+  #cache = null;
+  #loadCount = 0;
+  
+  // Expensive operation - only run when needed
+  get data() {
+    if (this.#cache === null) {
+      console.log('⏳ Loading data (expensive operation)...');
+      this.#loadCount++;
+      
+      // Simulate expensive computation
+      this.#cache = {
+        users: ['Alice', 'Bob', 'Charlie'],
+        timestamp: Date.now(),
+        loadNumber: this.#loadCount
+      };
+      
+      console.log('✅ Data loaded!');
+    } else {
+      console.log('📦 Returning cached data');
+    }
+    return this.#cache;
+  }
+  
+  // Force reload
+  invalidateCache() {
+    this.#cache = null;
+    console.log('🗑️ Cache invalidated');
+  }
+}
+
+const loader = new DataLoader();
+
+// First access - loads data
+console.log('First access:');
+console.log(loader.data);
+
+// Second access - uses cache
+console.log('\\nSecond access:');
+console.log(loader.data);
+
+// Invalidate and reload
+console.log('\\nAfter invalidation:');
+loader.invalidateCache();
+console.log(loader.data);`}
+  height={420}
+/>
+
+<KeyConcept title="Lazy Initialization">
+Use getters to delay expensive operations until the value is actually needed. Cache the result to avoid repeated computation. This pattern is also called "lazy loading" or "memoization".
+</KeyConcept>
+
+<Quiz id="getter-quiz">
+  <Question>How do you call a getter?</Question>
+  <Answer>object.getter()</Answer>
+  <Answer correct>object.getter (no parentheses)</Answer>
+  <Answer>object.get('getter')</Answer>
+  <Answer>get object.getter</Answer>
+</Quiz>
+
+<Quiz id="setter-quiz">
+  <Question>What's a common use case for setters?</Question>
+  <Answer>Returning computed values</Answer>
+  <Answer correct>Validating input before storing</Answer>
+  <Answer>Creating new instances</Answer>
+  <Answer>Defining static methods</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Point |
+|:--------|:----------|
+| **Getter** | `get propName() {}` - called on read |
+| **Setter** | `set propName(value) {}` - called on assign |
+| **Syntax** | Access like properties, not methods |
+| **Use Cases** | Computed values, validation, formatting |
+| **Read-Only** | Getter without setter |
+| **Lazy Init** | Compute/load only when first accessed |
+
+<ProgressCheckpoint section="practical-patterns" xpReward={20} />

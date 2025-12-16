@@ -1,0 +1,18 @@
+{
+  "id": "private-fields",
+  "title": "Private Fields",
+  "description": "Learn how to create truly private class members using the # syntax - protecting internal data from outside access.",
+  "milestone": "classes",
+  "order": 6,
+  "singleLevel": true,
+  "estimatedMinutes": 14,
+  "xpReward": 75,
+  "sections": [
+    "understanding-privacy",
+    "private-fields-syntax",
+    "private-methods",
+    "private-static"
+  ],
+  "prerequisites": ["class-inheritance"],
+  "tags": ["javascript", "classes", "private", "encapsulation", "es2022"]
+}

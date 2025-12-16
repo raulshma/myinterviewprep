@@ -1,0 +1,461 @@
+# Inheritance: Building on Existing Classes
+
+Inheritance is like a family tree for classes. Just as children inherit traits from their parents, child classes inherit properties and methods from parent classes. This lets you create specialized versions of existing classes without rewriting code!
+
+---
+
+## Section 1: Understanding Inheritance
+
+### The Family Tree Analogy 🌳
+
+Imagine a family of vehicles:
+- **Parent (Vehicle)**: Has wheels, can move, has a speed
+- **Child (Car)**: Everything a Vehicle has, PLUS doors, can honk
+- **Child (Motorcycle)**: Everything a Vehicle has, PLUS handlebar type
+
+```javascript
+// Parent class - general concept
+class Vehicle {
+  constructor(wheels) {
+    this.wheels = wheels;
+    this.speed = 0;
+  }
+  
+  move() {
+    this.speed = 10;
+  }
+}
+
+// Child class - specialized version
+class Car extends Vehicle {
+  constructor() {
+    super(4);  // Call parent constructor with 4 wheels
+    this.doors = 4;
+  }
+  
+  honk() {
+    return 'Beep beep!';
+  }
+}
+```
+
+<InfoBox type="info">
+**Inheritance** allows a class (child/subclass) to inherit properties and methods from another class (parent/superclass). The child class can add new features or modify inherited ones.
+</InfoBox>
+
+<CodePlayground
+  initialCode={`// Basic inheritance example
+
+// Parent class (superclass)
+class Animal {
+  constructor(name) {
+    this.name = name;
+    this.energy = 100;
+  }
+  
+  eat(food) {
+    this.energy += 10;
+    return \`\${this.name} eats \${food}. Energy: \${this.energy}\`;
+  }
+  
+  sleep() {
+    this.energy += 30;
+    return \`\${this.name} sleeps. Energy: \${this.energy}\`;
+  }
+}
+
+// Child class (subclass) - inherits from Animal
+class Dog extends Animal {
+  constructor(name, breed) {
+    super(name);  // MUST call super() first!
+    this.breed = breed;
+  }
+  
+  // New method only for dogs
+  bark() {
+    this.energy -= 5;
+    return \`\${this.name} barks! Woof! Energy: \${this.energy}\`;
+  }
+  
+  // New method only for dogs
+  fetch() {
+    this.energy -= 20;
+    return \`\${this.name} fetches the ball! Energy: \${this.energy}\`;
+  }
+}
+
+// Create a dog
+const buddy = new Dog('Buddy', 'Golden Retriever');
+
+// Dog has inherited methods
+console.log(buddy.eat('kibble'));
+console.log(buddy.sleep());
+
+// Dog has its own methods too
+console.log(buddy.bark());
+console.log(buddy.fetch());
+
+// Check the inheritance
+console.log('\\nIs buddy a Dog?', buddy instanceof Dog);
+console.log('Is buddy an Animal?', buddy instanceof Animal);`}
+  height={480}
+/>
+
+<ProgressCheckpoint section="understanding-inheritance" xpReward={15} />
+
+---
+
+## Section 2: The `extends` Keyword
+
+### Creating Child Classes
+
+The `extends` keyword establishes the inheritance relationship:
+
+```javascript
+class ChildClass extends ParentClass {
+  // Child class body
+}
+```
+
+<CodePlayground
+  initialCode={`// Building a class hierarchy
+
+// Base class
+class Shape {
+  constructor(color) {
+    this.color = color;
+  }
+  
+  describe() {
+    return \`A \${this.color} shape\`;
+  }
+  
+  // Method to be overridden
+  getArea() {
+    return 0;
+  }
+}
+
+// First level children
+class Rectangle extends Shape {
+  constructor(color, width, height) {
+    super(color);
+    this.width = width;
+    this.height = height;
+  }
+  
+  getArea() {
+    return this.width * this.height;
+  }
+  
+  describe() {
+    return \`A \${this.color} rectangle (\${this.width}x\${this.height})\`;
+  }
+}
+
+class Circle extends Shape {
+  constructor(color, radius) {
+    super(color);
+    this.radius = radius;
+  }
+  
+  getArea() {
+    return Math.PI * this.radius ** 2;
+  }
+  
+  describe() {
+    return \`A \${this.color} circle (r=\${this.radius})\`;
+  }
+}
+
+// Second level - Square extends Rectangle!
+class Square extends Rectangle {
+  constructor(color, size) {
+    super(color, size, size);  // width = height = size
+  }
+  
+  describe() {
+    return \`A \${this.color} square (\${this.width}x\${this.width})\`;
+  }
+}
+
+// Create shapes
+const rect = new Rectangle('blue', 10, 5);
+const circle = new Circle('red', 7);
+const square = new Square('green', 4);
+
+console.log(rect.describe(), '- Area:', rect.getArea());
+console.log(circle.describe(), '- Area:', circle.getArea().toFixed(2));
+console.log(square.describe(), '- Area:', square.getArea());
+
+// Inheritance chain
+console.log('\\nSquare instanceof Rectangle?', square instanceof Rectangle);
+console.log('Square instanceof Shape?', square instanceof Shape);`}
+  height={500}
+/>
+
+<KeyConcept title="Inheritance Chain">
+Classes can extend other classes that already extend something. This creates an inheritance chain: `Square → Rectangle → Shape → Object`. Each class inherits from all ancestors!
+</KeyConcept>
+
+### What Gets Inherited?
+
+| Inherited | Not Inherited |
+|:----------|:--------------|
+| Instance methods | Constructor (must call super) |
+| Static methods | Private fields (accessible only in defining class) |
+| Static properties | |
+| Getters/Setters | |
+
+<ProgressCheckpoint section="extends-keyword" xpReward={20} />
+
+---
+
+## Section 3: The `super` Keyword
+
+### Calling the Parent
+
+`super` has two main uses:
+1. **`super()`** - Call parent's constructor
+2. **`super.method()`** - Call parent's method
+
+<CodePlayground
+  initialCode={`// Using super() and super.method()
+
+class Employee {
+  constructor(name, salary) {
+    this.name = name;
+    this.salary = salary;
+  }
+  
+  getDetails() {
+    return \`\${this.name} - $\${this.salary}/year\`;
+  }
+  
+  work() {
+    return \`\${this.name} is working...\`;
+  }
+}
+
+class Manager extends Employee {
+  constructor(name, salary, department, teamSize) {
+    // MUST call super() before using 'this'
+    super(name, salary);
+    
+    // Now we can use 'this'
+    this.department = department;
+    this.teamSize = teamSize;
+  }
+  
+  // Override and extend parent method
+  getDetails() {
+    // Call parent's getDetails using super
+    const baseDetails = super.getDetails();
+    return \`\${baseDetails} | Dept: \${this.department} | Team: \${this.teamSize}\`;
+  }
+  
+  // New method
+  holdMeeting() {
+    return \`\${this.name} is holding a meeting with \${this.teamSize} people\`;
+  }
+  
+  // Override with extension
+  work() {
+    const baseWork = super.work();
+    return \`\${baseWork} Managing the \${this.department} team.\`;
+  }
+}
+
+class Developer extends Employee {
+  constructor(name, salary, language) {
+    super(name, salary);
+    this.language = language;
+  }
+  
+  getDetails() {
+    return \`\${super.getDetails()} | Tech: \${this.language}\`;
+  }
+  
+  code() {
+    return \`\${this.name} is coding in \${this.language}\`;
+  }
+}
+
+const manager = new Manager('Alice', 120000, 'Engineering', 8);
+const dev = new Developer('Bob', 95000, 'JavaScript');
+
+console.log(manager.getDetails());
+console.log(manager.work());
+console.log(manager.holdMeeting());
+
+console.log('\\n' + dev.getDetails());
+console.log(dev.code());`}
+  height={500}
+/>
+
+<InfoBox type="warning">
+**Important Rule**: In a child class constructor, you MUST call `super()` before accessing `this`. Failing to do so throws a `ReferenceError`!
+</InfoBox>
+
+```javascript
+class Child extends Parent {
+  constructor() {
+    // ❌ This throws an error!
+    // this.prop = 'value';  // Can't use 'this' yet!
+    
+    super();  // ✅ Call super first
+    
+    this.prop = 'value';  // ✅ Now 'this' is available
+  }
+}
+```
+
+### Super in Static Methods
+
+<CodePlayground
+  initialCode={`// super in static methods
+
+class Animal {
+  static kingdom = 'Animalia';
+  
+  static describe() {
+    return \`Kingdom: \${this.kingdom}\`;
+  }
+}
+
+class Mammal extends Animal {
+  static class = 'Mammalia';
+  
+  static describe() {
+    // super.describe() calls parent's static method
+    return \`\${super.describe()}, Class: \${this.class}\`;
+  }
+}
+
+class Dog extends Mammal {
+  static species = 'Canis familiaris';
+  
+  static describe() {
+    return \`\${super.describe()}, Species: \${this.species}\`;
+  }
+}
+
+console.log(Animal.describe());
+console.log(Mammal.describe());
+console.log(Dog.describe());`}
+  height={320}
+/>
+
+<ProgressCheckpoint section="super-keyword" xpReward={25} />
+
+---
+
+## Section 4: Method Overriding
+
+### Customizing Inherited Behavior
+
+Child classes can **override** parent methods to provide specialized behavior:
+
+<CodePlayground
+  initialCode={`// Method overriding patterns
+
+class Notification {
+  constructor(message) {
+    this.message = message;
+    this.timestamp = new Date();
+  }
+  
+  // Method to be overridden
+  send() {
+    console.log(\`[Notification] \${this.message}\`);
+  }
+  
+  format() {
+    return \`[\${this.timestamp.toLocaleTimeString()}] \${this.message}\`;
+  }
+}
+
+class EmailNotification extends Notification {
+  constructor(message, recipient) {
+    super(message);
+    this.recipient = recipient;
+  }
+  
+  // Override send() completely
+  send() {
+    console.log(\`📧 Email to \${this.recipient}: \${this.message}\`);
+  }
+}
+
+class SMSNotification extends Notification {
+  constructor(message, phoneNumber) {
+    super(message);
+    this.phoneNumber = phoneNumber;
+  }
+  
+  // Override send() completely
+  send() {
+    console.log(\`📱 SMS to \${this.phoneNumber}: \${this.message}\`);
+  }
+}
+
+class SlackNotification extends Notification {
+  constructor(message, channel) {
+    super(message);
+    this.channel = channel;
+  }
+  
+  // Override and extend using super
+  send() {
+    super.send();  // Call parent's send first
+    console.log(\`💬 Also posted to #\${this.channel}\`);
+  }
+}
+
+// Polymorphism in action!
+const notifications = [
+  new EmailNotification('Meeting at 3pm', 'alice@company.com'),
+  new SMSNotification('Your code is ready', '+1234567890'),
+  new SlackNotification('Deploy complete', 'engineering')
+];
+
+console.log('Sending all notifications:\\n');
+notifications.forEach(n => {
+  n.send();
+  console.log('');
+});`}
+  height={500}
+/>
+
+<KeyConcept title="Polymorphism">
+Different classes can have methods with the same name but different implementations. When you call the method, the correct version runs based on the object's actual type. This is **polymorphism** - "many forms"!
+</KeyConcept>
+
+<Quiz id="extends-quiz">
+  <Question>What must you do before using 'this' in a child class constructor?</Question>
+  <Answer>Declare all properties</Answer>
+  <Answer>Nothing special</Answer>
+  <Answer correct>Call super()</Answer>
+  <Answer>Define all methods</Answer>
+</Quiz>
+
+<Quiz id="super-method-quiz">
+  <Question>How do you call a parent class method from an overriding method?</Question>
+  <Answer>parent.methodName()</Answer>
+  <Answer>this.parent.methodName()</Answer>
+  <Answer correct>super.methodName()</Answer>
+  <Answer>base.methodName()</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Point |
+|:--------|:----------|
+| **extends** | Creates parent-child relationship |
+| **super()** | Calls parent constructor (required in child) |
+| **super.method()** | Calls parent's method |
+| **Overriding** | Child replaces parent's method |
+| **Polymorphism** | Same method name, different behavior |
+| **instanceof** | Checks inheritance chain |
+
+<ProgressCheckpoint section="method-overriding" xpReward={25} />

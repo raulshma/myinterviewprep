@@ -1,0 +1,18 @@
+{
+  "id": "constructor-method",
+  "title": "Constructor Method",
+  "description": "Master the constructor method - the special function that initializes new objects when a class is instantiated.",
+  "milestone": "classes",
+  "order": 2,
+  "singleLevel": true,
+  "estimatedMinutes": 14,
+  "xpReward": 70,
+  "sections": [
+    "understanding-constructors",
+    "constructor-syntax",
+    "default-constructor",
+    "constructor-return"
+  ],
+  "prerequisites": ["class-declarations"],
+  "tags": ["javascript", "classes", "constructor", "initialization"]
+}

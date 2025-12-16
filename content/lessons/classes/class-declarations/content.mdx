@@ -1,0 +1,341 @@
+# Class Declarations: Blueprints for Objects
+
+Think of a class like an architectural blueprint. An architect doesn't build a house directly - they create a blueprint that describes what every house of that type should look like. Then builders use that blueprint to create actual houses. Classes work the same way - they're blueprints for creating objects!
+
+---
+
+## Section 1: What Are Classes?
+
+### The Blueprint Analogy 🏗️
+
+Imagine you're running a car factory. You don't design each car from scratch - you have a **blueprint** that defines:
+
+- What properties every car has (color, model, speed)
+- What actions every car can do (start, stop, accelerate)
+
+```javascript
+// The "blueprint" (class)
+class Car {
+  constructor(color, model) {
+    this.color = color;
+    this.model = model;
+    this.speed = 0;
+  }
+  
+  start() {
+    console.log(`${this.model} is starting...`);
+  }
+  
+  accelerate() {
+    this.speed += 10;
+  }
+}
+
+// Create actual cars from the blueprint
+const myCar = new Car('red', 'Tesla');
+const yourCar = new Car('blue', 'BMW');
+```
+
+<InfoBox type="info">
+**Classes** are templates for creating objects. They encapsulate data (properties) and behavior (methods) that belong together. Introduced in ES6 (2015), they provide a cleaner syntax for object-oriented programming in JavaScript.
+</InfoBox>
+
+### Why Use Classes?
+
+| Without Classes | With Classes |
+|:----------------|:-------------|
+| Scattered related code | Organized in one place |
+| Manual prototype setup | Automatic prototype chain |
+| Verbose constructor functions | Clean, readable syntax |
+| Easy to make mistakes | Built-in structure |
+
+<ProgressCheckpoint section="what-are-classes" xpReward={15} />
+
+---
+
+## Section 2: Class Declaration Syntax
+
+### Anatomy of a Class
+
+A class declaration has a clear, structured syntax:
+
+```javascript
+class ClassName {
+  // Constructor - runs when creating new instance
+  constructor(parameters) {
+    this.property = parameters;
+  }
+  
+  // Methods - actions the object can perform
+  methodName() {
+    // method body
+  }
+}
+```
+
+<CodePlayground
+  initialCode={`// Let's create a simple class
+
+class Person {
+  // The constructor initializes new objects
+  constructor(name, age) {
+    this.name = name;  // 'this' refers to the new object
+    this.age = age;
+  }
+  
+  // Method - a function that belongs to the class
+  introduce() {
+    return \`Hi, I'm \${this.name} and I'm \${this.age} years old.\`;
+  }
+  
+  // Another method
+  haveBirthday() {
+    this.age++;
+    console.log(\`Happy birthday! \${this.name} is now \${this.age}.\`);
+  }
+}
+
+// Create instances using 'new' keyword
+const alice = new Person('Alice', 25);
+const bob = new Person('Bob', 30);
+
+console.log(alice.introduce());
+console.log(bob.introduce());
+
+alice.haveBirthday();
+console.log(alice.age); // 26`}
+  height={400}
+/>
+
+### Key Components
+
+| Component | Purpose | Required? |
+|:----------|:--------|:----------|
+| `class` keyword | Declares a class | Yes |
+| Class name | Identifies the class (PascalCase) | Yes |
+| `constructor()` | Initializes new instances | No (default provided) |
+| Methods | Define object behavior | No |
+| `this` keyword | References the current instance | Used inside class |
+
+<KeyConcept title="The 'new' Keyword">
+When you call `new ClassName()`, JavaScript:
+1. Creates a new empty object
+2. Sets `this` to point to that object
+3. Runs the constructor
+4. Returns the object (automatically)
+</KeyConcept>
+
+<ProgressCheckpoint section="class-syntax" xpReward={20} />
+
+---
+
+## Section 3: Class Expressions
+
+### Another Way to Define Classes
+
+Just like functions, classes can be defined as expressions:
+
+```javascript
+// Named class expression
+const Animal = class AnimalClass {
+  constructor(name) {
+    this.name = name;
+  }
+};
+
+// Anonymous class expression
+const Vehicle = class {
+  constructor(type) {
+    this.type = type;
+  }
+};
+```
+
+<CodePlayground
+  initialCode={`// Class expressions - alternative syntax
+
+// Anonymous class expression
+const Rectangle = class {
+  constructor(width, height) {
+    this.width = width;
+    this.height = height;
+  }
+  
+  getArea() {
+    return this.width * this.height;
+  }
+};
+
+// Named class expression (name is local to class body)
+const Circle = class CircleClass {
+  constructor(radius) {
+    this.radius = radius;
+  }
+  
+  getArea() {
+    return Math.PI * this.radius ** 2;
+  }
+  
+  // Can reference the class name inside
+  clone() {
+    return new CircleClass(this.radius);
+  }
+};
+
+const rect = new Rectangle(10, 5);
+console.log('Rectangle area:', rect.getArea());
+
+const circle = new Circle(7);
+console.log('Circle area:', circle.getArea().toFixed(2));
+
+const clonedCircle = circle.clone();
+console.log('Cloned radius:', clonedCircle.radius);`}
+  height={380}
+/>
+
+### Declaration vs Expression
+
+| Feature | Class Declaration | Class Expression |
+|:--------|:------------------|:-----------------|
+| Syntax | `class Name {}` | `const Name = class {}` |
+| Hoisting | Not hoisted (TDZ) | Not hoisted |
+| Name | Required | Optional |
+| Use case | Most common | Dynamic/conditional |
+
+<InfoBox type="warning">
+**No Hoisting!** Unlike function declarations, class declarations are NOT hoisted. You must define a class before using it, or you'll get a `ReferenceError`.
+</InfoBox>
+
+```javascript
+// ❌ This will throw an error!
+const dog = new Animal('Buddy'); // ReferenceError!
+
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+}
+
+// ✅ This works - class defined first
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+}
+
+const dog = new Animal('Buddy'); // Works!
+```
+
+<ProgressCheckpoint section="class-expressions" xpReward={20} />
+
+---
+
+## Section 4: Classes vs Constructor Functions
+
+### The Evolution of Object Creation
+
+Before ES6 classes, we used constructor functions:
+
+```javascript
+// Old way: Constructor function
+function PersonOld(name, age) {
+  this.name = name;
+  this.age = age;
+}
+
+PersonOld.prototype.greet = function() {
+  return `Hello, I'm ${this.name}`;
+};
+
+// New way: Class (syntactic sugar)
+class PersonNew {
+  constructor(name, age) {
+    this.name = name;
+    this.age = age;
+  }
+  
+  greet() {
+    return `Hello, I'm ${this.name}`;
+  }
+}
+```
+
+<CodePlayground
+  initialCode={`// Comparing constructor functions and classes
+
+// Constructor function (ES5 way)
+function BookOld(title, author) {
+  this.title = title;
+  this.author = author;
+}
+
+BookOld.prototype.getSummary = function() {
+  return \`"\${this.title}" by \${this.author}\`;
+};
+
+// Class (ES6+ way)
+class BookNew {
+  constructor(title, author) {
+    this.title = title;
+    this.author = author;
+  }
+  
+  getSummary() {
+    return \`"\${this.title}" by \${this.author}\`;
+  }
+}
+
+// Both work the same way!
+const book1 = new BookOld('1984', 'George Orwell');
+const book2 = new BookNew('Brave New World', 'Aldous Huxley');
+
+console.log(book1.getSummary());
+console.log(book2.getSummary());
+
+// Under the hood, classes ARE functions!
+console.log(typeof BookNew); // "function"
+console.log(BookNew.prototype.constructor === BookNew); // true`}
+  height={380}
+/>
+
+<KeyConcept title="Classes Are Syntactic Sugar">
+Classes in JavaScript are "syntactic sugar" over the existing prototype-based inheritance. Under the hood, they still use prototypes - but with a much cleaner syntax!
+</KeyConcept>
+
+### Why Classes Are Better
+
+| Aspect | Constructor Functions | Classes |
+|:-------|:---------------------|:--------|
+| Syntax | Verbose | Clean and concise |
+| Methods | Added to prototype manually | Automatically on prototype |
+| Inheritance | Complex prototype chain | Simple `extends` keyword |
+| Static methods | Manual assignment | `static` keyword |
+| Private fields | Conventions only (`_name`) | True privacy (`#name`) |
+
+<Quiz id="class-declaration-quiz">
+  <Question>What happens when you try to use a class before it's declared?</Question>
+  <Answer>It works due to hoisting</Answer>
+  <Answer correct>ReferenceError is thrown</Answer>
+  <Answer>undefined is returned</Answer>
+  <Answer>The class is created automatically</Answer>
+</Quiz>
+
+<Quiz id="class-type-quiz">
+  <Question>What does `typeof MyClass` return for a class?</Question>
+  <Answer>"class"</Answer>
+  <Answer>"object"</Answer>
+  <Answer correct>"function"</Answer>
+  <Answer>"undefined"</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Point |
+|:--------|:----------|
+| **Class Declaration** | `class Name { constructor() {} }` |
+| **Class Expression** | `const Name = class {}` |
+| **Creating Instances** | Use `new` keyword |
+| **Hoisting** | Classes are NOT hoisted |
+| **Under the Hood** | Classes are special functions |
+
+<ProgressCheckpoint section="class-vs-function" xpReward={25} />

@@ -1,0 +1,18 @@
+{
+  "id": "getters-setters",
+  "title": "Getters and Setters",
+  "description": "Learn how to use get and set accessors to control property access with computed values and validation.",
+  "milestone": "classes",
+  "order": 7,
+  "singleLevel": true,
+  "estimatedMinutes": 13,
+  "xpReward": 70,
+  "sections": [
+    "understanding-accessors",
+    "getter-syntax",
+    "setter-syntax",
+    "practical-patterns"
+  ],
+  "prerequisites": ["private-fields"],
+  "tags": ["javascript", "classes", "getters", "setters", "accessors", "encapsulation"]
+}

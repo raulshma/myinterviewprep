@@ -1,0 +1,18 @@
+{
+  "id": "class-declarations",
+  "title": "Class Declarations",
+  "description": "Learn how to define classes in JavaScript using class declarations and expressions - the blueprint for creating objects.",
+  "milestone": "classes",
+  "order": 1,
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 80,
+  "sections": [
+    "what-are-classes",
+    "class-syntax",
+    "class-expressions",
+    "class-vs-function"
+  ],
+  "prerequisites": ["functions"],
+  "tags": ["javascript", "classes", "oop", "es6"]
+}

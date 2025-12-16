@@ -1,0 +1,18 @@
+{
+  "id": "class-inheritance",
+  "title": "Inheritance (extends)",
+  "description": "Learn how to create class hierarchies using extends and super - building specialized classes from general ones.",
+  "milestone": "classes",
+  "order": 5,
+  "singleLevel": true,
+  "estimatedMinutes": 18,
+  "xpReward": 85,
+  "sections": [
+    "understanding-inheritance",
+    "extends-keyword",
+    "super-keyword",
+    "method-overriding"
+  ],
+  "prerequisites": ["static-methods"],
+  "tags": ["javascript", "classes", "inheritance", "extends", "super", "oop"]
+}

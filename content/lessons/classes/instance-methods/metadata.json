@@ -1,0 +1,18 @@
+{
+  "id": "instance-methods",
+  "title": "Instance Methods",
+  "description": "Learn how to define and use instance methods - the functions that give objects their behavior and actions.",
+  "milestone": "classes",
+  "order": 3,
+  "singleLevel": true,
+  "estimatedMinutes": 16,
+  "xpReward": 75,
+  "sections": [
+    "what-are-methods",
+    "method-syntax",
+    "this-keyword",
+    "prototype-methods"
+  ],
+  "prerequisites": ["constructor-method"],
+  "tags": ["javascript", "classes", "methods", "this", "prototype"]
+}

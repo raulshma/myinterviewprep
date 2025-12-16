@@ -1,0 +1,18 @@
+{
+  "id": "static-methods",
+  "title": "Static Methods and Properties",
+  "description": "Learn about static members - methods and properties that belong to the class itself rather than individual instances.",
+  "milestone": "classes",
+  "order": 4,
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 75,
+  "sections": [
+    "understanding-static",
+    "static-methods",
+    "static-properties",
+    "static-blocks"
+  ],
+  "prerequisites": ["instance-methods"],
+  "tags": ["javascript", "classes", "static", "factory-pattern"]
+}
