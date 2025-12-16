@@ -42,7 +42,5 @@ next-env.d.ts
 docs/
 
 # PWA
-public/sw.js
-public/sw.js.map
 public/serwist-*.js
 public/serwist-*.js.map

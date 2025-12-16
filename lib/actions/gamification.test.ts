@@ -33,6 +33,13 @@ vi.mock('@/lib/db/repositories/gamification-repository', () => ({
   recordQuizAnswer: vi.fn(),
 }));
 
+// Mock the lessons module for single-level lesson detection
+// Default to three-level lessons (returns null metadata) for backward compatibility
+vi.mock('./lessons', () => ({
+  getLessonMetadata: vi.fn(() => Promise.resolve(null)),
+  isSingleLevelLesson: vi.fn(() => false),
+}));
+
 describe('Gamification Actions - CSS Lessons Progress Tracking', () => {
   let mockMarkSectionComplete: ReturnType<typeof vi.fn>;
   let mockGetLessonProgress: ReturnType<typeof vi.fn>;

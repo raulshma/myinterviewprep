@@ -7,36 +7,44 @@ import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
 import type { LearningObjective } from '@/lib/db/schemas/roadmap';
+import {
+  type LessonMetadata,
+  validateLessonMetadata,
+  isSingleLevelLesson,
+} from '@/lib/db/schemas/lesson-metadata';
 import { objectiveToLessonSlug, getObjectiveTitle, getObjectiveLessonId } from '@/lib/utils/lesson-utils';
 import { resolvePathWithinRoot } from '@/lib/utils/safe-path';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content', 'lessons');
 
+// Re-export type guard for use in other modules
+export { isSingleLevelLesson };
+export type { LessonMetadata };
+
 /**
  * Get lesson metadata from JSON file
+ * Supports both single-level and three-level lesson formats
+ * 
+ * Single-level format: has singleLevel: true with top-level estimatedMinutes/xpReward
+ * Three-level format: has levels object with beginner/intermediate/advanced configs
  */
-export async function getLessonMetadata(lessonPath: string) {
+export async function getLessonMetadata(lessonPath: string): Promise<LessonMetadata | null> {
   try {
     const metadataPath = await resolvePathWithinRoot(CONTENT_DIR, lessonPath, 'metadata.json');
     if (!metadataPath) {
       return null;
     }
     const content = await fs.readFile(metadataPath, 'utf-8');
-    return JSON.parse(content) as {
-      id: string;
-      title: string;
-      description: string;
-      milestone: string;
-      order: number;
-      sections: string[];
-      levels: {
-        beginner: { estimatedMinutes: number; xpReward: number };
-        intermediate: { estimatedMinutes: number; xpReward: number };
-        advanced: { estimatedMinutes: number; xpReward: number };
-      };
-      prerequisites: string[];
-      tags: string[];
-    };
+    const parsed = JSON.parse(content);
+    
+    // Validate and return typed metadata
+    const metadata = validateLessonMetadata(parsed);
+    if (!metadata) {
+      console.error('Invalid lesson metadata format:', lessonPath);
+      return null;
+    }
+    
+    return metadata;
   } catch (error) {
     console.error('Failed to load lesson metadata:', error);
     return null;
@@ -45,20 +53,56 @@ export async function getLessonMetadata(lessonPath: string) {
 
 /**
  * Get MDX content for a specific lesson and experience level
+ * Handles both single-level and three-level lesson formats
+ * 
+ * Single-level lessons: loads content.mdx (level parameter is ignored)
+ * Three-level lessons: loads {level}.mdx with fallback to content.mdx
+ * 
  * No caching during development to ensure fresh content
  */
-export async function getLessonContent(lessonPath: string, level: ExperienceLevel) {
+export async function getLessonContent(lessonPath: string, level?: ExperienceLevel) {
   try {
-    // Validate the experience level to prevent injection in filename
-    const validLevels: ExperienceLevel[] = ['beginner', 'intermediate', 'advanced'];
-    if (!validLevels.includes(level)) {
-      console.error('Invalid experience level:', level);
+    // Get metadata to determine lesson format
+    const metadata = await getLessonMetadata(lessonPath);
+    if (!metadata) {
+      console.error('Could not load metadata for lesson:', lessonPath);
       return null;
     }
     
-    const mdxPath = await resolvePathWithinRoot(CONTENT_DIR, lessonPath, `${level}.mdx`);
+    // Determine which file to load based on format
+    let fileName: string;
+    
+    if (isSingleLevelLesson(metadata)) {
+      // Single-level lessons always use content.mdx
+      // Level parameter is ignored for single-level lessons
+      fileName = 'content.mdx';
+    } else {
+      // Three-level lessons use {level}.mdx
+      // Validate the experience level to prevent injection in filename
+      const validLevels: ExperienceLevel[] = ['beginner', 'intermediate', 'advanced'];
+      
+      // For three-level lessons, level is required and must be valid
+      // Default to 'beginner' if level is undefined (for backward compatibility)
+      // But reject explicitly invalid levels
+      if (level !== undefined && !validLevels.includes(level)) {
+        console.error('Invalid experience level:', level);
+        return null;
+      }
+      
+      const effectiveLevel = level || 'beginner';
+      fileName = `${effectiveLevel}.mdx`;
+    }
+    
+    // Try to resolve the primary file path
+    let mdxPath = await resolvePathWithinRoot(CONTENT_DIR, lessonPath, fileName);
+    
+    // Fallback: if level-specific file doesn't exist for three-level lessons, try content.mdx
+    if (!mdxPath && !isSingleLevelLesson(metadata)) {
+      mdxPath = await resolvePathWithinRoot(CONTENT_DIR, lessonPath, 'content.mdx');
+    }
+    
     if (!mdxPath) {
-      console.error('Could not resolve MDX path for:', lessonPath, level);
+      console.error('Could not resolve MDX path for:', lessonPath, fileName);
       return null;
     }
     
@@ -213,11 +257,15 @@ export interface ObjectiveLessonInfo {
   lessonId: string;
   hasLesson: boolean;
   lessonPath?: string;
+  /** True if this is a single-level lesson (no beginner/intermediate/advanced) */
+  isSingleLevel?: boolean;
+  /** XP rewards - for single-level, all three values are the same */
   xpRewards?: {
     beginner: number;
     intermediate: number;
     advanced: number;
   };
+  /** Estimated minutes - for single-level, all three values are the same */
   estimatedMinutes?: {
     beginner: number;
     intermediate: number;
@@ -228,6 +276,7 @@ export interface ObjectiveLessonInfo {
 /**
  * Get lesson availability info for a list of objectives
  * Supports both string objectives and object objectives with lessonId
+ * Handles both single-level and three-level lesson formats
  */
 export async function getObjectivesWithLessons(
   milestoneId: string, 
@@ -244,22 +293,45 @@ export async function getObjectivesWithLessons(
       const metadata = await getLessonMetadata(lessonPath);
       
       if (metadata) {
-        results.push({
-          objective: objectiveTitle,
-          lessonId,
-          hasLesson: true,
-          lessonPath,
-          xpRewards: {
-            beginner: metadata.levels.beginner.xpReward,
-            intermediate: metadata.levels.intermediate.xpReward,
-            advanced: metadata.levels.advanced.xpReward,
-          },
-          estimatedMinutes: {
-            beginner: metadata.levels.beginner.estimatedMinutes,
-            intermediate: metadata.levels.intermediate.estimatedMinutes,
-            advanced: metadata.levels.advanced.estimatedMinutes,
-          },
-        });
+        if (isSingleLevelLesson(metadata)) {
+          // Single-level lesson: use top-level values for all levels
+          results.push({
+            objective: objectiveTitle,
+            lessonId,
+            hasLesson: true,
+            lessonPath,
+            isSingleLevel: true,
+            xpRewards: {
+              beginner: metadata.xpReward,
+              intermediate: metadata.xpReward,
+              advanced: metadata.xpReward,
+            },
+            estimatedMinutes: {
+              beginner: metadata.estimatedMinutes,
+              intermediate: metadata.estimatedMinutes,
+              advanced: metadata.estimatedMinutes,
+            },
+          });
+        } else {
+          // Three-level lesson: use level-specific values
+          results.push({
+            objective: objectiveTitle,
+            lessonId,
+            hasLesson: true,
+            lessonPath,
+            isSingleLevel: false,
+            xpRewards: {
+              beginner: metadata.levels.beginner.xpReward,
+              intermediate: metadata.levels.intermediate.xpReward,
+              advanced: metadata.levels.advanced.xpReward,
+            },
+            estimatedMinutes: {
+              beginner: metadata.levels.beginner.estimatedMinutes,
+              intermediate: metadata.levels.intermediate.estimatedMinutes,
+              advanced: metadata.levels.advanced.estimatedMinutes,
+            },
+          });
+        }
         continue;
       }
     }
@@ -453,12 +525,25 @@ export async function getNextLessonSuggestion(
     // Return the first suggestion (next in sequence)
     if (suggestions.length > 0) {
       const nextLesson = suggestions[0];
+      
+      // Handle both single-level and three-level lessons
+      let estimatedMinutes: number;
+      let xpReward: number;
+      
+      if (isSingleLevelLesson(nextLesson)) {
+        estimatedMinutes = nextLesson.estimatedMinutes;
+        xpReward = nextLesson.xpReward;
+      } else {
+        estimatedMinutes = nextLesson.levels[currentLevel].estimatedMinutes;
+        xpReward = nextLesson.levels[currentLevel].xpReward;
+      }
+      
       return {
         lessonPath: nextLesson.path,
         title: nextLesson.title,
         description: nextLesson.description,
-        estimatedMinutes: nextLesson.levels[currentLevel].estimatedMinutes,
-        xpReward: nextLesson.levels[currentLevel].xpReward,
+        estimatedMinutes,
+        xpReward,
       };
     }
     

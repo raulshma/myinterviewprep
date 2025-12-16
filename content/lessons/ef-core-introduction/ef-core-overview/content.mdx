@@ -1,0 +1,299 @@
+# What is Entity Framework Core?
+
+Welcome to your journey into Entity Framework Core! Before we dive into code, let's understand **why** ORMs exist and how they make your life as a developer so much easier.
+
+---
+
+## Section 1: What is an ORM?
+
+### The Restaurant Analogy 🍽️
+
+Imagine you're at a fancy restaurant. You don't walk into the kitchen, grab ingredients, and start cooking yourself. Instead, you:
+
+1. **Look at the menu** (written in your language)
+2. **Tell the waiter** what you want
+3. **The waiter translates** your order for the kitchen
+4. **The kitchen prepares** your food
+5. **The waiter brings** it back to you
+
+An **ORM (Object-Relational Mapper)** works exactly the same way!
+
+| Restaurant | Programming |
+|:-----------|:------------|
+| You (customer) | Your C# code |
+| Menu | Your entity classes |
+| Waiter | The ORM (EF Core) |
+| Kitchen | The database |
+| Food | Your data |
+
+<InfoBox type="info">
+**ORM** stands for **Object-Relational Mapper**. It maps your C# objects to database tables and vice versa, so you never have to write raw SQL!
+</InfoBox>
+
+### The Problem ORMs Solve
+
+Without an ORM, you'd have to write code like this:
+
+```csharp
+// 😫 Without an ORM - lots of manual work!
+var connection = new SqlConnection(connectionString);
+connection.Open();
+
+var command = new SqlCommand(
+    "SELECT Id, Title, Content FROM Posts WHERE BlogId = @blogId", 
+    connection
+);
+command.Parameters.AddWithValue("@blogId", 1);
+
+var reader = command.ExecuteReader();
+var posts = new List<Post>();
+
+while (reader.Read())
+{
+    posts.Add(new Post
+    {
+        Id = reader.GetInt32(0),
+        Title = reader.GetString(1),
+        Content = reader.GetString(2)
+    });
+}
+connection.Close();
+```
+
+With an ORM like EF Core, the same thing becomes:
+
+```csharp
+// 😊 With EF Core - clean and simple!
+var posts = context.Posts
+    .Where(p => p.BlogId == 1)
+    .ToList();
+```
+
+<KeyConcept title="Why ORMs Matter">
+ORMs let you work with **objects** instead of **SQL strings**. This means:
+- Fewer bugs from typos in SQL
+- IntelliSense and compile-time checking
+- Easier to read and maintain code
+- Database-agnostic code (switch databases easily!)
+</KeyConcept>
+
+<ProgressCheckpoint section="what-is-orm" xpReward={20} />
+
+---
+
+## Section 2: Introduction to Entity Framework Core
+
+### What is EF Core?
+
+**Entity Framework Core** is Microsoft's modern ORM for .NET. It's:
+
+- **Open source** - free to use and community-driven
+- **Cross-platform** - works on Windows, Mac, and Linux
+- **Lightweight** - only includes what you need
+- **Flexible** - supports many databases (SQL Server, PostgreSQL, SQLite, MySQL, and more!)
+
+
+<DotnetCodePreview
+  title="Your First Look at EF Core"
+  code={`// Step 1: Define your data as C# classes
+public class Blog
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public List<Post> Posts { get; set; } = new();
+}
+
+public class Post
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public string Content { get; set; } = "";
+    public int BlogId { get; set; }
+    public Blog Blog { get; set; } = null!;
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7],
+      highlight: "Blog Entity",
+      explanation: "This C# class represents a 'Blogs' table in your database. Each property becomes a column!"
+    },
+    {
+      lineNumbers: [4],
+      highlight: "Primary Key",
+      explanation: "EF Core automatically recognizes 'Id' as the primary key. It will auto-increment!"
+    },
+    {
+      lineNumbers: [6],
+      highlight: "Navigation Property",
+      explanation: "This creates a relationship - one Blog can have many Posts"
+    },
+    {
+      lineNumbers: [9, 10, 11, 12, 13, 14, 15],
+      highlight: "Post Entity",
+      explanation: "Another table! Notice how BlogId creates a foreign key relationship"
+    }
+  ]}
+/>
+
+### The Core Components
+
+EF Core has three main building blocks:
+
+1. **Entities** - Your C# classes that represent database tables
+2. **DbContext** - The "waiter" that manages database connections
+3. **DbSet** - Collections of entities (like menu sections)
+
+<DbContextVisualizer mode="beginner" />
+
+<InfoBox type="tip">
+**Pro Tip:** Think of DbContext as your database session. It tracks all changes you make and sends them to the database when you call `SaveChanges()`.
+</InfoBox>
+
+<ProgressCheckpoint section="ef-core-intro" xpReward={20} />
+
+---
+
+## Section 3: Benefits of Using an ORM
+
+### Why Choose EF Core?
+
+Let's explore the key benefits that make EF Core a popular choice:
+
+<Comparison
+  title="Manual SQL vs EF Core"
+  items={[
+    {
+      label: "Manual SQL",
+      description: "Write raw SQL queries, manually map results to objects, handle connections yourself",
+      isCorrect: false
+    },
+    {
+      label: "EF Core",
+      description: "Write C# code, automatic mapping, connection management handled for you",
+      isCorrect: true
+    }
+  ]}
+/>
+
+### Key Benefits
+
+| Benefit | Description |
+|:--------|:------------|
+| **Type Safety** | Compile-time checking catches errors before runtime |
+| **Productivity** | Write less code, ship faster |
+| **Maintainability** | Easier to read and refactor |
+| **Migrations** | Version control your database schema |
+| **LINQ Support** | Query with familiar C# syntax |
+| **Change Tracking** | Automatic detection of what changed |
+
+<DotnetCodePreview
+  title="LINQ Queries with EF Core"
+  code={`// Find all published posts from 2024
+var recentPosts = context.Posts
+    .Where(p => p.PublishedDate.Year == 2024)
+    .Where(p => p.IsPublished)
+    .OrderByDescending(p => p.PublishedDate)
+    .Take(10)
+    .ToList();
+
+// EF Core translates this to optimized SQL!`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Start with DbSet",
+      explanation: "context.Posts gives you access to all posts in the database"
+    },
+    {
+      lineNumbers: [3, 4],
+      highlight: "Filter with Where",
+      explanation: "Chain multiple conditions - EF Core combines them into efficient SQL"
+    },
+    {
+      lineNumbers: [5],
+      highlight: "Sort Results",
+      explanation: "OrderByDescending sorts newest first"
+    },
+    {
+      lineNumbers: [6],
+      highlight: "Limit Results",
+      explanation: "Take(10) adds 'TOP 10' or 'LIMIT 10' to the SQL"
+    },
+    {
+      lineNumbers: [7],
+      highlight: "Execute Query",
+      explanation: "ToList() actually runs the query and returns results"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="orm-benefits" xpReward={20} />
+
+---
+
+## Section 4: When to Use EF Core
+
+### Perfect Use Cases
+
+EF Core shines in these scenarios:
+
+- **CRUD Applications** - Create, Read, Update, Delete operations
+- **Business Applications** - Complex domain models with relationships
+- **Rapid Prototyping** - Get up and running quickly
+- **Microservices** - Lightweight and modular
+
+### When to Consider Alternatives
+
+<InfoBox type="warning">
+EF Core might not be the best choice for:
+- **Extreme performance requirements** - Consider Dapper for raw speed
+- **Complex reporting queries** - Sometimes raw SQL is clearer
+- **Legacy databases** - With unusual schemas that don't map well to objects
+</InfoBox>
+
+### Quick Knowledge Check
+
+<Quiz id="orm-basics-quiz">
+  <Question>What does ORM stand for?</Question>
+  <Answer correct>Object-Relational Mapper</Answer>
+  <Answer>Online Resource Manager</Answer>
+  <Answer>Object-Reference Model</Answer>
+  <Answer>Optimized Runtime Module</Answer>
+</Quiz>
+
+<Quiz id="restaurant-analogy-quiz">
+  <Question>In the restaurant analogy, what does the 'waiter' represent?</Question>
+  <Answer>Your C# code</Answer>
+  <Answer>The database</Answer>
+  <Answer correct>The ORM (EF Core)</Answer>
+  <Answer>Your entity classes</Answer>
+</Quiz>
+
+<Quiz id="ef-core-benefits-quiz">
+  <Question>Which of these is NOT a benefit of using EF Core?</Question>
+  <Answer>Type safety with compile-time checking</Answer>
+  <Answer correct>Automatic SQL injection vulnerabilities</Answer>
+  <Answer>LINQ support for queries</Answer>
+  <Answer>Automatic change tracking</Answer>
+</Quiz>
+
+### Summary
+
+You've learned the fundamentals of ORMs and EF Core! Here's what we covered:
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **ORM** | Maps C# objects to database tables |
+| **EF Core** | Microsoft's modern, cross-platform ORM |
+| **Entities** | C# classes representing database tables |
+| **DbContext** | The "waiter" managing database operations |
+| **Benefits** | Type safety, productivity, maintainability |
+
+<KeyConcept title="What's Next?">
+Now that you understand what EF Core is and why it's useful, you're ready to dive deeper! In the next lessons, you'll learn about:
+- **DbContext & DbSet** - Setting up your database connection
+- **Relationships** - Connecting entities together
+- **Querying** - Retrieving data with LINQ
+- **Migrations** - Managing database schema changes
+</KeyConcept>
+
+<ProgressCheckpoint section="when-to-use" xpReward={15} />

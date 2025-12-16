@@ -7,3 +7,5 @@ export * from './learning-path';
 export * from './feedback';
 export * from './ai-conversation';
 export * from './chat-image';
+export * from './lesson-metadata';
+export * from './lesson-progress';

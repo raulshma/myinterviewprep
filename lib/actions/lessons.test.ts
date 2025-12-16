@@ -67,7 +67,23 @@ import {
 // Test Fixtures
 // ============================================================================
 
-const createMockMetadata = (overrides: Partial<ReturnType<typeof createMockMetadata>> = {}) => ({
+interface MockThreeLevelMetadata {
+  id: string;
+  title: string;
+  description: string;
+  milestone: string;
+  order: number;
+  sections: string[];
+  levels: {
+    beginner: { estimatedMinutes: number; xpReward: number };
+    intermediate: { estimatedMinutes: number; xpReward: number };
+    advanced: { estimatedMinutes: number; xpReward: number };
+  };
+  prerequisites: string[];
+  tags: string[];
+}
+
+const createMockMetadata = (overrides: Partial<MockThreeLevelMetadata> = {}): MockThreeLevelMetadata => ({
   id: 'test-lesson',
   title: 'Test Lesson',
   description: 'A test lesson description',
@@ -188,9 +204,30 @@ describe('getLessonContent', () => {
     vi.clearAllMocks();
   });
 
-  it('should return serialized MDX content for valid level', async () => {
+  // Helper to create three-level metadata JSON
+  const threeLevelMetadataJson = JSON.stringify(createMockMetadata());
+  
+  // Helper to create single-level metadata JSON
+  const singleLevelMetadataJson = JSON.stringify({
+    id: 'test-lesson',
+    title: 'Test Lesson',
+    description: 'A test lesson description',
+    milestone: 'test-milestone',
+    order: 1,
+    sections: ['intro', 'main', 'summary'],
+    singleLevel: true,
+    estimatedMinutes: 20,
+    xpReward: 75,
+    prerequisites: [],
+    tags: ['test'],
+  });
+
+  it('should return serialized MDX content for valid level (three-level lesson)', async () => {
     const mdxContent = '# Hello World\n\nThis is a test lesson.';
-    vi.mocked(fs.readFile).mockResolvedValueOnce(mdxContent);
+    // First call returns metadata, second call returns MDX content
+    vi.mocked(fs.readFile)
+      .mockResolvedValueOnce(threeLevelMetadataJson)
+      .mockResolvedValueOnce(mdxContent);
 
     const result = await getLessonContent('css/selectors', 'beginner');
 
@@ -198,22 +235,58 @@ describe('getLessonContent', () => {
     expect(result?.compiledSource).toBe(mdxContent);
   });
 
-  it('should reject invalid experience levels', async () => {
-    const result = await getLessonContent('css/selectors', 'invalid' as ExperienceLevel);
+  it('should load content.mdx for single-level lessons', async () => {
+    const mdxContent = '# Single Level Content';
+    vi.mocked(fs.readFile)
+      .mockResolvedValueOnce(singleLevelMetadataJson)
+      .mockResolvedValueOnce(mdxContent);
 
-    expect(result).toBeNull();
-    expect(fs.readFile).not.toHaveBeenCalled();
+    const result = await getLessonContent('ef-core/overview', 'beginner');
+
+    expect(result).toBeDefined();
+    expect(result?.compiledSource).toBe(mdxContent);
+    // Should resolve to content.mdx, not beginner.mdx
+    expect(resolvePathWithinRoot).toHaveBeenCalledWith(
+      expect.any(String),
+      'ef-core/overview',
+      'content.mdx'
+    );
   });
 
-  it('should return null when path resolution fails', async () => {
-    vi.mocked(resolvePathWithinRoot).mockResolvedValueOnce(null);
+  it('should ignore level parameter for single-level lessons', async () => {
+    const mdxContent = '# Single Level Content';
+    vi.mocked(fs.readFile)
+      .mockResolvedValueOnce(singleLevelMetadataJson)
+      .mockResolvedValueOnce(mdxContent);
 
-    const result = await getLessonContent('css/selectors', 'beginner');
+    // Pass 'advanced' level, but should still load content.mdx
+    const result = await getLessonContent('ef-core/overview', 'advanced');
 
-    expect(result).toBeNull();
+    expect(result).toBeDefined();
+    expect(resolvePathWithinRoot).toHaveBeenCalledWith(
+      expect.any(String),
+      'ef-core/overview',
+      'content.mdx'
+    );
   });
 
-  it('should return null when file read fails', async () => {
+  it('should default to beginner level when level is undefined for three-level lessons', async () => {
+    const mdxContent = '# Beginner Content';
+    vi.mocked(fs.readFile)
+      .mockResolvedValueOnce(threeLevelMetadataJson)
+      .mockResolvedValueOnce(mdxContent);
+
+    const result = await getLessonContent('css/selectors');
+
+    expect(result).toBeDefined();
+    expect(resolvePathWithinRoot).toHaveBeenCalledWith(
+      expect.any(String),
+      'css/selectors',
+      'beginner.mdx'
+    );
+  });
+
+  it('should return null when metadata cannot be loaded', async () => {
     vi.mocked(fs.readFile).mockRejectedValueOnce(new Error('ENOENT'));
 
     const result = await getLessonContent('css/selectors', 'beginner');
@@ -221,10 +294,53 @@ describe('getLessonContent', () => {
     expect(result).toBeNull();
   });
 
+  it('should return null when path resolution fails for MDX file', async () => {
+    vi.mocked(fs.readFile).mockResolvedValueOnce(threeLevelMetadataJson);
+    // First call for metadata succeeds, then path resolution for MDX fails
+    // Also need to fail the fallback to content.mdx
+    vi.mocked(resolvePathWithinRoot)
+      .mockResolvedValueOnce('/path/to/metadata.json') // metadata path
+      .mockResolvedValueOnce(null) // beginner.mdx path fails
+      .mockResolvedValueOnce(null); // content.mdx fallback also fails
+
+    const result = await getLessonContent('css/selectors', 'beginner');
+
+    expect(result).toBeNull();
+  });
+
+  it('should return null when MDX file read fails', async () => {
+    vi.mocked(fs.readFile)
+      .mockResolvedValueOnce(threeLevelMetadataJson)
+      .mockRejectedValueOnce(new Error('ENOENT'));
+
+    const result = await getLessonContent('css/selectors', 'beginner');
+
+    expect(result).toBeNull();
+  });
+
+  it('should fallback to content.mdx when level-specific file does not exist for three-level lessons', async () => {
+    const mdxContent = '# Fallback Content';
+    vi.mocked(fs.readFile)
+      .mockResolvedValueOnce(threeLevelMetadataJson)
+      .mockResolvedValueOnce(mdxContent);
+    // First MDX path resolution fails, fallback succeeds
+    vi.mocked(resolvePathWithinRoot)
+      .mockResolvedValueOnce('/path/to/metadata.json')
+      .mockResolvedValueOnce(null) // beginner.mdx doesn't exist
+      .mockResolvedValueOnce('/path/to/content.mdx'); // fallback to content.mdx
+
+    const result = await getLessonContent('css/selectors', 'beginner');
+
+    expect(result).toBeDefined();
+    expect(result?.compiledSource).toBe(mdxContent);
+  });
+
   it.each(['beginner', 'intermediate', 'advanced'] as ExperienceLevel[])(
-    'should accept valid level: %s',
+    'should accept valid level: %s for three-level lessons',
     async (level) => {
-      vi.mocked(fs.readFile).mockResolvedValueOnce('# Content');
+      vi.mocked(fs.readFile)
+        .mockResolvedValueOnce(threeLevelMetadataJson)
+        .mockResolvedValueOnce('# Content');
 
       const result = await getLessonContent('css/selectors', level);
 
@@ -1032,6 +1148,9 @@ describe('Property-Based Tests', () => {
       'should reject invalid experience level: %s',
       async (invalidLevel) => {
         vi.clearAllMocks();
+        // Mock metadata read to return three-level lesson (which validates levels)
+        const threeLevelMetadata = JSON.stringify(createMockMetadata());
+        vi.mocked(fs.readFile).mockResolvedValueOnce(threeLevelMetadata);
         const result = await getLessonContent('test/lesson', invalidLevel as ExperienceLevel);
         expect(result).toBeNull();
       }
@@ -1158,9 +1277,8 @@ describe('Edge Cases and Error Handling', () => {
       }));
 
       const result = await getLessonMetadata('test/lesson');
-      // Should still return the partial data (no validation in getLessonMetadata)
-      expect(result).toBeDefined();
-      expect(result?.id).toBe('partial');
+      // Metadata validation now rejects incomplete metadata (Requirements 6.2)
+      expect(result).toBeNull();
     });
 
     it('should handle roadmap with circular edge references', async () => {

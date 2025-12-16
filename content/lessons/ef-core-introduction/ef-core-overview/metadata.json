@@ -1,0 +1,18 @@
+{
+  "id": "ef-core-overview",
+  "title": "What is EF Core and ORM Concepts",
+  "description": "Learn what Entity Framework Core is, how ORMs work, and why they're useful for .NET development.",
+  "milestone": "ef-core-introduction",
+  "order": 0,
+  "sections": [
+    "what-is-orm",
+    "ef-core-intro",
+    "orm-benefits",
+    "when-to-use"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 75,
+  "prerequisites": [],
+  "tags": ["ef-core", "orm", "introduction", "dotnet"]
+}

@@ -74,6 +74,7 @@ interface DetailObjectiveLinkProps {
   isObjectiveComplete: boolean;
   xpRewards?: ObjectiveLessonInfo['xpRewards'];
   estimatedMinutes?: ObjectiveLessonInfo['estimatedMinutes'];
+  isSingleLevel?: boolean;
   xpEarned?: number;
   roadmapSlug: string;
 }
@@ -84,6 +85,7 @@ function DetailObjectiveLink({
   isObjectiveComplete,
   xpRewards,
   estimatedMinutes,
+  isSingleLevel,
   xpEarned,
   roadmapSlug,
 }: DetailObjectiveLinkProps) {
@@ -93,12 +95,27 @@ function DetailObjectiveLink({
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     // Check for persisted skill level and append to URL if exists
-    const persistedLevel = getRoadmapSkillLevel(roadmapSlug);
+    // For single-level lessons, don't append level parameter
+    const persistedLevel = isSingleLevel ? null : getRoadmapSkillLevel(roadmapSlug);
     const targetUrl = persistedLevel ? `${href}?level=${persistedLevel}` : href;
     startTransition(() => {
       router.push(targetUrl);
     });
   };
+  
+  // For single-level lessons, show just the single value
+  // For three-level lessons, show the range
+  const xpDisplay = xpRewards 
+    ? (isSingleLevel || xpRewards.beginner === xpRewards.advanced)
+      ? `${xpRewards.beginner} XP`
+      : `${xpRewards.beginner}-${xpRewards.advanced} XP`
+    : null;
+  
+  const timeDisplay = estimatedMinutes
+    ? (isSingleLevel || estimatedMinutes.beginner === estimatedMinutes.advanced)
+      ? `${estimatedMinutes.beginner} min`
+      : `${estimatedMinutes.beginner}-${estimatedMinutes.advanced} min`
+    : null;
   
   return (
     <Link
@@ -146,16 +163,16 @@ function DetailObjectiveLink({
           
           {/* XP and time info */}
           <div className="flex items-center gap-3 mt-1">
-            {xpRewards && (
+            {xpDisplay && (
               <div className="flex items-center gap-1 text-xs text-yellow-500">
                 <Sparkles className="w-3 h-3" />
-                <span>{xpRewards.beginner}-{xpRewards.advanced} XP</span>
+                <span>{xpDisplay}</span>
               </div>
             )}
-            {estimatedMinutes && (
+            {timeDisplay && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Clock className="w-3 h-3" />
-                <span>{estimatedMinutes.beginner}-{estimatedMinutes.advanced} min</span>
+                <span>{timeDisplay}</span>
               </div>
             )}
             {isObjectiveComplete && xpEarned && (
@@ -432,6 +449,7 @@ export function RoadmapTopicDetail({
                           isObjectiveComplete={isObjectiveComplete}
                           xpRewards={info.xpRewards}
                           estimatedMinutes={info.estimatedMinutes}
+                          isSingleLevel={info.isSingleLevel}
                           xpEarned={progress?.xpEarned}
                           roadmapSlug={roadmapSlug}
                         />

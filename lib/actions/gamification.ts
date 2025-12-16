@@ -15,6 +15,7 @@ import { ActionResult } from './learning-path';
 import { XP_REWARDS } from '@/lib/gamification';
 import type { UserGamification } from '@/lib/db/schemas/user';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
+import { getLessonMetadata, isSingleLevelLesson } from './lessons';
 
 interface CompleteLessonResult {
   gamification: UserGamification | null;
@@ -25,6 +26,14 @@ interface CompleteLessonResult {
 /**
  * Complete a lesson and award XP
  * Returns the updated gamification profile and any newly earned badges
+ * 
+ * For single-level lessons:
+ * - Uses 'beginner' as the storage level internally
+ * - Awards XP from metadata xpReward field
+ * 
+ * For three-level lessons:
+ * - Uses the provided level parameter
+ * - Awards XP from the provided xpEarned parameter
  */
 export async function completeLessonAction(
   lessonId: string,
@@ -41,8 +50,22 @@ export async function completeLessonAction(
       return { success: false, error: createAPIError('AUTH_ERROR', 'User not found') };
     }
     
+    // Check if this is a single-level lesson
+    const metadata = await getLessonMetadata(lessonId);
+    
+    // Determine storage level and XP based on lesson format
+    let storageLevel: ExperienceLevel = level;
+    let actualXpEarned = xpEarned;
+    
+    if (metadata && isSingleLevelLesson(metadata)) {
+      // Single-level lessons use 'beginner' as storage level
+      // and XP from metadata (Requirements 3.3, 5.1)
+      storageLevel = 'beginner';
+      actualXpEarned = metadata.xpReward;
+    }
+    
     // Complete lesson and get any new badges earned
-    const newBadges = await completeLesson(user._id, lessonId, level, xpEarned, sections, timeSpentSeconds);
+    const newBadges = await completeLesson(user._id, lessonId, storageLevel, actualXpEarned, sections, timeSpentSeconds);
     
     // Fetch and return the updated gamification profile
     const updatedProfile = await findByUserId(user._id);
@@ -53,7 +76,7 @@ export async function completeLessonAction(
       data: { 
         gamification: updatedProfile,
         newBadges,
-        xpAwarded: xpEarned,
+        xpAwarded: actualXpEarned,
       } 
     };
   } catch (error) {
@@ -163,6 +186,10 @@ interface SectionCompleteResult {
 /**
  * Mark a section as complete with timestamp persistence
  * Implements optimistic updates with retry logic (Requirements 9.1)
+ * 
+ * For single-level lessons:
+ * - Uses 'beginner' as the storage level internally (Requirements 3.1)
+ * - Maintains backward compatibility for three-level lessons
  */
 export async function markSectionCompleteAction(
   lessonId: string,
@@ -181,11 +208,19 @@ export async function markSectionCompleteAction(
         return { success: false, error: createAPIError('AUTH_ERROR', 'User not found') };
       }
       
+      // Check if this is a single-level lesson
+      const metadata = await getLessonMetadata(lessonId);
+      
+      // Use 'beginner' as storage level for single-level lessons (Requirements 3.1)
+      const storageLevel: ExperienceLevel = (metadata && isSingleLevelLesson(metadata)) 
+        ? 'beginner' 
+        : level;
+      
       const result = await markSectionCompleteRepo(
         user._id,
         lessonId,
         sectionId,
-        level
+        storageLevel
       );
       
       if (result.success) {
@@ -220,6 +255,10 @@ export async function markSectionCompleteAction(
 
 /**
  * Get lesson progress for a specific lesson and level
+ * 
+ * For single-level lessons:
+ * - Uses 'beginner' as the storage level internally (Requirements 3.2)
+ * - Maintains backward compatibility for three-level lessons
  */
 export async function getLessonProgressAction(
   lessonId: string,
@@ -237,8 +276,16 @@ export async function getLessonProgressAction(
       return { success: false, error: createAPIError('AUTH_ERROR', 'User not found') };
     }
     
+    // Check if this is a single-level lesson
+    const metadata = await getLessonMetadata(lessonId);
+    
+    // Use 'beginner' as storage level for single-level lessons (Requirements 3.2)
+    const storageLevel: ExperienceLevel = (metadata && isSingleLevelLesson(metadata)) 
+      ? 'beginner' 
+      : level;
+    
     const { getLessonProgress } = await import('@/lib/db/repositories/gamification-repository');
-    const progress = await getLessonProgress(user._id, lessonId, level);
+    const progress = await getLessonProgress(user._id, lessonId, storageLevel);
     
     if (!progress) {
       return { success: true, data: null };

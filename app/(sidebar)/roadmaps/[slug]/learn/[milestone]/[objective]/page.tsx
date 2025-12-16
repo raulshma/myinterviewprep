@@ -1,6 +1,6 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
-import { getLessonMetadata, getLessonContent, getNextLessonSuggestion, getAdjacentLessons, resolveLessonPath, getNextLessonNavigation } from '@/lib/actions/lessons';
+import { getLessonMetadata, getLessonContent, getNextLessonSuggestion, getAdjacentLessons, resolveLessonPath, getNextLessonNavigation, isSingleLevelLesson } from '@/lib/actions/lessons';
 import { LessonPageClient } from './lesson-page-client';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
 import { getUserGamificationAction } from '@/lib/actions/gamification';
@@ -49,10 +49,23 @@ export default async function LearnObjectivePage({
     notFound();
   }
   
+  // Detect if this is a single-level lesson
+  const singleLevel = isSingleLevelLesson(metadata);
+  
+  // For single-level lessons, redirect to base URL if level is specified
+  // This ensures clean URLs for single-level lessons (Requirements 1.3)
+  if (singleLevel && resolvedSearchParams.level) {
+    redirect(`/roadmaps/${roadmapSlug}/learn/${milestoneId}/${objectiveSlug}`);
+  }
+  
   // Determine initial experience level
-  const initialLevel = (resolvedSearchParams.level as ExperienceLevel) || 'beginner';
+  // For single-level lessons, always use 'beginner' as the storage level
+  const initialLevel: ExperienceLevel = singleLevel 
+    ? 'beginner' 
+    : (resolvedSearchParams.level as ExperienceLevel) || 'beginner';
   
   // Get serialized MDX for the initial level (cached for performance)
+  // For single-level lessons, getLessonContent will load content.mdx regardless of level
   const serializedMdx = await getLessonContent(lessonPath, initialLevel);
   if (!serializedMdx) {
     notFound();
@@ -99,6 +112,9 @@ export default async function LearnObjectivePage({
   // Get adjacent lessons for zen mode navigation
   const adjacentLessons = await getAdjacentLessons(lessonPath);
 
+  // Get XP reward for single-level lessons
+  const singleLevelXpReward = singleLevel ? metadata.xpReward : undefined;
+
   return (
     <div className="container">
       <LessonPageClient
@@ -117,6 +133,8 @@ export default async function LearnObjectivePage({
         nextLessonSuggestion={nextLessonSuggestion}
         adjacentLessons={adjacentLessons}
         nextLessonNavigation={nextLessonNavigation}
+        isSingleLevel={singleLevel}
+        singleLevelXpReward={singleLevelXpReward}
       />
     </div>
   );

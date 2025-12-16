@@ -152,11 +152,12 @@ interface ObjectiveLinkProps {
   href: string;
   objectiveTitle: string;
   xpRewards?: ObjectiveLessonInfo['xpRewards'];
+  isSingleLevel?: boolean;
   isComplete?: boolean;
   onNavigate?: () => void;
 }
 
-function ObjectiveLink({ href, objectiveTitle, xpRewards, isComplete, onNavigate }: ObjectiveLinkProps) {
+function ObjectiveLink({ href, objectiveTitle, xpRewards, isSingleLevel, isComplete, onNavigate }: ObjectiveLinkProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   
@@ -169,6 +170,10 @@ function ObjectiveLink({ href, objectiveTitle, xpRewards, isComplete, onNavigate
       router.push(href);
     });
   };
+  
+  // For single-level lessons, show just the XP value
+  // For three-level lessons, show the beginner XP (lowest tier)
+  const displayXp = xpRewards?.beginner;
   
   return (
     <Link
@@ -187,10 +192,10 @@ function ObjectiveLink({ href, objectiveTitle, xpRewards, isComplete, onNavigate
         <BookOpen className="w-3 h-3 text-muted-foreground shrink-0" />
       )}
       <span className="flex-1 line-clamp-2">{objectiveTitle}</span>
-      {xpRewards && !isPending && (
+      {displayXp && !isPending && (
         <span className="text-[10px] text-yellow-500 flex items-center gap-0.5">
           <Sparkles className="w-2.5 h-2.5" />
-          {xpRewards.beginner}
+          {displayXp}
         </span>
       )}
       {isPending ? (
@@ -372,6 +377,7 @@ function NodeItem({
                         href={`/roadmaps/${roadmapSlug}/learn/${node.id}/${objectiveSlug}`}
                         objectiveTitle={objectiveTitle}
                         xpRewards={info.xpRewards}
+                        isSingleLevel={info.isSingleLevel}
                         isComplete={!!getObjectiveProgress(nodeIdForKey, fullLessonId)?.completedAt}
                         onNavigate={() => {
                           onSelect();

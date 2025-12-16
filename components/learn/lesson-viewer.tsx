@@ -40,6 +40,10 @@ interface LessonViewerProps {
   initialLevel: ExperienceLevel;
   initialProgress: LessonProgress | null;
   initialGamification: UserGamification | null;
+  /** Whether this is a single-level lesson (no beginner/intermediate/advanced) */
+  isSingleLevel?: boolean;
+  /** XP reward for single-level lessons (from metadata) */
+  singleLevelXpReward?: number;
   onLevelChange?: (level: ExperienceLevel) => Promise<MDXRemoteSerializeResult | null>;
   onSectionComplete?: (section: string) => Promise<void>;
   onLessonComplete?: () => Promise<LessonCompletionResult | void>;
@@ -56,6 +60,8 @@ export function LessonViewer({
   initialLevel,
   initialProgress,
   initialGamification,
+  isSingleLevel = false,
+  singleLevelXpReward,
   onLevelChange,
   onSectionComplete,
   onLessonComplete,
@@ -221,8 +227,11 @@ export function LessonViewer({
 
   // Handle lesson completion
   const handleCompleteLesson = async () => {
-    // Calculate XP based on experience level (beginner: 50, intermediate: 100, advanced: 200)
-    const xpReward = getLessonCompletionXp(level);
+    // Calculate XP: use singleLevelXpReward for single-level lessons,
+    // otherwise use level-based XP (beginner: 50, intermediate: 100, advanced: 200)
+    const xpReward = isSingleLevel && singleLevelXpReward !== undefined
+      ? singleLevelXpReward
+      : getLessonCompletionXp(level);
     
     // Show XP animation
     setXpAwarded(xpReward);
@@ -322,13 +331,15 @@ export function LessonViewer({
         </div>
       )}
 
-      {/* Experience Level Selector */}
-      <ExperienceSelector
-        currentLevel={level}
-        onLevelChange={handleLevelChange}
-        completedLevels={completedLevels}
-        disabled={isLoading}
-      />
+      {/* Experience Level Selector - only show for three-level lessons */}
+      {!isSingleLevel && (
+        <ExperienceSelector
+          currentLevel={level}
+          onLevelChange={handleLevelChange}
+          completedLevels={completedLevels}
+          disabled={isLoading}
+        />
+      )}
 
       {/* Progress Tracker */}
       <ProgressTracker
@@ -390,7 +401,9 @@ export function LessonViewer({
                 Lesson Complete! 🎉
               </h3>
               <p className="text-sm text-muted-foreground">
-                You&apos;ve completed all sections at the {level} level.
+                {isSingleLevel
+                  ? "You've completed all sections in this lesson."
+                  : `You've completed all sections at the ${level} level.`}
               </p>
             </div>
             <Button onClick={handleCompleteLesson}>

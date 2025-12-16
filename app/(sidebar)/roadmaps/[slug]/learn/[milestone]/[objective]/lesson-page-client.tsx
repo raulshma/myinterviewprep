@@ -51,6 +51,10 @@ interface LessonPageClientProps {
   nextLessonSuggestion?: NextLessonSuggestionType | null;
   adjacentLessons?: AdjacentLessons | null;
   nextLessonNavigation?: NextLessonNavigation | null;
+  /** Whether this is a single-level lesson (no beginner/intermediate/advanced) */
+  isSingleLevel?: boolean;
+  /** XP reward for single-level lessons (from metadata) */
+  singleLevelXpReward?: number;
 }
 
 // Internal props that includes the lifted level state
@@ -64,6 +68,10 @@ interface LessonContentInternalProps extends LessonPageClientProps {
   /** If true, content needs to be loaded for the persisted level on mount */
   needsContentLoad: boolean;
   onContentLoaded: () => void;
+  /** Whether this is a single-level lesson (no beginner/intermediate/advanced) */
+  isSingleLevel?: boolean;
+  /** XP reward for single-level lessons (from metadata) */
+  singleLevelXpReward?: number;
 }
 
 // Inner component that uses the progress context
@@ -91,6 +99,8 @@ function LessonContent({
   bumpMdxKey,
   needsContentLoad,
   onContentLoaded,
+  isSingleLevel = false,
+  singleLevelXpReward,
 }: LessonContentInternalProps) {
   const searchParams = useSearchParams();
   const { setAdjacentLessons, enterZenMode, isZenMode } = useZenMode();
@@ -233,14 +243,17 @@ function LessonContent({
       setHasClaimedReward(isLevelCompleted);
       
       // Persist the skill level for this roadmap so other lessons auto-load at this level
-      saveRoadmapSkillLevel(roadmapSlug, newLevel);
+      // (only for three-level lessons)
+      if (!isSingleLevel) {
+        saveRoadmapSkillLevel(roadmapSlug, newLevel);
+      }
       
       // Update URL without page refresh
-      window.history.replaceState(
-        null,
-        '',
-        `/roadmaps/${roadmapSlug}/learn/${milestoneId}/${lessonId.split('/')[1]}?level=${newLevel}`
-      );
+      // For single-level lessons, don't include level parameter
+      const newUrl = isSingleLevel
+        ? `/roadmaps/${roadmapSlug}/learn/${milestoneId}/${lessonId.split('/')[1]}`
+        : `/roadmaps/${roadmapSlug}/learn/${milestoneId}/${lessonId.split('/')[1]}?level=${newLevel}`;
+      window.history.replaceState(null, '', newUrl);
 
       // Now switch the level (this remounts ProgressProvider and its children)
       setLevel(newLevel);
@@ -249,7 +262,7 @@ function LessonContent({
     } finally {
       setIsLoading(false);
     }
-  }, [level, lessonId, roadmapSlug, milestoneId, isLoading, gamification, setLevel, onMdxSourceChange, bumpMdxKey]);
+  }, [level, lessonId, roadmapSlug, milestoneId, isLoading, gamification, setLevel, onMdxSourceChange, bumpMdxKey, isSingleLevel]);
 
   // Load content for persisted level on mount if it differs from server-rendered level
   const hasLoadedPersistedContent = useRef(false);
@@ -278,12 +291,14 @@ function LessonContent({
         onMdxSourceChange(serialized);
         bumpMdxKey();
         
-        // Update URL to reflect the persisted level
-        window.history.replaceState(
-          null,
-          '',
-          `/roadmaps/${roadmapSlug}/learn/${milestoneId}/${lessonId.split('/')[1]}?level=${level}`
-        );
+        // Update URL to reflect the persisted level (only for three-level lessons)
+        if (!isSingleLevel) {
+          window.history.replaceState(
+            null,
+            '',
+            `/roadmaps/${roadmapSlug}/learn/${milestoneId}/${lessonId.split('/')[1]}?level=${level}`
+          );
+        }
         
         onContentLoaded();
       } catch (error) {
@@ -295,13 +310,17 @@ function LessonContent({
     }
     
     loadPersistedLevelContent();
-  }, [needsContentLoad, lessonId, level, roadmapSlug, milestoneId, onMdxSourceChange, bumpMdxKey, onContentLoaded]);
+  }, [needsContentLoad, lessonId, level, roadmapSlug, milestoneId, onMdxSourceChange, bumpMdxKey, onContentLoaded, isSingleLevel]);
 
   // Handle lesson completion
   const handleClaimRewards = useCallback(async () => {
     if (!progress || hasClaimedReward) return;
 
-    const levelXp = level === 'beginner' ? 50 : level === 'intermediate' ? 100 : 200;
+    // Calculate XP: use singleLevelXpReward for single-level lessons,
+    // otherwise use level-based XP (beginner: 50, intermediate: 100, advanced: 200)
+    const levelXp = isSingleLevel && singleLevelXpReward !== undefined
+      ? singleLevelXpReward
+      : (level === 'beginner' ? 50 : level === 'intermediate' ? 100 : 200);
     
     // Calculate total XP (sections + completion bonus)
     // Sections are worth 10 XP each as per gamification logic
@@ -340,7 +359,7 @@ function LessonContent({
       console.error('Failed to claim rewards:', error);
       toast.error('Something went wrong');
     }
-  }, [level, lessonId, completedSectionIds, progress, hasClaimedReward]);
+  }, [level, lessonId, completedSectionIds, progress, hasClaimedReward, isSingleLevel, singleLevelXpReward]);
 
   // Handle lesson reset
   const handleResetLesson = useCallback(async () => {
@@ -412,13 +431,15 @@ function LessonContent({
               </div>
             </div>
 
-            {/* Experience Level Selector */}
-            <ExperienceSelector
-              currentLevel={level}
-              onLevelChange={handleLevelChange}
-              completedLevels={[]}
-              disabled={isLoading}
-            />
+            {/* Experience Level Selector - only show for three-level lessons */}
+            {!isSingleLevel && (
+              <ExperienceSelector
+                currentLevel={level}
+                onLevelChange={handleLevelChange}
+                completedLevels={[]}
+                disabled={isLoading}
+              />
+            )}
 
             {/* Progress Tracker */}
             <ProgressTracker
@@ -475,8 +496,12 @@ function LessonContent({
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {hasClaimedReward 
-                    ? `You've already completed this lesson at the ${level} level.`
-                    : `You completed all ${sections.length} sections at the ${level} level${progress ? ` in ${formatTimeSpent(getTotalTimeSpent(progress))}` : ''}.`
+                    ? isSingleLevel
+                      ? "You've already completed this lesson."
+                      : `You've already completed this lesson at the ${level} level.`
+                    : isSingleLevel
+                      ? `You completed all ${sections.length} sections${progress ? ` in ${formatTimeSpent(getTotalTimeSpent(progress))}` : ''}.`
+                      : `You completed all ${sections.length} sections at the ${level} level${progress ? ` in ${formatTimeSpent(getTotalTimeSpent(progress))}` : ''}.`
                   }
                 </p>
               </div>
