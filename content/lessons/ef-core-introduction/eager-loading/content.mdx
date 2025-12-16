@@ -1,0 +1,357 @@
+# Eager Loading - Load Related Data Upfront
+
+When you query data with EF Core, related entities aren't loaded by default. **Eager loading** lets you specify exactly what related data to fetch alongside your main query—all in a single database round-trip!
+
+---
+
+## Section 1: What is Eager Loading?
+
+### The Shopping List Analogy
+
+Think of eager loading like preparing a **shopping list** before going to the store. Instead of making multiple trips for each item, you grab everything you need in one go.
+
+Without eager loading:
+```
+🏪 Trip 1: Get the blog
+🏪 Trip 2: Get the posts for that blog
+🏪 Trip 3: Get the author for each post
+🏪 Trip 4: Get the tags for each post
+... (many round-trips!)
+```
+
+With eager loading:
+```
+🏪 Single Trip: Get the blog WITH its posts, their authors, AND tags
+✅ Done!
+```
+
+<InfoBox type="info">
+**Eager Loading** means telling EF Core upfront: "When you fetch this entity, also fetch these related entities in the same query."
+</InfoBox>
+
+### Why Eager Loading Matters
+
+| Benefit | Description |
+|:--------|:------------|
+| **Fewer Round-Trips** | One database call instead of many |
+| **Predictable Queries** | You know exactly what data is fetched |
+| **Better Performance** | For scenarios where you always need the related data |
+| **No Surprises** | Data is available immediately, no delayed loading |
+
+<KeyConcept title="Key Insight">
+Eager loading is your best choice when you **know in advance** which related data you'll need. It's the most explicit and predictable loading strategy.
+</KeyConcept>
+
+<ProgressCheckpoint section="what-is-eager-loading" xpReward={20} />
+
+---
+
+## Section 2: Include() Basics
+
+### Your First Include
+
+The `Include()` method is the gateway to eager loading. It tells EF Core to join related data in your query.
+
+<DotnetCodePreview
+  title="Basic Include Usage"
+  code={`// Without Include - Only loads blogs, no posts
+var blogsOnly = await context.Blogs.ToListAsync();
+// Each blog.Posts is empty or null!
+
+// With Include - Loads blogs AND their posts
+var blogsWithPosts = await context.Blogs
+    .Include(b => b.Posts)
+    .ToListAsync();
+// Each blog.Posts is now populated!
+
+// The generated SQL:
+// SELECT * FROM Blogs b
+// LEFT JOIN Posts p ON p.BlogId = b.Id`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Without Include",
+      explanation: "By default, navigation properties aren't populated"
+    },
+    {
+      lineNumbers: [6, 7, 8],
+      highlight: "With Include",
+      explanation: "Include() tells EF Core to join and fetch the related Posts"
+    },
+    {
+      lineNumbers: [12, 13],
+      highlight: "Generated SQL",
+      explanation: "EF Core generates a LEFT JOIN to fetch both tables at once"
+    }
+  ]}
+/>
+
+### Including Multiple Navigation Properties
+
+Need multiple related entities? Just chain `Include()` calls:
+
+<DotnetCodePreview
+  title="Multiple Includes"
+  code={`// Include multiple navigation properties
+var blogs = await context.Blogs
+    .Include(b => b.Posts)    // Include the Posts collection
+    .Include(b => b.Owner)    // Include the Owner reference
+    .Include(b => b.Tags)     // Include the Tags collection
+    .ToListAsync();
+
+// Now you have access to:
+// - blog.Posts (ICollection<Post>)
+// - blog.Owner (User)
+// - blog.Tags (ICollection<Tag>)`}
+  steps={[
+    {
+      lineNumbers: [3, 4, 5],
+      highlight: "Chain Includes",
+      explanation: "Each Include() adds another related entity to fetch"
+    },
+    {
+      lineNumbers: [9, 10, 11],
+      highlight: "Available Data",
+      explanation: "All navigation properties are now populated and ready to use"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Order doesn't matter!** You can chain `Include()` calls in any order—EF Core will optimize the query regardless.
+</InfoBox>
+
+<ProgressCheckpoint section="include-basics" xpReward={25} />
+
+---
+
+## Section 3: ThenInclude() Chains
+
+### Going Deeper with ThenInclude
+
+What if you need to load nested related data? For example, loading a blog's posts, and each post's author? That's where `ThenInclude()` comes in.
+
+<DotnetCodePreview
+  title="Multi-Level Eager Loading"
+  code={`// Load blogs → posts → authors
+var blogs = await context.Blogs
+    .Include(b => b.Posts)           // Level 1: Blog → Posts
+        .ThenInclude(p => p.Author)  // Level 2: Post → Author
+    .ToListAsync();
+
+// Now you can navigate the entire chain:
+foreach (var blog in blogs)
+{
+    foreach (var post in blog.Posts)
+    {
+        Console.WriteLine($"Post: {post.Title}");
+        Console.WriteLine($"Author: {post.Author.Name}");
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "First Level",
+      explanation: "Include() brings in the Posts collection"
+    },
+    {
+      lineNumbers: [4],
+      highlight: "Second Level",
+      explanation: "ThenInclude() goes one level deeper to fetch each post's Author"
+    },
+    {
+      lineNumbers: [12, 13],
+      highlight: "Access Nested Data",
+      explanation: "The entire navigation chain is populated and accessible"
+    }
+  ]}
+/>
+
+### Going Even Deeper
+
+You can chain multiple `ThenInclude()` calls to go as deep as your data model allows:
+
+<DotnetCodePreview
+  title="Deep Nesting Example"
+  code={`// Load blogs → posts → authors → address
+var blogs = await context.Blogs
+    .Include(b => b.Posts)
+        .ThenInclude(p => p.Author)
+            .ThenInclude(a => a.Address)  // 3 levels deep!
+    .ToListAsync();
+
+// Access: blog.Posts[0].Author.Address.City`}
+  steps={[
+    {
+      lineNumbers: [3, 4, 5],
+      highlight: "Chain ThenInclude",
+      explanation: "Each ThenInclude goes one level deeper from the previous level"
+    }
+  ]}
+/>
+
+### Including Multiple Branches
+
+Sometimes you need to include multiple navigation properties at the same level. Here's how:
+
+<DotnetCodePreview
+  title="Multiple Branches Pattern"
+  code={`// Blog → Posts → Author
+// Blog → Posts → Tags (different branch from same Posts)
+var blogs = await context.Blogs
+    .Include(b => b.Posts)
+        .ThenInclude(p => p.Author)  // Branch 1: Post's Author
+    .Include(b => b.Posts)
+        .ThenInclude(p => p.Tags)    // Branch 2: Post's Tags
+    .ToListAsync();
+
+// EF Core is smart - it doesn't duplicate the Posts query!`}
+  steps={[
+    {
+      lineNumbers: [4, 5],
+      highlight: "First Branch",
+      explanation: "Go into Posts, then to Author"
+    },
+    {
+      lineNumbers: [6, 7],
+      highlight: "Second Branch",
+      explanation: "Start fresh from Posts, then to Tags"
+    },
+    {
+      lineNumbers: [10],
+      highlight: "EF Core Optimization",
+      explanation: "EF Core deduplicates and optimizes, fetching Posts only once"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Watch the depth!** Each level of ThenInclude adds complexity to your query. Very deep chains can result in large, slow queries with lots of data.
+</InfoBox>
+
+<ProgressCheckpoint section="theninclude-chains" xpReward={25} />
+
+---
+
+## Section 4: Filtered Includes (EF Core 5.0+)
+
+### Filtering Related Data
+
+Starting with EF Core 5.0, you can filter the related data that gets included. This is incredibly powerful for large datasets!
+
+<DotnetCodePreview
+  title="Filtered Include Basics"
+  code={`// Only include posts that are published
+var blogs = await context.Blogs
+    .Include(b => b.Posts.Where(p => p.IsPublished))
+    .ToListAsync();
+
+// Only published posts are loaded - drafts are excluded!
+
+// You can also order the included data:
+var blogsOrdered = await context.Blogs
+    .Include(b => b.Posts
+        .Where(p => p.IsPublished)
+        .OrderByDescending(p => p.CreatedDate)
+        .Take(5))  // Only the 5 most recent published posts!
+    .ToListAsync();`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "Where Filter",
+      explanation: "Filter inside Include - only matching entities are loaded"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13],
+      highlight: "Order and Limit",
+      explanation: "You can chain Where, OrderBy, and Take/Skip for precise control"
+    }
+  ]}
+/>
+
+### Supported Filter Operations
+
+Filtered includes support these LINQ operations:
+
+| Operation | Example | Description |
+|:----------|:--------|:------------|
+| `Where` | `.Where(p => p.IsActive)` | Filter which entities to include |
+| `OrderBy` | `.OrderBy(p => p.Name)` | Sort the included collection |
+| `OrderByDescending` | `.OrderByDescending(p => p.Date)` | Reverse sort |
+| `Take` | `.Take(10)` | Limit to first N entities |
+| `Skip` | `.Skip(5)` | Skip first N entities |
+
+<DotnetCodePreview
+  title="Real-World Filtered Include"
+  code={`// Dashboard query: Recent active orders with their top items
+var customers = await context.Customers
+    .Where(c => c.IsActive)
+    .Include(c => c.Orders
+        .Where(o => o.Status != OrderStatus.Cancelled)
+        .OrderByDescending(o => o.OrderDate)
+        .Take(3))
+        .ThenInclude(o => o.Items
+            .OrderByDescending(i => i.Price)
+            .Take(5))
+    .ToListAsync();
+
+// Each customer has only their 3 most recent non-cancelled orders,
+// and each order has its top 5 items by price!`}
+  steps={[
+    {
+      lineNumbers: [4, 5, 6, 7],
+      highlight: "Filtered Orders",
+      explanation: "Only non-cancelled orders, limited to 3 most recent"
+    },
+    {
+      lineNumbers: [8, 9, 10],
+      highlight: "Nested Filter",
+      explanation: "ThenInclude can also have filters - top 5 items by price"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Perfect for APIs!** Filtered includes are great for REST endpoints where you want to limit the amount of related data returned.
+</InfoBox>
+
+### Quick Knowledge Check
+
+<Quiz id="eager-loading-include-quiz">
+  <Question>What method is used to load related data in the same query?</Question>
+  <Answer>ThenLoad()</Answer>
+  <Answer correct>Include()</Answer>
+  <Answer>LoadWith()</Answer>
+  <Answer>Fetch()</Answer>
+</Quiz>
+
+<Quiz id="eager-loading-nested-quiz">
+  <Question>Which method loads nested related data (e.g., Blog → Posts → Author)?</Question>
+  <Answer>DeepInclude()</Answer>
+  <Answer>Include() only</Answer>
+  <Answer correct>ThenInclude()</Answer>
+  <Answer>NestedLoad()</Answer>
+</Quiz>
+
+<Quiz id="eager-loading-filter-quiz">
+  <Question>What EF Core version introduced filtered includes?</Question>
+  <Answer>EF Core 3.0</Answer>
+  <Answer>EF Core 6.0</Answer>
+  <Answer correct>EF Core 5.0</Answer>
+  <Answer>EF Core 2.0</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Usage | Example |
+|:--------|:------|:--------|
+| **Include()** | Load single navigation property | `.Include(b => b.Posts)` |
+| **Multiple Includes** | Load multiple properties | Chain `.Include()` calls |
+| **ThenInclude()** | Load nested navigation | `.Include(b => b.Posts).ThenInclude(p => p.Author)` |
+| **Filtered Include** | Filter/limit included data | `.Include(b => b.Posts.Where(...).Take(5))` |
+
+<KeyConcept title="What's Next?">
+Eager loading is great when you know what data you need. But what if you want data loaded automatically when you access it? That's **Lazy Loading** - coming up next!
+</KeyConcept>
+
+<ProgressCheckpoint section="filtered-includes" xpReward={20} />

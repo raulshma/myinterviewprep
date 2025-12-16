@@ -1,0 +1,169 @@
+# Alternate Keys - Beyond Primary Keys
+
+Every entity has a Primary Key (PK) to identify it. But sometimes, you have *other* properties that identify a record uniquely – like an Email Address, a Vehicle VIN, or an ISBN. These are **Alternate Keys**.
+
+---
+
+## Section 1: What is an Alternate Key?
+
+An Alternate Key (AK) serves two main purposes in EF Core:
+1.  **Unique Constraint**: It guarantees that the value (or combination of values) is unique across the table.
+2.  **Relationship Target**: It can be used as the target for a Foreign Key, instead of the Primary Key.
+
+### 🔑 Primary Key vs Alternate Key
+
+| Feature | Primary Key | Alternate Key |
+|:--------|:------------|:--------------|
+| Uniqueness | Required | Required |
+| Nullability | Cannot be null | Cannot be null (usually) |
+| Quantity | Only 1 per table | Can have multiple |
+| Purpose | Identity | Business constraint & lookup |
+
+<ProgressCheckpoint section="what-is-alternate-key" xpReward={25} />
+
+---
+
+## Section 2: Defining Alternate Keys
+
+You define alternate keys using the Fluent API's `HasAlternateKey` method.
+
+### Example: Users with Unique Emails
+
+Even if `Id` is the Primary Key, we want `Email` to also be unique and act as a key.
+
+<DotnetCodePreview
+  title="Defining an Alternate Key"
+  code={`public class User
+{
+    public int Id { get; set; }
+    public string Email { get; set; } = string.Empty; // Alternate Key
+    public string Name { get; set; } = string.Empty;
+}
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<User>()
+        .HasAlternateKey(u => u.Email); // Define AK
+}`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "The Property",
+      explanation: "Email is a normal property, but we want it to be unique."
+    },
+    {
+      lineNumbers: [10],
+      highlight: "HasAlternateKey",
+      explanation: "This tells EF Core: 'Email creates a unique constraint and can be used as a Key'."
+    }
+  ]}
+/>
+
+<InfoBox type="info">
+**Note**: `HasAlternateKey` creates a UNIQUE constraint in the database. If you just want uniqueness without using it as a relationship key, use `.HasIndex(u => u.Email).IsUnique()` instead.
+</InfoBox>
+
+<ProgressCheckpoint section="defining-alternate-keys" xpReward={25} />
+
+---
+
+## Section 3: Using in Relationships
+
+This is where Alternate Keys shine! You can point a Foreign Key to an Alternate Key instead of the Primary Key.
+
+### Scenario: Linking by License Plate 🚗
+
+Imagine a `Car` and a `ParkingPermit`. The `Car` has an ID, but the `ParkingPermit` links to the `Car` using its `LicensePlate`.
+
+<DotnetCodePreview
+  title="Relationship using Alternate Key"
+  code={`public class Car
+{
+    public int Id { get; set; }
+    public string LicensePlate { get; set; } = string.Empty; // AK
+    public string Model { get; set; } = string.Empty;
+}
+
+public class ParkingPermit
+{
+    public int Id { get; set; }
+    public string CarLicensePlate { get; set; } = string.Empty; // FK
+    public Car Car { get; set; } = null!;
+}
+
+// Configuration
+modelBuilder.Entity<Car>()
+    .HasAlternateKey(c => c.LicensePlate);
+
+modelBuilder.Entity<ParkingPermit>()
+    .HasOne(p => p.Car)
+    .WithMany()
+    .HasForeignKey(p => p.CarLicensePlate) // Points to FK property
+    .HasPrincipalKey(c => c.LicensePlate); // Points to AK in Car!`}
+  steps={[
+    {
+      lineNumbers: [12],
+      highlight: "Foreign Key",
+      explanation: "The FK 'CarLicensePlate' is a string, matching the type of the Car's LicensePlate."
+    },
+    {
+      lineNumbers: [21],
+      highlight: "HasPrincipalKey",
+      explanation: "This crucial method tells EF Core: 'Target the LicensePlate property on Car, NOT the Id'."
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="using-in-relationships" xpReward={25} />
+
+---
+
+## Section 4: Composite Alternate Keys
+
+Just like Primary Keys, Alternate Keys can be composite (made of multiple properties).
+
+### Example: Composite Key
+Imagine linking to a User using `(TenantId, UserId)`.
+
+<DotnetCodePreview
+  title="Composite Alternate Key"
+  code={`modelBuilder.Entity<User>()
+    .HasAlternateKey(u => new { u.TenantId, u.EmployeeId }); // Composite AK
+
+modelBuilder.Entity<Equipment>()
+    .HasOne(e => e.AssignedUser)
+    .WithMany(u => u.Equipments)
+    .HasForeignKey(e => new { e.TenantId, e.EmployeeId }) // Composite FK
+    .HasPrincipalKey(u => new { u.TenantId, u.EmployeeId }); // Target Config`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Anonymous Type",
+      explanation: "Use 'new { ... }' to group multiple properties into a single composite key."
+    },
+    {
+      lineNumbers: [7, 8],
+      highlight: "Matching Keys",
+      explanation: "The Foreign Key and Principal Key definitions must match in number and types of properties."
+    }
+  ]}
+/>
+
+### Knowledge Check
+
+<Quiz id="ak-vs-index-quiz">
+  <Question>When should you use `HasAlternateKey` instead of a persistent Unique Index?</Question>
+  <Answer>When you want faster query performance.</Answer>
+  <Answer correct>When you need to target it with a Foreign Key.</Answer>
+  <Answer>When the column allows nulls.</Answer>
+  <Answer>It doesn't matter, they are the same.</Answer>
+</Quiz>
+
+<Quiz id="null-ak-quiz">
+  <Question>Can an Alternate Key value be null?</Question>
+  <Answer>Yes, duplicates are ignored.</Answer>
+  <Answer>Yes, but only one row can be null.</Answer>
+  <Answer correct>No, like Primary Keys, they uniquely identify a row and thus usually cannot be null.</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="composite-alternate-keys" xpReward={25} />

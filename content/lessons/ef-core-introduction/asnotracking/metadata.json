@@ -1,0 +1,18 @@
+{
+  "id": "asnotracking",
+  "title": "AsNoTracking Queries",
+  "description": "Optimize read-only queries by disabling change tracking overhead.",
+  "milestone": "performance-optimization",
+  "order": 1,
+  "sections": [
+    "tracking-overhead",
+    "asnotracking-usage",
+    "identity-resolution",
+    "default-tracking"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 80,
+  "prerequisites": ["ef-performance"],
+  "tags": ["ef-core", "performance", "asnotracking", "optimization"]
+}

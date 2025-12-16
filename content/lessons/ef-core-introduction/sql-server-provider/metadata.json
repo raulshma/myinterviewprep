@@ -1,0 +1,17 @@
+{
+  "id": "sql-server-provider",
+  "title": "SQL Server Provider",
+  "description": "Learn how to configure and use the Microsoft SQL Server provider for EF Core.",
+  "milestone": "ef-core-introduction",
+  "order": 80,
+  "sections": [
+    "installation",
+    "configuration",
+    "features"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 30,
+  "xpReward": 250,
+  "prerequisites": ["database-providers-overview"],
+  "tags": ["sql-server", "ms-sql", "provider", "configuration"]
+}

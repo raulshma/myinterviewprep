@@ -1,0 +1,13 @@
+{
+  "id": "querying-historical-data",
+  "title": "Querying Historical Data",
+  "description": "Learn how to use LINQ operators like TemporalAsOf to query past data states.",
+  "milestone": "temporal-tables",
+  "order": 2,
+  "estimatedMinutes": 20,
+  "xpReward": 600,
+  "singleLevel": true,
+  "sections": ["query-check"],
+  "tags": ["ef-core", "linq", "temporal-tables"],
+  "prerequisites": ["temporal-tables-intro"]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "database-first-use-cases",
+  "title": "When to Use Database-First",
+  "description": "Evaluate the pros and cons of the Database-First approach and decide when it's the right choice for your project.",
+  "milestone": "database-first",
+  "order": 3,
+  "sections": [
+    "db-first-vs-code-first",
+    "advantages",
+    "disadvantages",
+    "making-the-choice"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 75,
+  "prerequisites": ["scaffolding"],
+  "tags": ["database-first", "architecture", "strategy"]
+}

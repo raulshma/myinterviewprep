@@ -1,0 +1,160 @@
+# Maintaining Scaffolded Code
+
+So you've scaffolded your database. Great! But databases change. You might add a new column, rename a table, or want to add a helper method to your entity.
+
+⚠️ **Here is the Danger:** If you modify `Product.cs` directly, and then run the scaffold command again to get updates from the database... **POOF!** 💨 Your changes are overwritten and lost forever.
+
+---
+
+## Section 1: The Overwrite Problem
+
+When you run `dotnet ef dbcontext scaffold --force`, EF Core regenerates every file it is responsible for. It does not "merge" your code. It deletes the old file and writes a new one.
+
+<InfoBox type="warning">
+**Golden Rule:** NERVER code directly inside generated files. Treat them as read-only.
+</InfoBox>
+
+So, how do we add functionality?
+
+<ProgressCheckpoint section="the-overwrite-problem" xpReward={20} />
+
+---
+
+## Section 2: Partial Classes to the Rescue
+
+Notice that EF Core generates classes with the `partial` keyword? This is your escape hatch!
+
+`partial` means a class definition can be split across multiple files. The compiler combines them into one class at build time.
+
+**Generated File (Do Not Touch):**
+`Models/Product.cs`
+```csharp
+public partial class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = null!;
+}
+```
+
+**Your File (Safe to Edit):**
+`Models/Product.Extensions.cs`
+```csharp
+// Same namespace, same class name
+public partial class Product
+{
+    // You can add properties that aren't in the database!
+    public string DisplayName => $"{Name} (ID: {Id})";
+
+    public void UpdatePrice(decimal newPrice)
+    {
+        // Business logic here
+    }
+}
+```
+
+When you re-scaffold, `Product.cs` gets replaced, but `Product.Extensions.cs` stays safe!
+
+<DotnetCodePreview
+  title="Using Partial Classes"
+  code={`// File: Entities/User.Generated.cs
+public partial class User
+{
+    public int Id { get; set; }
+    public string Email { get; set; } = null!;
+}
+
+// File: Entities/User.Logic.cs
+public partial class User
+{
+    public bool IsValidEmail() 
+    {
+        return Email.Contains("@");
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [1,8],
+      highlight: "partial Keyword",
+      explanation: "Both files define the 'User' class. The compiler sees them as one big class."
+    },
+    {
+      lineNumbers: [9,10,11,12],
+      highlight: "Custom Logic",
+      explanation: "This method is safe. Re-scaffolding will only replace the first file."
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="partial-classes" xpReward={30} />
+
+---
+
+## Section 3: Extending Metadata
+
+Sometimes you want to add attributes like `[JsonIgnore]` or validation attributes, but you can't add them to the properties because they are defined in the generated file.
+
+In older versions of .NET, we used a `MetadataType` attribute. In modern .NET, it's often cleaner to separate your ViewModels/DTOs from your Entities completely.
+
+However, if you must modify the entity behavior (e.g., for `OnModelCreating`), you can also use a partial method in the `DbContext`.
+
+**Generated DbContext:**
+```csharp
+public partial class MyContext : DbContext
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // ... generated configuration ...
+        OnModelCreatingPartial(modelBuilder); // Hook!
+    }
+
+    partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+}
+```
+
+**Your Extension:**
+```csharp
+public partial class MyContext
+{
+    partial void OnModelCreatingPartial(ModelBuilder modelBuilder)
+    {
+        // Add your own custom configuration here!
+        modelBuilder.Entity<Product>().HasQueryFilter(p => !p.IsDeleted);
+    }
+}
+```
+
+<ProgressCheckpoint section="extending-metadata" xpReward={25} />
+
+---
+
+## Section 4: Updating the Schema
+
+When the database schema changes (e.g., a DBA adds a `CreatedDate` column), you have two choices:
+
+### Option A: Re-Scaffold (Recommended)
+Run the scaffold command again with the `--force` flag.
+- ✅ **Pros:** Guarantees your code matches the DB exactly.
+- ❌ **Cons:** Overwrites local changes (if you didn't use partial classes).
+
+### Option B: Manual Fixes (Risky)
+Manually add `public DateTime CreatedDate { get; set; }` to the class.
+- ✅ **Pros:** No risk of overwriting files.
+- ❌ **Cons:** Easy to make typos or miss constraints (e.g., max length).
+
+<Quiz id="maintaining-quiz">
+  <Question>How can you safely add a method to a scaffolded class?</Question>
+  <Answer>Edit the generated file directly</Answer>
+  <Answer>Inherit from the generated class</Answer>
+  <Answer correct>Create a partial class in a separate file</Answer>
+  <Answer>You cannot add methods to scaffolded classes</Answer>
+</Quiz>
+
+<Quiz id="overwrite-quiz">
+  <Question>What does the --force flag do during scaffolding?</Question>
+  <Answer>Forces the database to change</Answer>
+  <Answer correct>Overwrites existing output files</Answer>
+  <Answer>Backups existing files</Answer>
+  <Answer>Merges new code with old code</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="updating-schema" xpReward={25} />

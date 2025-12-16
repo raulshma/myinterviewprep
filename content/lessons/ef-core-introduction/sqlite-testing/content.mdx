@@ -1,0 +1,139 @@
+# Testing with SQLite
+
+While the **InMemory** provider is fast, it's sometimes *too* forgiving. It lets you get away with database crimes like missing foreign keys. For a stricter, more realistic test that still runs in memory, **SQLite** is the champion.
+
+---
+
+## Section 1: Why SQLite?
+
+SQLite is a real, relational database engine. When used in "In-Memory" mode, it provides a middle ground:
+
+*   **Fast**: Runs in RAM, almost as fast as InMemory.
+*   **Relational**: Enforces foreign keys, unique constraints, and schema rules.
+*   **SQL-Compatible**: Supports most standard SQL command execution.
+
+<InfoBox type="tip">
+    Use SQLite when you need to verify **constraints** (e.g., "Did adding a duplicate email throw an error?") or relational logic that InMemory skips.
+</InfoBox>
+
+<ProgressCheckpoint section="why-sqlite" xpReward={25} />
+
+---
+
+## Section 2: Setting it Up
+
+Using SQLite in memory is slightly trickier than the standard InMemory provider. Why? Because **when the connection closes, the database is deleted.**
+
+To keep the database alive for the duration of the test, we must **open the connection manually** and keep it open.
+
+### The Connection String
+`DataSource=:memory:`
+
+### The Code
+`dotnet add package Microsoft.EntityFrameworkCore.Sqlite`
+
+<DotnetCodePreview
+    title="SQLite Test Setup"
+    code={`public class SqliteTestBase : IDisposable
+{
+    private readonly SqliteConnection _connection;
+    protected readonly AppDbContext _context;
+
+    public SqliteTestBase()
+    {
+        // 1. Create a connection meant for memory
+        _connection = new SqliteConnection("DataSource=:memory:");
+        _connection.Open(); // 2. OPEN it immediately
+
+        // 3. Configure EF to use this EXISTING connection
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlite(_connection)
+            .Options;
+
+        _context = new AppDbContext(options);
+
+        // 4. Force creation of tables
+        _context.Database.EnsureCreated();
+    }
+
+    public void Dispose()
+    {
+        _connection.Close(); // Database dies here
+        _context.Dispose();
+    }
+}`}
+    steps={[
+        {
+            lineNumbers: [9, 10],
+            highlight: "Open Connection",
+            explanation: "We create and open a SqliteConnection. As long as this object stays open, our in-memory tables persist."
+        },
+        {
+            lineNumbers: [14],
+            highlight: "UseSqlite",
+            explanation: "We pass the *open connection* object, not just a string string."
+        },
+        {
+            lineNumbers: [20],
+            highlight: "EnsureCreated",
+            explanation: "Since there are no migrations in this temp DB, this command scans your entities and quickly builds the schema."
+        }
+    ]}
+/>
+
+<ProgressCheckpoint section="sqlite-setup" xpReward={25} />
+
+---
+
+## Section 3: Managing Lifecycle
+
+One common pitfall with SQLite in-memory testing is the "Shared Connection" problem.
+
+If you want to simulate the "Saved to DB -> New Request Reads It" flow (like we did in the InMemory lesson), you need to use the **Same Connection** but **New Contexts**.
+
+```csharp
+// The connection must be shared
+var connection = new SqliteConnection("DataSource=:memory:");
+connection.Open();
+
+var options = new DbContextOptionsBuilder<AppDbContext>()
+    .UseSqlite(connection) // Share the connection!
+    .Options;
+
+// Context 1: Seed Data
+using (var context = new AppDbContext(options)) {
+    context.Database.EnsureCreated();
+    context.Users.Add(new User { Name = "Dave" });
+    context.SaveChanges();
+}
+
+// Context 2: Verified Data
+using (var context = new AppDbContext(options)) {
+    var user = context.Users.First(); // Works! Because connection stayed open
+}
+```
+
+<Quiz id="sqlite-lifecycle-quiz">
+    <Question>What happens if you close the SQLite connection in the middle of a test?</Question>
+    <Answer>Nothing, data is persisted to disk</Answer>
+    <Answer correct>The in-memory database is wiped effectively immediately</Answer>
+    <Answer>EF Core automatically re-opens it</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="lifecycle-management" xpReward={25} />
+
+---
+
+## Section 4: Limitations
+
+Even SQLite isn't perfect.
+
+1.  **Strictness**: It is looser than SQL Server on types (e.g., string length limits aren't always enforced).
+2.  **Concurrency**: It doesn't handle multiple threads accessing the DB well (simulating concurrent users is hard).
+3.  **Functions**: Some SQL Server specific functions (like `DATEDIFF`) might not exist or work differently in SQLite.
+
+<InfoBox type="info">
+    **Summary**: Use **InMemory** for simple logic. Use **SQLite** for relational checks. Use **Docker/Testcontainers** (next lesson!) for integration accuracy.
+</InfoBox>
+
+<ProgressCheckpoint section="limitations-sqlite" xpReward={25} />

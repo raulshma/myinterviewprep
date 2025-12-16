@@ -1,0 +1,133 @@
+# Coordinating Multiple Repositories
+
+Learn how to share a single Unit of Work (DbContext) across multiple repositories to maintain robust data consistency.
+
+---
+
+## Section 1: The Problem with Multiple Contexts
+
+### Disconnected Repositories
+
+Imagine you have `OrderRepository` and `InventoryRepository`. If each one creates its own `new DbContext()`, they are isolated.
+
+*   `OrderRepository` adds an order → Needs `SaveChanges()`.
+*   `InventoryRepository` updates stock → Needs `SaveChanges()`.
+
+If the first succeeds but the second fails, you have an order for an item that wasn't deducted from stock!
+
+<InfoBox type="error">
+    **Anti-Pattern**: Never instantiate `new DbContext()` inside a repository method if you want them to share a transaction.
+</InfoBox>
+
+<ProgressCheckpoint section="multiple-contexts-problem" xpReward={20} />
+
+---
+
+## Section 2: Shared Context via Dependency Injection
+
+### Scoped Lifetime
+
+In ASP.NET Core, `DbContext` is added with a **Scoped** lifetime by default. This is powerful:
+
+*   **Scoped** means "Created once per HTTP Request".
+*   All services/repositories that ask for a `DbContext` within that *same request* get the **exact same instance**.
+
+This allows multiple repositories to share the same change tracker and transaction.
+
+### Implementation Pattern
+
+<DotnetCodePreview
+    title="Service Layer Coordination"
+    code={`public class CheckoutService
+{
+    private readonly IOrderRepository _orders;
+    private readonly IInventoryRepository _inventory;
+    private readonly AppDbContext _context; // The Unit of Work
+
+    public CheckoutService(
+        IOrderRepository orders,
+        IInventoryRepository inventory,
+        AppDbContext context)
+    {
+        _orders = orders;
+        _inventory = inventory;
+        _context = context;
+    }
+
+    public async Task CheckoutAsync(Order order)
+    {
+        // 1. Use Order Repository (Adds to ChangeTracker)
+        await _orders.AddAsync(order);
+
+        // 2. Use Inventory Repository (Updates via ChangeTracker)
+        await _inventory.DecrementStockAsync(order.Sku, order.Count);
+
+        // 3. Commit ALL changes at once
+        await _context.SaveChangesAsync();
+    }
+}`}
+    steps={[
+        {
+            lineNumbers: [6, 7, 8],
+            highlight: "Constructor Injection",
+            explanation: "Dependency injection ensures _orders, _inventory, and _context all share the SAME DB connection."
+        },
+        {
+            lineNumbers: [25],
+            highlight: "One SaveChanges",
+            explanation: "Repositories should usually NOT call SaveChanges() themselves. The Service layer coordinates the Unit of Work."
+        }
+    ]}
+/>
+
+<InfoBox type="tip">
+    **Repository Tip**: A common pattern is for repositories to mostly just add/update entities in the DbContext, but let the Service layer decide exactly *when* to call `SaveChanges()`.
+</InfoBox>
+
+<ProgressCheckpoint section="shared-dependency-injection" xpReward={30} />
+
+---
+
+## Section 3: Generic Unit of Work Wrapper
+
+Sometimes you want a formal wrapper to access repositories, so your services don't need to inject 10 different repositories.
+
+```csharp
+public interface IUnitOfWork
+{
+    IOrderRepository Orders { get; }
+    IInventoryRepository Inventory { get; }
+    Task<int> CompleteAsync();
+}
+
+public class UnitOfWork : IUnitOfWork
+{
+    private readonly AppDbContext _context;
+    
+    public UnitOfWork(AppDbContext context)
+    {
+        _context = context;
+        Orders = new OrderRepository(_context);
+        Inventory = new InventoryRepository(_context);
+    }
+
+    public IOrderRepository Orders { get; private set; }
+    public IInventoryRepository Inventory { get; private set; }
+
+    public async Task<int> CompleteAsync() => await _context.SaveChangesAsync();
+}
+```
+
+This keeps your Service constructors clean: `public CheckoutService(IUnitOfWork unitOfWork)` is all you need!
+
+### Quiz: Coordination Logic
+
+<Quiz id="repo-coordination-quiz">
+    <Question>What allows multiple repositories to share the same transaction automatically in ASP.NET Core?</Question>
+    <Answer>Static variables</Answer>
+    <Answer correct>Scoped Dependency Injection</Answer>
+    <Answer>Transient Dependency Injection</Answer>
+    <Answer>Singleton Dependency Injection</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="uow-wrapper" xpReward={25} />

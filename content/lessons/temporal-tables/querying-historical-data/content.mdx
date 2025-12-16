@@ -1,0 +1,89 @@
+# Querying Historical Data
+
+The real magic of temporal tables isn't just *storing* the history—it's **querying** it. EF Core provides powerful LINQ operators that allow you to travel back in time and view your data exactly as it existed at any specific moment.
+
+These operators are applied to your `DbSet` and affect the generated SQL query to include the history table.
+
+## Time Travel: `TemporalAsOf`
+
+The most common use case is: "What did this record look like yesterday at 5 PM?"
+
+The `TemporalAsOf` operator lets you run a query as if you were at a specific point in time.
+
+```csharp
+var oldProduct = context.Products
+    .TemporalAsOf(new DateTime(2023, 10, 15, 14, 0, 0)) // 2 PM on Oct 15
+    .Single(p => p.Id == 1);
+```
+
+If the product had a price of $50 back then (even if it's $100 today), this query returns $50. If the product was deleted today but existed back then, this query **will find it**!
+
+<InfoBox type="tip" title="Restoring Deleted Data">
+  `TemporalAsOf` is fantastic for "Undo" functionality. If a user accidentally deletes a record, you can query it `TemporalAsOf` just before the deletion, fetch the entity, add it efficiently back to the `DbSet`, and save it!
+</InfoBox>
+
+## Viewing the Full History: `TemporalAll`
+
+Sometimes you want to see the entire lifecycle of a specific entity—every change that has ever happened.
+
+```csharp
+var history = context.Products
+    .TemporalAll()
+    .Where(p => p.Id == 1)
+    .OrderBy(p => EF.Property<DateTime>(p, "PeriodStart"))
+    .Select(p => new
+    {
+        p.Name,
+        p.Price,
+        ValidFrom = EF.Property<DateTime>(p, "PeriodStart"),
+        ValidTo = EF.Property<DateTime>(p, "PeriodEnd")
+    })
+    .ToList();
+```
+
+Use `EF.Property` to access the shadow columns `PeriodStart` and `PeriodEnd` if you haven't mapped them to properties in your entity class.
+
+## Range Queries
+
+EF Core offers three operators for querying data within a time range. The difference lies in how they handle the boundaries (start and end times).
+
+### 1. `TemporalFromTo(start, end)`
+Returns rows that were active at **any point** between `start` and `end`.
+- **Logic**: `start <= PeriodStart < end`
+- Useful for: "What products were active anytime during Q3?"
+
+```csharp
+var q3Products = context.Products
+    .TemporalFromTo(q3Start, q3End)
+    .ToList();
+```
+
+### 2. `TemporalBetween(start, end)`
+Similar to `TemporalFromTo`, but inclusive of the upper boundary.
+- **Logic**: `start <= PeriodStart <= end`
+
+### 3. `TemporalContainedIn(start, end)`
+Returns ONLY rows that became active AND ceased to be active *within* the range.
+- **Logic**: `start <= PeriodStart` AND `PeriodEnd <= end`
+- Useful for: "Find short-lived records that appeared and disappeared entirely within this window."
+
+<ProgressCheckpoint
+  section="query-check"
+  description="Which operator would you use to find the single state of a Customer record exactly as it was on January 1st, 2020?"
+  options={[
+    { id: '1', label: 'TemporalAll()' },
+    { id: '2', label: 'TemporalBetween()' },
+    { id: '3', label: 'TemporalAsOf()' },
+    { id: '4', label: 'TemporalContainedIn()' }
+  ]}
+  correctOption="3"
+  explanation="TemporalAsOf(dateTime) returns data as it existed at a single specific point in time."
+/>
+
+## Important Considerations
+
+1.  **Read-Only**: These operators are for **querying** only. You cannot use `TemporalAsOf` and then modify the entity to "change the past" directly. You must fetch, detach, modify, and re-add if you want to perform a "restore".
+2.  **Performance**: Querying history tables (`TemporalAll`) can be slow if the table is massive. Ensure your history tables are properly indexed (sql server creates a cluster index on period columns by default, but you might need more).
+3.  **Joins**: These operators apply to the table they are called on. If you join a temporal table with a non-temporal table, or another temporal table, you need to be careful about the semantics of "time" across the join.
+
+In the next lesson, we'll look at how to customize the table names and column names for your temporal tables.

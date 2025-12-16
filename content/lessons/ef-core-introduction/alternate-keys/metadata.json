@@ -1,0 +1,18 @@
+{
+  "id": "alternate-keys",
+  "title": "Alternate Keys - Beyond Primary Keys",
+  "description": "Learn how to define alternate keys to enforce uniqueness on non-primary fields and use them as targets for foreign key relationships.",
+  "milestone": "advanced-relationships",
+  "order": 3,
+  "sections": [
+    "what-is-alternate-key",
+    "defining-alternate-keys",
+    "using-in-relationships",
+    "composite-alternate-keys"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 30,
+  "xpReward": 100,
+  "prerequisites": ["entity-configuration", "fluent-api-relationships"],
+  "tags": ["ef-core", "keys", "unique-constraint", "relationships"]
+}

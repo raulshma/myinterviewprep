@@ -1,0 +1,18 @@
+{
+  "id": "inmemory-testing",
+  "title": "InMemory Provider for Testing",
+  "description": "Learn how to use the EF Core InMemory provider for fast, database-independent unit tests.",
+  "milestone": "testing-ef-core",
+  "order": 1,
+  "sections": [
+    "intro-inmemory",
+    "setup-inmemory",
+    "writing-tests",
+    "limitations"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 30,
+  "xpReward": 100,
+  "prerequisites": ["ef-core-overview", "repository-pattern"],
+  "tags": ["testing", "in-memory", "unit-testing", "ef-core"]
+}

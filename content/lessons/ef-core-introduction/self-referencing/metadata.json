@@ -1,0 +1,18 @@
+{
+  "id": "self-referencing",
+  "title": "Self-Referencing Relationships",
+  "description": "Learn to model hierarchical data structures like organization charts and category trees using self-referencing relationships in EF Core.",
+  "milestone": "advanced-relationships",
+  "order": 1,
+  "sections": [
+    "understanding-hierarchy",
+    "defining-self-referencing",
+    "querying-hierarchy",
+    "navigating-cycles"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 30,
+  "xpReward": 100,
+  "prerequisites": ["ef-relationships", "one-to-many"],
+  "tags": ["ef-core", "relationships", "schema", "hierarchical-data"]
+}

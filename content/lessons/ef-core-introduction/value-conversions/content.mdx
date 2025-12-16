@@ -1,0 +1,460 @@
+# Value Conversions
+
+Master **Value Conversions** – EF Core's powerful feature that transforms data between your C# types and database storage. Store enums as strings, encrypt data, serialize objects, and more!
+
+---
+
+## Section 1: What are Value Conversions?
+
+### The Currency Exchange Analogy 💱
+
+When you travel internationally, you exchange currency:
+- You have **Dollars** (your native currency)
+- The other country uses **Euros** (the "database")
+- The **exchange booth** converts between them
+
+**Value Conversions** work the same way:
+
+| Currency Exchange | Value Conversion |
+|:------------------|:-----------------|
+| Your Dollars | C# type (enum, object) |
+| Their Euros | Database type (string, int) |
+| Exchange booth | Value Converter |
+| Exchange rate | Conversion logic |
+
+<InfoBox type="info">
+**Value Conversions** allow you to define how property values are converted when reading from and writing to the database. You keep your rich C# types while the database stores simpler values.
+</InfoBox>
+
+### Why Use Value Conversions?
+
+Without conversions, you're limited to database-native types:
+
+```csharp
+// 😫 Without value conversions
+public class Rider
+{
+    public int Id { get; set; }
+    public int MountType { get; set; }  // 0=Horse, 1=Donkey... confusing!
+}
+
+// What does MountType = 2 mean? 🤷
+```
+
+With conversions, use expressive types:
+
+```csharp
+// 😊 With value conversions
+public class Rider
+{
+    public int Id { get; set; }
+    public EquineBeast Mount { get; set; }  // Clear enum!
+}
+
+public enum EquineBeast { Donkey, Mule, Horse, Unicorn }
+// "Unicorn" is stored in DB as the string "Unicorn" ✨
+```
+
+<KeyConcept title="Two-Way Transformation">
+Value converters define two functions: one to convert TO the database type, and one to convert FROM. EF Core applies them automatically on save and load.
+</KeyConcept>
+
+<ProgressCheckpoint section="what-are-value-conversions" xpReward={15} />
+
+---
+
+## Section 2: Built-in Converters
+
+### EF Core's Ready-Made Converters
+
+EF Core includes many built-in converters for common scenarios:
+
+<DotnetCodePreview
+  title="Using Built-in Converters"
+  code={`public enum EquineBeast
+{
+    Donkey,
+    Mule,
+    Horse,
+    Unicorn
+}
+
+public class Rider
+{
+    public int Id { get; set; }
+    public EquineBeast Mount { get; set; }
+}
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    // Enum to string conversion
+    modelBuilder.Entity<Rider>()
+        .Property(r => r.Mount)
+        .HasConversion<string>();
+        
+    // With max length for the column
+    modelBuilder.Entity<Rider>()
+        .Property(r => r.Mount)
+        .HasConversion<string>()
+        .HasMaxLength(20);
+}`}
+  steps={[
+    {
+      lineNumbers: [1, 2, 3, 4, 5, 6, 7],
+      highlight: "Enum Definition",
+      explanation: "A standard C# enum with meaningful names"
+    },
+    {
+      lineNumbers: [18, 19, 20],
+      highlight: "HasConversion<T>",
+      explanation: "Simply specify the target type - EF Core handles the rest!"
+    },
+    {
+      lineNumbers: [24, 25, 26],
+      highlight: "With Facets",
+      explanation: "You can chain other configuration like max length"
+    }
+  ]}
+/>
+
+### Common Built-in Converters
+
+| Converter Type | From → To | Use Case |
+|:---------------|:----------|:---------|
+| `EnumToStringConverter` | Enum → String | Readable database values |
+| `EnumToNumberConverter` | Enum → Int | Compact storage |
+| `BoolToStringConverter` | Bool → "Y"/"N" | Legacy database compatibility |
+| `DateTimeToTicksConverter` | DateTime → Long | High-precision timestamps |
+| `GuidToStringConverter` | Guid → String | Database compatibility |
+
+### Enum to String Example
+
+```csharp
+// In your entity
+public EquineBeast Mount { get; set; }
+
+// After conversion, database stores:
+// | Id | Mount    |
+// | 1  | "Horse"  |
+// | 2  | "Unicorn"|
+
+// Much more readable than:
+// | Id | Mount |
+// | 1  | 2     |  <- What is 2?
+// | 2  | 3     |  <- What is 3?
+```
+
+<InfoBox type="tip">
+**Pro Tip:** Prefer `string` storage for enums in most cases. It's more readable, survives enum reordering, and is self-documenting in the database.
+</InfoBox>
+
+<ProgressCheckpoint section="built-in-converters" xpReward={15} />
+
+---
+
+## Section 3: Custom Value Converters
+
+### Creating Your Own Converter
+
+For custom logic, create a `ValueConverter<TModel, TProvider>`:
+
+<DotnetCodePreview
+  title="Custom Value Converter"
+  code={`// Option 1: Inline in OnModelCreating
+modelBuilder.Entity<Rider>()
+    .Property(r => r.Mount)
+    .HasConversion(
+        v => v.ToString(),                              // To database
+        v => (EquineBeast)Enum.Parse(typeof(EquineBeast), v)  // From database
+    );
+
+// Option 2: Reusable converter class
+public class EquineBeastConverter 
+    : ValueConverter<EquineBeast, string>
+{
+    public EquineBeastConverter() : base(
+        v => v.ToString(),
+        v => (EquineBeast)Enum.Parse(typeof(EquineBeast), v))
+    { }
+}
+
+// Use the class
+modelBuilder.Entity<Rider>()
+    .Property(r => r.Mount)
+    .HasConversion(new EquineBeastConverter());`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7],
+      highlight: "Inline Converter",
+      explanation: "Two lambdas: first converts TO database, second converts FROM"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13, 14, 15, 16],
+      highlight: "Converter Class",
+      explanation: "For reuse, create a class inheriting from ValueConverter<TModel, TProvider>"
+    },
+    {
+      lineNumbers: [19, 20, 21],
+      highlight: "Apply Converter",
+      explanation: "Pass an instance of your converter to HasConversion()"
+    }
+  ]}
+/>
+
+### Encryption Example
+
+Store sensitive data encrypted:
+
+```csharp
+public class EncryptionConverter : ValueConverter<string, string>
+{
+    public EncryptionConverter(IEncryptionService encryption) : base(
+        v => encryption.Encrypt(v),    // Encrypt before storing
+        v => encryption.Decrypt(v))    // Decrypt when reading
+    { }
+}
+
+// User's SSN is encrypted at rest!
+modelBuilder.Entity<User>()
+    .Property(u => u.SocialSecurityNumber)
+    .HasConversion(new EncryptionConverter(encryptionService));
+```
+
+### JSON Serialization Example
+
+Store complex objects as JSON:
+
+```csharp
+public class JsonConverter<T> : ValueConverter<T, string>
+{
+    public JsonConverter() : base(
+        v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+        v => JsonSerializer.Deserialize<T>(v, (JsonSerializerOptions?)null)!)
+    { }
+}
+
+// Store Address as JSON string
+modelBuilder.Entity<User>()
+    .Property(u => u.Address)
+    .HasConversion(new JsonConverter<Address>());
+```
+
+<InfoBox type="warning">
+**Important:** Value converters affect querying! Expressions must be translatable to SQL. Complex conversions may cause client-side evaluation.
+</InfoBox>
+
+<ProgressCheckpoint section="custom-converters" xpReward={20} />
+
+---
+
+## Section 4: Value Objects Pattern
+
+### Creating Rich Domain Types
+
+**Value Objects** wrap primitive types with domain meaning and validation:
+
+<DotnetCodePreview
+  title="Value Object with Converter"
+  code={`// Value Object: Dollars
+public readonly struct Dollars
+{
+    public Dollars(decimal amount)
+    {
+        if (amount < 0)
+            throw new ArgumentException("Amount cannot be negative");
+        Amount = amount;
+    }
+    
+    public decimal Amount { get; }
+    
+    public override string ToString() => $"${Amount:N2}";
+    
+    // Implicit conversion for convenience
+    public static implicit operator decimal(Dollars d) => d.Amount;
+    public static implicit operator Dollars(decimal d) => new(d);
+}
+
+// Entity using the value object
+public class Order
+{
+    public int Id { get; set; }
+    public Dollars Price { get; set; }
+}
+
+// Configure the conversion
+modelBuilder.Entity<Order>()
+    .Property(o => o.Price)
+    .HasConversion(
+        v => v.Amount,           // Dollars → decimal
+        v => new Dollars(v));    // decimal → Dollars`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      highlight: "Value Object Definition",
+      explanation: "A struct that wraps decimal with validation and behavior"
+    },
+    {
+      lineNumbers: [22, 23],
+      highlight: "Entity Using Value Object",
+      explanation: "The entity uses the rich Dollars type, not raw decimal"
+    },
+    {
+      lineNumbers: [27, 28, 29, 30, 31],
+      highlight: "Conversion Configuration",
+      explanation: "Tell EF Core how to convert between Dollars and decimal"
+    }
+  ]}
+/>
+
+### Benefits of Value Objects
+
+```csharp
+// Without value objects - confusing!
+public decimal Amount { get; set; }  // USD? EUR? Cents?
+
+// With value objects - clear!
+public Dollars Price { get; set; }
+public Euros Cost { get; set; }
+public Percentage Discount { get; set; }
+
+// Type safety prevents errors:
+order.Price = new Dollars(100);
+order.Price = new Euros(90);  // ❌ Compile error! Can't mix currencies
+```
+
+<Comparison
+  title="Primitive vs Value Object"
+  items={[
+    {
+      label: "Primitive Obsession",
+      description: "Using decimal, string, int directly - no domain meaning or validation",
+      isCorrect: false
+    },
+    {
+      label: "Value Objects",
+      description: "Rich types with validation, behavior, and clear intent",
+      isCorrect: true
+    }
+  ]}
+/>
+
+### Common Value Object Examples
+
+| Value Object | Wraps | Validation |
+|:-------------|:------|:-----------|
+| `Email` | string | Valid email format |
+| `PhoneNumber` | string | Valid phone format |
+| `Money` | decimal + currency | Non-negative, valid currency |
+| `Percentage` | decimal | 0-100 range |
+| `UserId` | Guid/int | Non-empty |
+
+<ProgressCheckpoint section="value-objects" xpReward={20} />
+
+---
+
+## Section 5: Bulk Configuration
+
+### Apply Converters to All Properties of a Type
+
+Instead of configuring each property, apply converters globally:
+
+<DotnetCodePreview
+  title="Bulk Converter Configuration"
+  code={`protected override void ConfigureConventions(
+    ModelConfigurationBuilder configurationBuilder)
+{
+    // All DateTime properties → UTC conversion
+    configurationBuilder
+        .Properties<DateTime>()
+        .HaveConversion<UtcDateTimeConverter>();
+    
+    // All Dollars properties → decimal conversion
+    configurationBuilder
+        .Properties<Dollars>()
+        .HaveConversion<DollarsConverter>();
+    
+    // All enums → string storage
+    configurationBuilder
+        .Properties<Enum>()
+        .HaveConversion<EnumToStringConverter<Enum>>();
+    
+    // All string properties → max length
+    configurationBuilder
+        .Properties<string>()
+        .HaveMaxLength(500);
+}`}
+  steps={[
+    {
+      lineNumbers: [1, 2],
+      highlight: "ConfigureConventions",
+      explanation: "Override this method for global configuration"
+    },
+    {
+      lineNumbers: [5, 6, 7],
+      highlight: "DateTime Convention",
+      explanation: "Every DateTime property uses this converter automatically"
+    },
+    {
+      lineNumbers: [15, 16, 17],
+      highlight: "All Enums to String",
+      explanation: "No more configuring each enum property individually!"
+    }
+  ]}
+/>
+
+### Pre-defined Conversion Types
+
+EF Core 6+ supports direct type specification:
+
+```csharp
+modelBuilder.Entity<User>()
+    .Property(u => u.CreatedAt)
+    .HasConversion<long>();  // DateTime → Ticks (long)
+
+modelBuilder.Entity<Product>()
+    .Property(p => p.Status)
+    .HasConversion<string>();  // Enum → String
+```
+
+<Quiz id="value-conversion-basics">
+  <Question>What method is used to configure a value conversion?</Question>
+  <Answer>SetConversion()</Answer>
+  <Answer correct>HasConversion()</Answer>
+  <Answer>UseConverter()</Answer>
+  <Answer>ConvertTo()</Answer>
+</Quiz>
+
+<Quiz id="value-converter-params">
+  <Question>A ValueConverter requires how many conversion functions?</Question>
+  <Answer>One - to the database</Answer>
+  <Answer correct>Two - to and from the database</Answer>
+  <Answer>Three - to, from, and compare</Answer>
+  <Answer>None - it's automatic</Answer>
+</Quiz>
+
+<Quiz id="enum-storage-quiz">
+  <Question>What's the preferred way to store enums for readability?</Question>
+  <Answer>As integers (default)</Answer>
+  <Answer correct>As strings using HasConversion&lt;string&gt;()</Answer>
+  <Answer>As binary data</Answer>
+  <Answer>Enums cannot be stored directly</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Value Conversions** | Transform data between C# and database |
+| **Built-in Converters** | Ready-made for enums, dates, GUIDs, etc. |
+| **Custom Converters** | Two lambdas or ValueConverter class |
+| **Value Objects** | Rich domain types with validation |
+| **Bulk Configuration** | ConfigureConventions for global rules |
+| **Type Safety** | Prevents mixing incompatible types |
+
+<KeyConcept title="What's Next?">
+You've mastered value conversions for rich domain models! Next, explore:
+- **Table Splitting** - Map multiple entities to a single database table
+- **Owned Types** - Complex types as part of parent entities
+</KeyConcept>
+
+<ProgressCheckpoint section="bulk-configuration" xpReward={15} />

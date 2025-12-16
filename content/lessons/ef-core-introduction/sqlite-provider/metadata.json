@@ -1,0 +1,17 @@
+{
+  "id": "sqlite-provider",
+  "title": "SQLite Provider",
+  "description": "Understand the capabilities and limitations of the SQLite provider.",
+  "milestone": "ef-core-introduction",
+  "order": 82,
+  "sections": [
+    "basics",
+    "limitations",
+    "testing"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 25,
+  "xpReward": 200,
+  "prerequisites": ["postgresql-provider"],
+  "tags": ["sqlite", "mobile", "testing", "provider"]
+}

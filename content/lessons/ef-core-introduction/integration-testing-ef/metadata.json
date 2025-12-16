@@ -1,0 +1,18 @@
+{
+  "id": "integration-testing-ef",
+  "title": "Integration Testing with Real Databases",
+  "description": "Learn how to use Testcontainers and WebApplicationFactory for true end-to-end integration testing.",
+  "milestone": "testing-ef-core",
+  "order": 4,
+  "sections": [
+    "real-db-testing",
+    "testcontainers",
+    "respawn",
+    "web-app-factory"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 45,
+  "xpReward": 125,
+  "prerequisites": ["sqlite-testing"],
+  "tags": ["testing", "integration", "docker", "testcontainers"]
+}

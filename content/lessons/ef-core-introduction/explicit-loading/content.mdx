@@ -1,0 +1,458 @@
+# Explicit Loading - Manual Control Over Loading
+
+What if you want the on-demand flexibility of lazy loading but without the magic and hidden queries? **Explicit loading** gives you full control—you decide exactly when to load related data, and you can see it happening in your code.
+
+---
+
+## Section 1: What is Explicit Loading?
+
+### The Room Service Analogy
+
+Think of explicit loading like **room service** in a hotel. You don't have everything in your room (eager loading), and it doesn't magically appear when you think about it (lazy loading). Instead, you:
+
+1. Pick up the phone (call the Entry method)
+2. Request exactly what you want (specify the navigation)
+3. Wait for delivery (call Load)
+
+```
+📞 "Hello, I'd like to order the Posts for Blog #5"
+🍽️ "Coming right up!"
+✅ Posts are now loaded
+```
+
+<InfoBox type="info">
+**Explicit Loading** means you manually request related data to be loaded by calling specific methods. It's deliberate, visible, and gives you complete control.
+</InfoBox>
+
+### The Key Difference
+
+| Loading Strategy | Who Triggers? | When? | Visibility |
+|:-----------------|:--------------|:------|:-----------|
+| **Eager** | You, with Include() | At query time | Visible in query |
+| **Lazy** | EF Core, automatically | On property access | Hidden |
+| **Explicit** | You, with Load() | When you call it | Visible in code |
+
+<KeyConcept title="Best of Both Worlds">
+Explicit loading combines the on-demand nature of lazy loading with the explicit control of eager loading. You always know exactly when database queries happen.
+</KeyConcept>
+
+<ProgressCheckpoint section="what-is-explicit-loading" xpReward={20} />
+
+---
+
+## Section 2: Loading Reference Properties
+
+### Using Entry().Reference()
+
+For **single navigation properties** (one-to-one or many-to-one), use `Reference()`:
+
+<DotnetCodePreview
+  title="Loading a Reference Navigation"
+  code={`// Load a post without its related blog
+var post = await context.Posts.FindAsync(1);
+// post.Blog is null at this point
+
+// Explicitly load the blog when you need it
+await context.Entry(post)
+    .Reference(p => p.Blog)
+    .LoadAsync();
+
+// Now post.Blog is populated!
+Console.WriteLine($"Blog: {post.Blog.Name}");
+
+// Generated SQL:
+// SELECT * FROM Blogs WHERE Id = @blogId`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Initial Load",
+      explanation: "Post is loaded, but related Blog is null"
+    },
+    {
+      lineNumbers: [6, 7, 8],
+      highlight: "Explicit Load",
+      explanation: "Entry() gets tracking info, Reference() specifies the navigation, LoadAsync() executes the query"
+    },
+    {
+      lineNumbers: [11],
+      highlight: "Data Available",
+      explanation: "After loading, the navigation property is populated"
+    }
+  ]}
+/>
+
+### String-Based Reference Loading
+
+You can also use a string to specify the navigation property:
+
+<DotnetCodePreview
+  title="String-Based Loading"
+  code={`// Using lambda (type-safe, recommended)
+await context.Entry(post)
+    .Reference(p => p.Blog)
+    .LoadAsync();
+
+// Using string (useful for dynamic scenarios)
+await context.Entry(post)
+    .Reference("Blog")
+    .LoadAsync();
+
+// Both approaches work identically!`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Lambda Expression",
+      explanation: "Type-safe and refactoring-friendly"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "String Name",
+      explanation: "Useful when the property name is dynamic or from config"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Always prefer the lambda syntax** (`Reference(p => p.Blog)`) when possible. It's type-safe and your IDE will catch errors if you refactor property names.
+</InfoBox>
+
+<ProgressCheckpoint section="reference-loading" xpReward={20} />
+
+---
+
+## Section 3: Loading Collection Properties
+
+### Using Entry().Collection()
+
+For **collection navigation properties** (one-to-many or many-to-many), use `Collection()`:
+
+<DotnetCodePreview
+  title="Loading a Collection Navigation"
+  code={`// Load a blog without its posts
+var blog = await context.Blogs.FindAsync(1);
+// blog.Posts is empty or null
+
+// Explicitly load the posts
+await context.Entry(blog)
+    .Collection(b => b.Posts)
+    .LoadAsync();
+
+// Now blog.Posts is populated!
+foreach (var post in blog.Posts)
+{
+    Console.WriteLine($"  - {post.Title}");
+}
+
+// Generated SQL:
+// SELECT * FROM Posts WHERE BlogId = @blogId`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Initial State",
+      explanation: "Collection not loaded yet"
+    },
+    {
+      lineNumbers: [6, 7, 8],
+      highlight: "Collection Load",
+      explanation: "Collection() is for ICollection navigations, LoadAsync() executes"
+    },
+    {
+      lineNumbers: [11, 12, 13, 14],
+      highlight: "Access Data",
+      explanation: "The collection is now fully populated"
+    }
+  ]}
+/>
+
+### Filtering with Query()
+
+The real power of explicit loading is the `Query()` method—it lets you filter and manipulate what gets loaded:
+
+<DotnetCodePreview
+  title="Filtered Explicit Loading"
+  code={`var blog = await context.Blogs.FindAsync(1);
+
+// Load only published posts using Query()
+await context.Entry(blog)
+    .Collection(b => b.Posts)
+    .Query()
+    .Where(p => p.IsPublished)
+    .LoadAsync();
+
+// Only published posts are loaded!
+
+// You can do even more:
+await context.Entry(blog)
+    .Collection(b => b.Posts)
+    .Query()
+    .Where(p => p.IsPublished)
+    .OrderByDescending(p => p.CreatedDate)
+    .Take(5)
+    .LoadAsync();
+
+// Only the 5 most recent published posts!`}
+  steps={[
+    {
+      lineNumbers: [4, 5, 6, 7, 8],
+      highlight: "Query with Where",
+      explanation: "Query() gives you an IQueryable to filter the loading"
+    },
+    {
+      lineNumbers: [13, 14, 15, 16, 17, 18, 19],
+      highlight: "Complex Filtering",
+      explanation: "Chain any LINQ methods—Where, OrderBy, Take, Skip, etc."
+    }
+  ]}
+/>
+
+### Counting Without Loading
+
+Sometimes you just need to know how many related items exist without loading them all:
+
+<DotnetCodePreview
+  title="Query for Count or Aggregation"
+  code={`var blog = await context.Blogs.FindAsync(1);
+
+// Count posts without loading them
+int postCount = await context.Entry(blog)
+    .Collection(b => b.Posts)
+    .Query()
+    .CountAsync();
+
+Console.WriteLine($"This blog has {postCount} posts");
+
+// Check if any exist
+bool hasPosts = await context.Entry(blog)
+    .Collection(b => b.Posts)
+    .Query()
+    .AnyAsync();
+
+// Get aggregate without loading
+double avgRating = await context.Entry(blog)
+    .Collection(b => b.Posts)
+    .Query()
+    .AverageAsync(p => p.Rating);`}
+  steps={[
+    {
+      lineNumbers: [4, 5, 6, 7],
+      highlight: "CountAsync",
+      explanation: "Get the count without loading all posts into memory"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15],
+      highlight: "AnyAsync",
+      explanation: "Check existence efficiently"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21],
+      highlight: "Aggregations",
+      explanation: "Compute aggregates like Sum, Average, Max, Min"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Memory efficiency!** Using Query().CountAsync() executes `SELECT COUNT(*)` in the database—no entities are loaded into memory.
+</InfoBox>
+
+<ProgressCheckpoint section="collection-loading" xpReward={20} />
+
+---
+
+## Section 4: When to Use Explicit Loading
+
+### Decision Flowchart
+
+```
+Do you need related data?
+         │
+         ▼
+    ┌────────────┐
+    │   Always?  │───Yes───▶ Use Eager Loading
+    └────────────┘
+         │ No
+         ▼
+    ┌────────────┐
+    │ Sometimes? │───Yes───▶ Use Explicit Loading
+    └────────────┘
+         │ No
+         ▼
+    Use Lazy Loading (with caution)
+```
+
+### Ideal Scenarios for Explicit Loading
+
+<Comparison
+  title="When to Choose Explicit Loading"
+  items={[
+    {
+      label: "✅ Conditional Loading",
+      description: "Load related data only if certain conditions are met (e.g., user has permission, feature flag enabled).",
+      isCorrect: true
+    },
+    {
+      label: "✅ Filtered Loading",
+      description: "When you need only a subset of related items (e.g., recent posts, active users).",
+      isCorrect: true
+    },
+    {
+      label: "✅ Post-Query Loading",
+      description: "When you decide to load related data after working with the main entity.",
+      isCorrect: true
+    },
+    {
+      label: "✅ Aggregations Without Loading",
+      description: "Use Query() to count or compute without loading entities into memory.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+### Real-World Example
+
+<DotnetCodePreview
+  title="Conditional Explicit Loading"
+  code={`public async Task<BlogDto> GetBlogDetails(int id, bool includePosts)
+{
+    var blog = await context.Blogs.FindAsync(id);
+    
+    var dto = new BlogDto
+    {
+        Id = blog.Id,
+        Name = blog.Name
+    };
+    
+    // Only load posts if requested
+    if (includePosts)
+    {
+        await context.Entry(blog)
+            .Collection(b => b.Posts)
+            .Query()
+            .Where(p => p.IsPublished)
+            .OrderByDescending(p => p.CreatedDate)
+            .Take(10)
+            .LoadAsync();
+            
+        dto.RecentPosts = blog.Posts.Select(p => new PostDto
+        {
+            Title = p.Title,
+            CreatedDate = p.CreatedDate
+        }).ToList();
+    }
+    
+    return dto;
+}`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "Initial Query",
+      explanation: "Load just the blog—no posts yet"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15, 16, 17, 18, 19, 20],
+      highlight: "Conditional Load",
+      explanation: "Only load posts if the caller requested them"
+    },
+    {
+      lineNumbers: [17, 18, 19],
+      highlight: "Filtered and Limited",
+      explanation: "Load only the 10 most recent published posts"
+    }
+  ]}
+/>
+
+### Avoiding Common Mistakes
+
+<Comparison
+  title="Explicit Loading Mistakes"
+  items={[
+    {
+      label: "❌ Forgetting LoadAsync()",
+      description: "Setting up the query but forgetting to call LoadAsync() means data isn't actually loaded!",
+      isCorrect: false
+    },
+    {
+      label: "❌ Double Loading",
+      description: "Calling Load() when data was already eagerly loaded just wastes a database round-trip.",
+      isCorrect: false
+    },
+    {
+      label: "✅ Check IsLoaded First",
+      description: "Use Entry().Reference().IsLoaded or Entry().Collection().IsLoaded to check before loading.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<DotnetCodePreview
+  title="Checking If Already Loaded"
+  code={`var blog = await context.Blogs
+    .Include(b => b.Posts)  // Eagerly load posts
+    .FirstAsync(b => b.Id == 1);
+
+// Check if posts are already loaded
+bool postsLoaded = context.Entry(blog)
+    .Collection(b => b.Posts)
+    .IsLoaded;
+
+if (!postsLoaded)
+{
+    // Only load if not already present
+    await context.Entry(blog)
+        .Collection(b => b.Posts)
+        .LoadAsync();
+}`}
+  steps={[
+    {
+      lineNumbers: [6, 7, 8],
+      highlight: "IsLoaded Property",
+      explanation: "Check if the navigation property was already loaded"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13, 14, 15],
+      highlight: "Conditional Loading",
+      explanation: "Only load if data wasn't loaded already"
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="explicit-loading-method-quiz">
+  <Question>Which method loads a single navigation property (like Post.Blog)?</Question>
+  <Answer correct>Reference()</Answer>
+  <Answer>Collection()</Answer>
+  <Answer>Include()</Answer>
+  <Answer>ThenInclude()</Answer>
+</Quiz>
+
+<Quiz id="explicit-loading-filter-quiz">
+  <Question>Which method allows filtering during explicit loading?</Question>
+  <Answer>Filter()</Answer>
+  <Answer>Where()</Answer>
+  <Answer correct>Query()</Answer>
+  <Answer>LoadWhere()</Answer>
+</Quiz>
+
+<Quiz id="explicit-loading-check-quiz">
+  <Question>How do you check if a navigation property was already loaded?</Question>
+  <Answer>Entry().WasLoaded</Answer>
+  <Answer correct>Entry().Collection().IsLoaded or Entry().Reference().IsLoaded</Answer>
+  <Answer>context.IsLoaded(entity, property)</Answer>
+  <Answer>Use try/catch</Answer>
+</Quiz>
+
+### Summary
+
+| Method | Purpose | Example |
+|:-------|:--------|:--------|
+| **Entry().Reference()** | Load single navigation | `Entry(post).Reference(p => p.Blog).LoadAsync()` |
+| **Entry().Collection()** | Load collection navigation | `Entry(blog).Collection(b => b.Posts).LoadAsync()` |
+| **Query()** | Filter/transform before loading | `.Query().Where(...).Take(5).LoadAsync()` |
+| **IsLoaded** | Check if already loaded | `Entry(blog).Collection(b => b.Posts).IsLoaded` |
+
+<KeyConcept title="What's Next?">
+Now you know all three loading strategies! But how do you choose between them? Let's explore **Loading Related Data Patterns** to see when to use each approach.
+</KeyConcept>
+
+<ProgressCheckpoint section="when-to-use" xpReward={20} />

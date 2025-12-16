@@ -1,0 +1,438 @@
+# Batch Operations and Bulk Updates
+
+One email to 100 people, not 100 emails! Learn how to perform bulk updates and deletes efficiently without loading entities into memory.
+
+---
+
+## Section 1: SaveChanges Batching
+
+### The Email Analogy 📧
+
+Imagine you need to tell 100 employees about a meeting change. Would you:
+
+- **Option A:** Send 100 individual emails, one at a time
+- **Option B:** Send one email to all 100 people at once
+
+EF Core is smart! When you call SaveChanges with multiple changes, it batches them into fewer round-trips.
+
+<InfoBox type="info">
+**Built-in Batching:** EF Core automatically groups your INSERT, UPDATE, and DELETE operations into batches when you call SaveChanges(). You get this for free!
+</InfoBox>
+
+<DotnetCodePreview
+  title="SaveChanges Batching"
+  code={`// EF Core batches multiple operations automatically
+var products = new List<Product>();
+for (int i = 0; i < 100; i++)
+{
+    products.Add(new Product { Name = $"Product {i}", Price = 9.99m });
+}
+
+context.Products.AddRange(products);
+await context.SaveChangesAsync();
+
+// Instead of 100 INSERT statements:
+// INSERT INTO Products (Name, Price) VALUES ('Product 0', 9.99)
+// INSERT INTO Products (Name, Price) VALUES ('Product 1', 9.99)
+// ... 98 more
+
+// EF Core sends batched SQL:
+// INSERT INTO Products (Name, Price) 
+// VALUES ('Product 0', 9.99), ('Product 1', 9.99), ... 
+// (multiple rows per statement!)
+
+// Default batch size: 42 for SQL Server
+// Can configure: options.MaxBatchSize(100)`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6],
+      highlight: "Prepare Data",
+      explanation: "Create 100 products in memory"
+    },
+    {
+      lineNumbers: [8, 9],
+      highlight: "Add and Save",
+      explanation: "AddRange and single SaveChanges call"
+    },
+    {
+      lineNumbers: [16, 17, 18, 19],
+      highlight: "Batched SQL",
+      explanation: "EF groups multiple values into single INSERT statements"
+    }
+  ]}
+/>
+
+### Configure Batch Size
+
+<DotnetCodePreview
+  title="Batch Size Configuration"
+  code={`// Configure max batch size
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(connectionString, sqlOptions =>
+    {
+        sqlOptions.MaxBatchSize(100);  // Increase for large imports
+    }));
+
+// Why batch size matters:
+// - Larger batches = fewer network round-trips
+// - But: database has statement size limits
+// - And: larger transactions hold locks longer
+
+// Default is 42 (SQL Server) - good for most cases
+// Increase for bulk imports
+// Decrease if you hit timeout issues`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6],
+      highlight: "MaxBatchSize",
+      explanation: "Set the maximum number of statements per batch"
+    },
+    {
+      lineNumbers: [9, 10, 11, 12],
+      highlight: "Trade-offs",
+      explanation: "Balance between round-trips and transaction size"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="savechanges-batching" xpReward={20} />
+
+---
+
+## Section 2: ExecuteUpdate (EF Core 7+)
+
+### The Game Changer 🚀
+
+Before EF Core 7, to update 1000 rows, you had to:
+1. Load all 1000 entities into memory
+2. Modify each one
+3. Call SaveChanges (1000 UPDATE statements!)
+
+Now with ExecuteUpdate, you can send a single SQL UPDATE directly!
+
+<QueryExecutionVisualizer
+  title="Traditional vs ExecuteUpdate"
+  steps={[
+    {
+      linq: `// 😰 OLD WAY: Load, modify, save
+var products = await context.Products
+    .Where(p => p.CategoryId == 5)
+    .ToListAsync();  // Load 1000 products!
+
+foreach (var p in products)
+    p.Price *= 1.1m;  // 10% increase
+
+await context.SaveChangesAsync();`,
+      sql: `-- Query 1: Load all products
+SELECT * FROM Products WHERE CategoryId = 5
+
+-- Then generate 1000 separate statements:
+UPDATE Products SET Price = 10.99 WHERE Id = 1
+UPDATE Products SET Price = 21.99 WHERE Id = 2
+UPDATE Products SET Price = 32.99 WHERE Id = 3
+... (997 more)`,
+      explanation: "Load 1000 rows into memory, track changes, send 1000 updates. Slow!"
+    },
+    {
+      linq: `// 🚀 NEW WAY: ExecuteUpdate (EF Core 7+)
+await context.Products
+    .Where(p => p.CategoryId == 5)
+    .ExecuteUpdateAsync(setters => setters
+        .SetProperty(p => p.Price, p => p.Price * 1.1m));`,
+      sql: `-- Single SQL statement!
+UPDATE [p]
+SET [p].[Price] = [p].[Price] * 1.1
+FROM [Products] AS [p]
+WHERE [p].[CategoryId] = 5`,
+      explanation: "One query, no entities loaded, simple, executed entirely on the database!"
+    }
+  ]}
+/>
+
+<DotnetCodePreview
+  title="ExecuteUpdate Patterns"
+  code={`// Simple property update
+await context.Products
+    .Where(p => p.Stock == 0)
+    .ExecuteUpdateAsync(s => s.SetProperty(p => p.IsAvailable, false));
+
+// Update multiple properties
+await context.Products
+    .Where(p => p.CategoryId == oldCategoryId)
+    .ExecuteUpdateAsync(s => s
+        .SetProperty(p => p.CategoryId, newCategoryId)
+        .SetProperty(p => p.UpdatedAt, DateTime.UtcNow));
+
+// Update based on current value
+await context.Products
+    .Where(p => p.Stock > 0)
+    .ExecuteUpdateAsync(s => s
+        .SetProperty(p => p.Stock, p => p.Stock - 1));
+
+// Update all matching records
+await context.Blogs
+    .Where(b => b.PublishedDate < cutoffDate)
+    .ExecuteUpdateAsync(s => s.SetProperty(b => b.IsArchived, true));
+
+// Complex calculation
+await context.Orders
+    .Where(o => o.Status == "Pending")
+    .Where(o => o.CreatedAt < DateTime.UtcNow.AddDays(-30))
+    .ExecuteUpdateAsync(s => s
+        .SetProperty(o => o.Status, "Expired")
+        .SetProperty(o => o.Note, "Auto-expired after 30 days"));`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Simple Update",
+      explanation: "Set a property to a constant value"
+    },
+    {
+      lineNumbers: [7, 8, 9, 10, 11],
+      highlight: "Multiple Properties",
+      explanation: "Chain SetProperty calls for multiple columns"
+    },
+    {
+      lineNumbers: [14, 15, 16, 17],
+      highlight: "Self-Reference",
+      explanation: "Reference current value in calculation: Stock = Stock - 1"
+    },
+    {
+      lineNumbers: [24, 25, 26, 27, 28, 29],
+      highlight: "Complex Filter",
+      explanation: "Combine multiple Where clauses with updates"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Important:** ExecuteUpdate bypasses change tracking! The DbContext doesn't know about these changes. If you have tracked entities, they won't reflect the updates.
+</InfoBox>
+
+<ProgressCheckpoint section="executeupdate" xpReward={25} />
+
+---
+
+## Section 3: ExecuteDelete (EF Core 7+)
+
+### Bulk Deletes Made Easy
+
+Same pattern as ExecuteUpdate, but for deletions:
+
+<QueryExecutionVisualizer
+  title="Traditional vs ExecuteDelete"
+  steps={[
+    {
+      linq: `// 😰 OLD WAY: Load, remove, save
+var oldLogs = await context.Logs
+    .Where(l => l.Date < cutoff)
+    .ToListAsync();  // Load millions?!
+
+context.Logs.RemoveRange(oldLogs);
+await context.SaveChangesAsync();`,
+      sql: `-- Query 1: Load all old logs
+SELECT * FROM Logs WHERE Date < @cutoff
+
+-- Then 1 million DELETE statements:
+DELETE FROM Logs WHERE Id = 1
+DELETE FROM Logs WHERE Id = 2
+... (999,998 more)`,
+      explanation: "Loading millions of rows just to delete them is insane!"
+    },
+    {
+      linq: `// 🚀 NEW WAY: ExecuteDelete
+await context.Logs
+    .Where(l => l.Date < cutoff)
+    .ExecuteDeleteAsync();`,
+      sql: `-- Single SQL statement!
+DELETE FROM [Logs]
+WHERE [Date] < @cutoff`,
+      explanation: "One query, no entities loaded, fast!"
+    }
+  ]}
+/>
+
+<DotnetCodePreview
+  title="ExecuteDelete Patterns"
+  code={`// Delete by condition
+await context.Logs
+    .Where(l => l.Level == "Debug")
+    .Where(l => l.Timestamp < DateTime.UtcNow.AddDays(-7))
+    .ExecuteDeleteAsync();
+
+// Delete related entities (with cascade)
+// Be careful! This can delete a lot of data!
+await context.Blogs
+    .Where(b => b.IsDeleted)
+    .ExecuteDeleteAsync();  // Also deletes Posts if cascade configured!
+
+// Delete orphaned records
+await context.OrderItems
+    .Where(oi => oi.Order == null)
+    .ExecuteDeleteAsync();
+
+// Soft delete pattern (update instead of delete!)
+await context.Users
+    .Where(u => u.LastLogin < DateTime.UtcNow.AddYears(-2))
+    .ExecuteUpdateAsync(s => s
+        .SetProperty(u => u.IsDeleted, true)
+        .SetProperty(u => u.DeletedAt, DateTime.UtcNow));`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5],
+      highlight: "Multiple Conditions",
+      explanation: "Delete only records matching all conditions"
+    },
+    {
+      lineNumbers: [9, 10, 11],
+      highlight: "Cascade Warning",
+      explanation: "ExecuteDelete respects cascade delete—be careful!"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21, 22],
+      highlight: "Soft Delete",
+      explanation: "Use ExecuteUpdate for soft deletes—don't actually remove data"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Cascade Deletes:** ExecuteDelete triggers cascade deletes configured in your model. Make sure you understand what will be deleted!
+</InfoBox>
+
+<ProgressCheckpoint section="executedelete" xpReward={20} />
+
+---
+
+## Section 4: Best Practices
+
+### When to Use Each Approach
+
+<Comparison
+  title="Bulk Operation Strategies"
+  items={[
+    {
+      label: "SaveChanges Batching",
+      description: "For: Normal CRUD with tracked entities. When: You need change tracking, validation, events. Automatic!",
+      isCorrect: true
+    },
+    {
+      label: "ExecuteUpdate/Delete",
+      description: "For: Mass updates/deletes. When: Performance critical, don't need tracking/events. EF Core 7+",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<DotnetCodePreview
+  title="Best Practices"
+  code={`// ✅ DO: Use ExecuteUpdate for bulk operations
+await context.Products
+    .Where(p => p.LastUpdated < staleDate)
+    .ExecuteUpdateAsync(s => s.SetProperty(p => p.NeedsRefresh, true));
+
+// ✅ DO: Use transactions for multiple operations
+await using var transaction = await context.Database.BeginTransactionAsync();
+try
+{
+    await context.OldOrders.ExecuteDeleteAsync();
+    await context.OrderArchive.ExecuteUpdateAsync(...);
+    await transaction.CommitAsync();
+}
+catch
+{
+    await transaction.RollbackAsync();
+    throw;
+}
+
+// ❌ DON'T: Mix tracked entities with ExecuteUpdate
+var products = await context.Products.ToListAsync();  // Tracked
+await context.Products.ExecuteUpdateAsync(...);       // Updates bypass tracker!
+// products collection is now STALE!
+
+// ✅ DO: Clear change tracker if mixing
+context.ChangeTracker.Clear();  // Remove stale tracked entities
+
+// ❌ DON'T: Forget about relationships
+await context.Categories.ExecuteDeleteAsync();  // Fails if Products reference!
+
+// ✅ DO: Handle relationships properly
+await context.Products
+    .Where(p => p.CategoryId == categoryToDelete)
+    .ExecuteUpdateAsync(s => s.SetProperty(p => p.CategoryId, (int?)null));
+await context.Categories
+    .Where(c => c.Id == categoryToDelete)
+    .ExecuteDeleteAsync();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Simple Bulk Update",
+      explanation: "Perfect use case—update flag on many records"
+    },
+    {
+      lineNumbers: [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+      highlight: "Transaction Safety",
+      explanation: "Wrap multiple Execute calls in a transaction"
+    },
+    {
+      lineNumbers: [21, 22, 23, 24],
+      highlight: "Stale Entity Warning",
+      explanation: "Tracked entities don't know about ExecuteUpdate changes!"
+    },
+    {
+      lineNumbers: [30, 31, 32, 33, 34, 35, 36],
+      highlight: "Handle FKs",
+      explanation: "Clear or update foreign keys before deleting referenced rows"
+    }
+  ]}
+/>
+
+### Performance Comparison
+
+| Operation | Traditional | ExecuteUpdate/Delete | Improvement |
+|:----------|:------------|:---------------------|:------------|
+| Update 1,000 rows | ~2,000ms | ~50ms | **40x faster** |
+| Update 10,000 rows | ~20,000ms | ~100ms | **200x faster** |
+| Delete 100,000 rows | Timeout | ~500ms | **∞ improvement** |
+
+### Quick Knowledge Check
+
+<Quiz id="executeupdate-benefit-quiz">
+  <Question>What's the main advantage of ExecuteUpdate over load-modify-save?</Question>
+  <Answer>It enables change tracking</Answer>
+  <Answer>It validates entity rules</Answer>
+  <Answer correct>It executes a single SQL statement without loading entities</Answer>
+  <Answer>It automatically handles concurrency</Answer>
+</Quiz>
+
+<Quiz id="executeupdate-bypass-quiz">
+  <Question>What does ExecuteUpdate bypass?</Question>
+  <Answer>Database constraints</Answer>
+  <Answer correct>Change tracking and entity events</Answer>
+  <Answer>Foreign key relationships</Answer>
+  <Answer>Database transactions</Answer>
+</Quiz>
+
+<Quiz id="bulk-when-quiz">
+  <Question>When should you prefer traditional SaveChanges over ExecuteUpdate?</Question>
+  <Answer>When updating more than 100 records</Answer>
+  <Answer correct>When you need change tracking, validation, or entity events</Answer>
+  <Answer>When performance is critical</Answer>
+  <Answer>When deleting records</Answer>
+</Quiz>
+
+### Summary
+
+| Method | Use Case | Loads Entities? | Tracking? |
+|:-------|:---------|:---------------|:----------|
+| `SaveChanges()` | Normal CRUD | Yes | Yes |
+| `ExecuteUpdate()` | Bulk updates | No | No |
+| `ExecuteDelete()` | Bulk deletes | No | No |
+
+<KeyConcept title="The Bulk Operations Rule">
+**If you're updating or deleting more than ~50 records and don't need change tracking, use ExecuteUpdate/ExecuteDelete.**
+
+They're often 10-100x faster than the traditional load-modify-save pattern!
+</KeyConcept>
+
+<ProgressCheckpoint section="batch-best-practices" xpReward={20} />

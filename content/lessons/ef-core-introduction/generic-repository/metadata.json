@@ -1,0 +1,18 @@
+{
+  "id": "generic-repository",
+  "title": "Generic Repository Implementation",
+  "description": "Learn how to implement a Generic Repository pattern in EF Core to abstract data access logic and reduce code duplication.",
+  "milestone": "ef-core-introduction",
+  "order": 40,
+  "sections": [
+    "introduction",
+    "the-interface",
+    "implementation",
+    "pros-cons"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 30,
+  "xpReward": 250,
+  "prerequisites": ["dbcontext-dbset", "crud-operations"],
+  "tags": ["repository-pattern", "generics", "abstraction", "architecture"]
+}

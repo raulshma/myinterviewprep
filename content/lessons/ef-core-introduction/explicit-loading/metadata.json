@@ -1,0 +1,18 @@
+{
+  "id": "explicit-loading",
+  "title": "Explicit Loading - Manual Control Over Loading",
+  "description": "Learn to use Entry().Reference() and Entry().Collection() to load related data on-demand with full control.",
+  "milestone": "loading-strategies",
+  "order": 3,
+  "sections": [
+    "what-is-explicit-loading",
+    "reference-loading",
+    "collection-loading",
+    "when-to-use"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 20,
+  "xpReward": 80,
+  "prerequisites": ["lazy-loading"],
+  "tags": ["ef-core", "explicit-loading", "entry", "reference", "collection", "dotnet"]
+}

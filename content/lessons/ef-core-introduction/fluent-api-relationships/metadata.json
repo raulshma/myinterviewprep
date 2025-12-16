@@ -1,0 +1,18 @@
+{
+  "id": "fluent-api-relationships",
+  "title": "Mastering Fluent API for Relationships",
+  "description": "Unlock the full power of EF Core relationships by mastering the Fluent API. Learn to configure complex scenarios that conventions can't handle.",
+  "milestone": "advanced-relationships",
+  "order": 2,
+  "sections": [
+    "why-fluent-api",
+    "one-to-one-config",
+    "one-to-many-config",
+    "many-to-many-config"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 35,
+  "xpReward": 120,
+  "prerequisites": ["ef-relationships", "one-to-many"],
+  "tags": ["ef-core", "fluent-api", "relationships", "configuration", "advanced"]
+}

@@ -1,0 +1,121 @@
+# Dependency Injection with Repositories
+
+## Section 1: Registration in Program.cs
+
+To use your shiny new repositories, you must tell the application about them. We do this in the **Dependency Injection (DI) Container**.
+
+<DotnetCodePreview
+  title="Program.cs Implementation"
+  code={`var builder = WebApplication.CreateBuilder(args);
+
+// 1. Register DbContext (Usually Scoped)
+builder.Services.AddDbContext<BloggingContext>(options =>
+    options.UseSqlServer(connectionString));
+
+// 2. Register Generic Repository
+builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+
+// 3. Register Specific Repositories
+builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+var app = builder.Build();`}
+  steps={[
+    {
+      lineNumbers: [8],
+      highlight: "Open Generics",
+      explanation: "Using typeof(IGenericRepository<>) registers the open generic type, so you can inject IGenericRepository<ANY_TYPE> automatically."
+    },
+    {
+      lineNumbers: [11],
+      highlight: "Scoped Lifetime",
+      explanation: "Repositories are almost ALWAYS registered as Scoped to match the DbContext lifetime."
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="service-registration" xpReward={70} />
+
+---
+
+## Section 2: Understanding Lifetimes ⏳
+
+Why `Scoped`? Why not `Singleton`?
+
+<DependencyInjectionVisualizer />
+
+- **Transient**: Created **every time** it's requested.
+  - *Risk*: A new repository means potentially a new DbContext instance if not careful, or just unnecessary object creation.
+- **Scoped**: Created **once per HTTP request**.
+  - *Best Choice*: Ensures the Repository shares the *exact same* DbContext instance as other services in the request. This preserves the transaction!
+- **Singleton**: Created **once purely**.
+  - *Crash*: You CANNOT inject a Scoped DbContext into a Singleton Repository. It will throw a runtime error.
+
+<InfoBox type="warning">
+  **Captive Dependency:** Never inject a Scoped service (like a Repo) into a Singleton service. The Singleton will hold onto the Scoped service forever, effectively making it a Singleton too (and keeping the DbContext alive forever!).
+</InfoBox>
+
+<ProgressCheckpoint section="lifetimes" xpReward={80} />
+
+---
+
+## Section 3: Injection and Usage
+
+Now, inject the abstraction (`interface`), not the implementation (`class`).
+
+<DotnetCodePreview
+  title="Injecting into a Controller"
+  code={`[ApiController]
+[Route("api/[controller]")]
+public class PostsController : ControllerBase
+{
+    private readonly IPostRepository _postRepo;
+    private readonly IGenericRepository<Category> _categoryRepo;
+
+    // CTOR Injection
+    public PostsController(
+        IPostRepository postRepo, 
+        IGenericRepository<Category> categoryRepo)
+    {
+        _postRepo = postRepo;
+        _categoryRepo = categoryRepo;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetFeatured()
+    {
+        // Using specific method
+        var posts = await _postRepo.GetFeaturedPostsAsync();
+        return Ok(posts);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateCategory(Category category)
+    {
+        // Using generic method
+        _categoryRepo.Add(category);
+        
+        // Wait... who saves changes?
+        // Usually handled by UnitOfWork (next lesson!)
+        // Or if simple, maybe the Repo has a Save method.
+        return Ok();
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [8],
+      highlight: "Interface Injection",
+      explanation: "We implement the Dependency Inversion Principle (DIP) by depending on the interface."
+    }
+  ]}
+/>
+
+<Quiz id="di-quiz">
+  <Question>What happens if you register your Repository as Singleton but your DbContext is Scoped?</Question>
+  <Answer>It works faster because of caching</Answer>
+  <Answer correct>It throws a runtime exception (Captured Dependency)</Answer>
+  <Answer>It works but creates memory leaks</Answer>
+  <Answer>The DbContext becomes Singleton automatically</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="injection-usage" xpReward={100} />

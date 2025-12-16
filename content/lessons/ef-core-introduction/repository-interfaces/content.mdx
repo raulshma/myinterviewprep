@@ -1,0 +1,138 @@
+# Repository Interfaces
+
+## Section 1: Extending the Generic
+
+Generic repositories are great for standard CRUD, but what if you need `GetActiveUsersByRole()` or `GetTopSellingProducts()`?
+
+You shouldn't clutter your `GenericRepository` with entity-specific logic. Instead, you create a **Specific Repository Interface** that inherits from the generic one.
+
+<DotnetCodePreview
+  title="Specific Repository Interface"
+  code={`// 1. Define the specific contract
+public interface IProductRepository : IGenericRepository<Product>
+{
+    // Add specific capabilities
+    Task<IEnumerable<Product>> GetFeaturedProductsAsync();
+    
+    Task<IEnumerable<Product>> GetProductsByPriceRangeAsync(
+        decimal minPrice, 
+        decimal maxPrice
+    );
+}
+
+// 2. Implement it
+public class ProductRepository : GenericRepository<Product>, IProductRepository
+{
+    public ProductRepository(BloggingContext context) : base(context)
+    {
+    }
+
+    public async Task<IEnumerable<Product>> GetFeaturedProductsAsync()
+    {
+        // Encapsulating the "Featured" logic here
+        return await _dbSet
+            .Where(p => p.IsFeatured && p.StockQuantity > 0)
+            .OrderByDescending(p => p.Rating)
+            .Take(10)
+            .ToListAsync();
+    }
+    
+    // ... Implement other methods
+}`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Inheritance",
+      explanation: "We inherit IGenericRepository<Product> to get free CRUD methods."
+    },
+    {
+      lineNumbers: [15],
+      highlight: "Logic Encapsulation",
+      explanation: "Business rules (what defines a 'featured' product) live inside the repo, not the controller."
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="extending-generic" xpReward={60} />
+
+---
+
+## Section 2: The Leaky Abstraction Problem 🚰
+
+A common debate is: **Should a Repository return `IQueryable<T>`?**
+
+### The Risk of IQueryable
+If you return `IQueryable<T>`, the caller (Service/Controller) can keep chaining LINQ methods.
+
+```csharp
+// In Controller
+var q = _repo.GetAllQueryable(); // Returns IQueryable
+var data = q.Where(x => x.Active).ToList(); // Logic leaked to Controller!
+```
+
+This breaks the pattern because your data access logic is now spread everywhere.
+
+<Comparison
+  title="Return Types Strategy"
+  items={[
+    {
+      label: "Return IEnumerable / List",
+      description: "Safer. The query is executed inside the repository. The caller gets data, not a query builder.",
+      isCorrect: true
+    },
+    {
+      label: "Return IQueryable",
+      description: "Flexible but risky. Database logic leaks into upper layers. Exceptions might occur outside the repository.",
+      isCorrect: false
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+  For read-heavy scenarios where you need massive flexibility (like OData or GraphQL), exposing `IQueryable` might be pragmatic. But for strict architecture, return materialized collections (`IEnumerable`, `IReadOnlyList`).
+</InfoBox>
+
+<ProgressCheckpoint section="leak-problem" xpReward={70} />
+
+---
+
+## Section 3: Implementation Example
+
+Complete implementation of a specific repository.
+
+<DotnetCodePreview
+  title="Complete Specific Repository"
+  code={`public class OrderRepository : GenericRepository<Order>, IOrderRepository
+{
+    public OrderRepository(ShopContext context) : base(context)
+    {
+    }
+
+    public async Task<Order> GetOrderWithDetailsAsync(int id)
+    {
+        // Using Eager Loading here keeps the include logic 
+        // hidden from the service layer.
+        return await _dbSet
+            .Include(o => o.Items)
+            .ThenInclude(i => i.Product)
+            .FirstOrDefaultAsync(o => o.Id == id);
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [11],
+      highlight: "Includes Handling",
+      explanation: "Repositories are the perfect place to handle complex Eager Loading chains."
+    }
+  ]}
+/>
+
+<Quiz id="interface-quiz">
+  <Question>Why should you create a specific interface like `IUserRepository` instead of just using `IGenericRepository<User>`?</Question>
+  <Answer>To make the code compilable</Answer>
+  <Answer correct>To add specific business queries related to Users</Answer>
+  <Answer>To hide the entity type</Answer>
+  <Answer>It is mandatory in Clean Architecture</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="implementation-example" xpReward={70} />

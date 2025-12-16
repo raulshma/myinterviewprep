@@ -1,0 +1,18 @@
+{
+  "id": "scaffolding",
+  "title": "Scaffolding from Existing Databases",
+  "description": "Learn how to generate EF Core entity classes and DbContext from an existing database using the scaffolding command.",
+  "milestone": "database-first",
+  "order": 0,
+  "sections": [
+    "what-is-scaffolding",
+    "scaffold-command",
+    "command-preview",
+    "scaffolding-options"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 20,
+  "xpReward": 100,
+  "prerequisites": ["databases", "ef-core-intro"],
+  "tags": ["database-first", "scaffolding", "reverse-engineering", "cli"]
+}

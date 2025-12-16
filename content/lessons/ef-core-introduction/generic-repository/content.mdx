@@ -1,0 +1,175 @@
+# Generic Repository Implementation
+
+## Section 1: Introduction to Generic Repositories
+
+### The Donut Shop Problem 🍩
+
+Imagine you run a bakery. You sell Donuts, Bagels, and Croissants.
+
+Without a generic system, you might have:
+- A specific box for Donuts
+- A specific box for Bagels
+- A specific box for Croissants
+
+This is like writing a separate repository for every entity: `DonutRepository`, `BagelRepository`, `CroissantRepository`. They all do basically the same things: *Add*, *Get*, *Remove*.
+
+A **Generic Repository** is like a "Universal Box" 📦. It works for *any* pastry you throw at it.
+
+<InfoBox type="info">
+  **Definition:** A Generic Repository is a pattern where you create a single class that can handle standard CRUD operations for *any* entity type, using C# Generics (`<T>`).
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={50} />
+
+---
+
+## Section 2: The Interface
+
+First, we define the contract. This interface describes what our universal box can do.
+
+<DotnetCodePreview
+  title="IGenericRepository interface"
+  code={`using System.Linq.Expressions;
+
+public interface IGenericRepository<T> where T : class
+{
+    // READ
+    Task<T?> GetByIdAsync(int id);
+    Task<IEnumerable<T>> GetAllAsync();
+    IEnumerable<T> Find(Expression<Func<T, bool>> expression);
+
+    // CREATE
+    void Add(T entity);
+    void AddRange(IEnumerable<T> entities);
+
+    // DELETE
+    void Remove(T entity);
+    void RemoveRange(IEnumerable<T> entities);
+    
+    // Note: Update is often handled by tracking, 
+    // but you can add void Update(T entity) if needed.
+}`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "Generic Constraint",
+      explanation: "where T : class ensures this repository only works with reference types (our Entities)."
+    },
+    {
+      lineNumbers: [8],
+      highlight: "Expression Parameter",
+      explanation: "Accepting a lambda expression allows flexible filtering without writing new methods for every query."
+    }
+  ]}
+/>
+
+### Why Expressions?
+
+In the `Find` method, `Expression<Func<T, bool>>` looks scary, but it just means "passing a lambda logic".
+It allows you to call:
+`_repo.Find(user => user.Age > 18)`
+Instead of writing a specific method `FindUsersOlderThan(int age)`.
+
+<ProgressCheckpoint section="the-interface" xpReward={60} />
+
+---
+
+## Section 3: The Implementation
+
+Now, let's build the actual class using EF Core's `DbSet`.
+
+<DotnetCodePreview
+  title="GenericRepository Implementation"
+  code={`public class GenericRepository<T> : IGenericRepository<T> where T : class
+{
+    protected readonly DbContext _context;
+    // Direct access to the generic DbSet
+    protected readonly DbSet<T> _dbSet; 
+
+    public GenericRepository(DbContext context)
+    {
+        _context = context;
+        _dbSet = _context.Set<T>(); // Magic happens here!
+    }
+
+    public async Task<T?> GetByIdAsync(int id)
+    {
+        return await _dbSet.FindAsync(id);
+    }
+
+    public async Task<IEnumerable<T>> GetAllAsync()
+    {
+        return await _dbSet.ToListAsync();
+    }
+
+    public IEnumerable<T> Find(Expression<Func<T, bool>> expression)
+    {
+        return _dbSet.Where(expression);
+    }
+
+    public void Add(T entity)
+    {
+        _dbSet.Add(entity);
+    }
+
+    public void Remove(T entity)
+    {
+        _dbSet.Remove(entity);
+    }
+    
+    public void AddRange(IEnumerable<T> entities)
+    {
+        _dbSet.AddRange(entities);
+    }
+    
+    public void RemoveRange(IEnumerable<T> entities)
+    {
+        _dbSet.RemoveRange(entities);
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [5],
+      highlight: "DbSet Access",
+      explanation: "We access the specific table for type T using _context.Set<T>()."
+    },
+    {
+      lineNumbers: [14],
+      highlight: "Direct Proxy",
+      explanation: "Most methods just proxy the call to the underlying DbSet."
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+  **Wait, where is SaveChanges?**
+  A pure Repository usually *doesn't* call `SaveChanges()`. That is the job of the **Unit of Work** pattern, which coordinates changes across multiple repositories into one transaction.
+</InfoBox>
+
+<ProgressCheckpoint section="implementation" xpReward={70} />
+
+---
+
+## Section 4: Pros & Cons
+
+Is the Generic Repository always the right choice? Not necessarily.
+
+| Feature | Pros ✅ | Cons ❌ |
+| :--- | :--- | :--- |
+| **Code Reuse** | Write CRUD logic once, use everywhere. | You might re-implement features EF Core already has. |
+| **Testing** | Easy to mock `IGenericRepository<T>` for unit tests. | `DbSet<T>` is strictly speaking a repository itself. |
+| **Consistency** | Forces all data access to go through one standard gate. | Can hide powerful EF Core features (like `Includes`, `SplitQuery`). |
+
+<Quiz id="generic-repo-quiz">
+  <Question>Which EF Core class does a Generic Repository primarily wrap?</Question>
+  <Answer>DbContext</Answer>
+  <Answer correct>DbSet&lt;T&gt;</Answer>
+  <Answer>DbCommand</Answer>
+  <Answer>IQueryable</Answer>
+</Quiz>
+
+<KeyConcept title="The Verdict">
+  The Generic Repository is excellent for **reducing boilerplate** in large applications and **standardizing** access patterns. However, for simple apps, using `DbContext` directly is often perfectly fine!
+</KeyConcept>
+
+<ProgressCheckpoint section="pros-cons" xpReward={70} />

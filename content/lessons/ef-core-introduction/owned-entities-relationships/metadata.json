@@ -1,0 +1,18 @@
+{
+  "id": "owned-entities-relationships",
+  "title": "Owned Entities - Value Objects in EF Core",
+  "description": "Learn how to model Value Objects using EF Core's Owned Entities. Understand how they differ from regular entities and how to map them to the database.",
+  "milestone": "advanced-relationships",
+  "order": 4,
+  "sections": [
+    "value-objects-concept",
+    "owns-one",
+    "owns-many",
+    "nested-owned-entities"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 35,
+  "xpReward": 120,
+  "prerequisites": ["entity-configuration", "fluent-api-relationships"],
+  "tags": ["ef-core", "owned-entities", "value-objects", "ddd"]
+}

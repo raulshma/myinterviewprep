@@ -1,0 +1,411 @@
+# Compiled Queries
+
+Cook once, serve many! Learn how to pre-compile your LINQ queries for lightning-fast repeated execution on hot paths.
+
+---
+
+## Section 1: The Compilation Cost
+
+### The Recipe Card Analogy 🧑‍🍳
+
+Imagine you're a chef who makes the same dish 100 times a day. Would you:
+
+- **Option A:** Read the whole recipe book each time, find the recipe, and interpret it step-by-step
+- **Option B:** Create a quick reference card with just the steps you need
+
+Of course you'd choose the recipe card! That's what compiled queries do—they turn your LINQ into a pre-prepared SQL template.
+
+<InfoBox type="info">
+**What Happens When You Write LINQ:**
+1. EF Core parses your expression tree
+2. Visits each node to understand the query shape
+3. Generates the SQL string
+4. Creates parameter bindings
+5. Caches the result (by default!)
+
+This takes ~1-5ms per query shape. For a query that runs 1000 times/second, that adds up!
+</InfoBox>
+
+### Understanding Query Caching
+
+<DotnetCodePreview
+  title="EF Core's Built-in Cache"
+  code={`// EF Core automatically caches query translations
+// Based on the "shape" of the expression tree
+
+// These two queries have the SAME shape:
+var product1 = await context.Products
+    .Where(p => p.Id == 1)
+    .FirstOrDefaultAsync();
+
+var product2 = await context.Products
+    .Where(p => p.Id == 2)
+    .FirstOrDefaultAsync();
+
+// EF recognizes: "Same structure, different parameter value"
+// The SQL template is reused, only @p0 changes
+
+// But THIS is a different shape:
+var product3 = await context.Products
+    .Where(p => p.Id == 1 && p.IsActive)
+    .FirstOrDefaultAsync();
+
+// New condition = new shape = cache miss = recompile!
+
+// ⚠️ The cache has a limit! (~1000 entries by default)
+// High-cardinality queries can pollute the cache`}
+  steps={[
+    {
+      lineNumbers: [5, 6, 7, 8, 9, 10, 11],
+      highlight: "Same Shape",
+      explanation: "Different parameter values don't change the query shape"
+    },
+    {
+      lineNumbers: [16, 17, 18, 19],
+      highlight: "Different Shape",
+      explanation: "Adding conditions changes the shape—causes cache miss"
+    },
+    {
+      lineNumbers: [22, 23],
+      highlight: "Cache Limits",
+      explanation: "Too many unique query shapes = cache eviction = recompilation"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="Query Compilation Timeline"
+  steps={[
+    {
+      linq: `// First execution of a query shape
+var product = context.Products
+    .Where(p => p.Id == id)
+    .FirstOrDefault();`,
+      sql: `Step 1: Parse LINQ expression tree    (~0.5ms)
+Step 2: Analyze and validate           (~0.3ms)
+Step 3: Generate SQL                    (~0.8ms)
+Step 4: Create parameter bindings      (~0.2ms)
+Step 5: Cache the result               (~0.1ms)
+Step 6: Execute on database            (~5ms)
+─────────────────────────────────────────────
+Total first execution:                  ~7ms`,
+      explanation: "First time: ~2ms spent on compilation, then execution"
+    },
+    {
+      linq: `// Second execution (cache hit!)
+var product = context.Products
+    .Where(p => p.Id == differentId)
+    .FirstOrDefault();`,
+      sql: `Step 1: Hash expression tree          (~0.1ms)
+Step 2: Find in cache                  (~0.05ms)
+Step 3: Substitute parameters          (~0.05ms)
+Step 4: Execute on database            (~5ms)
+─────────────────────────────────────────────
+Total cached execution:                 ~5.2ms`,
+      explanation: "Subsequent: ~0.2ms overhead—nearly 10x faster than first!"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="query-compilation-cost" xpReward={20} />
+
+---
+
+## Section 2: EF.CompileQuery
+
+### Pre-Compile for Maximum Speed
+
+For queries that run thousands of times, we can eliminate even the cache lookup overhead:
+
+<DotnetCodePreview
+  title="Using EF.CompileQuery"
+  code={`// Step 1: Define the compiled query as a static field
+private static readonly Func<AppDbContext, int, Product?> GetProductById =
+    EF.CompileQuery(
+        (AppDbContext context, int id) =>
+            context.Products
+                .Include(p => p.Category)
+                .FirstOrDefault(p => p.Id == id)
+    );
+
+// Step 2: Use it like a regular method!
+public class ProductService
+{
+    private readonly AppDbContext _context;
+    
+    public Product? GetById(int id)
+    {
+        return GetProductById(_context, id);
+    }
+}
+
+// For async queries:
+private static readonly Func<AppDbContext, int, Task<Product?>> GetProductByIdAsync =
+    EF.CompileAsyncQuery(
+        (AppDbContext context, int id) =>
+            context.Products
+                .Include(p => p.Category)
+                .FirstOrDefault(p => p.Id == id)
+    );
+
+// Usage:
+public async Task<Product?> GetByIdAsync(int id)
+{
+    return await GetProductByIdAsync(_context, id);
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7, 8, 9],
+      highlight: "Define Compiled Query",
+      explanation: "EF.CompileQuery creates a pre-compiled delegate. Store as static readonly!"
+    },
+    {
+      lineNumbers: [16, 17, 18],
+      highlight: "Invoke It",
+      explanation: "Call it like a method—pass context and parameters"
+    },
+    {
+      lineNumbers: [22, 23, 24, 25, 26, 27, 28],
+      highlight: "Async Version",
+      explanation: "Use EF.CompileAsyncQuery for async queries"
+    }
+  ]}
+/>
+
+### Multiple Parameters
+
+<DotnetCodePreview
+  title="Compiled Queries with Multiple Parameters"
+  code={`// Up to 8 parameters supported!
+private static readonly Func<AppDbContext, string, decimal, int, IEnumerable<Product>>
+    SearchProducts = EF.CompileQuery(
+        (AppDbContext context, string category, decimal minPrice, int limit) =>
+            context.Products
+                .Where(p => p.Category.Name == category)
+                .Where(p => p.Price >= minPrice)
+                .OrderByDescending(p => p.Rating)
+                .Take(limit)
+    );
+
+// Usage:
+var results = SearchProducts(_context, "Electronics", 99.99m, 20);
+
+// With AsNoTracking:
+private static readonly Func<AppDbContext, int, IEnumerable<OrderDto>> GetRecentOrders =
+    EF.CompileQuery(
+        (AppDbContext context, int customerId) =>
+            context.Orders
+                .AsNoTracking()
+                .Where(o => o.CustomerId == customerId)
+                .OrderByDescending(o => o.OrderDate)
+                .Take(10)
+                .Select(o => new OrderDto { Id = o.Id, Date = o.OrderDate, Total = o.Total })
+    );`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      highlight: "Multiple Parameters",
+      explanation: "Define parameters in the lambda—just like a regular method"
+    },
+    {
+      lineNumbers: [16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+      highlight: "With Projections",
+      explanation: "Compiled queries work with projections, AsNoTracking, and more!"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Limitation:** Compiled queries must return `IEnumerable<T>` or a single entity. They can't use `ToListAsync()` in the definition—that's called when you invoke the compiled query.
+</InfoBox>
+
+<ProgressCheckpoint section="ef-compilequery" xpReward={25} />
+
+---
+
+## Section 3: When to Compile
+
+### Identifying Hot Paths 🔥
+
+Not every query needs compilation! Focus on:
+
+<DotnetCodePreview
+  title="Hot Path Identification"
+  code={`// 🔥 HOT PATH: Authentication/Authorization
+// Runs on EVERY request
+private static readonly Func<AppDbContext, string, Task<User?>> GetUserByClaim =
+    EF.CompileAsyncQuery((AppDbContext ctx, string claimValue) =>
+        ctx.Users.FirstOrDefault(u => u.SecurityStamp == claimValue));
+
+// 🔥 HOT PATH: Tenant resolution (multi-tenant apps)
+private static readonly Func<AppDbContext, string, Task<Tenant?>> GetTenantByDomain =
+    EF.CompileAsyncQuery((AppDbContext ctx, string domain) =>
+        ctx.Tenants.FirstOrDefault(t => t.Domain == domain));
+
+// 🔥 HOT PATH: API endpoint hit 1000+ times/minute
+private static readonly Func<AppDbContext, int, Product?> GetProductDetails =
+    EF.CompileQuery((AppDbContext ctx, int id) =>
+        ctx.Products
+            .Include(p => p.Category)
+            .Include(p => p.Reviews.OrderByDescending(r => r.Date).Take(5))
+            .FirstOrDefault(p => p.Id == id));
+
+// ❄️ COLD PATH: Admin reports (run once/day)
+// Don't bother compiling - overhead not worth it
+var report = await context.Orders
+    .Where(o => o.Date >= startDate)
+    .GroupBy(o => o.Category)
+    .Select(...)
+    .ToListAsync();
+
+// ❄️ COLD PATH: One-time migrations/imports
+// Don't compile - runs once ever`}
+  steps={[
+    {
+      lineNumbers: [3, 4, 5, 6],
+      highlight: "Auth Hot Path",
+      explanation: "User lookup happens on every request—definitely compile!"
+    },
+    {
+      lineNumbers: [13, 14, 15, 16, 17, 18, 19],
+      highlight: "API Hot Path",
+      explanation: "High-traffic endpoints benefit most from compilation"
+    },
+    {
+      lineNumbers: [22, 23, 24, 25, 26, 27],
+      highlight: "Cold Path",
+      explanation: "Infrequent queries don't benefit—compilation overhead wasted"
+    }
+  ]}
+/>
+
+<Comparison
+  title="Compile or Not?"
+  items={[
+    {
+      label: "Compile",
+      description: "Queries running 100+ times/second, auth/tenant lookups, core API endpoints, real-time features",
+      isCorrect: true
+    },
+    {
+      label: "Don't Compile",
+      description: "Admin features, reports, batch jobs, anything running less than once per minute",
+      isCorrect: true
+    }
+  ]}
+/>
+
+### Benchmarking Impact
+
+| Scenario | Regular Query | Compiled Query | Improvement |
+|:---------|:-------------|:---------------|:------------|
+| Simple lookup | ~0.3ms overhead | ~0.05ms overhead | 6x faster |
+| With Include | ~0.5ms overhead | ~0.08ms overhead | 6x faster |
+| Complex join | ~0.8ms overhead | ~0.1ms overhead | 8x faster |
+
+<InfoBox type="tip">
+**Real Impact:** For a query that takes 5ms to execute, saving 0.5ms of compilation overhead is 10% improvement. At 10,000 queries/minute, that's 83 seconds saved per minute!
+</InfoBox>
+
+<ProgressCheckpoint section="when-to-compile" xpReward={20} />
+
+---
+
+## Section 4: Precompiled Queries (EF Core 8+)
+
+### Ahead-of-Time Compilation
+
+EF Core 8 introduces precompiled queries that compile at build time, not runtime:
+
+<DotnetCodePreview
+  title="Precompiled Queries Setup"
+  code={`// Step 1: Run the CLI command
+// dotnet ef dbcontext optimize --precompile-queries
+
+// This generates a compiled model with all queries precompiled!
+// Output: CompiledModels/AppDbContextModel.cs
+
+// Step 2: Use the compiled model
+protected override void OnConfiguring(DbContextOptionsBuilder options)
+{
+    options.UseModel(AppDbContextModel.Instance);
+}
+
+// Or in DI:
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(connectionString)
+           .UseModel(AppDbContextModel.Instance));
+
+// Benefits:
+// - Zero runtime compilation overhead
+// - Faster application startup
+// - Works with NativeAOT
+// - All queries "just work" at full speed`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "CLI Command",
+      explanation: "Run this during build/publish to precompile all queries"
+    },
+    {
+      lineNumbers: [8, 9, 10, 11],
+      highlight: "Use Compiled Model",
+      explanation: "Tell EF Core to use the precompiled model"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21, 22],
+      highlight: "Benefits",
+      explanation: "Zero overhead, faster startup, NativeAOT compatible"
+    }
+  ]}
+/>
+
+<InfoBox type="info">
+**EF Core 8+ Feature:** Precompiled queries are part of the AOT (Ahead-of-Time) compilation support. They're especially useful for:
+- Serverless/Lambda where cold start matters
+- NativeAOT deployments
+- Applications with many query shapes
+</InfoBox>
+
+### Quick Knowledge Check
+
+<Quiz id="compile-when-quiz">
+  <Question>When should you use EF.CompileQuery?</Question>
+  <Answer>For every query to maximize performance</Answer>
+  <Answer correct>For hot path queries that execute frequently (100+ times/second)</Answer>
+  <Answer>Only for complex queries with multiple joins</Answer>
+  <Answer>Only for queries without parameters</Answer>
+</Quiz>
+
+<Quiz id="compile-benefit-quiz">
+  <Question>What does query compilation eliminate?</Question>
+  <Answer>Database execution time</Answer>
+  <Answer>Network transfer time</Answer>
+  <Answer correct>LINQ to SQL translation overhead on each execution</Answer>
+  <Answer>Change tracking overhead</Answer>
+</Quiz>
+
+<Quiz id="compile-cold-quiz">
+  <Question>Why shouldn't you compile a query that runs once per day?</Question>
+  <Answer>Compiled queries don't support complex operations</Answer>
+  <Answer correct>The compilation overhead savings don't justify the code complexity</Answer>
+  <Answer>Daily queries are always cached automatically</Answer>
+  <Answer>EF Core already optimizes infrequent queries</Answer>
+</Quiz>
+
+### Summary
+
+| Approach | When to Use | Overhead Savings |
+|:---------|:------------|:-----------------|
+| **Auto-caching** (default) | Most queries | ~90% after first execution |
+| **EF.CompileQuery** | Hot paths, 100+ calls/sec | ~98% (even cache lookup eliminated) |
+| **Precompiled** (EF8+) | All queries, NativeAOT | ~99% (build-time compilation) |
+
+<KeyConcept title="The Compilation Strategy">
+1. **Let auto-caching handle most queries**—it's automatic and effective
+2. **Identify your hot paths**—profile to find what runs frequently
+3. **Compile hot paths**—use EF.CompileQuery for critical queries
+4. **Consider precompilation**—for EF Core 8+ with many query shapes or NativeAOT
+</KeyConcept>
+
+<ProgressCheckpoint section="precompiled-queries" xpReward={20} />

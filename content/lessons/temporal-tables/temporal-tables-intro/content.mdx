@@ -1,0 +1,114 @@
+import { TemporalTablesIntro } from '@/components/learn/interactive/ef-core/temporal-tables-intro';
+
+# Temporal Tables in EF Core 6+
+
+Tracking data changes over time is a common requirement in enterprise applications. Whether for auditing, compliance, or debugging, knowing *what* changed, *when* it changed, and *who* changed it is critical.
+
+Traditionally, developers implemented this manually using "Audit Tables" or "History Tables" managed by triggers or application logic. **Temporal Tables** (System-Versioned Temporal Tables) are a standard SQL standard feature that builds this directly into the database engine.
+
+## What are Temporal Tables?
+
+A **Temporal Table** is a pair of tables:
+1.  **Current Table**: Contains the current values for each row.
+2.  **History Table**: Automatically stores the previous values of modified or deleted rows, along with the time range they were valid.
+
+The database engine manages this relationship. When you update a row in the current table, the database *automatically* moves the old version to the history table.
+
+<TemporalTablesIntro />
+
+## Enabling Temporal Tables in EF Core
+
+In EF Core 6+, enabling temporal tables is incredibly simple. You don't need to manually create the history table or triggers. You just configure it in your `OnModelCreating` method.
+
+Start by configuring your entity to map to a temporal table:
+
+```csharp
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Product>()
+        .ToTable("Products", table => table.IsTemporal());
+}
+```
+
+Wait, that's it? **Yes.**
+
+When you add this one line and create a migration:
+1.  EF Core generates SQL to add two `datetime2` columns (usually `PeriodStart` and `PeriodEnd`) to your table.
+2.  It creates a corresponding `ProductsHistory` table.
+3.  It enables `SYSTEM_VERSIONING` on the table.
+
+### Understanding the Migration
+
+EF Core will generate a migration that looks something like this:
+
+```csharp
+migrationBuilder.CreateTable(
+    name: "Products",
+    columns: table => new
+    {
+        Id = table.Column<int>(type: "int", nullable: false)
+            .Annotation("SqlServer:Identity", "1, 1"),
+        Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+        Price = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+        // These are automagically added!
+        PeriodEnd = table.Column<DateTime>(type: "datetime2", nullable: false)
+            .Annotation("SqlServer:TemporalPeriodEndColumnName", "PeriodEnd")
+            .Annotation("SqlServer:TemporalPeriodEndDefaultValue", new DateTime(9999, 12, 31, 23, 59, 59, 9999999)),
+        PeriodStart = table.Column<DateTime>(type: "datetime2", nullable: false)
+            .Annotation("SqlServer:TemporalPeriodStartColumnName", "PeriodStart")
+            .Annotation("SqlServer:TemporalPeriodStartDefaultValue", new DateTime(1, 1, 1, 0, 0, 0, 0))
+    },
+    constraints: table =>
+    {
+        table.PrimaryKey("PK_Products", x => x.Id);
+    })
+    .Annotation("SqlServer:IsTemporal", true) // This flag enables the magic
+    .Annotation("SqlServer:TemporalHistoryTableName", "ProductsHistory")
+    .Annotation("SqlServer:TemporalHistoryTableSchema", null);
+```
+
+<InfoBox type="info" title="System-Versioned vs. Application-Versioned">
+  Temporal tables are "System-Versioned", meaning the <b>database system</b> determines the validity period of a row based on the transaction time. You cannot manually modify the period columns or the history table directly (unless you disable versioning first). This ensures an immutable, tamper-proof audit trail.
+</InfoBox>
+
+## Working with Data
+
+For normal **CRUD** operations (Create, Read, Update, Delete), nothing changes in your EF Core code!
+
+- **Insert**: Adds a row to the Current table. `PeriodStart` is set to the current transaction time, and `PeriodEnd` is set to the maximum datetime.
+- **Update**:
+    - The *current* version of the row is copied to the History table. Its `PeriodEnd` is updated to the current time.
+    - The *new* version in the Current table gets its `PeriodStart` updated to the current time.
+- **Delete**: The row is moved to the History table with `PeriodEnd` set to the current time, and removed from the Current table.
+
+```csharp
+// Just standard EF Core code!
+var product = context.Products.Find(1);
+product.Price = 120.00m;
+context.SaveChanges(); // SQL Server handles the history automatically
+```
+
+<ProgressCheckpoint
+  section="intro-check"
+  description="By default, what is the name of the history table created for a table named 'Customers'?"
+  options={[
+    { id: '1', label: 'Customers_History' },
+    { id: '2', label: 'CustomersHistory' },
+    { id: '3', label: 'History_Customers' },
+    { id: '4', label: 'Audit_Customers' }
+  ]}
+  correctOption="2"
+  explanation="By convention, EF Core appends 'History' to the table name, so 'Customers' becomes 'CustomersHistory'."
+/>
+
+## Summary
+
+Temporal tables provide a robust, out-of-the-box solution for auditing and tracking data changes without polluting your application code with logging logic.
+
+**Key Takeaways:**
+- Enabled via `.ToTable(t => t.IsTemporal())`.
+- Creates a parallel "History" table automatically.
+- CRUD operations remain exactly the same.
+- Provides a tamper-proof audit trail managed by SQL Server.
+
+In the next lesson, we'll learn the *real* power of temporal tables: querying data as it existed in the past!

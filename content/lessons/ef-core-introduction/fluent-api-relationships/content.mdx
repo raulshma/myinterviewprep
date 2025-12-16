@@ -1,0 +1,177 @@
+# Relationship Configuration with Fluent API
+
+While EF Core's conventions are great for simple cases, real-world applications often require precise control over database schemas. The **Fluent API** is your tool for these advanced configurations.
+
+---
+
+## Section 1: Why Fluent API?
+
+Conventions work like magic 🪄... until they don't. You need the Fluent API when:
+- You want to map to existing database tables that don't match typical naming conventions.
+- You need to configure composite keys.
+- You want to specify delete behaviors (Cascade, Restrict, SetNull).
+- You're defining Many-to-Many relationships with custom join tables.
+- You prefer keeping your entity classes "clean" (POCOs) without Data Annotation attributes.
+
+All Fluent API configuration happens in the `OnModelCreating` method of your `DbContext`:
+
+```csharp
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    // Your configuration goes here!
+}
+```
+
+<ProgressCheckpoint section="why-fluent-api" xpReward={20} />
+
+---
+
+## Section 2: One-to-One Configuration 1:1
+
+One-to-One relationships usually have a "Principal" (parent) and a "Dependent" (child). The dependent side contains the Foreign Key.
+
+<RelationshipDiagram
+  type="one-to-one"
+  entities={{
+    principal: {
+      name: "User",
+      properties: ["Id: int", "Profile: UserProfile"]
+    },
+    dependent: {
+      name: "UserProfile",
+      properties: ["Id: int", "UserId: int", "Bio: string"]
+    }
+  }}
+  showNavigation={true}
+  showForeignKey={true}
+/>
+
+### The Configuration Pattern
+
+<DotnetCodePreview
+  title="One-to-One Fluent Config"
+  code={`modelBuilder.Entity<User>()
+    .HasOne(u => u.Profile)      // User has one Profile
+    .WithOne(p => p.User)        // Profile has one User
+    .HasForeignKey<UserProfile>(p => p.UserId) // FK is in UserProfile
+    .OnDelete(DeleteBehavior.Cascade);`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "HasOne / WithOne",
+      explanation: "Defines the 1:1 relationship on both sides."
+    },
+    {
+      lineNumbers: [4],
+      highlight: "HasForeignKey<T>",
+      explanation: "CRITICAL: In 1:1, you MUST specify which entity holds the Foreign Key using the generic parameter <T>."
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="one-to-one-config" xpReward={30} />
+
+---
+
+## Section 3: One-to-Many Configuration 1:N
+
+This is the most common relationship. Use `HasOne` / `WithMany` (or `HasMany` / `WithOne`).
+
+<DotnetCodePreview
+  title="One-to-Many Fluent Config"
+  code={`modelBuilder.Entity<Blog>()
+    .HasMany(b => b.Posts)       // Blog has many Posts
+    .WithOne(p => p.Blog)        // Post has one Blog
+    .HasForeignKey(p => p.BlogId)
+    .IsRequired()                // Blog is required!
+    .OnDelete(DeleteBehavior.Restrict); // Don't delete Blog if it has Posts`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "HasMany / WithOne",
+      explanation: "Starts from the Principal (Blog) to Dependent (Post)."
+    },
+    {
+      lineNumbers: [6],
+      highlight: "Delete Behavior",
+      explanation: "DeleteBehavior.Restrict prevents deleting a Blog if it still has Posts, throwing an error instead of cascading."
+    }
+  ]}
+/>
+
+### Interactive Builder
+
+Try building a configuration yourself!
+
+<FluentApiBuilder />
+
+<ProgressCheckpoint section="one-to-many-config" xpReward={30} />
+
+---
+
+## Section 4: Many-to-Many Configuration N:N
+
+Since EF Core 5.0, simple Many-to-Many is automatic! But often you need to configure the **Join Table** (e.g., to rename it or add extra columns).
+
+<RelationshipDiagram
+  type="many-to-many"
+  entities={{
+    principal: {
+      name: "Student",
+      properties: ["Id: int", "Courses: List<Course>"]
+    },
+    dependent: {
+      name: "Course",
+      properties: ["Id: int", "Students: List<Student>"]
+    }
+  }}
+  showNavigation={true}
+  showForeignKey={false}
+/>
+
+### Customizing the Join Table
+
+<DotnetCodePreview
+  title="Many-to-Many Fluent Config"
+  code={`modelBuilder.Entity<Student>()
+    .HasMany(s => s.Courses)
+    .WithMany(c => c.Students)
+    .UsingEntity(
+        "StudentCourses",       // Custom Join Table Name
+        l => l.HasOne(typeof(Course)).WithMany().HasForeignKey("CourseId"),
+        r => r.HasOne(typeof(Student)).WithMany().HasForeignKey("StudentId"),
+        j => j.HasKey("StudentId", "CourseId")
+    );`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "HasMany / WithMany",
+      explanation: "Standard N:N definition."
+    },
+    {
+      lineNumbers: [4, 5, 8],
+      highlight: "UsingEntity",
+      explanation: "Allows you to customize the hidden join table, like changing its name to 'StudentCourses'."
+    }
+  ]}
+/>
+
+### Knowledge Check
+
+<Quiz id="fluent-fk-quiz">
+  <Question>In a 1:1 relationship configuration, why do we use `HasForeignKey<T>`?</Question>
+  <Answer>It's optional and can be skipped.</Answer>
+  <Answer correct>To tell EF Core which of the two entities physically contains the Foreign Key column.</Answer>
+  <Answer>To create a foreign key in both tables.</Answer>
+  <Answer>To enable cascade delete.</Answer>
+</Quiz>
+
+<Quiz id="fluent-priority-quiz">
+  <Question>Which configuration method has the highest priority?</Question>
+  <Answer>Conventions (Naming)</Answer>
+  <Answer>Data Annotations ([ForeignKey])</Answer>
+  <Answer correct>Fluent API (OnModelCreating)</Answer>
+  <Answer>Database Constraints</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="many-to-many-config" xpReward={40} />

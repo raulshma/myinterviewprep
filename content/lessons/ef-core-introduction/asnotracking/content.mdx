@@ -1,0 +1,408 @@
+# AsNoTracking Queries
+
+Turn off the surveillance cameras! Learn when and how to use AsNoTracking to boost read-only query performance by 20-30%.
+
+---
+
+## Section 1: The Tracking Overhead
+
+### The Surveillance Camera Analogy 📹
+
+Imagine every entity you load from the database has a security camera pointed at it. EF Core is constantly watching for changes—did you modify a property? Did you add a related entity? This surveillance has a cost!
+
+<InfoBox type="info">
+**What Change Tracking Does:**
+1. Creates a snapshot of each entity's original values
+2. Stores the snapshot in the ChangeTracker
+3. On SaveChanges, compares current values to snapshots
+4. Generates UPDATE statements for changed properties
+</InfoBox>
+
+### The Hidden Cost
+
+<DotnetCodePreview
+  title="What Happens Behind the Scenes"
+  code={`// When you load entities normally...
+var products = await context.Products.ToListAsync();
+
+// EF Core does this for EACH entity:
+// 1. Materialize the entity from SQL results
+// 2. Create an EntityEntry to track it
+// 3. Store a copy of all property values (snapshot)
+// 4. Add to ChangeTracker's identity map
+// 5. Watch for property changes
+
+// For 1000 products with 20 properties each:
+// - 1000 EntityEntry objects created
+// - 1000 snapshots stored (20,000 values!)
+// - Identity map with 1000 lookups
+// - Memory: ~50-100KB overhead
+
+// And all this for a read-only page display! 😱`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Simple Query",
+      explanation: "Looks innocent, but there's a lot happening behind the scenes"
+    },
+    {
+      lineNumbers: [5, 6, 7, 8, 9, 10],
+      highlight: "Per-Entity Work",
+      explanation: "Each loaded entity has tracking infrastructure created"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15],
+      highlight: "Real Cost",
+      explanation: "1000 entities = significant memory and CPU overhead"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="Tracking vs No Tracking Flow"
+  steps={[
+    {
+      linq: `// WITH Tracking (default)
+var products = context.Products.ToList();`,
+      sql: `SQL: SELECT * FROM Products
+
+➡️ Results arrive from database
+➡️ For each row:
+   📸 Create entity object
+   📸 Create EntityEntry
+   📸 Store snapshot of values
+   📸 Add to identity map
+➡️ Return List<Product>
+
+Memory: Entity + Snapshot + Entry`,
+      explanation: "Tracking doubles your memory usage and adds CPU overhead for snapshot creation"
+    },
+    {
+      linq: `// WITHOUT Tracking
+var products = context.Products
+    .AsNoTracking()
+    .ToList();`,
+      sql: `SQL: SELECT * FROM Products
+
+➡️ Results arrive from database
+➡️ For each row:
+   📸 Create entity object
+➡️ Return List<Product>
+
+Memory: Just the entity!`,
+      explanation: "No tracking = simpler, faster, and uses ~50% less memory"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="tracking-overhead" xpReward={20} />
+
+---
+
+## Section 2: Using AsNoTracking
+
+### When to Use It
+
+<Comparison
+  title="Tracking Decision"
+  items={[
+    {
+      label: "Need Change Tracking",
+      description: "When you'll modify entities and call SaveChanges()",
+      isCorrect: false
+    },
+    {
+      label: "AsNoTracking",
+      description: "Display pages, reports, APIs, exports—any read-only operation",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<DotnetCodePreview
+  title="AsNoTracking Patterns"
+  code={`// ✅ Perfect for: List pages
+var products = await context.Products
+    .AsNoTracking()
+    .Where(p => p.IsActive)
+    .OrderBy(p => p.Name)
+    .ToListAsync();
+
+// ✅ Perfect for: Detail views (when not editing)
+var product = await context.Products
+    .AsNoTracking()
+    .Include(p => p.Category)
+    .Include(p => p.Reviews)
+    .FirstOrDefaultAsync(p => p.Id == id);
+
+// ✅ Perfect for: Reports and dashboards
+var salesReport = await context.Orders
+    .AsNoTracking()
+    .Where(o => o.OrderDate >= startDate)
+    .GroupBy(o => o.Status)
+    .Select(g => new { Status = g.Key, Count = g.Count(), Total = g.Sum(o => o.Amount) })
+    .ToListAsync();
+
+// ✅ Perfect for: Export operations
+var exportData = await context.Customers
+    .AsNoTracking()
+    .Select(c => new ExportDto { Name = c.Name, Email = c.Email })
+    .ToListAsync();
+
+// ✅ Perfect for: Search/autocomplete
+var suggestions = await context.Products
+    .AsNoTracking()
+    .Where(p => p.Name.Contains(searchTerm))
+    .Select(p => new { p.Id, p.Name })
+    .Take(10)
+    .ToListAsync();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7],
+      highlight: "List Pages",
+      explanation: "Users view lists but don't edit inline—perfect for AsNoTracking"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13, 14],
+      highlight: "Detail Views",
+      explanation: "Works with Include() too—all related data is untracked"
+    },
+    {
+      lineNumbers: [17, 18, 19, 20, 21, 22],
+      highlight: "Reports",
+      explanation: "Reports are always read-only—always use AsNoTracking"
+    }
+  ]}
+/>
+
+### When NOT to Use It
+
+<DotnetCodePreview
+  title="Don't Use AsNoTracking When..."
+  code={`// ❌ When you need to update the entity
+var product = await context.Products
+    .AsNoTracking()  // WRONG for updates!
+    .FirstOrDefaultAsync(p => p.Id == id);
+
+product.Price = newPrice;
+await context.SaveChangesAsync();
+// ⚠️ Nothing saved! EF doesn't know about this entity!
+
+// ✅ Correct way for updates
+var product = await context.Products
+    .FirstOrDefaultAsync(p => p.Id == id);  // Tracked!
+
+product.Price = newPrice;
+await context.SaveChangesAsync();  // Works!
+
+// ❌ When you need relationship fixup
+var blog = await context.Blogs
+    .AsNoTracking()
+    .Include(b => b.Posts)
+    .FirstOrDefaultAsync(b => b.Id == id);
+
+// If you query the same blog again...
+var sameBlog = await context.Blogs
+    .AsNoTracking()
+    .FirstOrDefaultAsync(b => b.Id == id);
+
+// blog and sameBlog are DIFFERENT objects!
+// With tracking, they'd be the same instance.`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7, 8],
+      highlight: "Update Trap",
+      explanation: "AsNoTracking entities are invisible to SaveChanges!"
+    },
+    {
+      lineNumbers: [11, 12, 13, 14, 15],
+      highlight: "Correct Update",
+      explanation: "For updates, omit AsNoTracking so EF tracks changes"
+    },
+    {
+      lineNumbers: [22, 23, 24, 25, 26, 27, 28],
+      highlight: "Identity Issue",
+      explanation: "Without tracking, same ID = different C# objects"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**The #1 Mistake:** Using AsNoTracking, then wondering why SaveChanges() doesn't save anything. If you need to update, don't use AsNoTracking!
+</InfoBox>
+
+<ProgressCheckpoint section="asnotracking-usage" xpReward={20} />
+
+---
+
+## Section 3: Identity Resolution
+
+### The Duplicate Entity Problem
+
+Without tracking, if the same entity appears multiple times in results, you get multiple objects:
+
+<DotnetCodePreview
+  title="AsNoTrackingWithIdentityResolution"
+  code={`// Scenario: Posts and their Authors
+// Some authors wrote multiple posts
+
+// ❌ AsNoTracking creates duplicate Author objects
+var posts = await context.Posts
+    .AsNoTracking()
+    .Include(p => p.Author)
+    .ToListAsync();
+
+// If Author "John" wrote 5 posts:
+// posts[0].Author  →  John object #1
+// posts[1].Author  →  John object #2 (duplicate!)
+// posts[2].Author  →  John object #3 (duplicate!)
+// 5 different John objects in memory!
+
+// ✅ AsNoTrackingWithIdentityResolution keeps one instance
+var posts = await context.Posts
+    .AsNoTrackingWithIdentityResolution()
+    .Include(p => p.Author)
+    .ToListAsync();
+
+// Now:
+// posts[0].Author  →  John object
+// posts[1].Author  →  Same John object! ✓
+// posts[2].Author  →  Same John object! ✓
+// Only 1 John object, all posts reference it`}
+  steps={[
+    {
+      lineNumbers: [5, 6, 7, 8, 9],
+      highlight: "AsNoTracking",
+      explanation: "Each row creates a new Author object, even if same ID"
+    },
+    {
+      lineNumbers: [11, 12, 13, 14, 15],
+      highlight: "Duplicate Problem",
+      explanation: "Same author = multiple objects = wasted memory, different references"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21],
+      highlight: "Identity Resolution",
+      explanation: "Maintains an identity map to reuse objects with same key"
+    }
+  ]}
+/>
+
+<Comparison
+  title="AsNoTracking Variants"
+  items={[
+    {
+      label: "AsNoTracking()",
+      description: "Fastest, no tracking, duplicate entities possible. Use when entities don't repeat in results.",
+      isCorrect: true
+    },
+    {
+      label: "AsNoTrackingWithIdentityResolution()",
+      description: "No tracking, but maintains identity. Slightly slower but prevents duplicates. Use with Include() when same entities may appear multiple times.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**When to use which:**
+- Simple queries without Include() → `AsNoTracking()`
+- Queries with Include() where entities repeat → `AsNoTrackingWithIdentityResolution()`
+</InfoBox>
+
+<ProgressCheckpoint section="identity-resolution" xpReward={20} />
+
+---
+
+## Section 4: Default Tracking Behavior
+
+### Set It and Forget It
+
+If most of your queries are read-only, you can make AsNoTracking the default:
+
+<DotnetCodePreview
+  title="Configure Default Tracking"
+  code={`// Option 1: In Program.cs / Startup.cs
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(connectionString)
+           .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
+
+// Now ALL queries are AsNoTracking by default!
+
+// When you DO need tracking, explicitly enable it:
+var customer = await context.Customers
+    .AsTracking()  // Override the default
+    .FirstOrDefaultAsync(c => c.Id == id);
+
+customer.LastLogin = DateTime.UtcNow;
+await context.SaveChangesAsync();  // Works!
+
+// Option 2: Per DbContext instance
+context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
+
+// Option 3: In OnConfiguring (not recommended for DI scenarios)
+protected override void OnConfiguring(DbContextOptionsBuilder options)
+{
+    options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5],
+      highlight: "DI Configuration",
+      explanation: "Best place to set default—affects all queries automatically"
+    },
+    {
+      lineNumbers: [10, 11, 12],
+      highlight: "Override When Needed",
+      explanation: "Use AsTracking() to explicitly enable tracking for updates"
+    },
+    {
+      lineNumbers: [17, 18],
+      highlight: "Per Instance",
+      explanation: "Can also change behavior on a specific DbContext instance"
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="asnotracking-when-quiz">
+  <Question>Which scenario is BEST suited for AsNoTracking?</Question>
+  <Answer>Loading a user to update their password</Answer>
+  <Answer>Loading an order to change its status</Answer>
+  <Answer correct>Loading blog posts for a homepage display</Answer>
+  <Answer>Loading a product to update its price</Answer>
+</Quiz>
+
+<Quiz id="asnotracking-identity-quiz">
+  <Question>What problem does AsNoTrackingWithIdentityResolution solve?</Question>
+  <Answer>It makes queries run faster</Answer>
+  <Answer>It enables SaveChanges to work</Answer>
+  <Answer correct>It prevents duplicate entity objects when same entity appears multiple times</Answer>
+  <Answer>It reduces SQL query complexity</Answer>
+</Quiz>
+
+<Quiz id="asnotracking-mistake-quiz">
+  <Question>What's the most common mistake when using AsNoTracking?</Question>
+  <Answer>Using it with Include()</Answer>
+  <Answer correct>Expecting SaveChanges to save changes on untracked entities</Answer>
+  <Answer>Using it with async queries</Answer>
+  <Answer>Using it with projections</Answer>
+</Quiz>
+
+### Summary
+
+| Method | Tracking | Identity | Best For |
+|:-------|:---------|:---------|:---------|
+| `.ToList()` (default) | ✅ Yes | ✅ Yes | Entities you'll update |
+| `.AsNoTracking()` | ❌ No | ❌ No | Simple read-only, no repeats |
+| `.AsNoTrackingWithIdentityResolution()` | ❌ No | ✅ Yes | Read-only with Include() |
+| `.AsTracking()` | ✅ Yes | ✅ Yes | Override NoTracking default |
+
+<KeyConcept title="The AsNoTracking Rule">
+**If you're not calling SaveChanges() on the entities, use AsNoTracking().**
+
+It's that simple! Display pages, reports, exports, API responses—all should use AsNoTracking.
+</KeyConcept>
+
+<ProgressCheckpoint section="default-tracking" xpReward={20} />

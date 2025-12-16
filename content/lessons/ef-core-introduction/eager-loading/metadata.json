@@ -1,0 +1,18 @@
+{
+  "id": "eager-loading",
+  "title": "Eager Loading - Load Related Data Upfront",
+  "description": "Master Include() and ThenInclude() methods to efficiently load related entities in a single database query.",
+  "milestone": "loading-strategies",
+  "order": 1,
+  "sections": [
+    "what-is-eager-loading",
+    "include-basics",
+    "theninclude-chains",
+    "filtered-includes"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 25,
+  "xpReward": 90,
+  "prerequisites": ["navigation-properties"],
+  "tags": ["ef-core", "eager-loading", "include", "theninclude", "dotnet"]
+}

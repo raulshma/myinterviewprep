@@ -1,0 +1,608 @@
+# Loading Strategies Performance
+
+Choosing the right loading strategy isn't just about convenience—it directly impacts your application's performance. Let's analyze the performance implications and learn optimization techniques that can make your queries orders of magnitude faster.
+
+---
+
+## Section 1: Performance Impact Analysis
+
+### Query Count Comparison
+
+The most significant performance difference between loading strategies is the **number of database round-trips**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    QUERY COUNT COMPARISON                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Fetching 10 blogs with 50 posts each:                          │
+│                                                                  │
+│  EAGER LOADING                                                   │
+│  ████ 1 query                                                   │
+│  └─ SELECT * FROM Blogs JOIN Posts                              │
+│                                                                  │
+│  LAZY LOADING                                                    │
+│  ████████████████████████████████████████████████████ 11 queries│
+│  └─ 1 for blogs + 10 for each blog's posts                      │
+│                                                                  │
+│  With nested Author:                                             │
+│  ████████████████████████████████████████...████████████ 511!   │
+│  └─ 1 + 10 + 500 (author for each post)                         │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+<InfoBox type="warning">
+**Network latency kills performance!** Each database round-trip adds latency. 500 queries at 5ms each = 2.5 seconds of waiting, versus ~50ms for a single optimized query.
+</InfoBox>
+
+### Real-World Impact
+
+| Scenario | Eager Loading | Lazy Loading | Difference |
+|:---------|:--------------|:-------------|:-----------|
+| **10 blogs, 10 posts each** | 1 query, ~50ms | 11 queries, ~550ms | **11x slower** |
+| **100 blogs, 50 posts each** | 1 query, ~200ms | 101 queries, ~5s | **25x slower** |
+| **1000 items, 3 levels deep** | 1-3 queries | 1000+ queries | **100x+ slower** |
+
+<KeyConcept title="Database Round-Trips Matter Most">
+In most applications, the number of database round-trips is the biggest performance factor. A single complex query almost always beats many simple queries.
+</KeyConcept>
+
+### Memory Considerations
+
+But there's a trade-off! Eager loading fetches more data upfront:
+
+<Comparison
+  title="Memory Trade-offs"
+  items={[
+    {
+      label: "Eager Loading - Higher Initial Memory",
+      description: "Loads all data at once. If you Include 1000 posts but only display 10, you've wasted memory loading 990 unused entities.",
+      isCorrect: true
+    },
+    {
+      label: "Lazy/Explicit - Lower Initial Memory",
+      description: "Loads only what you access. Better when you're paginating or conditionally accessing data.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="performance-impact" xpReward={25} />
+
+---
+
+## Section 2: The N+1 Query Problem Deep Dive
+
+### What is N+1?
+
+The N+1 query problem occurs when you execute **1 query to get N items**, then **N additional queries** to get related data for each item:
+
+<DotnetCodePreview
+  title="N+1 Problem Demonstrated"
+  code={`// This looks innocent...
+var blogs = await context.Blogs.ToListAsync();  // 1 query
+
+foreach (var blog in blogs)  // N iterations
+{
+    // Each access triggers a new query!
+    Console.WriteLine($"Blog: {blog.Name}");
+    Console.WriteLine($"Posts: {blog.Posts.Count}");  // N queries!
+}
+
+// With 100 blogs: 1 + 100 = 101 queries
+// With 1000 blogs: 1 + 1000 = 1001 queries`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "The '1' Query",
+      explanation: "Fetches all blogs in one query"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "The 'N' Queries",
+      explanation: "Each blog.Posts access triggers a separate query"
+    }
+  ]}
+/>
+
+### Nested N+1 (Even Worse!)
+
+It gets exponentially worse with nested relationships:
+
+<DotnetCodePreview
+  title="Nested N+1 - Query Explosion"
+  code={`var blogs = await context.Blogs.ToListAsync();  // 1 query
+
+foreach (var blog in blogs)  // 100 blogs
+{
+    foreach (var post in blog.Posts)  // +100 queries (lazy load posts)
+    {
+        // Each author access = another query!
+        Console.WriteLine(post.Author.Name);  // +5000 queries!
+    }
+}
+
+// Math: 1 + 100 + (100 × 50) = 5,101 queries!
+// At 5ms per query: 25+ seconds of pure waiting`}
+  steps={[
+    {
+      lineNumbers: [5],
+      highlight: "First Level N+1",
+      explanation: "100 queries to load posts for 100 blogs"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "Second Level N+1",
+      explanation: "Each of 5000 posts triggers an author query"
+    },
+    {
+      lineNumbers: [12, 13],
+      highlight: "Total Damage",
+      explanation: "5000+ queries turn milliseconds into seconds!"
+    }
+  ]}
+/>
+
+### How to Detect N+1
+
+Enable EF Core logging to see all queries:
+
+<DotnetCodePreview
+  title="Enable Query Logging"
+  code={`// In your DbContext configuration
+protected override void OnConfiguring(DbContextOptionsBuilder options)
+{
+    options
+        .UseSqlServer(connectionString)
+        .LogTo(Console.WriteLine, LogLevel.Information)  // Log all queries
+        .EnableSensitiveDataLogging();  // Show parameter values
+}
+
+// Or in ASP.NET Core Program.cs
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options
+        .UseSqlServer(connectionString)
+        .EnableSensitiveDataLogging()
+        .LogTo(
+            message => Debug.WriteLine(message),
+            Microsoft.Extensions.Logging.LogLevel.Information));`}
+  steps={[
+    {
+      lineNumbers: [6],
+      highlight: "LogTo",
+      explanation: "Outputs every SQL query to the console"
+    },
+    {
+      lineNumbers: [7],
+      highlight: "Parameter Values",
+      explanation: "Shows actual values, helpful for debugging"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Quick test:** Run your code and count the lines starting with "Executing DbCommand". If it's way more than expected, you have an N+1 problem!
+</InfoBox>
+
+### Fixing N+1 with Eager Loading
+
+<DotnetCodePreview
+  title="Fix N+1 with Include"
+  code={`// ❌ BAD: N+1 problem (101 queries for 100 blogs)
+var blogs = await context.Blogs.ToListAsync();
+foreach (var blog in blogs)
+{
+    Console.WriteLine(blog.Posts.Count);  // Lazy load each time
+}
+
+// ✅ GOOD: Single query with Include
+var blogs = await context.Blogs
+    .Include(b => b.Posts)
+    .ToListAsync();
+    
+foreach (var blog in blogs)
+{
+    Console.WriteLine(blog.Posts.Count);  // Already loaded!
+}
+
+// ✅ BEST: Use projection if you only need a count
+var blogCounts = await context.Blogs
+    .Select(b => new { b.Name, PostCount = b.Posts.Count })
+    .ToListAsync();  // Single query, minimal data`}
+  steps={[
+    {
+      lineNumbers: [9, 10, 11],
+      highlight: "Include Fix",
+      explanation: "Eager load posts in the same query"
+    },
+    {
+      lineNumbers: [19, 20, 21],
+      highlight: "Projection Fix",
+      explanation: "Even better—only fetch what you need"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="n-plus-one" xpReward={25} />
+
+---
+
+## Section 3: Query Analysis Techniques
+
+### Understanding Generated SQL
+
+EF Core translates your LINQ to SQL. Understanding this translation helps optimization:
+
+<DotnetCodePreview
+  title="LINQ to SQL Translation"
+  code={`// LINQ Query
+var blogs = await context.Blogs
+    .Include(b => b.Posts)
+    .Where(b => b.IsPublished)
+    .OrderBy(b => b.Name)
+    .ToListAsync();
+
+// Generated SQL:
+// SELECT b.*, p.*
+// FROM Blogs b
+// LEFT JOIN Posts p ON p.BlogId = b.Id
+// WHERE b.IsPublished = 1
+// ORDER BY b.Name
+
+// Multiple includes = multiple JOINs
+var complex = await context.Blogs
+    .Include(b => b.Posts)
+    .Include(b => b.Owner)
+    .Include(b => b.Tags)
+    .ToListAsync();
+
+// SQL: SELECT * FROM Blogs b
+//      LEFT JOIN Posts p ON ...
+//      LEFT JOIN Users u ON ...
+//      LEFT JOIN Tags t ON ...`}
+  steps={[
+    {
+      lineNumbers: [9, 10, 11, 12, 13],
+      highlight: "Single Include",
+      explanation: "One Include = one LEFT JOIN"
+    },
+    {
+      lineNumbers: [21, 22, 23, 24],
+      highlight: "Multiple Joins",
+      explanation: "Each Include adds another JOIN"
+    }
+  ]}
+/>
+
+### The Cartesian Explosion Problem
+
+Multiple collection includes can cause **Cartesian products**—a massive explosion of rows:
+
+```
+Blog has 10 Posts and 5 Tags
+
+Single query with both includes:
+┌─────────────────────────────────────────┐
+│  Blog × Posts × Tags = 10 × 5 = 50 rows │
+│  (Even though there are only 16 items!) │
+└─────────────────────────────────────────┘
+
+With 100 posts and 20 tags:
+100 × 20 = 2,000 rows returned for ONE blog!
+```
+
+<InfoBox type="warning">
+**Cartesian explosion** happens when you have multiple collection includes. The database returns a cross-product of all collections, causing massive data transfer.
+</InfoBox>
+
+### AsSplitQuery to the Rescue
+
+EF Core 5.0+ offers `AsSplitQuery()` to avoid cartesian explosion:
+
+<DotnetCodePreview
+  title="Split Queries for Performance"
+  code={`// ❌ Single query (Cartesian explosion risk)
+var blogs = await context.Blogs
+    .Include(b => b.Posts)
+    .Include(b => b.Tags)
+    .ToListAsync();
+// Returns: Blogs × Posts × Tags (explosion!)
+
+// ✅ Split query (separate queries per collection)
+var blogs = await context.Blogs
+    .Include(b => b.Posts)
+    .Include(b => b.Tags)
+    .AsSplitQuery()
+    .ToListAsync();
+
+// Generates 3 separate queries:
+// Query 1: SELECT * FROM Blogs
+// Query 2: SELECT * FROM Posts WHERE BlogId IN (...)
+// Query 3: SELECT * FROM Tags WHERE BlogId IN (...)`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5],
+      highlight: "Single Query Risk",
+      explanation: "Multiple collections = Cartesian product"
+    },
+    {
+      lineNumbers: [9, 10, 11, 12, 13],
+      highlight: "Split Query",
+      explanation: "AsSplitQuery separates into multiple efficient queries"
+    }
+  ]}
+/>
+
+### When to Use Split Queries
+
+| Scenario | Recommendation |
+|:---------|:---------------|
+| Single collection include | Single query (default) |
+| Multiple small collections | Single query usually fine |
+| Multiple large collections | Use AsSplitQuery() |
+| Performance-critical paths | Benchmark both approaches |
+| Consistent data required | Single query (split can have inconsistencies) |
+
+<DotnetCodePreview
+  title="Configure Split Queries Globally"
+  code={`// Make split queries the default
+protected override void OnConfiguring(DbContextOptionsBuilder options)
+{
+    options
+        .UseSqlServer(connectionString)
+        .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+}
+
+// Then use AsSingleQuery() when you need consistency
+var consistent = await context.Blogs
+    .Include(b => b.Posts)
+    .AsSingleQuery()  // Override global default
+    .ToListAsync();`}
+  steps={[
+    {
+      lineNumbers: [6],
+      highlight: "Global Default",
+      explanation: "All queries use split by default"
+    },
+    {
+      lineNumbers: [11],
+      highlight: "Override When Needed",
+      explanation: "Use AsSingleQuery for transactional consistency"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="query-analysis" xpReward={25} />
+
+---
+
+## Section 4: Optimization Tips
+
+### Tip 1: Use Projections
+
+Don't load full entities when you only need specific fields:
+
+<DotnetCodePreview
+  title="Projection vs Full Entity"
+  code={`// ❌ Loads entire entities (all columns)
+var blogs = await context.Blogs
+    .Include(b => b.Posts)
+    .ToListAsync();
+
+// ✅ Project to exactly what you need
+var blogDtos = await context.Blogs
+    .Select(b => new BlogSummaryDto
+    {
+        Id = b.Id,
+        Name = b.Name,
+        PostCount = b.Posts.Count,
+        LatestPostDate = b.Posts.Max(p => p.CreatedDate)
+    })
+    .ToListAsync();
+
+// Benefits:
+// - Fewer columns transferred
+// - No tracking overhead
+// - Aggregations computed in database`}
+  steps={[
+    {
+      lineNumbers: [7, 8, 9, 10, 11, 12, 13, 14, 15],
+      highlight: "Projection",
+      explanation: "Select only needed fields, compute aggregates in SQL"
+    }
+  ]}
+/>
+
+### Tip 2: Use AsNoTracking for Read-Only
+
+<DotnetCodePreview
+  title="AsNoTracking for Performance"
+  code={`// With tracking (default) - EF Core stores snapshots
+var blogs = await context.Blogs
+    .Include(b => b.Posts)
+    .ToListAsync();
+
+// Without tracking - faster, less memory
+var blogs = await context.Blogs
+    .AsNoTracking()
+    .Include(b => b.Posts)
+    .ToListAsync();
+
+// NoTrackingWithIdentityResolution - no tracking but resolves refs
+var blogs = await context.Blogs
+    .AsNoTrackingWithIdentityResolution()
+    .Include(b => b.Posts)
+        .ThenInclude(p => p.Author)
+    .ToListAsync();`}
+  steps={[
+    {
+      lineNumbers: [7, 8, 9, 10],
+      highlight: "AsNoTracking",
+      explanation: "Faster for read-only scenarios"
+    },
+    {
+      lineNumbers: [13, 14, 15, 16, 17],
+      highlight: "Identity Resolution",
+      explanation: "Resolves duplicate entities (e.g., same Author for multiple Posts)"
+    }
+  ]}
+/>
+
+### Tip 3: Pagination for Large Data
+
+<DotnetCodePreview
+  title="Paginate Instead of Loading All"
+  code={`// ❌ Loading ALL posts (could be millions!)
+var allPosts = await context.Posts.ToListAsync();
+
+// ✅ Paginate with Skip and Take
+int pageSize = 20;
+int pageNumber = 1;
+
+var pagedPosts = await context.Posts
+    .OrderBy(p => p.CreatedDate)  // Must order for consistent pagination
+    .Skip((pageNumber - 1) * pageSize)
+    .Take(pageSize)
+    .ToListAsync();
+
+// ✅ Keyset pagination (even faster for large offsets)
+var lastId = previousPageLastId;  // From previous page
+var keysetPosts = await context.Posts
+    .Where(p => p.Id > lastId)
+    .OrderBy(p => p.Id)
+    .Take(pageSize)
+    .ToListAsync();`}
+  steps={[
+    {
+      lineNumbers: [8, 9, 10, 11, 12],
+      highlight: "Skip/Take",
+      explanation: "Standard pagination with offset"
+    },
+    {
+      lineNumbers: [16, 17, 18, 19, 20],
+      highlight: "Keyset Pagination",
+      explanation: "More efficient for large datasets—avoids offset"
+    }
+  ]}
+/>
+
+### Tip 4: Use Compiled Queries for Hot Paths
+
+<DotnetCodePreview
+  title="Compiled Queries"
+  code={`// Compiled query - parsed once, reused many times
+private static readonly Func<AppDbContext, int, Task<Blog?>> GetBlogById =
+    EF.CompileAsyncQuery(
+        (AppDbContext context, int id) =>
+            context.Blogs
+                .Include(b => b.Posts)
+                .FirstOrDefault(b => b.Id == id));
+
+// Usage - no query compilation overhead!
+var blog = await GetBlogById(context, blogId);
+
+// Best for:
+// - Hot paths called frequently
+// - Complex queries with many parameters
+// - Performance-critical API endpoints`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7],
+      highlight: "Compile Once",
+      explanation: "Query is parsed and cached at startup"
+    },
+    {
+      lineNumbers: [10],
+      highlight: "Fast Execution",
+      explanation: "Skips expression tree analysis on each call"
+    }
+  ]}
+/>
+
+### Performance Checklist
+
+<Comparison
+  title="Loading Performance Checklist"
+  items={[
+    {
+      label: "✅ Check for N+1 with logging",
+      description: "Enable SQL logging and count queries per operation.",
+      isCorrect: true
+    },
+    {
+      label: "✅ Use Include for known related data",
+      description: "Eager load what you always need.",
+      isCorrect: true
+    },
+    {
+      label: "✅ Use AsSplitQuery for multiple collections",
+      description: "Avoid Cartesian explosion with large datasets.",
+      isCorrect: true
+    },
+    {
+      label: "✅ Use projections when possible",
+      description: "Select only the fields you need.",
+      isCorrect: true
+    },
+    {
+      label: "✅ Use AsNoTracking for read-only",
+      description: "Skip change tracking for display queries.",
+      isCorrect: true
+    },
+    {
+      label: "✅ Paginate large result sets",
+      description: "Never load unbounded data.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="perf-n1-fix-quiz">
+  <Question>What's the best fix for an N+1 query problem?</Question>
+  <Answer>Use lazy loading</Answer>
+  <Answer correct>Use Include() for eager loading</Answer>
+  <Answer>Increase database timeout</Answer>
+  <Answer>Add more database indexes</Answer>
+</Quiz>
+
+<Quiz id="perf-cartesian-quiz">
+  <Question>What causes Cartesian explosion in EF Core queries?</Question>
+  <Answer>Too many Where clauses</Answer>
+  <Answer>Using AsNoTracking</Answer>
+  <Answer correct>Multiple collection Includes in a single query</Answer>
+  <Answer>Deep ThenInclude chains</Answer>
+</Quiz>
+
+<Quiz id="perf-split-quiz">
+  <Question>What does AsSplitQuery() do?</Question>
+  <Answer>Splits the result into pages</Answer>
+  <Answer correct>Separates includes into multiple database queries</Answer>
+  <Answer>Splits updates into multiple transactions</Answer>
+  <Answer>Divides the entity into multiple tables</Answer>
+</Quiz>
+
+### Summary
+
+| Optimization | When to Use | Impact |
+|:-------------|:------------|:-------|
+| **Include()** | Always need related data | Prevents N+1 |
+| **AsSplitQuery()** | Multiple collection includes | Prevents Cartesian explosion |
+| **Projection** | Need specific fields | Reduces data transfer |
+| **AsNoTracking()** | Read-only queries | Faster, less memory |
+| **Pagination** | Large datasets | Prevents unbounded loads |
+| **CompiledQuery** | Hot paths | Skips query parsing |
+
+<KeyConcept title="Congratulations!">
+You've mastered EF Core Loading Strategies! You now understand:
+- **Eager loading** for predictable, upfront data fetching
+- **Lazy loading** for automatic on-demand loading
+- **Explicit loading** for controlled, conditional loading
+- **Performance optimization** to avoid N+1 and Cartesian problems
+
+Apply these patterns wisely, and your EF Core applications will be both elegant and performant!
+</KeyConcept>
+
+<ProgressCheckpoint section="optimization-tips" xpReward={20} />

@@ -1,0 +1,143 @@
+# Testing Repositories
+
+If you are using the Repository Pattern, you have a distinct advantage: your business logic depends on an *Interface* (`IRepository`), not EF Core directly. This makes your **services** easy to test. But how do you test the **repository itself**?
+
+---
+
+## Section 1: To Mock or Not to Mock?
+
+A common mistake beginners make is trying to "Mock" the `DbContext` or `DbSet` using a library like Moq.
+
+**Don't do this.**
+
+Attempting to mock `DbSet` is painful. You have to mock the `IQueryable` provider, the enumerator, the async extensions... it's a nightmare.
+
+<InfoBox type="warning">
+    **Rule of Thumb:** Never mock data structures you don't own. Don't mock DbContext. Use a **Fake** instead (like InMemory or SQLite).
+</InfoBox>
+
+### The Strategy
+*   **Testing Services**: Mock the **IRepository**.
+*   **Testing Repositories**: Use **InMemory/SQLite** DbContext.
+
+<ProgressCheckpoint section="mocking-philosophy" xpReward={25} />
+
+---
+
+## Section 2: Testing the Implementation
+
+Let's test a `UserRepository` using the InMemory provider. We want to verify that our repository's `GetActiveUsersAsync` method actually filters correctly.
+
+<DotnetCodePreview
+    title="UserRepository Test"
+    code={`// The Repository Implementation
+public class UserRepository : IUserRepository 
+{
+    private readonly AppDbContext _context;
+    public UserRepository(AppDbContext context) => _context = context;
+
+    public async Task<List<User>> GetActiveUsersAsync() 
+    {
+        return await _context.Users
+            .Where(u => u.IsActive)
+            .ToListAsync();
+    }
+}
+
+// The Test
+[Fact]
+public async Task GetActiveUsers_ReturnsOnlyActive()
+{
+    // Arrange
+    var options = new DbContextOptionsBuilder<AppDbContext>()
+        .UseInMemoryDatabase("RepoTest_" + Guid.NewGuid())
+        .Options;
+
+    using (var context = new AppDbContext(options))
+    {
+        context.Users.Add(new User { Name = "ActiveUser", IsActive = true });
+        context.Users.Add(new User { Name = "InactiveUser", IsActive = false });
+        await context.SaveChangesAsync();
+    }
+
+    // Act
+    using (var context = new AppDbContext(options))
+    {
+        var repo = new UserRepository(context);
+        var result = await repo.GetActiveUsersAsync();
+
+        // Assert
+        Assert.Single(result);
+        Assert.Equal("ActiveUser", result[0].Name);
+    }
+}`}
+    steps={[
+        {
+            lineNumbers: [25, 26, 27],
+            highlight: "Arrange",
+            explanation: "We seed expectations into the InMemory DB. One active, one inactive."
+        },
+        {
+            lineNumbers: [33, 34],
+            highlight: "Act",
+            explanation: "We inject the real InMemory context into the Real Repository. We are testing the integration between Repo and EF."
+        },
+        {
+            lineNumbers: [37],
+            highlight: "Assert",
+            explanation: "Verify that the repository logic (the Where clause) worked as expected."
+        }
+    ]}
+/>
+
+<ProgressCheckpoint section="testing-repositories" xpReward={25} />
+
+---
+
+## Section 3: When to Mock IRepository?
+
+So when DO we use mocks? When we are testing the **Consumer** of the repository (e.g., a Service or Controller).
+
+```csharp
+// Testing UserService (NOT Repository)
+[Fact]
+public async Task RegisterUser_ShouldFail_IfEmailExists()
+{
+    // Arrange
+    var mockRepo = new Mock<IUserRepository>();
+    
+    // Setup the mock to say "Yes, email exists"
+    mockRepo.Setup(r => r.GetByEmailAsync("test@test.com"))
+           .ReturnsAsync(new User()); 
+
+    var service = new UserService(mockRepo.Object);
+
+    // Act & Assert
+    await Assert.ThrowsAsync<DuplicateEmailException>(() => 
+        service.RegisterAsync("test@test.com"));
+}
+```
+
+<Quiz id="mocking-quiz">
+    <Question>When testing the 'UserRepository' class itself, what should you inject?</Question>
+    <Answer>A mocked DbContext</Answer>
+    <Answer correct>A real DbContext configured with InMemory/SQLite</Answer>
+    <Answer>A real SQL Server connection</Answer>
+    <Answer>null</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="mock-vs-stub" xpReward={25} />
+
+---
+
+## Section 4: Summary
+
+Correctly layering your tests ensures confidence without fragility.
+
+| Layer | System Under Test | Dependency Strategy |
+| :--- | :--- | :--- |
+| **Service Layer** | `UserService` | **Mock** the `IRepository` |
+| **Data Layer** | `UserRepository` | Use **InMemory/SQLite** `DbContext` |
+| **Integration** | Entire API | Use **Docker/Testcontainers** (Real DB) |
+
+<ProgressCheckpoint section="summary" xpReward={25} />

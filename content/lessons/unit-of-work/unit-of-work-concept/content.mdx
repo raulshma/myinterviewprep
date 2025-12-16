@@ -1,0 +1,144 @@
+# Unit of Work Concept
+
+Understand the Unit of Work pattern and how Entity Framework Core implements it natively.
+
+---
+
+## Section 1: What is the Unit of Work Pattern?
+
+### The Shopping Cart Analogy 🛒
+
+Imagine you are shopping online. You don't pay for each item individually as you pick it off the shelf. Instead:
+
+1.  **Add Product A** to your cart.
+2.  **Add Product B** to your cart.
+3.  **Update the quantity** of Product A.
+4.  **Remove Product B**.
+5.  **Checkout** (pay for everything at once).
+
+The **Unit of Work** pattern acts like that shopping cart. It keeps track of everything you do during a business transaction and then commits all changes to the database in one go.
+
+<InfoBox type="info">
+    **Unit of Work**: A design pattern that maintains a list of objects affected by a business transaction and coordinates the writing out of changes and the resolution of concurrency problems.
+</InfoBox>
+
+### Why Use It?
+
+Without Unit of Work, every change might be sent to the database immediately. This causes problems:
+
+*   **Performance**: Too many separate database calls.
+*   **Integrity**: If one update fails after another succeeded, your data is left in an inconsistent state.
+
+With Unit of Work, either **all** changes happen, or **none** of them do.
+
+<ProgressCheckpoint section="what-is-uow" xpReward={25} />
+
+---
+
+## Section 2: DbContext IS a Unit of Work
+
+### Built-in Implementation
+
+Good news! You don't need to build a complex Unit of Work system from scratch. In EF Core, the **DbContext** classes *are* a Unit of Work.
+
+When you use a `DbContext`:
+1.  It tracks entity states (Added, Modified, Deleted, Unchanged).
+2.  It creates a script of changes in memory.
+3.  `SaveChanges()` executes all changes in a single transaction.
+
+<DotnetCodePreview
+    title="DbContext as Unit of Work"
+    code={`public async Task PlaceOrder(Order order)
+{
+    // 1. Add the order to the context (Tracking: Added)
+    _context.Orders.Add(order);
+
+    // 2. Modify inventory (Tracking: Modified)
+    var product = await _context.Products.FindAsync(order.ProductId);
+    product.Stock -= order.Quantity;
+
+    // 3. No SQL has run yet!
+    // The DbContext is just tracking these changes.
+
+    // 4. Commit all changes essentially as a single Unit of Work
+    await _context.SaveChangesAsync();
+}`}
+    steps={[
+        {
+            lineNumbers: [3, 4],
+            highlight: "Tracking Changes",
+            explanation: "The order is added to the DbContext's ChangeTracker, but not yet sent to the DB."
+        },
+        {
+            lineNumbers: [7, 8],
+            highlight: "Multiple Operations",
+            explanation: "We also modify a product. The DbContext tracks both the Order insertion and the Product update."
+        },
+        {
+            lineNumbers: [14],
+            highlight: "Commit",
+            explanation: "SaveChangesAsync() pushes all tracked changes to the database in a single transaction."
+        }
+    ]}
+/>
+
+### Change Tracker Visualization
+
+The **Change Tracker** is the engine behind the Unit of Work.
+
+<Mermaid chart={`
+graph TD
+    A[Application Code] -->|Add/Update/Delete| B(Change Tracker)
+    B -->|Entity State: Added| C{Context Memory}
+    B -->|Entity State: Modified| C
+    B -->|Entity State: Deleted| C
+    C -->|SaveChanges called| D[Database Transaction]
+    D -->|INSERT| E[(Database)]
+    D -->|UPDATE| E
+    D -->|DELETE| E
+`} caption="Flow of data through the Change Tracker" />
+
+<ProgressCheckpoint section="dbcontext-uow" xpReward={25} />
+
+---
+
+## Section 3: Creating a Custom Unit of Work (Optional)
+
+While `DbContext` is a Unit of Work, some architectures (like clean architecture) prefer an explicit `IUnitOfWork` interface to abstract the data access technology.
+
+### The Abstraction
+
+```csharp
+public interface IUnitOfWork : IDisposable
+{
+    IRepository<Product> Products { get; }
+    IRepository<Order> Orders { get; }
+    Task<int> CompleteAsync();
+}
+```
+
+This ensures your service layer talks to "Units of Work" and "Repositories" rather than "DbContexts" directly, making testing easier and dependencies cleaner.
+
+<InfoBox type="tip">
+    **Pro Tip**: For many simple apps, using `DbContext` directly is fine. Don't over-engineer unless you need the strict decoupling!
+</InfoBox>
+
+### Quiz: Unit of Work
+
+<Quiz id="uow-concept-quiz">
+    <Question>In EF Core, what class naturally acts as the Unit of Work?</Question>
+    <Answer correct>DbContext</Answer>
+    <Answer>DbSet</Answer>
+    <Answer>Entity</Answer>
+    <Answer>ChangeTracker</Answer>
+</Quiz>
+
+<Quiz id="uow-purpose-quiz">
+    <Question>What is the primary benefit of the Unit of Work pattern regarding database writes?</Question>
+    <Answer>It makes queries faster.</Answer>
+    <Answer correct>It coordinates multiple changes to happen in a single transaction.</Answer>
+    <Answer>It eliminates the need for a database connection.</Answer>
+    <Answer>It automatically generates repositories.</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="custom-uow" xpReward={25} />

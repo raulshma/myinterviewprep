@@ -1,0 +1,97 @@
+# Temporal Table Configuration
+
+By default, `IsTemporal()` follows a convention: it names the history table `[TableName]History` and uses `PeriodStart` and `PeriodEnd` as column names. In a real-world project—especially with existing databases—you often need to customize these names.
+
+## Customizing Table Names
+
+You might have naming conventions like using an `_Audit` suffix or putting all history tables in a separate `History` schema.
+
+You can customize the history table name using the builder action inside `IsTemporal`:
+
+```csharp
+modelBuilder.Entity<Product>()
+    .ToTable("Products", table => table.IsTemporal(history =>
+    {
+        history.UseHistoryTable("Products_Archive");
+    }));
+```
+
+Or specify a schema:
+
+```csharp
+history.UseHistoryTable("Products", "audit"); // Schema: audit, Table: Products
+```
+
+## Customizing Period Columns
+
+The shadow columns `PeriodStart` and `PeriodEnd` might conflict with your existing columns or conventions (e.g., `ValidFrom` / `ValidTo` is a common standard).
+
+```csharp
+modelBuilder.Entity<Product>()
+    .ToTable("Products", table => table.IsTemporal(temporal =>
+    {
+        temporal.HasPeriodStart("ValidFrom");
+        temporal.HasPeriodEnd("ValidTo");
+        temporal.UseHistoryTable("ProductsHistory");
+    }));
+```
+
+## Accessing Period Columns in Code
+
+By default, the period columns are **Shadow Properties**—they exist in the database but not in your C# class. This keeps your domain model clean.
+
+However, sometimes you *want* to see the validity period on the entity itself. You can map them to regular properties!
+
+1.  Add properties to your entity:
+
+```csharp
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    // ...
+    public DateTime ValidFrom { get; set; }
+    public DateTime ValidTo { get; set; }
+}
+```
+
+2.  Configure them in `OnModelCreating`:
+
+```csharp
+modelBuilder.Entity<Product>()
+    .ToTable("Products", table => table.IsTemporal(temporal =>
+    {
+        temporal.HasPeriodStart("ValidFrom");
+        temporal.HasPeriodEnd("ValidTo");
+    }));
+```
+
+Now `product.ValidFrom` will automatically be populated when you fetch data!
+
+<InfoBox type="warning" title="Period Columns are Read-Only">
+  Even if you map them to properties, you **cannot** manually set `ValidFrom` or `ValidTo` to modify the history or "fake" a transaction time. SQL Server manages these columns strictly. Attempting to write to them will likely result in an exception or be ignored depending on the operation.
+</InfoBox>
+
+<ProgressCheckpoint
+  section="config-check"
+  description="If you want to access the 'PeriodStart' value in your C# code without adding a property to your class, what helper method should you use?"
+  options={[
+    { id: '1', label: 'context.GetDate()' },
+    { id: '2', label: 'EF.Property<DateTime>(entity, \"PeriodStart\")' },
+    { id: '3', label: 'entity.GetShadowProperty(\"PeriodStart\")' },
+    { id: '4', label: 'You cannot access it' }
+  ]}
+  correctOption="2"
+  explanation="EF.Property<T> is the standard way to access shadow properties in LINQ queries and change tracking."
+/>
+
+## Conclusion
+
+You have now mastered Temporal Tables in EF Core!
+
+We've covered:
+1.  **Basics**: Enabling `IsTemporal()` to auto-magically get history tracking.
+2.  **Querying**: Using `TemporalAsOf`, `TemporalAll`, etc., to time-travel through your data.
+3.  **Configuration**: Customizing table and column names to fit your database standards.
+
+This powerful feature can save you weeks of work implementing custom audit logging solutions. Happy time traveling!

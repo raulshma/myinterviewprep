@@ -1,0 +1,18 @@
+{
+  "id": "connection-pooling",
+  "title": "Connection Pooling",
+  "description": "Manage database connections efficiently with connection and DbContext pooling.",
+  "milestone": "performance-optimization",
+  "order": 5,
+  "sections": [
+    "connection-pooling-basics",
+    "dbcontext-pooling",
+    "pooled-factory",
+    "pool-management"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 80,
+  "prerequisites": ["ef-performance"],
+  "tags": ["ef-core", "performance", "connection-pooling", "dbcontext-pooling"]
+}

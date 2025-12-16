@@ -1,0 +1,151 @@
+# Scaffolding from Existing Databases
+
+When you have an existing database and want to use EF Core, you don't have to write all your entity classes by hand! **Scaffolding** (also known as Reverse Engineering) is the process of generating your `DbContext` and entity classes based on your current database schema.
+
+---
+
+## Section 1: The Magic Command
+
+### What is Scaffolding?
+
+Imagine you have a SQL Server database with hundreds of tables. Writing C# classes for all of them would be:
+- 😴 **Boring**
+- 🐌 **Slow**
+- 🐛 **Error-prone**
+
+Scaffolding does this for you automatically. It reads the database schema and "scaffolds" (builds) the corresponding code.
+
+### The CLI Command
+
+To scaffold a database, you use the EF Core CLI tool. The basic syntax is:
+
+```bash
+dotnet ef dbcontext scaffold "[Connection String]" [Provider]
+```
+
+<InfoBox type="tip">
+You need the **Microsoft.EntityFrameworkCore.Design** package installed in your project to use these commands!
+</InfoBox>
+
+<ProgressCheckpoint section="what-is-scaffolding" xpReward={20} />
+
+---
+
+## Section 2: Scaffolding in Action
+
+Let's see how this works with a real example. Suppose we have a database called `MyStore` and we want to generate code for it.
+
+<DotnetCodePreview
+  title="Running the Scaffold Command"
+  code={`dotnet ef dbcontext scaffold 
+  "Server=(localdb)\\mssqllocaldb;Database=MyStore;Trusted_Connection=True" 
+  Microsoft.EntityFrameworkCore.SqlServer 
+  --output-dir Models 
+  --context MyStoreContext`}
+  steps={[
+    {
+      lineNumbers: [1],
+      highlight: "Command",
+      explanation: "We start with 'dotnet ef dbcontext scaffold' to tell EF Core we want to reverse engineer."
+    },
+    {
+      lineNumbers: [2],
+      highlight: "Connection String",
+      explanation: "The connection string to your EXISTING database. EF Core connects to this database to read the schema."
+    },
+    {
+      lineNumbers: [3],
+      highlight: "Provider",
+      explanation: "The database provider package (e.g., SqlServer, Npgsql, Sqlite). This must match your database type."
+    },
+    {
+      lineNumbers: [4],
+      highlight: "Output Directory",
+      explanation: "Optional: Keeps your project clean by putting generated entity classes in a 'Models' folder."
+    },
+    {
+      lineNumbers: [5],
+      highlight: "Context Name",
+      explanation: "Optional: Specifies the name of the DbContext class to generate (e.g., 'MyStoreContext')."
+    }
+  ]}
+/>
+
+### What Happens Next?
+
+After running this command, EF Core will:
+1.  Connect to `MyStore`.
+2.  Read all tables, columns, constraints, and relationships.
+3.  Create a `MyStoreContext.cs` file.
+4.  Create a C# class for every table (e.g., `Product.cs`, `Customer.cs`).
+
+<ProgressCheckpoint section="scaffold-command" xpReward={30} />
+
+---
+
+## Section 3: The Resulting Code
+
+Let's look at what EF Core generates for a simple `Products` table.
+
+**Database Table:**
+`Products` (Id, Name, Price, CategoryId)
+
+**Generated C# Class:**
+
+```csharp
+public partial class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = null!;
+    public decimal Price { get; set; }
+    public int CategoryId { get; set; }
+
+    // Navigation property automatically detected!
+    public virtual Category Category { get; set; } = null!;
+}
+```
+
+<InfoBox type="info">
+Notice the `partial` keyword? This is important! It allows you to add extra properties or methods to `Product` in a SEPARATE file, so they don't get overwritten if you re-scaffold.
+</InfoBox>
+
+<ProgressCheckpoint section="command-preview" xpReward={20} />
+
+---
+
+## Section 4: Common Guidelines
+
+### When to usage Scaffolding?
+
+- **Legacy Projects:** You are migrating a 10-year-old application to modern .NET.
+- **DBA-First Teams:** Your database administrators design the schema first, and you just consume it.
+- **SQL-Heavy Workflows:** You prefer designing tables in SQL Management Studio or visual tools.
+
+### Important Options
+
+Here are some power-user flags for the command:
+
+| Flag | Description |
+|:-----|:------------|
+| `--tables [List]` | Only scaffold specific tables (e.g., `--tables Products,Orders`) |
+| `--data-annotations` | Use attributes like `[Required]` instead of Fluent API where possible |
+| `--force` | Overwrite existing files if they already exist |
+| `--no-onconfiguring` | Don't include the connection string in the generated `DbContext` (Important for security!) |
+
+<Quiz id="scaffolding-quiz">
+  <Question>What usually happens if you run the scaffold command again without the --force flag?</Question>
+  <Answer correct>It will fail if files already exist</Answer>
+  <Answer>It will overwrite the existing files</Answer>
+  <Answer>It will create duplicate files (e.g., Product1.cs)</Answer>
+  <Answer>It will merge the changes intelligently</Answer>
+</Quiz>
+
+<Quiz id="scaffolding-provider-quiz">
+  <Question>Which argument specifies the type of database you are connecting to?</Question>
+  <Answer>The connection string</Answer>
+  <Answer correct>The provider (e.g., Microsoft.EntityFrameworkCore.SqlServer)</Answer>
+  <Answer>The --provider flag</Answer>
+  <Answer>The context name</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="scaffolding-options" xpReward={30} />

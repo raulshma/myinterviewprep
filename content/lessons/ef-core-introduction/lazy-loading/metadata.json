@@ -1,0 +1,18 @@
+{
+  "id": "lazy-loading",
+  "title": "Lazy Loading - Load Data On Demand",
+  "description": "Learn how lazy loading automatically fetches related data when you access navigation properties, and understand its trade-offs.",
+  "milestone": "loading-strategies",
+  "order": 2,
+  "sections": [
+    "what-is-lazy-loading",
+    "configuring-proxies",
+    "virtual-navigation",
+    "pitfalls-dangers"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 25,
+  "xpReward": 85,
+  "prerequisites": ["eager-loading"],
+  "tags": ["ef-core", "lazy-loading", "proxies", "n-plus-one", "dotnet"]
+}

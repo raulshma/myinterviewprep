@@ -1,0 +1,18 @@
+{
+  "id": "specification-pattern",
+  "title": "Specification Pattern",
+  "description": "Learn how to encapsulate query logic into reusable objects to avoid bloating your repositories with endless filter methods.",
+  "milestone": "ef-core-introduction",
+  "order": 43,
+  "sections": [
+    "problem-statement",
+    "specification-basics",
+    "implementation",
+    "usage"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 45,
+  "xpReward": 300,
+  "prerequisites": ["generic-repository", "linq-projections"],
+  "tags": ["design-patterns", "specification", "clean-architecture"]
+}

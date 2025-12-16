@@ -1,0 +1,18 @@
+{
+  "id": "reverse-engineering",
+  "title": "Reverse Engineering Database Schemas",
+  "description": "Understand how EF Core translates your SQL database schema into C# types, relationships, and constraints.",
+  "milestone": "database-first",
+  "order": 1,
+  "sections": [
+    "type-mapping",
+    "nullability",
+    "relationships-mapping",
+    "customizing-names"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 25,
+  "xpReward": 100,
+  "prerequisites": ["scaffolding"],
+  "tags": ["mapping", "types", "relationships", "database-first"]
+}

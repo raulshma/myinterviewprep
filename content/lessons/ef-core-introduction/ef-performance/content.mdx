@@ -1,0 +1,462 @@
+# Query Performance Analysis
+
+Become a performance detective! Learn how to analyze, profile, and identify bottlenecks in your EF Core queries before they become production nightmares.
+
+---
+
+## Section 1: The Performance Landscape
+
+### Why Performance Matters 🎯
+
+Imagine your database is a library, and EF Core is your librarian. A slow librarian doesn't just annoy one person—they create a line that grows and grows until the whole library grinds to a halt!
+
+<InfoBox type="info">
+**The Reality:** A single slow query in a web app doesn't just affect one user. Under load, it blocks threads, exhausts connection pools, and can bring down your entire application.
+</InfoBox>
+
+### The Performance Triangle
+
+Every EF Core query has three potential bottlenecks:
+
+| Bottleneck | What Happens | How to Detect |
+|:-----------|:-------------|:--------------|
+| **Query Translation** | LINQ → SQL compilation is slow | First query is slow, subsequent fast |
+| **Database Execution** | SQL runs slow on the database | Slow even with raw SQL |
+| **Data Transfer** | Too much data crossing the wire | Fast query, slow materialization |
+
+<DotnetCodePreview
+  title="The Three Stages of a Query"
+  code={`// Stage 1: Query Translation (happens once per query shape)
+var query = context.Products
+    .Where(p => p.Price > 100)
+    .OrderBy(p => p.Name);
+// EF Core compiles LINQ → SQL
+
+// Stage 2: Database Execution (happens on SQL Server)
+// SELECT * FROM Products WHERE Price > 100 ORDER BY Name
+// Database finds matching rows, sorts them
+
+// Stage 3: Data Transfer & Materialization
+var products = await query.ToListAsync();
+// Results travel over network, EF creates C# objects`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5],
+      highlight: "Translation",
+      explanation: "EF Core parses your LINQ and generates SQL. This is cached!"
+    },
+    {
+      lineNumbers: [8, 9],
+      highlight: "Execution",
+      explanation: "SQL runs on the database server. Indexes matter here!"
+    },
+    {
+      lineNumbers: [12, 13],
+      highlight: "Materialization",
+      explanation: "Results come back and become C# objects. Less data = faster!"
+    }
+  ]}
+/>
+
+<KeyConcept title="Know Your Enemy">
+Before optimizing, you must **measure**. Never guess where the slowness is—profile first, optimize second!
+</KeyConcept>
+
+<ProgressCheckpoint section="performance-landscape" xpReward={20} />
+
+---
+
+## Section 2: Profiling Tools
+
+### Your Performance Detective Toolkit 🔍
+
+EF Core gives you several ways to see what's happening under the hood. Let's master them all!
+
+<DotnetCodePreview
+  title="Enable SQL Logging"
+  code={`// Method 1: Simple console logging
+protected override void OnConfiguring(DbContextOptionsBuilder options)
+{
+    options.UseSqlServer(connectionString)
+           .LogTo(Console.WriteLine, LogLevel.Information);
+}
+
+// Method 2: With parameter values (development only!)
+protected override void OnConfiguring(DbContextOptionsBuilder options)
+{
+    options.UseSqlServer(connectionString)
+           .LogTo(Console.WriteLine, LogLevel.Information)
+           .EnableSensitiveDataLogging()  // Shows actual values
+           .EnableDetailedErrors();       // Better error messages
+}
+
+// Method 3: Filter to only database commands
+protected override void OnConfiguring(DbContextOptionsBuilder options)
+{
+    options.UseSqlServer(connectionString)
+           .LogTo(
+               Console.WriteLine,
+               new[] { DbLoggerCategory.Database.Command.Name },
+               LogLevel.Information
+           );
+}`}
+  steps={[
+    {
+      lineNumbers: [3, 4, 5, 6],
+      highlight: "Basic Logging",
+      explanation: "See every SQL query in your console output"
+    },
+    {
+      lineNumbers: [13, 14],
+      highlight: "Sensitive Data",
+      explanation: "Shows actual parameter values—never enable in production!"
+    },
+    {
+      lineNumbers: [20, 21, 22, 23, 24],
+      highlight: "Filtered Logging",
+      explanation: "Only show database commands, skip other EF noise"
+    }
+  ]}
+/>
+
+### ToQueryString() - See Before You Execute
+
+<DotnetCodePreview
+  title="Preview SQL Without Executing"
+  code={`// Build your query
+var query = context.Products
+    .Where(p => p.CategoryId == 5)
+    .Where(p => p.Price > 50)
+    .OrderByDescending(p => p.CreatedAt)
+    .Take(20);
+
+// See the SQL without running it!
+var sql = query.ToQueryString();
+Console.WriteLine(sql);
+
+// Output:
+// DECLARE @__p_0 int = 5;
+// DECLARE @__p_1 decimal = 50;
+// 
+// SELECT TOP(20) [p].[Id], [p].[Name], [p].[Price], ...
+// FROM [Products] AS [p]
+// WHERE [p].[CategoryId] = @__p_0 AND [p].[Price] > @__p_1
+// ORDER BY [p].[CreatedAt] DESC
+
+// Now you can:
+// 1. Copy to SSMS and check execution plan
+// 2. Verify indexes are being used
+// 3. Spot unexpected complexity`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7],
+      highlight: "Build Query",
+      explanation: "This doesn't execute anything—just builds an expression tree"
+    },
+    {
+      lineNumbers: [10, 11],
+      highlight: "Get SQL String",
+      explanation: "ToQueryString() converts the LINQ to SQL without executing"
+    },
+    {
+      lineNumbers: [13, 14, 15, 16, 17, 18, 19],
+      highlight: "Actual SQL",
+      explanation: "Complete SQL with parameters—copy to your database tool!"
+    }
+  ]}
+/>
+
+### Query Tags for Production
+
+<DotnetCodePreview
+  title="Tag Your Queries"
+  code={`// Add comments that appear in SQL
+var orders = await context.Orders
+    .TagWith("Dashboard: Pending Orders Count")
+    .TagWith($"User: {userId}")
+    .Where(o => o.Status == "Pending")
+    .CountAsync();
+
+// Generated SQL includes your tags:
+// -- Dashboard: Pending Orders Count
+// -- User: 42
+// SELECT COUNT(*)
+// FROM [Orders] AS [o]
+// WHERE [o].[Status] = N'Pending'
+
+// Now in SQL Profiler, you can see:
+// - Which feature caused this query
+// - Context like user ID or request ID
+// - Easy filtering in profiler tools`}
+  steps={[
+    {
+      lineNumbers: [3, 4],
+      highlight: "Multiple Tags",
+      explanation: "Stack multiple TagWith() calls for detailed context"
+    },
+    {
+      lineNumbers: [9, 10],
+      highlight: "SQL Comments",
+      explanation: "Tags become SQL comments—visible in any profiler!"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Pro Tip:** Create an extension method that automatically tags queries with the HTTP request ID. This makes tracing production issues much easier!
+</InfoBox>
+
+<ProgressCheckpoint section="profiling-tools" xpReward={25} />
+
+---
+
+## Section 3: Common Bottlenecks
+
+### The Usual Suspects 🕵️
+
+Let's look at the most common performance killers and how to spot them.
+
+<QueryExecutionVisualizer
+  title="Bottleneck: Loading Too Much Data"
+  steps={[
+    {
+      linq: `// ❌ Loading entire entities for a dropdown
+var products = await context.Products
+    .ToListAsync();
+
+// Later: products.Select(p => new { p.Id, p.Name })`,
+      sql: `SELECT [p].[Id], [p].[Name], [p].[Description], 
+       [p].[Price], [p].[ImageUrl], [p].[CategoryId],
+       [p].[CreatedAt], [p].[UpdatedAt], [p].[Stock],
+       [p].[Metadata], [p].[SKU], [p].[Weight]...
+FROM [Products] AS [p]
+
+-- Transfers ALL columns for ALL products!`,
+      explanation: "Loading 1000 products with 20 columns = massive data transfer, even if you only need Id and Name!"
+    },
+    {
+      linq: `// ✅ Project only what you need
+var products = await context.Products
+    .Select(p => new { p.Id, p.Name })
+    .ToListAsync();`,
+      sql: `SELECT [p].[Id], [p].[Name]
+FROM [Products] AS [p]
+
+-- Only 2 columns transferred!`,
+      explanation: "Projection reduces data to exactly what's needed—often 10-100x less data!"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="Bottleneck: Missing Indexes"
+  steps={[
+    {
+      linq: `// Filtering on non-indexed column
+var orders = await context.Orders
+    .Where(o => o.CustomerEmail == email)
+    .ToListAsync();`,
+      sql: `SELECT * FROM [Orders] AS [o]
+WHERE [o].[CustomerEmail] = @email
+
+-- Without index: TABLE SCAN!
+-- Reads every single row to find matches
+-- 1 million orders = 1 million row reads`,
+      explanation: "Without an index, the database must scan every row. This gets slower as data grows!"
+    },
+    {
+      linq: `// Same query, but with index:
+// CREATE INDEX IX_Orders_CustomerEmail 
+//   ON Orders(CustomerEmail)
+
+var orders = await context.Orders
+    .Where(o => o.CustomerEmail == email)
+    .ToListAsync();`,
+      sql: `SELECT * FROM [Orders] AS [o]
+WHERE [o].[CustomerEmail] = @email
+
+-- With index: INDEX SEEK!
+-- Jumps directly to matching rows
+-- 1 million orders = ~10 row reads`,
+      explanation: "With an index, the database jumps directly to matching rows. Massive difference!"
+    }
+  ]}
+/>
+
+### Client-Side Evaluation Trap
+
+<DotnetCodePreview
+  title="Dangerous Client Evaluation"
+  code={`// ❌ Custom method EF can't translate
+public bool IsVIP(Customer c) => c.TotalSpent > 10000;
+
+var vips = await context.Customers
+    .Where(c => IsVIP(c))  // EF can't translate this!
+    .ToListAsync();
+// Result: Loads ALL customers, filters in memory!
+
+// ❌ Complex string operations
+var matches = await context.Products
+    .Where(p => Regex.IsMatch(p.Name, pattern))
+    .ToListAsync();
+// Result: Loads ALL products, regex runs in C#!
+
+// ✅ Inline the logic
+var vips = await context.Customers
+    .Where(c => c.TotalSpent > 10000)  // EF can translate this
+    .ToListAsync();
+
+// ✅ Use database functions
+var matches = await context.Products
+    .Where(p => EF.Functions.Like(p.Name, pattern))
+    .ToListAsync();`}
+  steps={[
+    {
+      lineNumbers: [2, 4, 5, 6],
+      highlight: "Custom Method Trap",
+      explanation: "EF can't see inside your method—loads everything to filter in C#!"
+    },
+    {
+      lineNumbers: [10, 11, 12],
+      highlight: "Untranslatable Operations",
+      explanation: "Regex, complex string ops, etc. force client evaluation"
+    },
+    {
+      lineNumbers: [16, 17, 18],
+      highlight: "Inline Solution",
+      explanation: "Keep expressions simple—EF can translate comparison operators"
+    },
+    {
+      lineNumbers: [21, 22, 23],
+      highlight: "EF.Functions",
+      explanation: "Use EF.Functions for database-specific operations like LIKE"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Watch the Logs!** EF Core logs a warning when it can't translate something: *"The LINQ expression could not be translated."* Never ignore these warnings!
+</InfoBox>
+
+<ProgressCheckpoint section="common-bottlenecks" xpReward={25} />
+
+---
+
+## Section 4: The Optimization Mindset
+
+### Think Like a Performance Engineer 🧠
+
+<Comparison
+  title="Optimization Approaches"
+  items={[
+    {
+      label: "Premature Optimization",
+      description: "Optimizing everything 'just in case' before measuring. Wastes time on non-problems.",
+      isCorrect: false
+    },
+    {
+      label: "Data-Driven Optimization",
+      description: "Measure first, identify actual bottlenecks, optimize the hot paths that matter.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+### The Performance Checklist
+
+Before deploying any EF Core code, ask yourself:
+
+<DotnetCodePreview
+  title="Performance Review Checklist"
+  code={`// ✅ CHECKLIST FOR EVERY QUERY:
+
+// 1. Am I loading only what I need?
+.Select(x => new { x.Id, x.Name })  // Not .ToList() on entities
+
+// 2. Am I using AsNoTracking for read-only?
+.AsNoTracking()
+
+// 3. Have I prevented N+1 with Include?
+.Include(x => x.RelatedData)
+
+// 4. Is there an index on my WHERE columns?
+// Check with: .ToQueryString() → SSMS execution plan
+
+// 5. Am I avoiding client-side evaluation?
+// Check logs for "could not be translated" warnings
+
+// 6. For repeated queries, should I compile them?
+// Consider EF.CompileQuery for hot paths
+
+// 7. For bulk operations, am I using ExecuteUpdate/Delete?
+// Don't load entities just to update/delete them`}
+  steps={[
+    {
+      lineNumbers: [4],
+      highlight: "Projection",
+      explanation: "Always project to DTOs when you don't need full entities"
+    },
+    {
+      lineNumbers: [7],
+      highlight: "Tracking",
+      explanation: "AsNoTracking saves memory and CPU for read-only operations"
+    },
+    {
+      lineNumbers: [10],
+      highlight: "N+1 Prevention",
+      explanation: "Include related data in one query to prevent query explosion"
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="profiling-tool-quiz">
+  <Question>Which method lets you see the SQL without executing the query?</Question>
+  <Answer>Console.WriteLine()</Answer>
+  <Answer correct>ToQueryString()</Answer>
+  <Answer>EnableSensitiveDataLogging()</Answer>
+  <Answer>TagWith()</Answer>
+</Quiz>
+
+<Quiz id="client-eval-quiz">
+  <Question>What happens when EF Core can't translate a LINQ expression to SQL?</Question>
+  <Answer>It throws an exception immediately</Answer>
+  <Answer>It skips that filter</Answer>
+  <Answer correct>It loads all data and filters in memory (client evaluation)</Answer>
+  <Answer>It uses a fallback SQL syntax</Answer>
+</Quiz>
+
+<Quiz id="bottleneck-quiz">
+  <Question>Which is typically the MOST impactful optimization for reducing data transfer?</Question>
+  <Answer>Using async queries</Answer>
+  <Answer>Adding more RAM to the server</Answer>
+  <Answer correct>Projecting only needed columns with Select()</Answer>
+  <Answer>Using a faster database driver</Answer>
+</Quiz>
+
+### Summary
+
+| Tool/Technique | Purpose | When to Use |
+|:---------------|:--------|:------------|
+| **Logging** | See all SQL queries | Development |
+| **ToQueryString()** | Preview SQL before running | Debug specific queries |
+| **TagWith()** | Identify queries in profilers | Production tracing |
+| **Execution Plans** | Check index usage | Query optimization |
+| **EF Core Warnings** | Catch client evaluation | Always monitor |
+
+<KeyConcept title="The Golden Rule">
+**Measure → Identify → Optimize → Verify**
+
+Never optimize blindly! Profile first to find actual bottlenecks, then verify your changes actually helped.
+</KeyConcept>
+
+<KeyConcept title="Next Steps">
+Now that you can identify performance issues, learn specific optimization techniques:
+- **AsNoTracking** for read-only queries
+- **Compiled Queries** for hot paths
+- **Batch Operations** for bulk updates
+- **Connection Pooling** for scalability
+</KeyConcept>
+
+<ProgressCheckpoint section="optimization-mindset" xpReward={20} />

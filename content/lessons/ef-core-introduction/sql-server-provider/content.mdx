@@ -1,0 +1,95 @@
+
+# SQL Server Provider
+
+The Microsoft SQL Server provider for EF Core (`Microsoft.EntityFrameworkCore.SqlServer`) allows you to use Entity Framework Core with SQL Server and Azure SQL Database. It supports a wide range of SQL Server-specific features.
+
+## Installation and Configuration
+
+To use the SQL Server provider, you first need to install the NuGet package:
+
+```bash
+dotnet add package Microsoft.EntityFrameworkCore.SqlServer
+```
+
+Then, configure your `DbContext` to use SQL Server in the `OnConfiguring` method or within your dependency injection setup (e.g., in `Program.cs`).
+
+<ProgressCheckpoint
+  slug="installation"
+  options={[
+    { id: "correct", label: "UseSqlServer", correct: true },
+    { id: "incorrect1", label: "UseSql" },
+    { id: "incorrect2", label: "UseMSSQL" }
+  ]}
+  question="Which method is used to configure the DbContext to use the SQL Server provider?"
+/>
+
+### Dependency Injection (ASP.NET Core)
+
+In a typical ASP.NET Core application, you configure the context in `Program.cs`:
+
+```csharp
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+```
+
+### Connection Resiliency
+
+The SQL Server provider includes built-in support for connection resiliency (automatic retries) for transient failures, which is crucial for cloud databases like Azure SQL.
+
+```csharp
+options.UseSqlServer(
+    connectionString,
+    providerOptions => providerOptions.EnableRetryOnFailure(
+        maxRetryCount: 5,
+        maxRetryDelay: TimeSpan.FromSeconds(30),
+        errorNumbersToAdd: null));
+```
+
+## SQL Server Specific Features
+
+EF Core allows you to access features specific to SQL Server that might not be available in other databases.
+
+### Temporal Tables
+
+SQL Server Temporal Tables simplify tracking the history of data changes. EF Core supports them natively (starting with EF Core 6).
+
+```csharp
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Product>()
+        .ToTable("Products", b => b.IsTemporal());
+}
+```
+
+This automatically manages the history table for you.
+
+### HierarchyID
+
+Since EF Core 8, there is first-class support for `HierarchyID` to store and query hierarchical data efficiently.
+
+```csharp
+public class OrganizationNode
+{
+    public int Id { get; set; }
+    public HierarchyId Path { get; set; }
+    public string Name { get; set; }
+}
+```
+
+<ProgressCheckpoint
+  slug="features"
+  options={[
+    { id: "correct", label: "ToTable(name, b => b.IsTemporal())", correct: true },
+    { id: "incorrect1", label: "HasTemporalTable()" },
+    { id: "incorrect2", label: "UseHistoryTable()" }
+  ]}
+  question="How do you map an entity to a SQL Server Temporal Table in OnModelCreating?"
+/>
+
+## Performance Considerations
+
+- **Batching**: Only one round trip is made for all statements in a batch.
+- **Table Splitting**: Map multiple entities to a single table.
+- **SQL Server 2016+**: Use `OPENJSON` for efficient JSON processing if needed (via raw SQL mostly in older versions, but getting better support).
+
+Using `Microsoft.EntityFrameworkCore.SqlServer` is the standard way to build enterprise .NET applications.

@@ -1,0 +1,18 @@
+{
+  "id": "maintaining-scaffolded",
+  "title": "Maintaining Scaffolded Code",
+  "description": "Learn how to safely extend and update your generated EF Core model without losing your changes.",
+  "milestone": "database-first",
+  "order": 2,
+  "sections": [
+    "the-overwrite-problem",
+    "partial-classes",
+    "extending-metadata",
+    "updating-schema"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 25,
+  "xpReward": 100,
+  "prerequisites": ["scaffolding"],
+  "tags": ["database-first", "maintenance", "partial-classes"]
+}

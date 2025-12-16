@@ -1,0 +1,159 @@
+# Specification Pattern
+
+## Section 1: The Problem of Exploding Methods 🤯
+
+As your app grows, your Repository starts looking like this:
+
+```csharp
+public interface IProductRepository
+{
+    GetProductsByCategory(int id);
+    GetProductsAbovePrice(decimal price);
+    GetProductsByCategoryAndAbovePrice(int id, decimal price);
+    GetActiveProductsByCategory(int id);
+    // It never ends! 😭
+}
+```
+
+Every new business requirement forces you to change the Repository Interface AND Implementation. This violates the **Open/Closed Principle**.
+
+<ProgressCheckpoint section="problem-statement" xpReward={60} />
+
+---
+
+## Section 2: The Specification Concept
+
+The **Specification Pattern** solves this by encapsulating "What we want" into a standalone object.
+
+Instead of `repo.GetProductsByCategory(5)`, we say:
+`repo.Find(new ProductsByCategorySpec(5))`
+
+The Repository doesn't need to know *what* the logic is, it just knows how to execute a Specification.
+
+### The Contract
+
+<DotnetCodePreview
+  title="ISpecification Interface"
+  code={`public interface ISpecification<T>
+{
+    // The "Where" clause
+    Expression<Func<T, bool>> Criteria { get; }
+    
+    // The "Includes" (Eager Loading)
+    List<Expression<Func<T, object>>> Includes { get; }
+    
+    // Sorting (Optional)
+    Expression<Func<T, object>> OrderBy { get; }
+}
+
+public abstract class BaseSpecification<T> : ISpecification<T>
+{
+    public Expression<Func<T, bool>> Criteria { get; set; }
+    public List<Expression<Func<T, object>>> Includes { get; } = new();
+    public Expression<Func<T, object>> OrderBy { get; private set; }
+
+    protected void AddInclude(Expression<Func<T, object>> includeExpression)
+    {
+        Includes.Add(includeExpression);
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [4],
+      highlight: "Criteria",
+      explanation: "This holds the LINQ expression that filters the data (e.g., p => p.Price > 10)."
+    },
+    {
+      lineNumbers: [7],
+      highlight: "Includes List",
+      explanation: "We can build a list of related entities to eager load dynamically."
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="specification-basics" xpReward={80} />
+
+---
+
+## Section 3: Defining a Specification
+
+Now we can create business-rule objects!
+
+<DotnetCodePreview
+  title="PremiumProductsSpec.cs"
+  code={`public class PremiumProductsSpec : BaseSpecification<Product>
+{
+    public PremiumProductsSpec(decimal minPrice)
+    {
+        // 1. Define the Filter
+        Criteria = p => p.Price > minPrice && p.IsActive;
+
+        // 2. Define Includes
+        AddInclude(p => p.Category);
+        AddInclude(p => p.Reviews);
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [1],
+      highlight: "Reusable Class",
+      explanation: "This logic is now a standalone class, easily testable without a database!"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="implementation" xpReward={80} />
+
+---
+
+## Section 4: Upgrading the Repository
+
+We need to teach our Generic Repository how to handle these specifications. We use a helper (often called `SpecificationEvaluator`) to translate the Spec into an `IQueryable`.
+
+<DotnetCodePreview
+  title="GenericRepository with Specs"
+  code={`public class GenericRepository<T> : IGenericRepository<T> ...
+{
+    // ... existing methods
+
+    public async Task<IEnumerable<T>> FindAsync(ISpecification<T> spec)
+    {
+        // Start with the basic Set
+        var query = _context.Set<T>().AsQueryable();
+
+        // 1. Apply Filtering
+        if (spec.Criteria != null)
+        {
+            query = query.Where(spec.Criteria);
+        }
+
+        // 2. Apply Includes (Aggregate)
+        query = spec.Includes.Aggregate(query, 
+            (current, include) => current.Include(include));
+
+        // 3. Execute
+        return await query.ToListAsync();
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [18],
+      highlight: "Dynamic Includes",
+      explanation: "We loop through the Includes list and apply them to the EF Core query dynamically."
+    }
+  ]}
+/>
+
+<InfoBox type="info">
+  **Pro Tip:** You don't have to build this from scratch! The **Ardalis.Specification** library is the industry standard for .NET. It adds advanced features like Pagination, Caching, and Projections.
+</InfoBox>
+
+<Quiz id="spec-quiz">
+  <Question>What allows the Specification pattern to support Eager Loading genericly?</Question>
+  <Answer>It ignores Includes and uses Lazy Loading</Answer>
+  <Answer correct>It stores a list of Include expressions and applies them dynamically</Answer>
+  <Answer>It requires a hardcoded string of table names</Answer>
+  <Answer>Magic</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="usage" xpReward={80} />

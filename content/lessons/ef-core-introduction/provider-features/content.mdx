@@ -1,0 +1,83 @@
+
+# Provider-Specific Features and Portability
+
+While EF Core abstracts many database details, sometimes you need to access specific features of the underlying database or write code that adapts to different providers (e.g., SQL Server in production, SQLite in testing).
+
+## Accessing Provider Information
+
+You can check which provider is currently in use via the `Database` property on your context.
+
+```csharp
+if (context.Database.IsSqlServer())
+{
+    // Do SQL Server specific logic
+}
+else if (context.Database.IsSqlite())
+{
+    // Do SQLite specific logic
+}
+```
+
+This is useful for conditional migration logic or seeding data.
+
+<ProgressCheckpoint
+  slug="overview"
+  options={[
+    { id: "correct", label: "context.Database.IsSqlServer()", correct: true },
+    { id: "incorrect1", label: "context.Provider == 'SqlServer'" },
+    { id: "incorrect2", label: "context.IsProvider('MsSql')" }
+  ]}
+  question="Which helper method checks if the current provider is SQL Server?"
+/>
+
+## Explicit Mappings
+
+Sometimes mapping configurations differ by provider. You can use extension methods in `OnModelCreating` to target specific providers.
+
+```csharp
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Book>()
+        .Property(b => b.Title)
+        .IsUnicode(false); // Valid for SQL Server (VARCHAR vs NAND), ignored by SQLite mostly
+
+    if (Database.IsNpgsql())
+    {
+         modelBuilder.Entity<Book>()
+            .Property(b => b.Tags)
+            .HasColumnType("jsonb");
+    }
+}
+```
+
+## Azure Cosmos DB Provider
+
+EF Core also supports NoSQL databases like Azure Cosmos DB. This requires a fundamentally different way of thinking:
+- **No Migrations**: Cosmos has no strict schema to migrate.
+- **Embedded Entities**: Used heavily instead of multiple tables.
+- **Partition Keys**: Crucial for performance.
+
+```csharp
+modelBuilder.Entity<Order>()
+    .ToContainer("Orders")
+    .HasPartitionKey(o => o.CustomerId);
+```
+
+## Raw SQL Differences
+
+When using `FromSqlRaw`, remember that SQL syntax varies:
+
+```csharp
+// SQL Server
+var blogs = context.Blogs.FromSqlRaw("SELECT * FROM dbo.Blogs").ToList();
+
+// SQLite
+var blogs = context.Blogs.FromSqlRaw("SELECT * FROM Blogs").ToList();
+```
+
+Always use parameterization (`{0}`) to prevent SQL injection and improve portability where possible.
+
+## Best Practices
+1.  **Stick to standard LINQ** where possible.
+2.  **Isolate provider-specific code** into services or conditional blocks.
+3.  **Test against your production provider** (e.g., using Docker containers) in CI/CD, even if you use SQLite for local unit tests.

@@ -1,0 +1,151 @@
+# Reverse Engineering Database Schemas
+
+You've run the scaffold command, but how does EF Core decide what your C# code looks like? It's not magic—it's **Reverse Engineering**. Let's peek under the hood to see how SQL concepts translate to .NET concepts.
+
+---
+
+## Section 1: Type Mapping
+
+### SQL to C# Translation
+
+EF Core has a default mapping for every SQL data type. It tries to pick the most appropriate .NET type.
+
+| SQL Server Type | C# Type | Notes |
+|:----------------|:--------|:------|
+| `int`, `smallint` | `int`, `short` | Exact integer match |
+| `bigint` | `long` | 64-bit integer |
+| `nvarchar(50)`, `varchar(max)` | `string` | Text is always string |
+| `bit` | `bool` | 0/1 becomes False/True |
+| `decimal(18,2)` | `decimal` | Money and high-precision numbers |
+| `datetime2` | `DateTime` | Standard date/time |
+| `uniqueidentifier` | `Guid` | Universally Unique Ids |
+
+<InfoBox type="info">
+**Special Case:** `float` in SQL might map to `double` in C# because of precision differences.
+</InfoBox>
+
+<ProgressCheckpoint section="type-mapping" xpReward={20} />
+
+---
+
+## Section 2: Nullability
+
+Since C# 8 introduced **Nullable Reference Types**, EF Core is much smarter about `null`.
+
+<Comparison
+  title="Null Handling"
+  items={[
+    {
+      label: "SQL: column_name int NULL",
+      description: "Maps to 'int?' (Nullable<int>) in C#. EF knows this value can be missing.",
+      isCorrect: true
+    },
+    {
+      label: "SQL: column_name nvarchar(50) NOT NULL",
+      description: "Maps to 'string' (non-nullable). EF initializes it to avoid warnings (e.g. = null!).",
+      isCorrect: true
+    },
+    {
+      label: "SQL: column_name nvarchar(50) NULL",
+      description: "Maps to 'string?'. The '?' tells the compiler to expect nulls here.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+### Handling "Not Null" Strings
+
+If a database column is `NOT NULL`, EF Core generates code like this to satisfy the C# compiler:
+
+```csharp
+public string Title { get; set; } = null!;
+```
+
+Wait, `null!`? This tells the compiler "Trust me, even though I'm assigning null here initially, EF Core will ensure this has a value when I load it from the database."
+
+<ProgressCheckpoint section="nullability" xpReward={30} />
+
+---
+
+## Section 3: Relationships
+
+One of the coolest parts of reverse engineering is how EF Core detects relationships via **Foreign Keys**.
+
+1. **One-to-Many**: If `Orders` has a `CustomerId`, EF Core adds:
+   - A `collection` of Orders to `Customer`.
+   - A `Customer` property to `Order`.
+2. **One-to-One**: If the FK is unique, EF Core creates single property references on both sides.
+3. **Many-to-Many**: 
+   - **Old Way:** An intermediate join entity (e.g., `PostTag`).
+   - **New Way (EF Core 5+):** If the join table *only* contains two FKs, EF Core can skip the join class and give you direct `ICollection<Tag>` in Post and `ICollection<Post>` in Tag!
+
+<DotnetCodePreview
+  title="Detected Relationships"
+  code={`public partial class Order
+{
+    public int OrderId { get; set; }
+    public int CustomerId { get; set; }
+
+    // Inverse navigation detects the "One" side
+    public virtual Customer Customer { get; set; } = null!;
+}
+
+public partial class Customer
+{
+    public int CustomerId { get; set; }
+    
+    // Collection navigation detects the "Many" side
+    public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
+}`}
+  steps={[
+    {
+      lineNumbers: [4, 7],
+      highlight: "Foreign Key",
+      explanation: "EF Core sees the FK constraint in SQL and creates the C# property mapping."
+    },
+    {
+      lineNumbers: [13],
+      highlight: "Collection Initialization",
+      explanation: "Lists are initialized automatically so you don't get NullReferenceExceptions when adding items."
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="relationships-mapping" xpReward={30} />
+
+---
+
+## Section 4: Customization
+
+What if your database uses `TABLENAMES_YELLING` but you want `NicePascalCase`?
+
+By default, scaffolding tries to preserve database names to minimize confusion. However, you can customize this:
+
+1. **Database Objects:** Tables and columns keep their SQL names by default unless you use a custom **scaffolding service** or third-party tools (like EF Core Power Tools).
+2. **OnModelCreating:** The logic for constraints (like default values, indexes) goes into the `DbContext.OnModelCreating` method using the Fluent API.
+
+```csharp
+modelBuilder.Entity<User>(entity =>
+{
+    entity.ToTable("USERS_TABLE"); // Maps class User to table USERS_TABLE
+    entity.Property(e => e.Email).HasColumnName("user_email");
+});
+```
+
+<Quiz id="reverse-engineering-quiz">
+  <Question>How does EF Core represent a SQL 'bit' type?</Question>
+  <Answer>byte</Answer>
+  <Answer correct>bool</Answer>
+  <Answer>int</Answer>
+  <Answer>BitArray</Answer>
+</Quiz>
+
+<Quiz id="relationships-quiz">
+  <Question>If a join table only contains two foreign keys (no extra columns), what can EF Core do?</Question>
+  <Answer>It ignores the table completely</Answer>
+  <Answer correct>It can create a direct Many-to-Many relationship without a join class</Answer>
+  <Answer>It throws an error</Answer>
+  <Answer>It creates two One-to-Many relationships</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="customizing-names" xpReward={20} />

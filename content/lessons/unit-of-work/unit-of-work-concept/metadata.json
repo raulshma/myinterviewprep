@@ -1,0 +1,17 @@
+{
+  "id": "unit-of-work-concept",
+  "title": "Unit of Work Concept",
+  "description": "Understand the Unit of Work pattern and how Entity Framework Core implements it natively through DbContext.",
+  "milestone": "unit-of-work",
+  "order": 1,
+  "sections": [
+    "what-is-uow",
+    "dbcontext-uow",
+    "custom-uow"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 20,
+  "xpReward": 75,
+  "prerequisites": ["repository-pattern"],
+  "tags": ["design-patterns", "architecture", "unit-of-work"]
+}

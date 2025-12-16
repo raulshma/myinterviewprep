@@ -1,0 +1,18 @@
+{
+  "id": "compiled-queries",
+  "title": "Compiled Queries",
+  "description": "Pre-compile LINQ queries for maximum performance on hot paths.",
+  "milestone": "performance-optimization",
+  "order": 2,
+  "sections": [
+    "query-compilation-cost",
+    "ef-compilequery",
+    "when-to-compile",
+    "precompiled-queries"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 85,
+  "prerequisites": ["ef-performance"],
+  "tags": ["ef-core", "performance", "compiled-queries", "optimization"]
+}

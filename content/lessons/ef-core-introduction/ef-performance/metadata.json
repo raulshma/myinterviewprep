@@ -1,0 +1,18 @@
+{
+  "id": "ef-performance",
+  "title": "Query Performance Analysis",
+  "description": "Learn to analyze, profile, and identify performance bottlenecks in EF Core queries.",
+  "milestone": "performance-optimization",
+  "order": 0,
+  "sections": [
+    "performance-landscape",
+    "profiling-tools",
+    "common-bottlenecks",
+    "optimization-mindset"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 18,
+  "xpReward": 90,
+  "prerequisites": ["querying-with-linq"],
+  "tags": ["ef-core", "performance", "profiling", "optimization"]
+}

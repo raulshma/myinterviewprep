@@ -1,0 +1,18 @@
+{
+  "id": "loading-performance",
+  "title": "Loading Strategies Performance",
+  "description": "Analyze the performance implications of different loading strategies and learn optimization techniques to avoid common pitfalls.",
+  "milestone": "loading-strategies",
+  "order": 5,
+  "sections": [
+    "performance-impact",
+    "n-plus-one",
+    "query-analysis",
+    "optimization-tips"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 25,
+  "xpReward": 95,
+  "prerequisites": ["loading-patterns"],
+  "tags": ["ef-core", "performance", "n-plus-one", "split-query", "optimization", "dotnet"]
+}

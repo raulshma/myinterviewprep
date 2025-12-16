@@ -1,0 +1,17 @@
+{
+  "id": "repository-interfaces",
+  "title": "Repository Interfaces",
+  "description": "Learn how to define specific repository contracts to encapsulate complex queries and business logic.",
+  "milestone": "ef-core-introduction",
+  "order": 41,
+  "sections": [
+    "extending-generic",
+    "leak-problem",
+    "implementation-example"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 25,
+  "xpReward": 200,
+  "prerequisites": ["generic-repository"],
+  "tags": ["repository-pattern", "interfaces", "abstraction"]
+}

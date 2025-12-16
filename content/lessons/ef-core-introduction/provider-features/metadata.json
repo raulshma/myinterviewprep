@@ -1,0 +1,17 @@
+{
+  "id": "provider-features",
+  "title": "Provider-Specific Features",
+  "description": "Learn how to handle provider-specific functionality and write portable code.",
+  "milestone": "ef-core-introduction",
+  "order": 83,
+  "sections": [
+    "overview",
+    "portability",
+    "cosmos"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 30,
+  "xpReward": 250,
+  "prerequisites": ["sqlite-provider"],
+  "tags": ["providers", "portability", "cosmos", "features"]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "temporal-configuration",
+  "title": "Temporal Table Configuration",
+  "description": "Learn how to customize history table names, schemas, and period columns.",
+  "milestone": "temporal-tables",
+  "order": 3,
+  "estimatedMinutes": 15,
+  "xpReward": 600,
+  "singleLevel": true,
+  "sections": ["config-check"],
+  "tags": ["ef-core", "configuration", "fluent-api"],
+  "prerequisites": ["querying-historical-data"]
+}

@@ -1,0 +1,352 @@
+# Global Query Filters
+
+Welcome to the world of **Global Query Filters** – EF Core's automatic filtering superpower that keeps unwanted data out of your queries without writing repetitive code!
+
+---
+
+## Section 1: What are Global Query Filters?
+
+### The Hotel Card Key Analogy 🏨
+
+Imagine staying at a luxury hotel where your key card **automatically** restricts you to your floor. You don't have to think about it – when you press elevator buttons or access amenities, the hotel's system filters what you can reach.
+
+**Global Query Filters** work exactly the same way:
+
+| Hotel System | EF Core Filter |
+|:-------------|:---------------|
+| Your key card | The filter condition |
+| Elevator system | EF Core query engine |
+| Accessible floors | Filtered data |
+| No manual checking | Automatic on every query |
+
+<InfoBox type="info">
+**Global Query Filters** are LINQ predicate expressions applied in `OnModelCreating()` that automatically filter all queries for an entity type. You configure them once, and they work everywhere!
+</InfoBox>
+
+### Why Use Global Query Filters?
+
+Without global filters, you'd repeat the same conditions everywhere:
+
+```csharp
+// 😫 Without global filters - repetitive and error-prone!
+var activePosts = context.Posts.Where(p => !p.IsDeleted).ToList();
+var activeComments = context.Comments.Where(c => !c.IsDeleted).ToList();
+var activeUsers = context.Users.Where(u => !u.IsDeleted).ToList();
+// Easy to forget .Where(!p.IsDeleted) somewhere!
+```
+
+With global filters, it's automatic:
+
+```csharp
+// 😊 With global filters - clean and foolproof!
+var posts = context.Posts.ToList();      // Only active posts!
+var comments = context.Comments.ToList(); // Only active comments!
+var users = context.Users.ToList();       // Only active users!
+```
+
+<KeyConcept title="The Power of Automatic Filtering">
+Global Query Filters ensure you can **never accidentally** query deleted, inactive, or unauthorized data. The filter is applied at the database level for optimal performance.
+</KeyConcept>
+
+<ProgressCheckpoint section="what-are-filters" xpReward={15} />
+
+---
+
+## Section 2: Implementing Soft Delete
+
+### What is Soft Delete?
+
+**Soft delete** means marking records as deleted instead of actually removing them. This allows:
+- Data recovery if needed
+- Audit trails
+- Referential integrity preservation
+
+### Step-by-Step Implementation
+
+<DotnetCodePreview
+  title="Soft Delete with Global Filters"
+  code={`public class Blog
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public bool IsDeleted { get; set; }
+    public List<Post> Posts { get; set; } = new();
+}
+
+public class BloggingContext : DbContext
+{
+    public DbSet<Blog> Blogs => Set<Blog>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Blog>()
+            .HasQueryFilter(b => !b.IsDeleted);
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [5],
+      highlight: "IsDeleted Property",
+      explanation: "Add a boolean property to track soft deletion status"
+    },
+    {
+      lineNumbers: [14, 15],
+      highlight: "HasQueryFilter",
+      explanation: "Configure the global filter in OnModelCreating - this applies to ALL queries!"
+    },
+    {
+      lineNumbers: [15],
+      highlight: "Filter Expression",
+      explanation: "The lambda !b.IsDeleted ensures only non-deleted blogs are returned"
+    }
+  ]}
+/>
+
+### How Deletion Works
+
+```csharp
+// Instead of actually deleting...
+// context.Blogs.Remove(blog); ❌
+
+// ...mark as deleted
+blog.IsDeleted = true;
+await context.SaveChangesAsync();
+// The blog is now invisible to all queries! ✅
+```
+
+<InfoBox type="tip">
+**Pro Tip:** Add a `DeletedAt` DateTime property to track when items were deleted for audit purposes:
+```csharp
+public DateTime? DeletedAt { get; set; }
+```
+</InfoBox>
+
+<ProgressCheckpoint section="soft-delete" xpReward={15} />
+
+---
+
+## Section 3: Multi-Tenancy Filters
+
+### The Apartment Building Analogy 🏢
+
+In a multi-tenant application, each customer (tenant) should only see their own data – like apartment buildings where each tenant has their own key that only opens their specific apartment.
+
+### Implementing Multi-Tenancy
+
+<DotnetCodePreview
+  title="Multi-Tenancy Global Filter"
+  code={`public class MultiTenantContext : DbContext
+{
+    private readonly string _tenantId;
+
+    public MultiTenantContext(string tenantId)
+    {
+        _tenantId = tenantId;
+    }
+
+    public DbSet<Blog> Blogs => Set<Blog>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Blog>()
+            .HasQueryFilter(b => b.TenantId == _tenantId);
+    }
+}
+
+public class Blog
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public string TenantId { get; set; } = "";
+}`}
+  steps={[
+    {
+      lineNumbers: [3, 5, 6, 7, 8],
+      highlight: "Tenant Context",
+      explanation: "The current tenant ID is injected into the DbContext constructor"
+    },
+    {
+      lineNumbers: [14, 15],
+      highlight: "Tenant Filter",
+      explanation: "Every query automatically filters by the current tenant!"
+    },
+    {
+      lineNumbers: [22],
+      highlight: "TenantId Property",
+      explanation: "Each entity has a TenantId to associate it with a tenant"
+    }
+  ]}
+/>
+
+### Combining Multiple Filters
+
+You can combine soft delete AND multi-tenancy:
+
+```csharp
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Blog>()
+        .HasQueryFilter(b => !b.IsDeleted && b.TenantId == _tenantId);
+}
+```
+
+<InfoBox type="warning">
+**Important:** The filter expression must reference a captured variable (like `_tenantId`) from the DbContext instance, not a static value. This ensures each DbContext instance uses the correct tenant.
+</InfoBox>
+
+<ProgressCheckpoint section="multi-tenancy" xpReward={15} />
+
+---
+
+## Section 4: Disabling Filters When Needed
+
+### The Master Key 🔑
+
+Sometimes administrators need to see ALL data, including deleted items or data from all tenants. EF Core provides `IgnoreQueryFilters()` – like a master key that bypasses the normal restrictions.
+
+### Using IgnoreQueryFilters
+
+```csharp
+// Normal query - respects all filters
+var activeBlogs = context.Blogs.ToList();
+
+// Admin query - bypasses ALL filters
+var allBlogs = context.Blogs
+    .IgnoreQueryFilters()
+    .ToList();
+
+// See everything: deleted, all tenants, etc.
+```
+
+<Comparison
+  title="With vs Without IgnoreQueryFilters"
+  items={[
+    {
+      label: "Normal Query",
+      description: "Automatically excludes deleted items and filters by tenant",
+      isCorrect: true
+    },
+    {
+      label: "IgnoreQueryFilters()",
+      description: "Returns ALL data - use carefully for admin/reporting purposes",
+      isCorrect: false
+    }
+  ]}
+/>
+
+### EF Core 10+: Named Filters
+
+In EF Core 10+, you can define **named filters** and disable them selectively:
+
+```csharp
+// Define named filters
+modelBuilder.Entity<Blog>()
+    .HasQueryFilter("SoftDelete", b => !b.IsDeleted)
+    .HasQueryFilter("Tenancy", b => b.TenantId == _tenantId);
+
+// Disable only soft delete filter
+var deletedBlogs = context.Blogs
+    .IgnoreQueryFilters("SoftDelete")
+    .ToList();
+// Still filtered by tenant, but includes deleted!
+```
+
+<InfoBox type="tip">
+**Pro Tip:** Use `IgnoreQueryFilters()` sparingly. It's typically only needed for admin dashboards, data recovery, or cross-tenant reporting.
+</InfoBox>
+
+<ProgressCheckpoint section="disabling-filters" xpReward={15} />
+
+---
+
+## Section 5: Best Practices & Gotchas
+
+### Navigation Properties Warning ⚠️
+
+Global filters interact with navigation properties in potentially surprising ways. If you filter a related entity, it affects how relationships load.
+
+<DotnetCodePreview
+  title="Filter Interaction with Navigations"
+  code={`// If Blog has filter: !IsDeleted
+// And Post has a required navigation to Blog
+
+public class Post
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    
+    public int BlogId { get; set; }
+    public Blog Blog { get; set; } = null!; // Required!
+}
+
+// This query might exclude posts unexpectedly!
+var posts = context.Posts
+    .Include(p => p.Blog)
+    .ToList();
+// Posts with deleted Blogs won't be returned due to INNER JOIN!`}
+  steps={[
+    {
+      lineNumbers: [9, 10],
+      highlight: "Required Navigation",
+      explanation: "Required navigations create INNER JOINs in SQL"
+    },
+    {
+      lineNumbers: [14, 15, 16],
+      highlight: "Unexpected Filtering",
+      explanation: "Due to INNER JOIN, posts with filtered-out blogs are also excluded!"
+    }
+  ]}
+/>
+
+### Best Practices Checklist
+
+| Practice | Why |
+|:---------|:----|
+| **Apply filters consistently** | Same entity should have same filter everywhere |
+| **Use optional navigations** | Prevent accidental exclusion of related data |
+| **Test with IgnoreQueryFilters** | Verify filters work as expected |
+| **Document your filters** | Team members need to know what's filtered |
+| **Consider performance** | Filters add SQL conditions to every query |
+
+<Quiz id="filter-basics-quiz">
+  <Question>What method is used to bypass global query filters?</Question>
+  <Answer>RemoveQueryFilters()</Answer>
+  <Answer correct>IgnoreQueryFilters()</Answer>
+  <Answer>DisableFilters()</Answer>
+  <Answer>SkipQueryFilters()</Answer>
+</Quiz>
+
+<Quiz id="soft-delete-quiz">
+  <Question>Which property type is commonly used for soft delete?</Question>
+  <Answer correct>bool IsDeleted</Answer>
+  <Answer>string Status</Answer>
+  <Answer>int DeleteFlag</Answer>
+  <Answer>enum DeleteState</Answer>
+</Quiz>
+
+<Quiz id="multi-tenancy-quiz">
+  <Question>In a multi-tenant filter, where should the tenant ID be stored?</Question>
+  <Answer>In a static variable</Answer>
+  <Answer>In the database connection string</Answer>
+  <Answer correct>In the DbContext instance</Answer>
+  <Answer>In a global configuration file</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Global Query Filters** | Automatic filtering applied to all queries |
+| **Soft Delete** | Use `IsDeleted` flag + filter instead of DELETE |
+| **Multi-Tenancy** | Filter by captured `TenantId` from DbContext |
+| **IgnoreQueryFilters** | Bypass filters for admin/recovery scenarios |
+| **Navigation Warning** | Required navigations + filters can exclude data |
+
+<KeyConcept title="What's Next?">
+Now that you understand global query filters, you're ready to explore more advanced EF Core features:
+- **Shadow Properties** - Database-only properties
+- **Value Conversions** - Convert C# types for storage
+- **Table Splitting** - Map multiple entities to one table
+</KeyConcept>
+
+<ProgressCheckpoint section="best-practices" xpReward={15} />

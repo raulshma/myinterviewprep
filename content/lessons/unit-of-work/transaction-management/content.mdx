@@ -1,0 +1,127 @@
+# Transaction Management
+
+Manage database transactions explicitly to ensure data integrity across complex operations.
+
+---
+
+## Section 1: Default Transaction Behavior
+
+### Automatic Transactions
+
+By default, EF Core creates a transaction whenever you call `SaveChanges()`.
+
+*   If `SaveChanges()` succeeds, the transaction commits.
+*   If `SaveChanges()` fails, the transaction rolls back.
+
+This effectively means that `SaveChanges()` is atomic. You rarely need to do anything manual for a single `SaveChanges()` call.
+
+<InfoBox type="info">
+    **Atomicity**: A property of database transactions where either all operations succeed or all fail. No partial updates allowed!
+</InfoBox>
+
+<ProgressCheckpoint section="default-transactions" xpReward={20} />
+
+---
+
+## Section 2: Explicit Transactions
+
+### When Do You Need Them?
+
+Sometimes you need a transaction that spans **multiple** `SaveChanges()` calls.
+
+**Scenario**:
+1.  Save Order (gets an ID).
+2.  Use that ID to call an external payment API.
+3.  If payment succeeds, Save Payment Record.
+4.  If payment fails, **Rollback the Order**.
+
+### Using BeginTransaction
+
+You can manually control the transaction scope using `Database.BeginTransaction()`.
+
+<DotnetCodePreview
+    title="Manual Transaction Control"
+    code={`using var transaction = await context.Database.BeginTransactionAsync();
+
+try
+{
+    // 1. Add Order
+    context.Orders.Add(order);
+    await context.SaveChangesAsync(); // Saved to DB, but not committed
+
+    // 2. Add Invoice linked to Order
+    var invoice = new Invoice { OrderId = order.Id };
+    context.Invoices.Add(invoice);
+    await context.SaveChangesAsync();
+
+    // 3. Commit everything
+    await transaction.CommitAsync();
+}
+catch (Exception)
+{
+    // Only needed if not in a using block, but explicit rollback is clearer
+    await transaction.RollbackAsync();
+    throw;
+}`}
+    steps={[
+        {
+            lineNumbers: [1],
+            highlight: "Begin Transaction",
+            explanation: "Starts a new database transaction. Nothing is permanent until Commit is called."
+        },
+        {
+            lineNumbers: [6, 11],
+            highlight: "Multiple SaveChanges",
+            explanation: "We can call SaveChanges multiple times. The data is 'pending' in the database."
+        },
+        {
+            lineNumbers: [14],
+            highlight: "Commit",
+            explanation: "Makes all changes permanent. If this isn't reached (due to error), everything rolls back."
+        }
+    ]}
+/>
+
+<ProgressCheckpoint section="explicit-transactions" xpReward={30} />
+
+---
+
+## Section 3: TransactionScope
+
+### Implicit Ambient Transactions
+
+Another way to handle transactions is using the `TransactionScope` class from `System.Transactions`. This is great when you need to coordinate EF Core with other data access methods (like ADO.NET or a second DbContext).
+
+```csharp
+using (var scope = new TransactionScope(
+    TransactionScopeOption.Required,
+    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted }))
+{
+    // Operation 1
+    await context.Orders.AddAsync(order);
+    await context.SaveChangesAsync();
+
+    // Operation 2
+    // Even if this was a different context or raw SQL, it joins the scope!
+    await anotherService.ProcessPaymentAsync();
+
+    // Commit
+    scope.Complete();
+}
+```
+
+<InfoBox type="warning">
+    **Async Warning**: When using `TransactionScope` with async/await, make sure to use `TransactionScopeAsyncFlowOption.Enabled` if you are targeting .NET Framework or older .NET Core versions. In modern .NET (6+), it typically handles context switching well, but be aware of thread-safety.
+</InfoBox>
+
+### Quiz: Managing Transactions
+
+<Quiz id="transaction-logic-quiz">
+    <Question>If you call `SaveChanges()` twice inside a `BeginTransaction` block, when are the changes visible to other users?</Question>
+    <Answer>After the first SaveChanges</Answer>
+    <Answer>After the second SaveChanges</Answer>
+    <Answer correct>Only after transaction.Commit() is called</Answer>
+    <Answer>Immediately</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="transaction-scope" xpReward={25} />

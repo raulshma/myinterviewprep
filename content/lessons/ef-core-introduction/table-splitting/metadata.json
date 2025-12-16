@@ -1,0 +1,19 @@
+{
+  "id": "table-splitting",
+  "title": "Table Splitting",
+  "description": "Learn how to map multiple entities to a single database table for performance optimization and data organization.",
+  "milestone": "ef-core-introduction",
+  "order": 32,
+  "sections": [
+    "what-is-table-splitting",
+    "basic-table-splitting",
+    "entity-splitting",
+    "owned-types-comparison",
+    "performance-considerations"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 75,
+  "prerequisites": ["value-conversions"],
+  "tags": ["ef-core", "table-splitting", "entity-splitting", "performance", "advanced"]
+}

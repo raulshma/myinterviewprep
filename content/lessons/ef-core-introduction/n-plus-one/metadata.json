@@ -1,0 +1,18 @@
+{
+  "id": "n-plus-one",
+  "title": "Avoiding N+1 Problems",
+  "description": "Identify and fix the N+1 query problem that destroys EF Core performance.",
+  "milestone": "performance-optimization",
+  "order": 3,
+  "sections": [
+    "n-plus-one-problem",
+    "eager-loading",
+    "split-queries",
+    "detection-strategies"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 18,
+  "xpReward": 90,
+  "prerequisites": ["ef-performance"],
+  "tags": ["ef-core", "performance", "n-plus-one", "include", "optimization"]
+}

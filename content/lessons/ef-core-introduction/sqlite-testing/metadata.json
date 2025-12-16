@@ -1,0 +1,18 @@
+{
+  "id": "sqlite-testing",
+  "title": "SQLite for Testing",
+  "description": "Learn how to use SQLite in-memory mode for more accurate, relational unit testing.",
+  "milestone": "testing-ef-core",
+  "order": 2,
+  "sections": [
+    "why-sqlite",
+    "sqlite-setup",
+    "lifecycle-management",
+    "limitations-sqlite"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 35,
+  "xpReward": 100,
+  "prerequisites": ["inmemory-testing"],
+  "tags": ["testing", "sqlite", "relational", "ef-core"]
+}

@@ -1,0 +1,475 @@
+# Table Splitting
+
+Master **Table Splitting** – EF Core's advanced technique for mapping multiple entities to a single database table. Optimize performance by loading only the data you need!
+
+---
+
+## Section 1: What is Table Splitting?
+
+### The Apartment With Rooms Analogy 🏠
+
+Imagine an apartment where different family members use different rooms:
+- **Mom** mainly uses the kitchen
+- **Dad** mainly uses the garage
+- **Kids** mainly use the playroom
+
+But it's still **one address** (one table) with **different access patterns** (multiple entities):
+
+| Apartment Concept | Table Splitting |
+|:------------------|:----------------|
+| One apartment | One database table |
+| Different rooms | Different entities |
+| Family members | Different use cases |
+| Shared address | Shared primary key |
+
+<InfoBox type="info">
+**Table Splitting** allows you to map multiple entity types to the same database table. Each entity shares the primary key but can contain different columns. This is useful when you have a table with many columns but rarely need all of them.
+</InfoBox>
+
+### Why Use Table Splitting?
+
+Consider a table with many columns, but you rarely need them all:
+
+```sql
+-- One big table with EVERYTHING
+CREATE TABLE Orders (
+    Id INT PRIMARY KEY,
+    -- Basic info (used 90% of the time)
+    CustomerName NVARCHAR(100),
+    OrderDate DATETIME,
+    Status INT,
+    -- Billing details (used in billing module)
+    BillingAddress NVARCHAR(500),
+    BillingCity NVARCHAR(100),
+    BillingCountry NVARCHAR(100),
+    -- Shipping details (used in shipping module)
+    ShippingAddress NVARCHAR(500),
+    ShippingMethod NVARCHAR(50),
+    TrackingNumber NVARCHAR(100),
+    -- Large blob (rarely needed)
+    OrderNotes NVARCHAR(MAX),
+    AttachedDocuments VARBINARY(MAX)
+)
+```
+
+**Without table splitting:** Every query loads ALL columns!
+
+**With table splitting:** Load only what you need!
+
+<KeyConcept title="Performance Optimization">
+Table splitting lets you avoid loading heavy columns (like BLOB data) when you only need lightweight data. Each entity loads its own subset of columns.
+</KeyConcept>
+
+<ProgressCheckpoint section="what-is-table-splitting" xpReward={15} />
+
+---
+
+## Section 2: Basic Table Splitting
+
+### Mapping Multiple Entities to One Table
+
+<DotnetCodePreview
+  title="Table Splitting Configuration"
+  code={`// Entity 1: Basic order information
+public class Order
+{
+    public int Id { get; set; }
+    public string CustomerName { get; set; } = "";
+    public DateTime OrderDate { get; set; }
+    public OrderStatus Status { get; set; }
+    
+    // Navigation to detailed info
+    public OrderDetails Details { get; set; } = null!;
+}
+
+// Entity 2: Detailed information (same table!)
+public class OrderDetails
+{
+    public int Id { get; set; }
+    public string BillingAddress { get; set; } = "";
+    public string ShippingAddress { get; set; } = "";
+    public string? OrderNotes { get; set; }
+    
+    // Navigation back to order
+    public Order Order { get; set; } = null!;
+}
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Order>()
+        .HasOne(o => o.Details)
+        .WithOne(d => d.Order)
+        .HasForeignKey<OrderDetails>(d => d.Id);
+
+    // Both entities map to the same table!
+    modelBuilder.Entity<Order>().ToTable("Orders");
+    modelBuilder.Entity<OrderDetails>().ToTable("Orders");
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+      highlight: "Main Entity",
+      explanation: "Order contains frequently-used columns"
+    },
+    {
+      lineNumbers: [14, 15, 16, 17, 18, 19, 20, 21, 22],
+      highlight: "Split Entity",
+      explanation: "OrderDetails contains less-frequently-used columns"
+    },
+    {
+      lineNumbers: [26, 27, 28, 29],
+      highlight: "Relationship",
+      explanation: "Configure a one-to-one relationship sharing the primary key"
+    },
+    {
+      lineNumbers: [32, 33],
+      highlight: "Same Table",
+      explanation: "Both ToTable() calls point to 'Orders' - the magic happens!"
+    }
+  ]}
+/>
+
+### Querying With Table Splitting
+
+```csharp
+// Light query - only loads Order columns
+var orders = context.Orders
+    .Where(o => o.Status == OrderStatus.Pending)
+    .ToList();
+// SQL: SELECT Id, CustomerName, OrderDate, Status FROM Orders
+
+// When you need details - explicit include
+var ordersWithDetails = context.Orders
+    .Include(o => o.Details)
+    .Where(o => o.Status == OrderStatus.Shipped)
+    .ToList();
+// SQL: SELECT Id, CustomerName, OrderDate, Status, 
+//            BillingAddress, ShippingAddress, OrderNotes FROM Orders
+```
+
+<InfoBox type="tip">
+**Pro Tip:** By default, the split entity is NOT loaded. You must explicitly `Include()` it when needed. This is where the performance benefit comes from!
+</InfoBox>
+
+<ProgressCheckpoint section="basic-table-splitting" xpReward={15} />
+
+---
+
+## Section 3: Entity Splitting
+
+### The Reverse: One Entity, Multiple Tables
+
+**Entity Splitting** is the opposite – spreading ONE entity across MULTIPLE tables:
+
+<DotnetCodePreview
+  title="Entity Splitting Configuration"
+  code={`public class Customer
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Email { get; set; } = "";
+    
+    // These go to a separate table
+    public string PhoneNumber { get; set; } = "";
+    public string Street { get; set; } = "";
+    public string City { get; set; } = "";
+    public string Country { get; set; } = "";
+}
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Customer>(entityBuilder =>
+    {
+        entityBuilder.ToTable("Customers")
+            .SplitToTable("PhoneNumbers", tableBuilder =>
+            {
+                tableBuilder.Property(c => c.Id).HasColumnName("CustomerId");
+                tableBuilder.Property(c => c.PhoneNumber);
+            })
+            .SplitToTable("Addresses", tableBuilder =>
+            {
+                tableBuilder.Property(c => c.Id).HasColumnName("CustomerId");
+                tableBuilder.Property(c => c.Street);
+                tableBuilder.Property(c => c.City);
+                tableBuilder.Property(c => c.Country);
+            });
+    });
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6],
+      highlight: "Main Customer Properties",
+      explanation: "Id, Name, Email go to the main Customers table"
+    },
+    {
+      lineNumbers: [8, 9, 10, 11, 12],
+      highlight: "Split Properties",
+      explanation: "These properties go to separate tables"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21, 22, 23],
+      highlight: "SplitToTable",
+      explanation: "EF Core 7+ feature - split specific properties to another table"
+    },
+    {
+      lineNumbers: [24, 25, 26, 27, 28, 29, 30],
+      highlight: "Address Table",
+      explanation: "Address properties go to their own table"
+    }
+  ]}
+/>
+
+### Resulting Database Schema
+
+```sql
+-- Three tables, one entity!
+
+CREATE TABLE Customers (
+    Id INT PRIMARY KEY,
+    Name NVARCHAR(100),
+    Email NVARCHAR(100)
+);
+
+CREATE TABLE PhoneNumbers (
+    CustomerId INT PRIMARY KEY,
+    PhoneNumber NVARCHAR(50),
+    FOREIGN KEY (CustomerId) REFERENCES Customers(Id)
+);
+
+CREATE TABLE Addresses (
+    CustomerId INT PRIMARY KEY,
+    Street NVARCHAR(200),
+    City NVARCHAR(100),
+    Country NVARCHAR(100),
+    FOREIGN KEY (CustomerId) REFERENCES Customers(Id)
+);
+```
+
+<Comparison
+  title="Table Splitting vs Entity Splitting"
+  items={[
+    {
+      label: "Table Splitting",
+      description: "Multiple C# entities → One database table",
+      isCorrect: true
+    },
+    {
+      label: "Entity Splitting",
+      description: "One C# entity → Multiple database tables",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="entity-splitting" xpReward={15} />
+
+---
+
+## Section 4: Owned Types vs Table Splitting
+
+### When to Use Each?
+
+EF Core offers **Owned Types** for similar scenarios. Here's how they compare:
+
+<DotnetCodePreview
+  title="Owned Types Alternative"
+  code={`// Owned type approach
+public class Customer
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    
+    public Address BillingAddress { get; set; } = null!;
+    public Address ShippingAddress { get; set; } = null!;
+}
+
+public class Address  // Owned type - no Id needed
+{
+    public string Street { get; set; } = "";
+    public string City { get; set; } = "";
+    public string Country { get; set; } = "";
+}
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Customer>()
+        .OwnsOne(c => c.BillingAddress, address =>
+        {
+            address.Property(a => a.Street).HasColumnName("BillingStreet");
+            address.Property(a => a.City).HasColumnName("BillingCity");
+        });
+    
+    modelBuilder.Entity<Customer>()
+        .OwnsOne(c => c.ShippingAddress, address =>
+        {
+            address.Property(a => a.Street).HasColumnName("ShippingStreet");
+            address.Property(a => a.City).HasColumnName("ShippingCity");
+        });
+}`}
+  steps={[
+    {
+      lineNumbers: [7, 8],
+      highlight: "Multiple Instances",
+      explanation: "Owned types allow multiple instances of the same type"
+    },
+    {
+      lineNumbers: [11, 12, 13, 14, 15, 16],
+      highlight: "No Primary Key",
+      explanation: "Owned types don't have their own identity - they belong to the owner"
+    },
+    {
+      lineNumbers: [20, 21, 22, 23, 24, 25],
+      highlight: "Column Mapping",
+      explanation: "Owned type properties become columns in the owner's table"
+    }
+  ]}
+/>
+
+### Decision Matrix
+
+| Feature | Table Splitting | Owned Types |
+|:--------|:----------------|:------------|
+| **Primary Key** | Split entity has own PK (shared) | No PK, owned by parent |
+| **Multiple Instances** | No, 1:1 relationship | Yes, can have multiple |
+| **Separate Table** | Same table (or separate) | Same table by default |
+| **Lazy Loading** | Supported | Always loaded with parent |
+| **Use Case** | Performance optimization | Value objects, composition |
+
+<InfoBox type="info">
+**Use Table Splitting** when you want to selectively load heavy data.
+
+**Use Owned Types** when modeling value objects that are always part of their parent.
+</InfoBox>
+
+<ProgressCheckpoint section="owned-types-comparison" xpReward={15} />
+
+---
+
+## Section 5: Performance Considerations
+
+### When Table Splitting Helps
+
+Table splitting shines when:
+
+1. **Large BLOB columns** - Images, documents, XML that are rarely needed
+2. **Module separation** - Different parts of the app need different columns
+3. **Lazy loading specific data** - Load details only when needed
+
+### Join Considerations
+
+<DotnetCodePreview
+  title="Performance Impact"
+  code={`// Without Include - no join, fast!
+var orders = context.Orders.ToList();
+// SQL: SELECT Id, CustomerName, OrderDate, Status FROM Orders
+
+// With Include - INNER JOIN happens
+var ordersWithDetails = context.Orders
+    .Include(o => o.Details)
+    .ToList();
+// SQL: SELECT o.Id, o.CustomerName, o.OrderDate, o.Status,
+//             d.BillingAddress, d.ShippingAddress, d.OrderNotes
+//      FROM Orders o
+//      INNER JOIN Orders d ON o.Id = d.Id
+
+// For optional split entities, use LEFT JOIN
+modelBuilder.Entity<Order>()
+    .HasOne(o => o.Details)
+    .WithOne(d => d.Order)
+    .HasForeignKey<OrderDetails>(d => d.Id)
+    .IsRequired(false);  // Makes Details optional`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Light Query",
+      explanation: "No join needed - just select from one logical view of the table"
+    },
+    {
+      lineNumbers: [6, 7, 8, 9, 10, 11, 12],
+      highlight: "With Include",
+      explanation: "EF Core joins the table to itself to get all columns"
+    },
+    {
+      lineNumbers: [15, 16, 17, 18, 19],
+      highlight: "Optional Relationship",
+      explanation: "Configure as optional to use LEFT JOIN and allow NULL details"
+    }
+  ]}
+/>
+
+### Best Practices
+
+| Practice | Reason |
+|:---------|:-------|
+| **Split heavy columns** | BLOBs, large text, rarely-used data |
+| **Keep related data together** | Don't over-split - adds complexity |
+| **Use required relationships** | Unless you genuinely need optional data |
+| **Profile your queries** | Measure actual performance impact |
+| **Consider alternatives** | Sometimes a projection is simpler |
+
+### Alternative: Projections
+
+Sometimes a simple projection is better than table splitting:
+
+```csharp
+// Instead of complex table splitting...
+var orderSummaries = context.Orders
+    .Select(o => new OrderSummaryDto
+    {
+        Id = o.Id,
+        CustomerName = o.CustomerName,
+        Status = o.Status
+    })
+    .ToList();
+
+// SQL: SELECT Id, CustomerName, Status FROM Orders
+// No table splitting configuration needed!
+```
+
+<Quiz id="table-splitting-direction">
+  <Question>Table splitting maps how many entities to how many tables?</Question>
+  <Answer>One entity to multiple tables</Answer>
+  <Answer correct>Multiple entities to one table</Answer>
+  <Answer>One entity to one table only</Answer>
+  <Answer>It creates new tables automatically</Answer>
+</Quiz>
+
+<Quiz id="entity-splitting-direction">
+  <Question>Entity splitting maps how many entities to how many tables?</Question>
+  <Answer correct>One entity to multiple tables</Answer>
+  <Answer>Multiple entities to one table</Answer>
+  <Answer>It doesn't affect table mapping</Answer>
+  <Answer>Multiple entities to multiple tables</Answer>
+</Quiz>
+
+<Quiz id="table-splitting-method">
+  <Question>What method is used to map an entity to a specific table?</Question>
+  <Answer>MapToTable()</Answer>
+  <Answer correct>ToTable()</Answer>
+  <Answer>SetTableName()</Answer>
+  <Answer>UseTable()</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Table Splitting** | Multiple entities → One table |
+| **Entity Splitting** | One entity → Multiple tables (SplitToTable) |
+| **Shared Primary Key** | Split entities share the same PK |
+| **Lazy by Default** | Split entities require explicit Include() |
+| **Owned Types** | Alternative for value objects, always loaded |
+| **Best Use Case** | Heavy columns that are rarely needed |
+
+<KeyConcept title="Congratulations!">
+You've completed the Advanced Features milestone! You now understand:
+- **Global Query Filters** - Automatic data filtering
+- **Shadow Properties** - Hidden database columns
+- **Backing Fields** - Encapsulation control
+- **Value Conversions** - Type transformations
+- **Table Splitting** - Performance optimization
+
+These advanced techniques will help you build more sophisticated, performant EF Core applications!
+</KeyConcept>
+
+<ProgressCheckpoint section="performance-considerations" xpReward={15} />

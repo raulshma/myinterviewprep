@@ -1,0 +1,18 @@
+{
+  "id": "loading-patterns",
+  "title": "Loading Related Data Patterns",
+  "description": "Compare all three loading strategies and learn decision patterns for choosing the right approach in real-world scenarios.",
+  "milestone": "loading-strategies",
+  "order": 4,
+  "sections": [
+    "comparison-overview",
+    "pattern-selection",
+    "real-world-scenarios",
+    "hybrid-approaches"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 20,
+  "xpReward": 85,
+  "prerequisites": ["explicit-loading"],
+  "tags": ["ef-core", "loading-strategies", "patterns", "best-practices", "dotnet"]
+}

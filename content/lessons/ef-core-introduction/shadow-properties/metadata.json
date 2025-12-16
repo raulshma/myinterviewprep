@@ -1,0 +1,19 @@
+{
+  "id": "shadow-properties",
+  "title": "Shadow Properties",
+  "description": "Learn how to use shadow properties to store data in the database without exposing it in your entity classes.",
+  "milestone": "ef-core-introduction",
+  "order": 29,
+  "sections": [
+    "what-are-shadow-properties",
+    "creating-shadow-properties",
+    "accessing-shadow-properties",
+    "use-cases",
+    "indexer-properties"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 75,
+  "prerequisites": ["global-query-filters"],
+  "tags": ["ef-core", "shadow-properties", "audit", "advanced"]
+}

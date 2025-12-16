@@ -1,0 +1,18 @@
+{
+  "id": "batch-operations",
+  "title": "Batch Operations and Bulk Updates",
+  "description": "Execute bulk updates and deletes without loading entities.",
+  "milestone": "performance-optimization",
+  "order": 4,
+  "sections": [
+    "savechanges-batching",
+    "executeupdate",
+    "executedelete",
+    "batch-best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 16,
+  "xpReward": 85,
+  "prerequisites": ["ef-performance"],
+  "tags": ["ef-core", "performance", "bulk-operations", "executeupdate", "executedelete"]
+}

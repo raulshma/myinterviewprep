@@ -1,0 +1,506 @@
+# Connection Pooling
+
+Don't buy a new car for each trip! Learn how connection pooling and DbContext pooling dramatically reduce overhead in high-throughput applications.
+
+---
+
+## Section 1: Connection Pooling Basics
+
+### The Car Rental Analogy 🚗
+
+Imagine you need to make 100 trips across town. Would you:
+
+- **Option A:** Buy a new car, take the trip, and sell the car (repeat 100 times!)
+- **Option B:** Rent from a car fleet—grab an available car, use it, return it
+
+Database connections are expensive to create! Connection pooling keeps a "fleet" of ready-to-use connections.
+
+<InfoBox type="info">
+**What Creates a Connection?**
+1. TCP/IP socket establishment
+2. SSL/TLS handshake (if encrypted)
+3. Authentication with database
+4. Session setup and resource allocation
+
+This takes 20-100ms or more! Way too slow to do for every query.
+</InfoBox>
+
+### How Connection Pooling Works
+
+<DotnetCodePreview
+  title="Connection Pool Lifecycle"
+  code={`// WITHOUT connection pooling:
+for (int i = 0; i < 1000; i++)
+{
+    using var connection = new SqlConnection(connString);
+    connection.Open();      // 🐌 Create new connection: ~50ms
+    // Execute query: ~5ms
+    connection.Close();     // Connection destroyed
+}
+// Total: 1000 × 50ms = 50 seconds of connection overhead!
+
+// WITH connection pooling (automatic!):
+for (int i = 0; i < 1000; i++)
+{
+    using var connection = new SqlConnection(connString);
+    connection.Open();      // ⚡ Get from pool: ~0.1ms
+    // Execute query: ~5ms
+    connection.Close();     // Return to pool (not destroyed)
+}
+// Total: Negligible connection overhead!
+
+// Connection pooling is AUTOMATIC for SqlConnection
+// Just use the same connection string and ADO.NET handles it`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7, 8, 9],
+      highlight: "Without Pooling",
+      explanation: "Each Open() creates a brand new connection—very slow!"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15, 16, 17, 18, 19],
+      highlight: "With Pooling",
+      explanation: "Open() grabs from pool, Close() returns—lightning fast!"
+    },
+    {
+      lineNumbers: [22, 23],
+      highlight: "Automatic",
+      explanation: "ADO.NET pools connections automatically by connection string"
+    }
+  ]}
+/>
+
+### Connection Pool Behavior
+
+| Event | Without Pooling | With Pooling |
+|:------|:---------------|:-------------|
+| First connection | Create new | Create new (cold start) |
+| Subsequent | Create new (slow) | Get from pool (fast) |
+| Close/Dispose | Destroy | Return to pool |
+| Pool exhausted | N/A | Wait for available or timeout |
+
+<InfoBox type="tip">
+**Connection String Tip:** Connections are pooled by connection string. Even a minor difference (like extra spaces) creates a separate pool!
+</InfoBox>
+
+<ProgressCheckpoint section="connection-pooling-basics" xpReward={20} />
+
+---
+
+## Section 2: DbContext Pooling
+
+### The Problem with DbContext
+
+DbContext itself has creation overhead—it's not just the connection:
+
+<DotnetCodePreview
+  title="DbContext Creation Cost"
+  code={`// Every new DbContext instance:
+// 1. Model initialization (first time only, cached)
+// 2. Service resolution from DI container
+// 3. Change tracker setup
+// 4. Internal service instantiation
+
+// Traditional DI registration:
+services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
+// Each request creates a NEW DbContext
+public class ProductController
+{
+    private readonly AppDbContext _context;  // New instance per request!
+    
+    public ProductController(AppDbContext context)
+    {
+        _context = context;
+    }
+}
+
+// For high-throughput apps (1000s requests/sec):
+// - GC pressure from allocating many DbContexts
+// - Overhead of constructing internal services
+// - This adds up!`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6],
+      highlight: "DbContext Overhead",
+      explanation: "Each new DbContext has initialization work beyond just connections"
+    },
+    {
+      lineNumbers: [8, 9, 10],
+      highlight: "Traditional Registration",
+      explanation: "AddDbContext creates a new instance for each scope"
+    },
+    {
+      lineNumbers: [21, 22, 23, 24],
+      highlight: "High-Throughput Issue",
+      explanation: "Many allocations = GC pressure = latency spikes"
+    }
+  ]}
+/>
+
+### AddDbContextPool to the Rescue
+
+<DotnetCodePreview
+  title="Enable DbContext Pooling"
+  code={`// 🚀 Enable DbContext pooling - one line change!
+services.AddDbContextPool<AppDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
+// Now DbContext instances are REUSED!
+// After Dispose(), context returns to pool instead of being destroyed
+
+// How it works:
+// Request 1: Get DbContext from pool (or create if pool empty)
+// Request 1 ends: Context cleaned and returned to pool
+// Request 2: Get same DbContext from pool (already initialized!)
+
+// Pool size configuration:
+services.AddDbContextPool<AppDbContext>(
+    options => options.UseSqlServer(connectionString),
+    poolSize: 1024  // Max pooled instances (default: 1024)
+);
+
+// Requirements for pooling:
+// 1. Your DbContext must have a constructor accepting DbContextOptions
+// 2. Don't store request-scoped state in the DbContext
+// 3. Fields are reset between uses, but custom ones aren't!`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "AddDbContextPool",
+      explanation: "One word change: AddDbContext → AddDbContextPool"
+    },
+    {
+      lineNumbers: [6, 7],
+      highlight: "Reuse",
+      explanation: "Contexts are cleaned and reused instead of destroyed"
+    },
+    {
+      lineNumbers: [14, 15, 16],
+      highlight: "Pool Size",
+      explanation: "Configure maximum pooled instances (default is usually fine)"
+    },
+    {
+      lineNumbers: [19, 20, 21, 22],
+      highlight: "Requirements",
+      explanation: "Simple constructor + don't store request state = pooling compatible"
+    }
+  ]}
+/>
+
+<Comparison
+  title="AddDbContext vs AddDbContextPool"
+  items={[
+    {
+      label: "AddDbContext",
+      description: "New instance per scope. Simpler, no special requirements. Fine for low-moderate traffic.",
+      isCorrect: true
+    },
+    {
+      label: "AddDbContextPool",
+      description: "Reuses instances. ~25-30% less allocation overhead. Best for high-throughput (100+ req/sec).",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Pooling Gotcha:** When a DbContext returns to the pool, EF resets its internal state—but YOUR custom fields aren't touched! Don't store per-request data in DbContext fields.
+</InfoBox>
+
+<ProgressCheckpoint section="dbcontext-pooling" xpReward={20} />
+
+---
+
+## Section 3: PooledDbContextFactory
+
+### For Non-DI Scenarios
+
+Sometimes you need DbContext outside DI—background jobs, parallel processing, etc. Use PooledDbContextFactory:
+
+<DotnetCodePreview
+  title="Using PooledDbContextFactory"
+  code={`// Register the factory
+services.AddPooledDbContextFactory<AppDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
+// Inject and use in your service
+public class BackgroundDataProcessor
+{
+    private readonly IDbContextFactory<AppDbContext> _factory;
+    
+    public BackgroundDataProcessor(IDbContextFactory<AppDbContext> factory)
+    {
+        _factory = factory;
+    }
+    
+    public async Task ProcessDataParallel(IEnumerable<int> ids)
+    {
+        // Create contexts as needed - they come from the pool!
+        await Parallel.ForEachAsync(ids, async (id, ct) =>
+        {
+            await using var context = await _factory.CreateDbContextAsync(ct);
+            
+            // Each iteration has its own pooled context
+            var item = await context.Items.FindAsync([id], ct);
+            if (item != null)
+            {
+                item.Processed = true;
+                await context.SaveChangesAsync(ct);
+            }
+        });  // Context returns to pool
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Register Factory",
+      explanation: "AddPooledDbContextFactory provides IDbContextFactory<T>"
+    },
+    {
+      lineNumbers: [8, 9, 10, 11, 12, 13],
+      highlight: "Inject Factory",
+      explanation: "Inject the factory, not DbContext directly"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21],
+      highlight: "Create On Demand",
+      explanation: "CreateDbContextAsync gets a context from the pool"
+    },
+    {
+      lineNumbers: [29],
+      highlight: "Auto Return",
+      explanation: "await using ensures context returns to pool"
+    }
+  ]}
+/>
+
+### Factory for Long-Running Services
+
+<DotnetCodePreview
+  title="Background Service Pattern"
+  code={`public class OrderProcessingService : BackgroundService
+{
+    private readonly IDbContextFactory<AppDbContext> _factory;
+    
+    public OrderProcessingService(IDbContextFactory<AppDbContext> factory)
+    {
+        _factory = factory;
+    }
+    
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            // Get fresh context for each batch
+            await using var context = await _factory.CreateDbContextAsync(ct);
+            
+            var pendingOrders = await context.Orders
+                .Where(o => o.Status == "Pending")
+                .Take(10)
+                .ToListAsync(ct);
+            
+            foreach (var order in pendingOrders)
+            {
+                await ProcessOrder(order);
+                order.Status = "Processed";
+            }
+            
+            await context.SaveChangesAsync(ct);
+            
+            // Context returns to pool, clean slate for next iteration
+            await Task.Delay(TimeSpan.FromSeconds(10), ct);
+        }
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [5, 6, 7, 8],
+      highlight: "Inject Factory",
+      explanation: "Background services need factory, not scoped DbContext"
+    },
+    {
+      lineNumbers: [15, 16],
+      highlight: "Fresh Context Per Batch",
+      explanation: "Get a clean context for each processing batch"
+    },
+    {
+      lineNumbers: [30, 31],
+      highlight: "Context Lifecycle",
+      explanation: "Context returns to pool, ready for next iteration"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="pooled-factory" xpReward={20} />
+
+---
+
+## Section 4: Pool Management
+
+### Monitoring and Tuning
+
+<DotnetCodePreview
+  title="Connection Pool Monitoring"
+  code={`// SQL Server connection string pool settings
+var connectionString = @"
+    Server=localhost;
+    Database=MyDb;
+    Trusted_Connection=True;
+    Min Pool Size=10;        // Pre-create 10 connections
+    Max Pool Size=100;       // Maximum 100 connections
+    Connection Timeout=30;   // Wait 30s for available connection
+    Pooling=true;            // Enable pooling (default: true)
+";
+
+// Monitor connection pool stats (SQL Server specific)
+// In SQL Server Management Studio:
+// SELECT * FROM sys.dm_exec_connections WHERE session_id > 50;
+
+// Application Insights / logging:
+services.AddDbContextPool<AppDbContext>(options =>
+    options.UseSqlServer(connectionString)
+           .LogTo(
+               message => logger.LogDebug(message),
+               new[] { DbLoggerCategory.Database.Connection.Name }
+           ));`}
+  steps={[
+    {
+      lineNumbers: [3, 4, 5, 6, 7, 8, 9, 10],
+      highlight: "Pool Settings",
+      explanation: "Configure pool behavior in connection string"
+    },
+    {
+      lineNumbers: [13, 14],
+      highlight: "Monitor Connections",
+      explanation: "Use SQL Server DMVs to see active connections"
+    },
+    {
+      lineNumbers: [17, 18, 19, 20, 21, 22],
+      highlight: "Connection Logging",
+      explanation: "Log connection events for debugging pool issues"
+    }
+  ]}
+/>
+
+### Common Pool Issues
+
+<DotnetCodePreview
+  title="Pool Exhaustion and Fixes"
+  code={`// ❌ PROBLEM: Connection pool exhausted
+// Error: "Timeout expired. The timeout period elapsed prior to 
+//        obtaining a connection from the pool."
+
+// CAUSE 1: Connections not being returned to pool
+// BAD: Forgetting to dispose
+public async Task BadMethod()
+{
+    var context = new AppDbContext();  // ❌ Never disposed!
+    await context.Products.ToListAsync();
+    // Connection leaked!
+}
+
+// ✅ FIX: Always use 'using' or 'await using'
+public async Task GoodMethod()
+{
+    await using var context = new AppDbContext();
+    await context.Products.ToListAsync();
+    // Properly disposed, connection returned to pool
+}
+
+// CAUSE 2: Long-running transactions holding connections
+// BAD: Transaction open for too long
+using var transaction = await context.Database.BeginTransactionAsync();
+// ... lots of slow processing ...
+// Other requests can't get connections!
+
+// ✅ FIX: Keep transactions short
+using var transaction = await context.Database.BeginTransactionAsync();
+// Do quick DB work only
+await transaction.CommitAsync();
+// Heavy processing AFTER transaction closes
+
+// CAUSE 3: Pool too small for traffic
+// ✅ FIX: Increase Max Pool Size (but don't go crazy)
+// Each connection uses server resources!`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Pool Exhaustion",
+      explanation: "This error means all pool connections are in use!"
+    },
+    {
+      lineNumbers: [7, 8, 9, 10, 11, 12, 13],
+      highlight: "Connection Leak",
+      explanation: "Never disposing = connections never return to pool"
+    },
+    {
+      lineNumbers: [16, 17, 18, 19, 20, 21],
+      highlight: "Proper Disposal",
+      explanation: "Always use 'using' to ensure disposal"
+    },
+    {
+      lineNumbers: [24, 25, 26, 27, 28],
+      highlight: "Long Transactions",
+      explanation: "Open transactions hold connections—keep them short!"
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="pool-benefit-quiz">
+  <Question>What's the main benefit of connection pooling?</Question>
+  <Answer>It makes queries run faster</Answer>
+  <Answer correct>It eliminates the overhead of creating new connections for each query</Answer>
+  <Answer>It increases database security</Answer>
+  <Answer>It reduces memory usage in the application</Answer>
+</Quiz>
+
+<Quiz id="dbcontext-pool-quiz">
+  <Question>When should you use AddDbContextPool instead of AddDbContext?</Question>
+  <Answer>Always, it's strictly better</Answer>
+  <Answer>Only with SQL Server</Answer>
+  <Answer correct>For high-throughput applications (100+ requests/second)</Answer>
+  <Answer>When you need request-scoped state in DbContext</Answer>
+</Quiz>
+
+<Quiz id="pool-exhaustion-quiz">
+  <Question>What's the most common cause of connection pool exhaustion?</Question>
+  <Answer>Too many users</Answer>
+  <Answer>Slow database queries</Answer>
+  <Answer correct>Connections not being properly disposed/returned to pool</Answer>
+  <Answer>Insufficient server RAM</Answer>
+</Quiz>
+
+### Summary
+
+| Feature | Use Case | Benefit |
+|:--------|:---------|:--------|
+| **ADO.NET Connection Pool** | All database access | Automatic, reuses TCP connections |
+| **AddDbContextPool** | High-throughput web apps | Reuses DbContext instances, less GC |
+| **PooledDbContextFactory** | Background jobs, parallel | Manual context creation from pool |
+| **Pool Size Settings** | Tuning for load | Balance connections vs resources |
+
+<KeyConcept title="Pooling Best Practices">
+1. **ADO.NET connection pooling is automatic**—just use same connection string
+2. **Use AddDbContextPool for high-traffic apps** (>100 req/sec)
+3. **Always dispose DbContext**—use `using` or `await using`
+4. **Keep transactions short**—don't hold connections during slow operations
+5. **Monitor pool exhaustion**—indicates disposal or load issues
+</KeyConcept>
+
+<KeyConcept title="Congratulations!">
+You've completed the **Performance Optimization** milestone! You now know how to:
+- Profile and analyze EF Core queries
+- Use AsNoTracking for read-only operations
+- Compile queries for hot paths
+- Prevent N+1 problems with Include
+- Perform bulk operations with ExecuteUpdate/Delete
+- Manage connections and DbContext pooling
+
+Your EF Core applications are now performance-ready! 🚀
+</KeyConcept>
+
+<ProgressCheckpoint section="pool-management" xpReward={20} />

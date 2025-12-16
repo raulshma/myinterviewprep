@@ -1,0 +1,413 @@
+# Shadow Properties
+
+Discover **Shadow Properties** – EF Core's way of storing data in your database that doesn't exist in your C# entity classes. It's like having invisible columns that only the database knows about!
+
+---
+
+## Section 1: What are Shadow Properties?
+
+### The Invisible Ink Analogy ✍️
+
+Remember those spy movies where secret messages are written in invisible ink? The paper looks blank, but under special light, hidden text appears.
+
+**Shadow Properties** work the same way:
+
+| Invisible Ink | Shadow Properties |
+|:--------------|:------------------|
+| Writing on paper | Data in database |
+| Invisible to naked eye | Not in C# class |
+| Special light reveals it | EF Core knows about it |
+| Still physically there | Still in the database |
+
+<InfoBox type="info">
+**Shadow Properties** are properties that exist in the EF Core model but not in the CLR entity class. They have a value in the database but are accessed only through the `ChangeTracker` or `EF.Property<T>()` method.
+</InfoBox>
+
+### Why Use Shadow Properties?
+
+1. **Clean Domain Models** - Keep audit fields out of your business logic
+2. **Foreign Keys** - Store FK values without navigation properties
+3. **Metadata** - Track system-level data (timestamps, versions)
+4. **Legacy Databases** - Map columns that don't fit your model
+
+```csharp
+// Your clean entity class
+public class Blog
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    // No CreatedAt, UpdatedAt, or other "noise" here!
+}
+
+// But the database has:
+// | Id | Title | LastUpdated | CreatedBy |
+// Shadow properties handle those extra columns!
+```
+
+<KeyConcept title="Invisible but Present">
+Shadow properties are real database columns. They just don't clutter your C# classes. EF Core manages them silently in the background.
+</KeyConcept>
+
+<ProgressCheckpoint section="what-are-shadow-properties" xpReward={15} />
+
+---
+
+## Section 2: Creating Shadow Properties
+
+### Using Fluent API
+
+The most common way to create shadow properties is through the Fluent API in `OnModelCreating`:
+
+<DotnetCodePreview
+  title="Defining Shadow Properties"
+  code={`public class BloggingContext : DbContext
+{
+    public DbSet<Blog> Blogs => Set<Blog>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Create a shadow property
+        modelBuilder.Entity<Blog>()
+            .Property<DateTime>("LastUpdated");
+
+        // With additional configuration
+        modelBuilder.Entity<Blog>()
+            .Property<string>("CreatedBy")
+            .HasMaxLength(100)
+            .IsRequired();
+
+        // With default value
+        modelBuilder.Entity<Blog>()
+            .Property<DateTime>("CreatedAt")
+            .HasDefaultValueSql("GETUTCDATE()");
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [8, 9],
+      highlight: "Basic Shadow Property",
+      explanation: "Property<DateTime>('LastUpdated') creates a DateTime column that isn't in the Blog class"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15],
+      highlight: "With Configuration",
+      explanation: "You can chain the same configuration methods as regular properties"
+    },
+    {
+      lineNumbers: [18, 19, 20],
+      highlight: "Default Values",
+      explanation: "Shadow properties can have database defaults like GETUTCDATE()"
+    }
+  ]}
+/>
+
+### Convention-Based Shadow Properties
+
+EF Core automatically creates shadow properties for foreign keys when you don't define them explicitly:
+
+```csharp
+public class Post
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    
+    // Navigation property, but no FK property
+    public Blog Blog { get; set; } = null!;
+}
+
+// EF Core automatically creates a shadow property "BlogId"!
+// It's in the database, just not in your class.
+```
+
+<InfoBox type="tip">
+**Pro Tip:** You can prevent shadow property creation by configuring:
+```csharp
+optionsBuilder.ConfigureWarnings(b => 
+    b.Throw(CoreEventId.ShadowPropertyCreated));
+```
+This throws an exception if EF Core tries to auto-create shadow properties.
+</InfoBox>
+
+<ProgressCheckpoint section="creating-shadow-properties" xpReward={15} />
+
+---
+
+## Section 3: Accessing Shadow Properties
+
+### Reading and Writing Values
+
+Since shadow properties aren't in your C# class, you need special methods to access them:
+
+<DotnetCodePreview
+  title="Working with Shadow Property Values"
+  code={`// WRITING: Set shadow property value via ChangeTracker
+var blog = new Blog { Title = "My Blog" };
+context.Add(blog);
+context.Entry(blog)
+    .Property("LastUpdated")
+    .CurrentValue = DateTime.UtcNow;
+await context.SaveChangesAsync();
+
+// READING: Get shadow property value via ChangeTracker
+var entry = context.Entry(existingBlog);
+var lastUpdated = entry.Property<DateTime>("LastUpdated").CurrentValue;
+Console.WriteLine($"Last updated: {lastUpdated}");
+
+// QUERYING: Use EF.Property in LINQ
+var recentBlogs = context.Blogs
+    .OrderByDescending(b => EF.Property<DateTime>(b, "LastUpdated"))
+    .Take(10)
+    .ToList();
+
+// FILTERING: Use in Where clauses
+var oldBlogs = context.Blogs
+    .Where(b => EF.Property<DateTime>(b, "LastUpdated") < DateTime.UtcNow.AddYears(-1))
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7],
+      highlight: "Writing Values",
+      explanation: "Use context.Entry(entity).Property('name').CurrentValue to set values"
+    },
+    {
+      lineNumbers: [10, 11, 12],
+      highlight: "Reading Values",
+      explanation: "Access the same way - through the Entry's Property accessor"
+    },
+    {
+      lineNumbers: [15, 16, 17, 18],
+      highlight: "Querying with EF.Property",
+      explanation: "EF.Property<T>() lets you reference shadow properties in LINQ queries"
+    },
+    {
+      lineNumbers: [21, 22, 23],
+      highlight: "Filtering",
+      explanation: "Use EF.Property in Where() clauses just like regular properties"
+    }
+  ]}
+/>
+
+### Automatic Audit Timestamps
+
+A powerful pattern is automatically setting shadow properties on save:
+
+```csharp
+public override int SaveChanges()
+{
+    foreach (var entry in ChangeTracker.Entries())
+    {
+        if (entry.State == EntityState.Added)
+        {
+            entry.Property("CreatedAt").CurrentValue = DateTime.UtcNow;
+        }
+        
+        if (entry.State == EntityState.Modified)
+        {
+            entry.Property("LastUpdated").CurrentValue = DateTime.UtcNow;
+        }
+    }
+    
+    return base.SaveChanges();
+}
+```
+
+<InfoBox type="warning">
+**Important:** Always use the generic `EF.Property<T>()` with the correct type parameter. Using the wrong type will cause runtime exceptions!
+</InfoBox>
+
+<ProgressCheckpoint section="accessing-shadow-properties" xpReward={15} />
+
+---
+
+## Section 4: Common Use Cases
+
+### Audit Fields Pattern
+
+The most popular use case – track who changed what and when:
+
+```csharp
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+    {
+        // Add audit shadow properties to ALL entities
+        entityType.AddProperty("CreatedAt", typeof(DateTime));
+        entityType.AddProperty("CreatedBy", typeof(string));
+        entityType.AddProperty("ModifiedAt", typeof(DateTime?));
+        entityType.AddProperty("ModifiedBy", typeof(string));
+    }
+}
+```
+
+### Foreign Key Without Navigation
+
+Sometimes you want the FK in the database but not a full navigation property:
+
+<DotnetCodePreview
+  title="FK-Only Shadow Property"
+  code={`public class Comment
+{
+    public int Id { get; set; }
+    public string Content { get; set; } = "";
+    // No Post navigation property - keeping it simple!
+}
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Comment>()
+        .Property<int>("PostId")
+        .IsRequired();
+
+    // Still need to configure the relationship
+    modelBuilder.Entity<Post>()
+        .HasMany<Comment>()
+        .WithOne()
+        .HasForeignKey("PostId");
+}`}
+  steps={[
+    {
+      lineNumbers: [1, 2, 3, 4, 5],
+      highlight: "Clean Entity",
+      explanation: "Comment has no reference to Post - cleaner domain model"
+    },
+    {
+      lineNumbers: [10, 11, 12],
+      highlight: "Shadow FK",
+      explanation: "PostId exists in the database but not in the Comment class"
+    },
+    {
+      lineNumbers: [15, 16, 17, 18],
+      highlight: "Relationship Config",
+      explanation: "Still configure the relationship using the shadow FK"
+    }
+  ]}
+/>
+
+<Comparison
+  title="Regular FK vs Shadow FK"
+  items={[
+    {
+      label: "Regular FK Property",
+      description: "Visible in C# class, easy to access directly, clutters domain model",
+      isCorrect: false
+    },
+    {
+      label: "Shadow FK Property",
+      description: "Hidden from C# class, accessed via EF.Property, keeps domain clean",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="use-cases" xpReward={15} />
+
+---
+
+## Section 5: Indexer Properties
+
+### Dynamic Properties with Indexers
+
+For even more flexibility, EF Core supports **indexer properties** – a dictionary-like approach to dynamic data:
+
+<DotnetCodePreview
+  title="Indexer Properties"
+  code={`public class Blog
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    
+    // Indexer for dynamic properties
+    private readonly Dictionary<string, object> _data = new();
+    
+    public object this[string key]
+    {
+        get => _data.TryGetValue(key, out var value) ? value : null!;
+        set => _data[key] = value;
+    }
+}
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Blog>()
+        .IndexerProperty<string>("CustomKey");
+        
+    modelBuilder.Entity<Blog>()
+        .IndexerProperty<int>("ViewCount");
+}`}
+  steps={[
+    {
+      lineNumbers: [7],
+      highlight: "Backing Dictionary",
+      explanation: "The indexer stores values in a private dictionary"
+    },
+    {
+      lineNumbers: [9, 10, 11, 12, 13],
+      highlight: "Indexer Definition",
+      explanation: "Standard C# indexer providing key-value access"
+    },
+    {
+      lineNumbers: [18, 19, 21, 22],
+      highlight: "Configure Indexer Properties",
+      explanation: "IndexerProperty<T>() tells EF Core to store these as database columns"
+    }
+  ]}
+/>
+
+### Accessing Indexer Properties
+
+```csharp
+var blog = new Blog { Title = "Tech Blog" };
+blog["CustomKey"] = "unique-123";
+blog["ViewCount"] = 0;
+
+context.Blogs.Add(blog);
+await context.SaveChangesAsync();
+
+// Query using EF.Property
+var popular = context.Blogs
+    .Where(b => EF.Property<int>(b, "ViewCount") > 1000)
+    .ToList();
+```
+
+<Quiz id="shadow-property-basics">
+  <Question>What method is used to access shadow properties in LINQ queries?</Question>
+  <Answer>context.Shadow()</Answer>
+  <Answer>entity.GetShadow()</Answer>
+  <Answer correct>EF.Property&lt;T&gt;()</Answer>
+  <Answer>modelBuilder.Shadow()</Answer>
+</Quiz>
+
+<Quiz id="shadow-property-creation">
+  <Question>Where are shadow properties typically configured?</Question>
+  <Answer>In the entity class constructor</Answer>
+  <Answer correct>In OnModelCreating using Fluent API</Answer>
+  <Answer>In the Program.cs file</Answer>
+  <Answer>In Data Annotations</Answer>
+</Quiz>
+
+<Quiz id="shadow-property-use-case">
+  <Question>Which is NOT a common use case for shadow properties?</Question>
+  <Answer>Audit timestamps (CreatedAt, ModifiedAt)</Answer>
+  <Answer>Foreign keys without navigation properties</Answer>
+  <Answer correct>Primary key IDs</Answer>
+  <Answer>Version tracking for concurrency</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Shadow Properties** | Database columns not in C# classes |
+| **Creation** | Use `Property<T>()` in Fluent API |
+| **Access** | Use `ChangeTracker.Entry().Property()` |
+| **Querying** | Use `EF.Property<T>()` in LINQ |
+| **Indexer Properties** | Dynamic key-value storage pattern |
+| **Common Use** | Audit fields, hidden FKs, metadata |
+
+<KeyConcept title="What's Next?">
+You've learned how shadow properties keep your entities clean while storing extra data. Next, explore:
+- **Backing Fields** - Control how EF Core accesses property data
+- **Value Conversions** - Transform data between C# and database
+</KeyConcept>
+
+<ProgressCheckpoint section="indexer-properties" xpReward={15} />

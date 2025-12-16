@@ -1,0 +1,103 @@
+# When to Use Database-First
+
+You've learned how to scaffold code from a database. But **should** you? The choice between Code-First and Database-First is one of the biggest architectural decisions you'll make in an EF Core project.
+
+---
+
+## Section 1: The Two Philosophies
+
+### Code-First 🆕
+1. You write C# classes (`public class Blog { ... }`).
+2. EF Core creates the database for you (`dotnet ef database update`).
+3. You manage changes via Migrations in C#.
+
+### Database-First 👴
+1. You (or a DBA) create tables in SQL (`CREATE TABLE Blogs...`).
+2. EF Core generates generic C# classes for you (`dotnet ef dbcontext scaffold`).
+3. You manage changes via SQL scripts.
+
+<Comparison
+  title="Workflow Comparison"
+  items={[
+    {
+      label: "Code-First",
+      description: "Source of Truth is C# Code. Best for new apps and developers who prefer C# over SQL.",
+      isCorrect: true
+    },
+    {
+      label: "Database-First",
+      description: "Source of Truth is the Database. Best for existing DBs and teams with strong SQL governance.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="db-first-vs-code-first" xpReward={20} />
+
+---
+
+## Section 2: Advantages of Database-First
+
+Why would you choose this approach in 2024?
+
+### 1. Legacy Integration
+This is the #1 reason. You have a 15-year-old database with stored procedures, triggers, and complex views. You can't just delete it and recreate it from code. Scaffolding lets you build a modern .NET app on top of this legacy foundation.
+
+### 2. Specialized Database Features
+Sometimes you need to use a database feature that EF Core doesn't fully understand or support in its migrations (e.g., complex partitioning, temporal tables in specific ways, or vendor-specific index types). Writing the SQL yourself gives you 100% control.
+
+### 3. DBA Governance
+In large enterprises, developers might not have permission to alter the database schema. A generic "Database Administrator" (DBA) team manages the SQL, and you just consume it.
+
+<ProgressCheckpoint section="advantages" xpReward={20} />
+
+---
+
+## Section 3: Disadvantages
+
+### 1. The Clunky Workflow
+Every time the schema changes, you must re-run the scaffold command. It's a manual step that's easy to forget, leading to "works on my machine" bugs where your code doesn't match the database.
+
+### 2. Loss of Semantics
+Your C# code becomes a dumb reflection of the table structure.
+- **SQL:** `VARCHAR(20)`
+- **Code:** `string` (but what does it represent? A phone number? A status?)
+
+In Code-First, you can use Rich Domain Models with value objects and encapsulation. In Database-First, you often end up with "Anemic Domain Models"—just bags of getters and setters.
+
+### 3. Limited Mapping Control
+While you can customize scaffolding, it's often harder than just defining the mapping yourself. You end up fighting the tool.
+
+<ProgressCheckpoint section="disadvantages" xpReward={20} />
+
+---
+
+## Section 4: Making the Choice
+
+### The "Code-First from Database" Hybrid
+
+There is a third way!
+
+1. **Start** with `dotnet ef dbcontext scaffold` to get the initial code.
+2. **Switch** to Code-First immediately.
+3. Stop modifying the DB in SQL. Start using Migrations.
+
+This is often the best path for migrating legacy apps. You get a head start, but then move to a modern workflow.
+
+<Quiz id="use-cases-main-quiz">
+  <Question>Which scenario is the strongest candidate for Database-First?</Question>
+  <Answer>A brand new startup application</Answer>
+  <Answer correct>An existing application with a large, complex legacy database</Answer>
+  <Answer>A microservice with a simple data needs</Answer>
+  <Answer>When you don't know SQL</Answer>
+</Quiz>
+
+<Quiz id="governance-quiz">
+  <Question>If your company forbids developers from running 'CREATE TABLE' commands, which approach must you likely use?</Question>
+  <Answer>Code-First</Answer>
+  <Answer>Hybrid</Answer>
+  <Answer correct>Database-First (DBA-managed)</Answer>
+  <Answer>No-Code</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="making-the-choice" xpReward={15} />

@@ -1,0 +1,162 @@
+# Integration Testing
+
+Unit tests (InMemory/SQLite) are great for speed, but they can lie to you. They don't have networking issues, locking contentions, or specific database quirks. To know if your app *really* works, you need to test against a **real database**.
+
+---
+
+## Section 1: The Docker Revolution
+
+Historically, integration tests were hard because you had to install SQL Server on the build server.
+
+Enter **Testcontainers**.
+
+This library allows your C# code to:
+1.  Spin up a Docker container (e.g., SQL Server) via code.
+2.  Run tests against it.
+3.  Destroy it when done.
+
+It ensures every test run starts with a **clean, real environment**.
+
+<ProgressCheckpoint section="real-db-testing" xpReward={25} />
+
+---
+
+## Section 2: Using Testcontainers
+
+First, add the NuGet package: `Testcontainers.MsSql`.
+
+<DotnetCodePreview
+    title="Setting up Testcontainers"
+    code={`public class IntegrationTestBase : IAsyncLifetime
+{
+    private readonly MsSqlContainer _dbContainer = new MsSqlBuilder()
+        .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
+        .Build();
+
+    public string ConnectionString { get; private set; }
+
+    public async Task InitializeAsync()
+    {
+        // Start the Docker container
+        await _dbContainer.StartAsync();
+        
+        ConnectionString = _dbContainer.GetConnectionString();
+        
+        // Ensure database is created
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseSqlServer(ConnectionString)
+            .Options;
+            
+        using var context = new AppDbContext(options);
+        await context.Database.MigrateAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _dbContainer.DisposeAsync();
+    }
+}`}
+    steps={[
+        {
+            lineNumbers: [3, 4, 5],
+            highlight: "MsSqlBuilder",
+            explanation: "Define the container image. This works for Postgres, Redis, MongoDB, etc. too!"
+        },
+        {
+            lineNumbers: [13],
+            highlight: "StartAsync",
+            explanation: "This command pulls the image (if needed) and starts the container."
+        },
+        {
+            lineNumbers: [22],
+            highlight: "MigrateAsync",
+            explanation: "Apply your real EF Core migrations to this fresh container. This verifies your migrations work too!"
+        }
+    ]}
+/>
+
+<ProgressCheckpoint section="testcontainers" xpReward={25} />
+
+---
+
+## Section 3: Resetting State with Respawn
+
+Starting a container takes a few seconds. You don't want to do this for *every single test*.
+
+Instead, spin up the container **once** for the class, and **reset tables** between tests.
+
+**Respawn** is a library that intelligently clears data from tables without deleting the schema, which is much faster than dropping the DB.
+
+```csharp
+// Inside your test setup
+private static Respawner _respawner;
+
+// Call this once after container start
+_respawner = await Respawner.CreateAsync(ConnectionString, new RespawnerOptions
+{
+    TablesToIgnore = new Table[] { "__EFMigrationsHistory" }
+});
+
+// Call this inside [TearDown] or Dispose of each test
+await _respawner.ResetAsync(ConnectionString);
+```
+
+<ProgressCheckpoint section="respawn" xpReward={25} />
+
+---
+
+## Section 4: WebApplicationFactory
+
+The holy grail of testing is **End-to-End (E2E)**. You test the API endpoint, which calls the Controller, which calls the Service, which calls EF Core, which hits the Container DB.
+
+ASP.NET Core provides `WebApplicationFactory` to spin up your API in-memory.
+
+<DotnetCodePreview
+    title="Full Integration Test"
+    code={`public class ApiTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly WebApplicationFactory<Program> _factory;
+
+    public ApiTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact]
+    public async Task CreateUser_Endpoint_ShouldPersistData()
+    {
+        // Arrange
+        var client = _factory.CreateClient();
+        
+        // Act
+        var response = await client.PostAsJsonAsync("/api/users", new { Name = "E2E User" });
+        
+        // Assert
+        response.EnsureSuccessStatusCode();
+        
+        // You can even verify in the DB directly if you expose the context!
+    }
+}`}
+    steps={[
+        {
+            lineNumbers: [1],
+            highlight: "IClassFixture",
+            explanation: "Ideally, you create a CustomWebApplicationFactory that overrides the DI config to use your Testcontainer connection string instead of appsettings.json."
+        },
+        {
+            lineNumbers: [14],
+            highlight: "CreateClient",
+            explanation: "Creates an HttpClient that talks directly to the in-memory TestServer."
+        }
+    ]}
+/>
+
+<Quiz id="integration-summary-quiz">
+    <Question>What is the main benefit of Testcontainers?</Question>
+    <Answer>It allows you to test on Linux only</Answer>
+    <Answer correct>It provides a disposable, real database environment via Docker</Answer>
+    <Answer>It mocks the database connection</Answer>
+    <Answer>It runs your application in the cloud</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="web-app-factory" xpReward={50} />

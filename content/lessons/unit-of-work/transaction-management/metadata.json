@@ -1,0 +1,17 @@
+{
+  "id": "transaction-management",
+  "title": "Transaction Management",
+  "description": "Learn how to manage database transactions explicitly using BeginTransaction and TransactionScope.",
+  "milestone": "unit-of-work",
+  "order": 2,
+  "sections": [
+    "default-transactions",
+    "explicit-transactions",
+    "transaction-scope"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 25,
+  "xpReward": 75,
+  "prerequisites": ["unit-of-work-concept"],
+  "tags": ["transactions", "consistency", "unit-of-work"]
+}

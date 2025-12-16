@@ -1,0 +1,18 @@
+{
+  "id": "repository-testing",
+  "title": "Repository Pattern Testing",
+  "description": "Learn how to test your repository implementations correctly without mocking the DbContext.",
+  "milestone": "testing-ef-core",
+  "order": 3,
+  "sections": [
+    "mocking-philosophy",
+    "testing-repositories",
+    "mock-vs-stub",
+    "summary"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 30,
+  "xpReward": 100,
+  "prerequisites": ["repository-pattern", "inmemory-testing"],
+  "tags": ["testing", "repository", "mocking", "architecture"]
+}

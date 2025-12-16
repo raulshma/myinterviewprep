@@ -1,0 +1,19 @@
+{
+  "id": "backing-fields",
+  "title": "Backing Fields",
+  "description": "Learn how to use backing fields for encapsulation, validation, and controlling how EF Core accesses your entity data.",
+  "milestone": "ef-core-introduction",
+  "order": 30,
+  "sections": [
+    "what-are-backing-fields",
+    "configuring-backing-fields",
+    "field-only-properties",
+    "access-modes",
+    "practical-patterns"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 75,
+  "prerequisites": ["shadow-properties"],
+  "tags": ["ef-core", "backing-fields", "encapsulation", "advanced"]
+}

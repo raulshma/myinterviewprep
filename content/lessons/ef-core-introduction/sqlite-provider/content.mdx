@@ -1,0 +1,76 @@
+
+# SQLite Provider
+
+SQLite is a lightweight, serverless database engine. The `Microsoft.EntityFrameworkCore.Sqlite` provider is widely used for mobile applications (MAUI, Xamarin) and efficient integration testing.
+
+## Configuration
+
+Installation:
+
+```bash
+dotnet add package Microsoft.EntityFrameworkCore.Sqlite
+```
+
+Configuration:
+
+```csharp
+options.UseSqlite("Data Source=app.db");
+```
+
+<ProgressCheckpoint
+  slug="basics"
+  options={[
+    { id: "correct", label: "UseSqlite", correct: true },
+    { id: "incorrect1", label: "UseSQLiteDB" },
+    { id: "incorrect2", label: "UseLocalDb" }
+  ]}
+  question="Which method configures the DbContext for SQLite?"
+/>
+
+## Limitations
+
+SQLite is not as feature-rich as SQL Server or PostgreSQL. EF Core attempts to smooth over these differences, but some limitations exist:
+
+1.  **Schema Operations**: SQLite has limited support for altering existing tables (e.g., dropping columns or adding foreign keys to existing tables is complex). EF Core migrations handle this by rebuilding the table, but it can be slow or risky with large data.
+2.  **Data Types**: SQLite only supports 4 primitive types (INTEGER, REAL, TEXT, BLOB). `.NET` `DateTime` is stored as TEXT (ISO8601 string) or REAL (Julian day), depending on configuration. `decimal` is often stored as TEXT or REAL (loss of precision).
+
+## Testing with In-Memory SQLite
+
+Why use SQLite for testing instead of the InMemory provider?
+SQLite is a *real* relational database. It enforces constraints (mostly) and behaves much more like SQL Server/Postgres than the `InMemory` provider does.
+
+To use in-memory SQLite:
+
+```csharp
+var connection = new SqliteConnection("DataSource=:memory:");
+connection.Open(); // Connection must be transparently kept open
+
+var options = new DbContextOptionsBuilder<MyContext>()
+    .UseSqlite(connection)
+    .Options;
+
+using (var context = new MyContext(options))
+{
+    context.Database.EnsureCreated();
+    // Run tests...
+}
+```
+
+<ProgressCheckpoint
+  slug="testing"
+  options={[
+    { id: "correct", label: "DataSource=:memory:", correct: true },
+    { id: "incorrect1", label: "DataSource=ram" },
+    { id: "incorrect2", label: "Mode=Memory" }
+  ]}
+  question="What connection string enables SQLite in-memory mode?"
+/>
+
+## Global Limitations
+
+SQLite does not support:
+- Stored Procedures (mostly)
+- XML capabilities
+- Right/Full Outer Joins (EF Core works around some, but complex queries may fail translation)
+
+Despite these, it is an excellent choice for local storage and testing.

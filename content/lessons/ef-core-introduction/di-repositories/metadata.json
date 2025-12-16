@@ -1,0 +1,17 @@
+{
+  "id": "di-repositories",
+  "title": "Dependency Injection with Repositories",
+  "description": "Master how to register and inject your repositories using ASP.NET Core's Dependency Injection container.",
+  "milestone": "ef-core-introduction",
+  "order": 42,
+  "sections": [
+    "service-registration",
+    "lifetimes",
+    "injection-usage"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 30,
+  "xpReward": 250,
+  "prerequisites": ["repository-interfaces"],
+  "tags": ["dependency-injection", "ioc", "service-collection"]
+}

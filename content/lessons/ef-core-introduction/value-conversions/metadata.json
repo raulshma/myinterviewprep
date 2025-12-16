@@ -1,0 +1,19 @@
+{
+  "id": "value-conversions",
+  "title": "Value Conversions",
+  "description": "Learn how to convert between C# types and database types using value converters for enums, value objects, and custom transformations.",
+  "milestone": "ef-core-introduction",
+  "order": 31,
+  "sections": [
+    "what-are-value-conversions",
+    "built-in-converters",
+    "custom-converters",
+    "value-objects",
+    "bulk-configuration"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 18,
+  "xpReward": 80,
+  "prerequisites": ["backing-fields"],
+  "tags": ["ef-core", "value-conversions", "converters", "enums", "advanced"]
+}

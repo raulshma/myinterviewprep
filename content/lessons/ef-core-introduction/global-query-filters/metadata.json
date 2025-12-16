@@ -1,0 +1,19 @@
+{
+  "id": "global-query-filters",
+  "title": "Global Query Filters",
+  "description": "Learn how to automatically filter all queries using global query filters for soft delete, multi-tenancy, and more.",
+  "milestone": "ef-core-introduction",
+  "order": 28,
+  "sections": [
+    "what-are-filters",
+    "soft-delete",
+    "multi-tenancy",
+    "disabling-filters",
+    "best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 75,
+  "prerequisites": ["querying-with-linq"],
+  "tags": ["ef-core", "filters", "soft-delete", "multi-tenancy", "advanced"]
+}

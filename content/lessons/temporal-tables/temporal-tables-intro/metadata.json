@@ -1,0 +1,13 @@
+{
+  "id": "temporal-tables-intro",
+  "title": "Temporal Tables in EF Core 6+",
+  "description": "Learn what System-Versioned Temporal Tables are and how to enable them in EF Core.",
+  "milestone": "temporal-tables",
+  "order": 1,
+  "estimatedMinutes": 15,
+  "xpReward": 500,
+  "singleLevel": true,
+  "sections": ["intro-check"],
+  "tags": ["ef-core", "sql-server", "temporal-tables"],
+  "prerequisites": ["code-first-migrations"]
+}

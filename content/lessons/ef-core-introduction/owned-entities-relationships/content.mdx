@@ -1,0 +1,188 @@
+# Owned Entities in Relationships
+
+In Domain-Driven Design (DDD), we distinguish between **Entities** and **Value Objects**.
+- **Entities** have their own identity (like a User with an ID).
+- **Value Objects** are defined by their values and have no identity of their own (like an Address or a Coordinate).
+
+In EF Core, we use **Owned Entities** (or Owned Types) to model Value Objects.
+
+---
+
+## Section 1: Value Objects vs. Entities
+
+Imagine a `Customer` entity. It has an ID.
+It also has a `HomeAddress`. Does the address need its own ID? Not typically. If you change the street name, it's effectively a *new* address value. It belongs wholly to the Customer.
+
+| Feature | Regular Entity | Owned Entity |
+|:--------|:---------------|:-------------|
+| Identity | Has its own PK | PK is conceptually tied to Owner |
+| Lifecycle | Can exist independently | Deleted if Owner is deleted |
+| Tracking | Tracked by its PK | Tracked via Owner |
+| Database | Usually its own table | Often embedded in Owner's table |
+
+<RelationshipDiagram
+  type="one-to-one"
+  entities={{
+    principal: {
+      name: "Customer (Owner)",
+      properties: ["Id: int", "Name: string", "Address: Address"]
+    },
+    dependent: {
+      name: "Address (Owned)",
+      properties: ["Street: string", "City: string", "Zip: string"]
+    }
+  }}
+  showNavigation={true}
+  showForeignKey={false}
+/>
+
+<ProgressCheckpoint section="value-objects-concept" xpReward={25} />
+
+---
+
+## Section 2: OwnsOne (Embedding Data)
+
+The most common pattern is `OwnsOne`. By default, EF Core maps the properties of the owned type to the **same table** as the owner ('Table Splitting' or 'Embedding').
+
+### The Customer Address Example
+
+<DotnetCodePreview
+  title="Configuring OwnsOne"
+  code={`public class Customer
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public Address Address { get; set; } = new(); // The Value Object
+}
+
+public class Address // No "Id" property needed!
+{
+    public string Street { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+}
+
+// Configuration
+modelBuilder.Entity<Customer>()
+    .OwnsOne(c => c.Address);`}
+  steps={[
+    {
+      lineNumbers: [7],
+      highlight: "Value Object Class",
+      explanation: "Notice Address has no Id. It's just a grouping of data."
+    },
+    {
+      lineNumbers: [14],
+      highlight: "OwnsOne",
+      explanation: "EF Core treats Address as part of Customer. In the DB, columns will be 'Name', 'Address_Street', 'Address_City'."
+    }
+  ]}
+/>
+
+### Customizing Column Names
+
+You can customize how the embedded columns are named:
+
+```csharp
+modelBuilder.Entity<Customer>()
+    .OwnsOne(c => c.Address, a =>
+    {
+        a.Property(p => p.Street).HasColumnName("StreetName");
+        a.Property(p => p.City).HasColumnName("CityName");
+    });
+```
+
+<ProgressCheckpoint section="owns-one" xpReward={30} />
+
+---
+
+## Section 3: OwnsMany (Collections)
+
+Since EF Core 2.2, an owner can own a *collection* of value objects using `OwnsMany`. Unlike `OwnsOne`, these **must** be stored in a separate table.
+
+### Scenario: Multiple Shipping Addresses
+
+<DotnetCodePreview
+  title="Configuring OwnsMany"
+  code={`public class Customer
+{
+    public int Id { get; set; }
+    // ...
+    public List<Address> ShippingAddresses { get; set; } = new();
+}
+
+modelBuilder.Entity<Customer>()
+    .OwnsMany(c => c.ShippingAddresses, a =>
+    {
+        a.WithOwner().HasForeignKey("CustomerId");
+        a.ToTable("CustomerAddresses"); // Separate table required
+        a.HasKey("CustomerId", "Street", "City"); // Composite Key (usually)
+    });`}
+  steps={[
+    {
+      lineNumbers: [8],
+      highlight: "OwnsMany",
+      explanation: "Configures the collection. Because it's 1-to-Many, it needs a separate table."
+    },
+    {
+      lineNumbers: [10],
+      highlight: "WithOwner",
+      explanation: "Defines the back-reference (implicit or explicit) to the Customer."
+    },
+    {
+      lineNumbers: [12],
+      highlight: "Composite Key",
+      explanation: "Owned types need a key. Often a composite of the OwnerId + some value properties."
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="owns-many" xpReward={30} />
+
+---
+
+## Section 4: Nested Owned Entities
+
+Owned entities can own *other* owned entities! Imagine an `Order` owning `OrderDetails`, which owns a `BillingAddress`.
+
+```csharp
+public class Order
+{
+    public int Id { get; set; }
+    public OrderDetails Details { get; set; }
+}
+
+public class OrderDetails
+{
+    public Address BillingAddress { get; set; }
+}
+```
+
+### Configuration
+
+```csharp
+modelBuilder.Entity<Order>()
+    .OwnsOne(o => o.Details, d =>
+    {
+        d.OwnsOne(details => details.BillingAddress); // Nested!
+    });
+```
+
+This results in a single table `Orders` with flattened columns like `Details_BillingAddress_Street`.
+
+### Knowledge Check
+
+<Quiz id="owned-table-quiz">
+  <Question>By default, where are properties of an `OwnsOne` entity stored?</Question>
+  <Answer>In a separate table.</Answer>
+  <Answer correct>In the same table as the owner (embedded).</Answer>
+  <Answer>In a generic JSON column.</Answer>
+  <Answer>It depends on the database provider.</Answer>
+</Quiz>
+
+<Quiz id="owned-id-quiz">
+  <Question>Does an owned type class (e.g., `Address`) strictly need an `Id` property in C# code?</Question>
+  <Answer>Yes, EF Core requires an Id for everything.</Answer>
+  <Answer correct>No, EF Core handles the identity (PK) internally via the Owner.</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="nested-owned-entities" xpReward={35} />

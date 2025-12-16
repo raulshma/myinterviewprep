@@ -1,0 +1,17 @@
+{
+  "id": "coordinating-repositories",
+  "title": "Coordinating Multiple Repositories",
+  "description": "Learn patterns for coordinating multiple repositories using a shared Unit of Work context.",
+  "milestone": "unit-of-work",
+  "order": 3,
+  "sections": [
+    "multiple-contexts-problem",
+    "shared-dependency-injection",
+    "uow-wrapper"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 20,
+  "xpReward": 75,
+  "prerequisites": ["transaction-management"],
+  "tags": ["repository-pattern", "dependency-injection", "unit-of-work"]
+}

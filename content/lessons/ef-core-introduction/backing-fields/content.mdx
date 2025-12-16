@@ -1,0 +1,450 @@
+# Backing Fields
+
+Learn how **Backing Fields** give you control over how EF Core reads and writes your entity data – perfect for encapsulation, validation, and complex domain logic!
+
+---
+
+## Section 1: What are Backing Fields?
+
+### The Safety Deposit Box Analogy 🔐
+
+Imagine a bank's safety deposit box system:
+- The **box contents** are your actual data (the backing field)
+- The **viewing window** is the public property
+- The **bank's access rules** determine how the contents are accessed
+
+**Backing Fields** let you control this "access" between EF Core and your data:
+
+| Safety Deposit System | Backing Fields |
+|:----------------------|:---------------|
+| Box contents | Private field (`_name`) |
+| Viewing window | Public property (`Name`) |
+| Direct box access | Field access mode |
+| Window-only access | Property access mode |
+
+<InfoBox type="info">
+**Backing Fields** are private fields that store the actual value for a property. EF Core can be configured to read/write directly to the field, bypassing the property getter/setter logic.
+</InfoBox>
+
+### Why Use Backing Fields?
+
+```csharp
+public class Product
+{
+    private decimal _price;
+    
+    public decimal Price
+    {
+        get => _price;
+        set
+        {
+            if (value < 0)
+                throw new ArgumentException("Price cannot be negative!");
+            _price = value;
+        }
+    }
+}
+```
+
+**The Problem:** When EF Core loads data from the database, should it go through your validation? What if the database has a legitimate negative value from before validation was added?
+
+**The Solution:** Backing fields let you tell EF Core to write directly to `_price`, bypassing the setter validation during materialization!
+
+<KeyConcept title="Control Over Data Access">
+Backing fields give you fine-grained control over when validation and business logic runs – separating database operations from business rules.
+</KeyConcept>
+
+<ProgressCheckpoint section="what-are-backing-fields" xpReward={15} />
+
+---
+
+## Section 2: Configuring Backing Fields
+
+### By Convention
+
+EF Core automatically finds backing fields that match these naming patterns:
+
+```csharp
+public class Blog
+{
+    // EF Core will find these backing fields automatically:
+    private string _title;           // Matches: Title
+    private string _Title;           // Matches: Title
+    private string m_title;          // Matches: Title
+    private string m_Title;          // Matches: Title
+    
+    public string Title
+    {
+        get => _title;
+        set => _title = value;
+    }
+}
+```
+
+### Using Data Annotations
+
+The `[BackingField]` attribute explicitly specifies which field to use:
+
+```csharp
+public class Blog
+{
+    private string _blogTitle;
+    
+    [BackingField(nameof(_blogTitle))]
+    public string Title
+    {
+        get => _blogTitle;
+        set => _blogTitle = value;
+    }
+}
+```
+
+### Using Fluent API
+
+The most flexible approach – use `HasField()` in `OnModelCreating`:
+
+<DotnetCodePreview
+  title="Configuring Backing Fields with Fluent API"
+  code={`public class Blog
+{
+    private string _blogUrl;
+    
+    public string Url
+    {
+        get => _blogUrl;
+        set => _blogUrl = SanitizeUrl(value);
+    }
+    
+    private static string SanitizeUrl(string url) 
+        => url?.ToLowerInvariant().Trim() ?? "";
+}
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Blog>()
+        .Property(b => b.Url)
+        .HasField("_blogUrl");
+}`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "Private Backing Field",
+      explanation: "The actual data is stored in _blogUrl with a non-convention name"
+    },
+    {
+      lineNumbers: [7, 8],
+      highlight: "Setter Logic",
+      explanation: "The property setter sanitizes input - but should DB loads go through this?"
+    },
+    {
+      lineNumbers: [17, 18, 19],
+      highlight: "HasField Configuration",
+      explanation: "Tell EF Core explicitly which field backs this property"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Pro Tip:** Use `HasField()` when your field name doesn't follow conventions, or when you want to be explicit about your configuration.
+</InfoBox>
+
+<ProgressCheckpoint section="configuring-backing-fields" xpReward={15} />
+
+---
+
+## Section 3: Field-Only Properties
+
+### Properties Without Public Access
+
+You can create properties that exist in the database but have no public getter or setter:
+
+<DotnetCodePreview
+  title="Field-Only Properties"
+  code={`public class Blog
+{
+    private string _internalNotes;
+    
+    // No public property! Just the field.
+    // EF Core can still map it to a database column.
+    
+    public void AddNote(string note)
+    {
+        _internalNotes += $"\\n[{DateTime.UtcNow}] {note}";
+    }
+    
+    public bool HasNotes => !string.IsNullOrEmpty(_internalNotes);
+}
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Blog>()
+        .Property<string>("_internalNotes")
+        .HasColumnName("InternalNotes");
+}`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "Private Field Only",
+      explanation: "No public property - complete encapsulation!"
+    },
+    {
+      lineNumbers: [8, 9, 10, 11],
+      highlight: "Controlled Access",
+      explanation: "Access is only through domain methods - AddNote()"
+    },
+    {
+      lineNumbers: [13],
+      highlight: "Read-Only Accessor",
+      explanation: "Boolean check without exposing the actual data"
+    },
+    {
+      lineNumbers: [18, 19, 20],
+      highlight: "Field Configuration",
+      explanation: "Property<string>() with the field name creates the mapping"
+    }
+  ]}
+/>
+
+### Querying Field-Only Properties
+
+Use `EF.Property<T>()` to query field-only properties:
+
+```csharp
+var blogsWithNotes = context.Blogs
+    .Where(b => EF.Property<string>(b, "_internalNotes") != null)
+    .OrderBy(b => EF.Property<string>(b, "_internalNotes"))
+    .ToList();
+```
+
+<Comparison
+  title="Public Property vs Field-Only"
+  items={[
+    {
+      label: "Public Property + Backing Field",
+      description: "Data accessible via property, EF can use field for materialization",
+      isCorrect: true
+    },
+    {
+      label: "Field-Only Property",
+      description: "Maximum encapsulation - no direct external access to data",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="field-only-properties" xpReward={15} />
+
+---
+
+## Section 4: Property Access Modes
+
+### Controlling When to Use Field vs Property
+
+EF Core's `PropertyAccessMode` enum lets you specify exactly how data flows:
+
+<DotnetCodePreview
+  title="Property Access Modes"
+  code={`protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    // Always use the field (bypass property getter/setter)
+    modelBuilder.Entity<Blog>()
+        .Property(b => b.Title)
+        .HasField("_title")
+        .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+    // Field for DB reads, Property for everything else
+    modelBuilder.Entity<Blog>()
+        .Property(b => b.Url)
+        .HasField("_url")
+        .UsePropertyAccessMode(PropertyAccessMode.FieldDuringConstruction);
+
+    // Always use the property (run getter/setter)
+    modelBuilder.Entity<Blog>()
+        .Property(b => b.Category)
+        .UsePropertyAccessMode(PropertyAccessMode.Property);
+}`}
+  steps={[
+    {
+      lineNumbers: [4, 5, 6, 7],
+      highlight: "Field Mode",
+      explanation: "Always bypass the property - good for pure data storage"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13],
+      highlight: "FieldDuringConstruction",
+      explanation: "Use field when loading from DB, property otherwise - best of both worlds!"
+    },
+    {
+      lineNumbers: [16, 17, 18],
+      highlight: "Property Mode",
+      explanation: "Always go through getter/setter - validation always runs"
+    }
+  ]}
+/>
+
+### Access Mode Options
+
+| Mode | When Field is Used | When Property is Used |
+|:-----|:-------------------|:----------------------|
+| `Field` | Always | Never |
+| `Property` | Never | Always |
+| `FieldDuringConstruction` | Entity materialization | App code & change detection |
+| `PreferField` | Whenever possible | Fallback |
+| `PreferProperty` | Fallback | Whenever possible |
+
+<InfoBox type="warning">
+**Recommended:** Use `FieldDuringConstruction` for most cases. It:
+- Bypasses validation during DB load (avoids exceptions on legacy data)
+- Uses property for app code (validation runs for new data)
+- Properly detects changes via property access
+</InfoBox>
+
+<ProgressCheckpoint section="access-modes" xpReward={15} />
+
+---
+
+## Section 5: Practical Patterns
+
+### Pattern 1: Immutable Collections
+
+Prevent external modification of collections:
+
+<DotnetCodePreview
+  title="Immutable Collection Pattern"
+  code={`public class Blog
+{
+    private readonly List<Post> _posts = new();
+    
+    // Read-only access to the collection
+    public IReadOnlyCollection<Post> Posts => _posts.AsReadOnly();
+    
+    // Controlled modification
+    public void AddPost(Post post)
+    {
+        if (post == null) throw new ArgumentNullException(nameof(post));
+        if (_posts.Any(p => p.Title == post.Title))
+            throw new InvalidOperationException("Duplicate post title!");
+        _posts.Add(post);
+    }
+    
+    public void RemovePost(Post post) => _posts.Remove(post);
+}
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Blog>()
+        .HasMany<Post>("_posts")
+        .WithOne()
+        .HasForeignKey("BlogId");
+}`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "Private Collection",
+      explanation: "The actual List is private and readonly"
+    },
+    {
+      lineNumbers: [6],
+      highlight: "Read-Only Exposure",
+      explanation: "External code can read but not modify"
+    },
+    {
+      lineNumbers: [9, 10, 11, 12, 13, 14, 15],
+      highlight: "Domain Methods",
+      explanation: "All modifications go through validating methods"
+    },
+    {
+      lineNumbers: [22, 23, 24, 25],
+      highlight: "Navigation Configuration",
+      explanation: "Configure EF Core to use the private field directly"
+    }
+  ]}
+/>
+
+### Pattern 2: Nullable Backing for Non-Nullable Property
+
+Handle database defaults elegantly:
+
+```csharp
+public class Account
+{
+    // Nullable backing field
+    private bool? _isActive;
+    
+    // Non-nullable property with default
+    public bool IsActive
+    {
+        get => _isActive ?? false;
+        set => _isActive = value;
+    }
+}
+
+// EF Core can distinguish between:
+// - Property never set (null backing field → use DB default)
+// - Property explicitly set to false (false in backing field)
+```
+
+### Pattern 3: Value Encapsulation
+
+Keep complex value logic private:
+
+```csharp
+public class User
+{
+    private string _passwordHash;
+    
+    // No direct access to hash!
+    public void SetPassword(string plaintext)
+    {
+        _passwordHash = BCrypt.HashPassword(plaintext);
+    }
+    
+    public bool VerifyPassword(string plaintext)
+    {
+        return BCrypt.Verify(plaintext, _passwordHash);
+    }
+}
+```
+
+<Quiz id="backing-field-basics">
+  <Question>What method is used in Fluent API to specify a backing field?</Question>
+  <Answer>SetBackingField()</Answer>
+  <Answer>UseField()</Answer>
+  <Answer correct>HasField()</Answer>
+  <Answer>WithField()</Answer>
+</Quiz>
+
+<Quiz id="access-mode-quiz">
+  <Question>Which access mode is recommended for bypassing validation during DB load only?</Question>
+  <Answer>Field</Answer>
+  <Answer>Property</Answer>
+  <Answer correct>FieldDuringConstruction</Answer>
+  <Answer>PreferField</Answer>
+</Quiz>
+
+<Quiz id="field-only-quiz">
+  <Question>How do you query a field-only property in LINQ?</Question>
+  <Answer>Using the field name directly</Answer>
+  <Answer correct>Using EF.Property&lt;T&gt;()</Answer>
+  <Answer>Using reflection</Answer>
+  <Answer>Field-only properties cannot be queried</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Backing Fields** | Private fields that store property values |
+| **Convention** | EF finds _field, _Field, m_field patterns |
+| **HasField()** | Explicit field configuration in Fluent API |
+| **Field-Only** | Properties without public getter/setter |
+| **Access Modes** | Control Field vs Property access |
+| **Best Practice** | Use FieldDuringConstruction for validation bypass |
+
+<KeyConcept title="What's Next?">
+You've mastered backing fields for encapsulation! Next, explore:
+- **Value Conversions** - Transform data between C# and database types
+- **Table Splitting** - Advanced entity-to-table mapping
+</KeyConcept>
+
+<ProgressCheckpoint section="practical-patterns" xpReward={15} />

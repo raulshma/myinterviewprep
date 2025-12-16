@@ -1,0 +1,260 @@
+# Self-Referencing Relationships - Building Hierarchies
+
+Hierarchical data is everywhere in software development. From file systems to organization charts to category trees, we often need to model entities that relate to other entities of the **same type**. Let's master self-referencing relationships in EF Core!
+
+---
+
+## Section 1: Understanding Hierarchies
+
+### The Organization Chart Analogy 🏢
+
+Imagine a company structure. Every employee has a manager, but that manager is *also* an employee. And that manager might have their own manager, all the way up to the CEO.
+
+- **Employees** report to a **Manager**
+- A **Manager** manages many **Employees**
+- Both "Employee" and "Manager" are... **Employees**!
+
+This is a **Self-Referencing Relationship**: An entity that has a relationship with itself.
+
+| Concept | EF Core Representation |
+|:--------|:-----------------------|
+| The Entity | `Employee` class |
+| Parent | `Manager` navigation property |
+| Children | `DirectReports` collection property |
+| Link | `ManagerId` foreign key (points to `Employee.Id`) |
+
+<RelationshipDiagram
+  type="one-to-many"
+  entities={{
+    principal: {
+      name: "Employee (Manager)",
+      properties: ["Id: int", "Name: string", "Reports: List<Employee>"]
+    },
+    dependent: {
+      name: "Employee (Subordinate)",
+      properties: ["Id: int", "Name: string", "ManagerId: int?"]
+    }
+  }}
+  showNavigation={true}
+  showForeignKey={true}
+/>
+
+### Common Use Cases
+
+1.  **Organization Charts**: Employees and Managers
+2.  **Product Categories**: "Electronics" → "Computers" → "Laptops"
+3.  **File Systems**: Folders containing other Folders
+4.  **Social Networks**: Users following other Users (Many-to-Many self-reference)
+5.  **Threaded Comments**: Comments replying to other Comments
+
+<ProgressCheckpoint section="understanding-hierarchy" xpReward={25} />
+
+---
+
+## Section 2: Defining Self-Referencing Relationships
+
+### The Entity Pattern
+
+Defining a self-referencing relationship looks very similar to a standard one-to-many relationship, but the "Principal" and "Dependent" classes are the **same class**.
+
+<DotnetCodePreview
+  title="Self-Referencing Entity"
+  code={`public class Employee
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string JobTitle { get; set; } = string.Empty;
+
+    // Foreign Key matching the primary key type
+    // Nullable (int?) because the CEO has no manager!
+    public int? ManagerId { get; set; }
+
+    // Navigation to Parent (The Manager)
+    public Employee? Manager { get; set; }
+
+    // Navigation to Children (Direct Reports)
+    public ICollection<Employee> DirectReports { get; set; } = new List<Employee>();
+}`}
+  steps={[
+    {
+      lineNumbers: [8, 9],
+      highlight: "Nullable Foreign Key",
+      explanation: "ManagerId MUST be nullable. The root of the hierarchy (e.g., CEO) has no parent, so ManagerId will be null."
+    },
+    {
+      lineNumbers: [12],
+      highlight: "Parent Navigation",
+      explanation: "Navigates UP the hierarchy. An employee has one manager."
+    },
+    {
+      lineNumbers: [15],
+      highlight: "Child Navigation",
+      explanation: "Navigates DOWN the hierarchy. An employee can manage many other employees."
+    }
+  ]}
+/>
+
+### Fluent API Configuration
+
+While EF Core conventions often handle this automatically, explicitly configuring it ensures clarity and correct behavior.
+
+<DotnetCodePreview
+  title="Fluent API Configuration"
+  code={`protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Employee>()
+        .HasOne(e => e.Manager)           // An employee has one manager
+        .WithMany(e => e.DirectReports)   // A manager has many reports
+        .HasForeignKey(e => e.ManagerId)  // The foreign key
+        .OnDelete(DeleteBehavior.ClientSetNull); // Prevent cycles on delete!
+}`}
+  steps={[
+    {
+      lineNumbers: [4, 5],
+      highlight: "HasOne / WithMany",
+      explanation: "Establishes the relationship. Notice both lambdas use the SAME entity class (Employee)."
+    },
+    {
+      lineNumbers: [7],
+      highlight: "Delete Behavior",
+      explanation: "CRITICAL: Cascade delete on self-referencing tables can be dangerous or not supported by some databases (like SQL Server). ClientSetNull or Restrict is safer."
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Delete Behavior**: SQL Server does not support `Cascade` delete on self-referencing relationships because it can cause cycles. Always specify `ClientSetNull` or `Restrict`.
+</InfoBox>
+
+<ProgressCheckpoint section="defining-self-referencing" xpReward={25} />
+
+---
+
+## Section 3: Querying Hierarchical Data
+
+### Loading Hierarchy Levels
+
+Querying self-referencing data often involves `Include`. You can chain `Include` to load multiple levels of the hierarchy.
+
+<DotnetCodePreview
+  title="Loading Hierarchy"
+  code={`// Load Employee with their Manager
+var employee = await context.Employees
+    .Include(e => e.Manager)
+    .FirstOrDefaultAsync(e => e.Id == 123);
+
+// Load Manager with their Direct Reports
+var manager = await context.Employees
+    .Include(e => e.DirectReports)
+    .FirstOrDefaultAsync(e => e.Id == 456);
+
+// Load 3 Levels: Manager -> Reports -> THEIR Reports
+var deepStructure = await context.Employees
+    .Include(e => e.DirectReports)
+        .ThenInclude(report => report.DirectReports)
+    .Where(e => e.JobTitle == "CTO")
+    .ToListAsync();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Upward Navigation",
+      explanation: "Loading the 'Manager' property lets you traverse up the tree."
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "Downward Navigation",
+      explanation: "Loading 'DirectReports' gets the immediate children."
+    },
+    {
+      lineNumbers: [13, 14, 15],
+      highlight: "Multi-Level Loading",
+      explanation: "Use ThenInclude to go deeper. Be careful! Each level adds complexity to the query."
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Recursive CTEs**: For very deep or unknown depth hierarchies, standard LINQ `Include` chains can be cumbersome. In those cases, you might use raw SQL with a Recursive Common Table Expression (CTE) or a specialized library.
+</InfoBox>
+
+<ProgressCheckpoint section="querying-hierarchy" xpReward={25} />
+
+---
+
+## Section 4: Navigating Cycles and Serialization
+
+### The Serializer Trap
+
+A common issue with self-referencing entities is **JSON Serialization Cycles**.
+1. Serializer writes Employee A.
+2. Writes A's Manager (Employee B).
+3. Writes B's Direct Reports (Includes Employee A).
+4. Writes A's Manager (Employee B)... **Infinite Loop!** 💥
+
+### Solutions
+
+1.  **DTOs (Data Transfer Objects)**: The best practice. Project your entities into Reference-Loop-free DTOs before returning them to the client.
+2.  **ReferenceHandler.IgnoreCycles**: Configure `System.Text.Json` to ignore cycles.
+
+<DotnetCodePreview
+  title="Handling Cycles"
+  code={`// ❌ BAD: Returning Entity directly (Risk of cycles)
+public Employee GetManager(int id)
+{
+    return _context.Employees
+        .Include(e => e.Manager)
+        .First(e => e.Id == id);
+}
+
+// ✅ GOOD: Projecting to DTO
+public EmployeeDto GetManagerDto(int id)
+{
+    return _context.Employees
+        .Where(e => e.Id == id)
+        .Select(e => new EmployeeDto 
+        {
+            Name = e.Name,
+            ManagerName = e.Manager.Name // Flattened data
+        })
+        .First();
+}
+
+// 🔧 API Configuration option
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+    });`}
+  steps={[
+    {
+      lineNumbers: [10, 11, 12, 13, 14, 15, 16],
+      highlight: "DTO Projection",
+      explanation: "Select only the data you need. Flatten relationships to avoid loops completely."
+    },
+    {
+      lineNumbers: [20, 21, 22, 23, 24],
+      highlight: "Global Config",
+      explanation: "If you must return entities, configure the JSON serializer to detect and ignore cycles instead of crashing."
+    }
+  ]}
+/>
+
+### Knowledge Check
+
+<Quiz id="self-ref-quiz">
+  <Question>Why must the foreign key in a self-referencing relationship (like ManagerId) usually be nullable?</Question>
+  <Answer>It doesn't have to be nullable; it's just a convention.</Answer>
+  <Answer correct>Because the root element (e.g., CEO) has no parent, so the value must be null.</Answer>
+  <Answer>To save space in the database.</Answer>
+  <Answer>Because EF Core doesn't support required self-referencing keys.</Answer>
+</Quiz>
+
+<Quiz id="delete-behavior-quiz">
+  <Question>Which DeleteBehavior is typically recommended for self-referencing relationships in SQL Server?</Question>
+  <Answer>Cascade</Answer>
+  <Answer correct>ClientSetNull or Restrict</Answer>
+  <Answer>SetNull</Answer>
+  <Answer>NoAction</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="navigating-cycles" xpReward={25} />

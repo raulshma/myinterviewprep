@@ -1,0 +1,17 @@
+{
+  "id": "postgresql-provider",
+  "title": "PostgreSQL Provider",
+  "description": "Master the Npgsql provider for using EF Core with PostgreSQL databases.",
+  "milestone": "ef-core-introduction",
+  "order": 81,
+  "sections": [
+    "basics",
+    "json-support",
+    "arrays"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 30,
+  "xpReward": 250,
+  "prerequisites": ["sql-server-provider"],
+  "tags": ["postgresql", "npgsql", "jsonb", "provider"]
+}

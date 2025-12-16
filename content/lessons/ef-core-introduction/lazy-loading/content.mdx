@@ -1,0 +1,431 @@
+# Lazy Loading - Load Data On Demand
+
+What if you didn't have to think about which related data to load upfront? **Lazy loading** automatically fetches related entities the moment you access them—like magic! But as Spider-Man's uncle said: "With great power comes great responsibility."
+
+---
+
+## Section 1: What is Lazy Loading?
+
+### The On-Demand Delivery Analogy
+
+Think of lazy loading like **on-demand delivery services**. You don't stock your entire house with everything you might ever need. Instead, you order items exactly when you need them.
+
+```
+📦 Need milk? → Order it → Delivered!
+📦 Need bread? → Order it → Delivered!
+📦 Need cheese? → Order it → Delivered!
+```
+
+With lazy loading, EF Core works the same way:
+
+```csharp
+var blog = context.Blogs.First();  // Fetches just the blog
+
+// Later, when you actually need posts...
+var posts = blog.Posts;  // 🪄 EF Core automatically fetches posts!
+```
+
+<InfoBox type="info">
+**Lazy Loading** means related data is loaded automatically from the database when you access a navigation property for the first time.
+</InfoBox>
+
+### How It Works Behind the Scenes
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Your Code                               │
+├─────────────────────────────────────────────────────────────┤
+│  var blog = context.Blogs.First();                          │
+│  // → SQL: SELECT TOP 1 * FROM Blogs                        │
+│                                                              │
+│  var posts = blog.Posts;  // You access the property        │
+│  // → EF Core intercepts this access                        │
+│  // → SQL: SELECT * FROM Posts WHERE BlogId = @blogId       │
+│  // → Returns the posts to you                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+<KeyConcept title="Transparent Loading">
+With lazy loading, your code doesn't need to know *when* related data is loaded. You just access the property and it's there. EF Core handles the database query invisibly.
+</KeyConcept>
+
+<Comparison
+  title="Eager vs Lazy Loading"
+  items={[
+    {
+      label: "Eager Loading",
+      description: "You explicitly request related data upfront with Include(). One query fetches everything.",
+      isCorrect: true
+    },
+    {
+      label: "Lazy Loading",
+      description: "EF Core automatically loads related data when you first access it. Queries happen on-demand.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="what-is-lazy-loading" xpReward={20} />
+
+---
+
+## Section 2: Configuring Lazy Loading Proxies
+
+### Setting Up Lazy Loading
+
+Lazy loading isn't enabled by default in EF Core. You need to install a package and configure it:
+
+### Step 1: Install the Proxies Package
+
+<DotnetCodePreview
+  title="Install the NuGet Package"
+  code={`// Using .NET CLI
+dotnet add package Microsoft.EntityFrameworkCore.Proxies
+
+// Or in your .csproj file:
+<PackageReference 
+    Include="Microsoft.EntityFrameworkCore.Proxies" 
+    Version="8.0.0" />`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Proxies Package",
+      explanation: "This package enables lazy loading through dynamic proxy generation"
+    }
+  ]}
+/>
+
+### Step 2: Enable Lazy Loading in DbContext
+
+<DotnetCodePreview
+  title="Configure DbContext for Lazy Loading"
+  code={`public class AppDbContext : DbContext
+{
+    protected override void OnConfiguring(DbContextOptionsBuilder options)
+    {
+        options
+            .UseSqlServer(connectionString)
+            .UseLazyLoadingProxies();  // 👈 Enable lazy loading!
+    }
+}
+
+// Or with dependency injection:
+services.AddDbContext<AppDbContext>(options =>
+    options
+        .UseSqlServer(connectionString)
+        .UseLazyLoadingProxies());`}
+  steps={[
+    {
+      lineNumbers: [7],
+      highlight: "UseLazyLoadingProxies()",
+      explanation: "This single method call enables lazy loading for all entities"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15],
+      highlight: "With DI",
+      explanation: "In ASP.NET Core, configure when adding the DbContext service"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**How do proxies work?** EF Core creates subclasses of your entity classes at runtime. These "proxy" classes override navigation properties to intercept access and load data.
+</InfoBox>
+
+### What Proxies Look Like
+
+When you enable proxies, EF Core essentially does this behind the scenes:
+
+```
+Your Entity Class:
+public class Blog { ... }
+
+EF Core's Generated Proxy:
+internal class Blog_Proxy : Blog
+{
+    public override ICollection<Post> Posts
+    {
+        get 
+        {
+            // If not loaded yet, query the database!
+            if (_posts == null)
+                _posts = LoadFromDatabase();
+            return _posts;
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="configuring-proxies" xpReward={20} />
+
+---
+
+## Section 3: Virtual Navigation Properties
+
+### The Virtual Requirement
+
+For lazy loading proxies to work, your navigation properties **must be virtual**. This is a critical requirement!
+
+<DotnetCodePreview
+  title="Making Properties Virtual"
+  code={`// ✅ CORRECT - Lazy loading will work
+public class Blog
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    
+    public virtual ICollection<Post> Posts { get; set; }  // ✅ virtual
+    public virtual User Owner { get; set; }               // ✅ virtual
+}
+
+// ❌ WRONG - Lazy loading will NOT work
+public class Blog
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    
+    public ICollection<Post> Posts { get; set; }  // ❌ Not virtual
+    public User Owner { get; set; }               // ❌ Not virtual
+}`}
+  steps={[
+    {
+      lineNumbers: [7, 8],
+      highlight: "Virtual Properties",
+      explanation: "The 'virtual' keyword allows EF Core to override and intercept access"
+    },
+    {
+      lineNumbers: [17, 18],
+      highlight: "Missing Virtual",
+      explanation: "Without 'virtual', EF Core can't create the proxy—navigation stays null!"
+    }
+  ]}
+/>
+
+### Complete Entity Example
+
+<DotnetCodePreview
+  title="Properly Configured Entities"
+  code={`public class Blog
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Url { get; set; }
+    
+    // Navigation properties must be virtual for lazy loading
+    public virtual ICollection<Post> Posts { get; set; } = new List<Post>();
+    public virtual User Owner { get; set; }
+}
+
+public class Post
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public string Content { get; set; }
+    public int BlogId { get; set; }
+    public int AuthorId { get; set; }
+    
+    // Both reference and collection navigations should be virtual
+    public virtual Blog Blog { get; set; }
+    public virtual User Author { get; set; }
+    public virtual ICollection<Tag> Tags { get; set; } = new List<Tag>();
+}`}
+  steps={[
+    {
+      lineNumbers: [8, 9],
+      highlight: "Blog Navigations",
+      explanation: "Collection and reference navigations—both virtual"
+    },
+    {
+      lineNumbers: [21, 22, 23],
+      highlight: "Post Navigations",
+      explanation: "Multiple virtual navigations for lazy loading"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Don't forget!** If you enable lazy loading but forget `virtual`, navigation properties will be null. This is a very common mistake!
+</InfoBox>
+
+<ProgressCheckpoint section="virtual-navigation" xpReward={25} />
+
+---
+
+## Section 4: The Dangers of Lazy Loading
+
+### The N+1 Query Problem
+
+Lazy loading's "magic" comes with a hidden cost: the **N+1 query problem**. This is its most dangerous pitfall.
+
+<DotnetCodePreview
+  title="The N+1 Problem Illustrated"
+  code={`// Innocent-looking code...
+var blogs = context.Blogs.ToList();  // Query 1: Get all blogs
+
+foreach (var blog in blogs)
+{
+    Console.WriteLine($"Blog: {blog.Name}");
+    
+    // For EACH blog, this triggers a new query!
+    foreach (var post in blog.Posts)  // Query 2, 3, 4, 5...
+    {
+        Console.WriteLine($"  Post: {post.Title}");
+    }
+}
+
+// If you have 100 blogs:
+// Query 1: SELECT * FROM Blogs (1 query)
+// Queries 2-101: SELECT * FROM Posts WHERE BlogId = @id (100 queries!)
+// Total: 101 queries! 😱`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Initial Query",
+      explanation: "This is the '1' in N+1 — fetching the parent entities"
+    },
+    {
+      lineNumbers: [9],
+      highlight: "Hidden Queries",
+      explanation: "Each iteration triggers a new query — the 'N' in N+1"
+    },
+    {
+      lineNumbers: [16, 17, 18],
+      highlight: "Query Explosion",
+      explanation: "100 blogs = 101 total queries. This destroys performance!"
+    }
+  ]}
+/>
+
+### Visualizing the Problem
+
+```
+With Lazy Loading:
+┌──────────┐     ┌────────────────────────────────────┐
+│   App    │────▶│ Query 1: Get all blogs             │
+└──────────┘     └────────────────────────────────────┘
+      │          ┌────────────────────────────────────┐
+      ├─────────▶│ Query 2: Get posts for blog 1      │
+      │          └────────────────────────────────────┘
+      │          ┌────────────────────────────────────┐
+      ├─────────▶│ Query 3: Get posts for blog 2      │
+      │          └────────────────────────────────────┘
+      │          ... 97 more queries ...
+      │          ┌────────────────────────────────────┐
+      └─────────▶│ Query 101: Get posts for blog 100  │
+                 └────────────────────────────────────┘
+
+With Eager Loading:
+┌──────────┐     ┌────────────────────────────────────┐
+│   App    │────▶│ Query 1: Get all blogs WITH posts  │
+└──────────┘     └────────────────────────────────────┘
+                 (Just 1 query!)
+```
+
+### Other Pitfalls
+
+<Comparison
+  title="Lazy Loading Pitfalls"
+  items={[
+    {
+      label: "❌ Serialization Issues",
+      description: "Serializing entities (e.g., to JSON) can trigger unexpected queries or infinite loops when navigation properties are accessed.",
+      isCorrect: false
+    },
+    {
+      label: "❌ Disposed Context",
+      description: "If you try to access navigation properties after the DbContext is disposed, you'll get an exception!",
+      isCorrect: false
+    },
+    {
+      label: "❌ Hidden Performance Costs",
+      description: "Database queries happen invisibly. Hard to diagnose why your app is slow.",
+      isCorrect: false
+    },
+    {
+      label: "❌ Unpredictable Query Counts",
+      description: "The number of queries depends on runtime data, making performance unpredictable.",
+      isCorrect: false
+    }
+  ]}
+/>
+
+<DotnetCodePreview
+  title="Disposed Context Exception"
+  code={`public Blog GetBlog(int id)
+{
+    using var context = new AppDbContext();
+    return context.Blogs.Find(id);
+}  // Context disposed here!
+
+// Later in your code...
+var blog = GetBlog(1);
+var posts = blog.Posts;  // 💥 ObjectDisposedException!
+// "Cannot access a disposed context instance"`}
+  steps={[
+    {
+      lineNumbers: [3, 5],
+      highlight: "Context Lifetime",
+      explanation: "The context is disposed when the method exits"
+    },
+    {
+      lineNumbers: [9],
+      highlight: "Access After Dispose",
+      explanation: "Lazy loading needs the context alive—but it's gone!"
+    }
+  ]}
+/>
+
+### When to Use Lazy Loading (Carefully!)
+
+| Good Use Cases | Bad Use Cases |
+|:---------------|:--------------|
+| Desktop apps with long-lived contexts | Web APIs (request/response cycle) |
+| Interactive UIs where user drives data access | Batch processing or reports |
+| Prototyping and development | Performance-critical code |
+| Simple apps with few entities | Complex data with deep relationships |
+
+<InfoBox type="warning">
+**General recommendation:** Many teams disable lazy loading entirely and rely on eager or explicit loading for predictable performance. Use lazy loading only when you fully understand its implications.
+</InfoBox>
+
+### Quick Knowledge Check
+
+<Quiz id="lazy-loading-virtual-quiz">
+  <Question>Why must navigation properties be `virtual` for lazy loading?</Question>
+  <Answer>To improve query performance</Answer>
+  <Answer correct>So EF Core can override them in proxy classes</Answer>
+  <Answer>To enable caching</Answer>
+  <Answer>It's just a convention, not required</Answer>
+</Quiz>
+
+<Quiz id="lazy-loading-n1-quiz">
+  <Question>What is the N+1 query problem?</Question>
+  <Answer>A syntax error in LINQ queries</Answer>
+  <Answer>When you forget to call SaveChanges</Answer>
+  <Answer correct>Making 1 query for parents, then N additional queries for each child</Answer>
+  <Answer>A limit on the number of Include() calls</Answer>
+</Quiz>
+
+<Quiz id="lazy-loading-package-quiz">
+  <Question>Which package enables lazy loading proxies in EF Core?</Question>
+  <Answer>Microsoft.EntityFrameworkCore.LazyLoad</Answer>
+  <Answer correct>Microsoft.EntityFrameworkCore.Proxies</Answer>
+  <Answer>Microsoft.EntityFrameworkCore.Virtual</Answer>
+  <Answer>Microsoft.EntityFrameworkCore.Deferred</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Description |
+|:--------|:------------|
+| **Lazy Loading** | Automatic loading when you access navigation properties |
+| **Proxies Package** | Required package for lazy loading support |
+| **Virtual Properties** | Navigation properties must be `virtual` |
+| **N+1 Problem** | Hidden queries can explode: 1 + N queries instead of 1 |
+| **Context Lifetime** | Context must be alive when accessing navigation properties |
+
+<KeyConcept title="What's Next?">
+Lazy loading is convenient but risky. What if you want the control of eager loading with the on-demand nature of lazy loading? That's **Explicit Loading** - the best of both worlds!
+</KeyConcept>
+
+<ProgressCheckpoint section="pitfalls-dangers" xpReward={20} />
