@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { NavParticles } from "./nav-particles";
 
 const navItems = [
   {
@@ -124,9 +125,26 @@ export function SidebarNav({
     return pathname === href || pathname.startsWith(href + "/");
   };
 
+  const [activeDirection, setActiveDirection] = useState<"top" | "bottom">("top");
+
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
     
+    // Calculate direction based on current active item position vs new item position
+    const currentIndex = items.findIndex(item => isActiveRoute(item.href));
+    const targetIndex = items.findIndex(item => item.href === href);
+    
+    // If target is below current (higher index), we are moving down
+    // The previous item was "above", so particles should come from top
+    // If target is above current (lower index), we are moving up
+    // The previous item was "below", so particles should come from bottom
+    // Default to top if no current selection
+    if (currentIndex !== -1 && targetIndex !== -1) {
+      setActiveDirection(targetIndex > currentIndex ? "top" : "bottom");
+    } else {
+      setActiveDirection("top"); 
+    }
+
     setLoadingHref(href);
     
     startTransition(() => {
@@ -153,9 +171,9 @@ export function SidebarNav({
           <div key={item.href}>
             <Link
               href={item.href}
-              onClick={(e) => handleClick(e, item.href)}
+              onClick={(e: React.MouseEvent<HTMLAnchorElement>) => handleClick(e, item.href)}
               className={cn(
-                "group relative flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl transition-all duration-300",
+                "group relative flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl transition-all duration-300 overflow-hidden",
                 active
                   ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5",
@@ -163,7 +181,9 @@ export function SidebarNav({
               )}
               title={isCollapsed ? item.label : undefined}
             >
-              <div className="relative w-5 h-5 flex items-center justify-center">
+              {loading && <NavParticles direction={activeDirection} />}
+              
+              <div className="relative w-5 h-5 flex items-center justify-center z-10">
                 {/* Spinner - shown when loading */}
                 <Loader2
                   className={cn(
