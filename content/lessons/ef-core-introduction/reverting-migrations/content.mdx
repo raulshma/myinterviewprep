@@ -1,0 +1,391 @@
+# Reverting Migrations
+
+Sometimes you need to undo! Reverting migrations is like having an **Undo button for your database** - powerful but must be used wisely.
+
+---
+
+## Section 1: When to Revert
+
+### The Undo Button Analogy ⏪
+
+Just like Ctrl+Z in your editor, database rollbacks let you go back in time:
+
+| Scenario | Action |
+|:---------|:-------|
+| Made a mistake in migration | Remove or revert |
+| Deployed bad migration to staging | Rollback to previous |
+| Testing rollback procedures | Practice before production |
+| Feature cancelled after deployment | Revert related migrations |
+
+<InfoBox type="warning">
+**Critical Difference:** Unlike Ctrl+Z, reverting migrations can cause **data loss**! If you drop a column, the data in it is gone. Always backup first!
+</InfoBox>
+
+### Revert vs Remove
+
+<Comparison
+  title="Remove vs Revert"
+  items={[
+    {
+      label: "✅ migrations remove",
+      description: "Deletes migration FILE (only if not applied). Safe for unapplied migrations.",
+      isCorrect: true
+    },
+    {
+      label: "✅ database update <Previous>",
+      description: "Runs Down() to UNDO applied migration. Actually changes database.",
+      isCorrect: true
+    },
+    {
+      label: "❌ Delete files manually",
+      description: "Never delete migration files by hand - breaks snapshot sync!",
+      isCorrect: false
+    }
+  ]}
+/>
+
+<DotnetCodePreview
+  title="The Key Difference"
+  code={`// Scenario: You created a migration but haven't applied it yet
+
+// Your migrations:
+// ✅ 20241201_InitialCreate    (applied)
+// ✅ 20241210_AddProducts       (applied)
+// ⏳ 20241216_AddBadColumn      (NOT applied - pending)
+
+// Option 1: REMOVE the pending migration
+dotnet ef migrations remove
+// ✓ Deletes the migration file
+// ✓ Updates snapshot back to previous state
+// ✓ Database unchanged (migration was never applied)
+
+// Option 2: If you already applied it, REVERT
+dotnet ef database update AddProducts
+// ✓ Runs Down() method of AddBadColumn
+// ✓ Actually modifies the database
+// ✓ Then you can 'remove' the migration file`}
+  steps={[
+    {
+      lineNumbers: [8, 9, 10, 11],
+      highlight: "Remove Command",
+      explanation: "Use when migration hasn't been applied anywhere"
+    },
+    {
+      lineNumbers: [14, 15, 16, 17],
+      highlight: "Revert (Update) Command",
+      explanation: "Use when migration has been applied - runs Down() first"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="when-to-revert" xpReward={15} />
+
+---
+
+## Section 2: Revert Commands
+
+### Essential Rollback Commands
+
+<DotnetCodePreview
+  title="Rollback Command Reference"
+  code={`# 1. Remove last UNAPPLIED migration
+dotnet ef migrations remove
+
+# 2. Rollback to a specific migration (keeps that migration)
+dotnet ef database update AddProducts
+# This reverts everything AFTER AddProducts
+
+# 3. Rollback ALL migrations (empty database)
+dotnet ef database update 0
+
+# 4. See what would happen (generates SQL without running)
+dotnet ef migrations script AddProducts 0
+
+# 5. List all migrations with status
+dotnet ef migrations list
+# Shows: ✓ applied, ○ pending
+
+# 6. Remove multiple pending migrations
+dotnet ef migrations remove  # Removes last one
+dotnet ef migrations remove  # Removes next one
+# Repeat as needed`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Remove",
+      explanation: "Deletes the last migration file (must be unapplied)"
+    },
+    {
+      lineNumbers: [5, 6],
+      highlight: "Target Rollback",
+      explanation: "Runs Down() for all migrations after the target"
+    },
+    {
+      lineNumbers: [9],
+      highlight: "Full Reset",
+      explanation: "Reverts ALL migrations - use with extreme caution!"
+    },
+    {
+      lineNumbers: [12],
+      highlight: "Preview Script",
+      explanation: "See the SQL without running - great for verification"
+    },
+    {
+      lineNumbers: [15, 16],
+      highlight: "List Status",
+      explanation: "Check which migrations are applied vs pending"
+    }
+  ]}
+/>
+
+### Rollback Flow Visualization
+
+```
+Current State:  InitialCreate → AddProducts → AddOrders → AddBadColumn
+                    ✅             ✅           ✅           ✅
+
+After: dotnet ef database update AddProducts
+
+New State:      InitialCreate → AddProducts → [AddOrders reverted] → [AddBadColumn reverted]
+                    ✅             ✅              ❌                      ❌
+```
+
+<InfoBox type="tip">
+**Pro Tip:** Always use `dotnet ef migrations script OldMigration NewMigration` first to see exactly what SQL will run before executing a rollback!
+</InfoBox>
+
+<ProgressCheckpoint section="revert-commands" xpReward={20} />
+
+---
+
+## Section 3: Up() and Down() Methods
+
+### Understanding the Pair
+
+Every migration has two methods that are **mirror images** of each other:
+
+<DotnetCodePreview
+  title="Up and Down Methods"
+  code={`public partial class AddOrderStatus : Migration
+{
+    // UP: What happens when you APPLY this migration
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.AddColumn<string>(
+            name: "Status",
+            table: "Orders",
+            maxLength: 50,
+            nullable: false,
+            defaultValue: "Pending");
+    }
+
+    // DOWN: What happens when you REVERT this migration
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            name: "Status",
+            table: "Orders");
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [4, 5, 6, 7, 8, 9, 10, 11],
+      highlight: "Up() Method",
+      explanation: "Runs when applying: dotnet ef database update"
+    },
+    {
+      lineNumbers: [15, 16, 17, 18, 19],
+      highlight: "Down() Method",
+      explanation: "Runs when reverting: dotnet ef database update <Previous>"
+    }
+  ]}
+/>
+
+### When Down() Can't Undo
+
+<InfoBox type="warning">
+Some operations **cannot be perfectly undone**. The Down() method is automatically generated, but you may need to customize it!
+</InfoBox>
+
+<DotnetCodePreview
+  title="Irreversible Operations"
+  code={`// Example: Splitting a column into two parts
+
+protected override void Up(MigrationBuilder migrationBuilder)
+{
+    // Add new columns
+    migrationBuilder.AddColumn<string>("FirstName", "Users");
+    migrationBuilder.AddColumn<string>("LastName", "Users");
+    
+    // Copy data
+    migrationBuilder.Sql(
+        "UPDATE Users SET FirstName = LEFT(Name, CHARINDEX(' ', Name)), " +
+        "LastName = SUBSTRING(Name, CHARINDEX(' ', Name) + 1, LEN(Name))");
+    
+    // Drop old column
+    migrationBuilder.DropColumn("Name", "Users");
+}
+
+protected override void Down(MigrationBuilder migrationBuilder)
+{
+    // ⚠️ The auto-generated Down can't merge data back!
+    // You MUST customize it:
+    migrationBuilder.AddColumn<string>("Name", "Users");
+    
+    migrationBuilder.Sql(
+        "UPDATE Users SET Name = FirstName + ' ' + LastName");
+    
+    migrationBuilder.DropColumn("FirstName", "Users");
+    migrationBuilder.DropColumn("LastName", "Users");
+}`}
+  steps={[
+    {
+      lineNumbers: [6, 7],
+      highlight: "Add New Columns",
+      explanation: "Create the new structure"
+    },
+    {
+      lineNumbers: [10, 11, 12],
+      highlight: "Migrate Data",
+      explanation: "Split the data into new columns"
+    },
+    {
+      lineNumbers: [15],
+      highlight: "Remove Old",
+      explanation: "Drop the original column"
+    },
+    {
+      lineNumbers: [20, 21, 22, 23, 24, 25, 26],
+      highlight: "Custom Down()",
+      explanation: "You must write this to merge data back properly!"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="up-down-methods" xpReward={20} />
+
+---
+
+## Section 4: Emergency Rollback
+
+### When Things Go Wrong in Production 🚨
+
+<DotnetCodePreview
+  title="Emergency Rollback Procedure"
+  code={`# Step 1: STOP - Don't panic, assess the situation
+# What migration caused the issue?
+# Is data at risk?
+
+# Step 2: Generate rollback script FIRST (don't run yet!)
+dotnet ef migrations script CurrentMigration PreviousMigration -o rollback.sql
+
+# Step 3: Review the script!
+# Open rollback.sql and verify what it will do
+
+# Step 4: Backup current state (if possible)
+# Take a database snapshot or backup
+
+# Step 5: Execute rollback with transaction
+sqlcmd -S server -d database -i rollback.sql
+
+# Step 6: Verify the rollback worked
+# Check application functionality
+# Verify data integrity`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Step 1: Assess",
+      explanation: "Don't rush! Understand what went wrong first."
+    },
+    {
+      lineNumbers: [7],
+      highlight: "Step 2: Generate Script",
+      explanation: "Create rollback SQL without executing anything"
+    },
+    {
+      lineNumbers: [10],
+      highlight: "Step 3: Review",
+      explanation: "Read every line before running in production"
+    },
+    {
+      lineNumbers: [13],
+      highlight: "Step 4: Backup",
+      explanation: "Always have a fallback before making changes"
+    }
+  ]}
+/>
+
+### Rollback Checklist
+
+<Comparison
+  title="Production Rollback Checklist"
+  items={[
+    {
+      label: "✅ Generate script first",
+      description: "Never run 'database update' directly on production",
+      isCorrect: true
+    },
+    {
+      label: "✅ Review the SQL",
+      description: "Verify it does what you expect",
+      isCorrect: true
+    },
+    {
+      label: "✅ Backup before executing",
+      description: "Have a safety net in case rollback fails",
+      isCorrect: true
+    },
+    {
+      label: "✅ Test on staging first",
+      description: "If possible, test rollback on a copy",
+      isCorrect: true
+    },
+    {
+      label: "❌ Panic and delete files",
+      description: "Never delete migration files as a 'fix'",
+      isCorrect: false
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="remove-vs-revert">
+  <Question>What's the difference between 'migrations remove' and 'database update Previous'?</Question>
+  <Answer>'remove' is faster</Answer>
+  <Answer correct>'remove' deletes unapplied files, 'update' runs Down() on applied migrations</Answer>
+  <Answer>They do the same thing</Answer>
+  <Answer>'update' only works in production</Answer>
+</Quiz>
+
+<Quiz id="down-method">
+  <Question>When does the Down() method in a migration run?</Question>
+  <Answer>When you apply the migration</Answer>
+  <Answer correct>When you rollback/revert to a previous migration</Answer>
+  <Answer>Only in development</Answer>
+  <Answer>It never runs automatically</Answer>
+</Quiz>
+
+<Quiz id="emergency-first-step">
+  <Question>What's the first thing to do in a production rollback emergency?</Question>
+  <Answer correct>Stop, assess the situation, and generate a script first</Answer>
+  <Answer>Run 'dotnet ef database update 0' immediately</Answer>
+  <Answer>Delete the bad migration file</Answer>
+  <Answer>Restart the server</Answer>
+</Quiz>
+
+### Summary
+
+| Command | Purpose |
+|:--------|:--------|
+| `migrations remove` | Delete unapplied migration file |
+| `database update <Name>` | Rollback to specific migration |
+| `database update 0` | Rollback all migrations |
+| `migrations script A B` | Preview rollback SQL |
+| `migrations list` | Check migration status |
+
+<KeyConcept title="Rollback Master!">
+You now know how to safely undo migrations. Finally, learn about **Seeding Data** to populate your database with initial data!
+</KeyConcept>
+
+<ProgressCheckpoint section="emergency-rollback" xpReward={15} />

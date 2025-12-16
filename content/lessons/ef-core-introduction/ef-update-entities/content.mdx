@@ -1,0 +1,428 @@
+# Updating Entities in EF Core
+
+The "U" in CRUD stands for **Update**. In this lesson, you'll learn how to modify existing data and discover how EF Core's change tracking makes updates almost magical!
+
+---
+
+## Section 1: Introduction to Updates
+
+### The Sticky Note Analogy 📝
+
+Imagine you're editing a document with a friend watching over your shoulder. Every change you make, they write on a sticky note. When you say "save," they know exactly what changed and updates only those parts.
+
+That's exactly how EF Core's **change tracking** works!
+
+<InfoBox type="info">
+**Change Tracking** is EF Core's ability to automatically detect what properties you've modified on tracked entities. When you call `SaveChanges()`, it generates UPDATE statements for only the changed columns!
+</InfoBox>
+
+### Two Update Scenarios
+
+| Scenario | Description | Approach |
+|:---------|:------------|:---------|
+| **Connected** | Entity loaded from same context | Just modify properties, EF Core tracks changes |
+| **Disconnected** | Entity from API/form (different context) | Attach and mark as modified |
+
+<KeyConcept title="Key Insight">
+In web applications, you often work with **disconnected** entities - data that comes from an HTTP request wasn't loaded by your current DbContext. Understanding both scenarios is crucial!
+</KeyConcept>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+---
+
+## Section 2: Tracked Entity Updates
+
+### The Simple Case: Modify and Save
+
+When you load an entity and modify it within the same context, updates are automatic:
+
+<DotnetCodePreview
+  title="Connected Update"
+  code={`// Step 1: Load the entity (now it's tracked)
+var blog = await context.Blogs.FindAsync(1);
+
+// Step 2: Modify properties (EF Core is watching!)
+blog.Title = "Updated Title";
+blog.Url = "https://new-url.com";
+
+// Step 3: Save changes
+await context.SaveChangesAsync();
+
+// EF Core generates:
+// UPDATE Blogs SET Title = 'Updated Title', Url = 'https://new-url.com'
+// WHERE Id = 1
+
+// Only changed columns are updated! 🎯`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Load Entity",
+      explanation: "FindAsync loads the entity and starts tracking it. EF Core takes a 'snapshot' of all values."
+    },
+    {
+      lineNumbers: [5, 6],
+      highlight: "Modify Properties",
+      explanation: "Just change the properties like normal C# objects. EF Core detects these changes automatically!"
+    },
+    {
+      lineNumbers: [9],
+      highlight: "Save Changes",
+      explanation: "SaveChanges compares current values to the snapshot and generates an UPDATE for only what changed."
+    },
+    {
+      lineNumbers: [14],
+      highlight: "Efficient SQL",
+      explanation: "Only modified columns appear in the UPDATE statement. Unchanged properties are ignored!"
+    }
+  ]}
+/>
+
+### Checking Entity State
+
+You can inspect what EF Core knows about your entity:
+
+<DotnetCodePreview
+  title="Inspecting Entity State"
+  code={`var blog = await context.Blogs.FindAsync(1);
+Console.WriteLine(context.Entry(blog).State); // Unchanged
+
+blog.Title = "New Title";
+Console.WriteLine(context.Entry(blog).State); // Modified
+
+// Check which properties changed
+var entry = context.Entry(blog);
+foreach (var prop in entry.Properties)
+{
+    if (prop.IsModified)
+    {
+        Console.WriteLine($"{prop.Metadata.Name}: " +
+            $"'{prop.OriginalValue}' -> '{prop.CurrentValue}'");
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Initial State",
+      explanation: "After loading, the entity is 'Unchanged' - it matches the database."
+    },
+    {
+      lineNumbers: [5],
+      highlight: "After Modification",
+      explanation: "Changing any property automatically transitions the state to 'Modified'."
+    },
+    {
+      lineNumbers: [8, 9, 10, 11, 12, 13, 14, 15],
+      highlight: "Property Details",
+      explanation: "You can see exactly which properties changed and their before/after values!"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="tracked-updates" xpReward={20} />
+
+---
+
+## Section 3: Disconnected Entity Updates
+
+### The Web API Challenge
+
+In web applications, entities often come from HTTP requests - they weren't loaded by your DbContext:
+
+<DotnetCodePreview
+  title="Disconnected Update with Update()"
+  code={`// Entity from API request (not tracked!)
+public async Task UpdateBlog(BlogUpdateDto dto)
+{
+    var blog = new Blog
+    {
+        Id = dto.Id,           // Must have the ID!
+        Title = dto.Title,
+        Url = dto.Url,
+        UpdatedAt = DateTime.UtcNow
+    };
+
+    // Update() attaches and marks ALL properties as modified
+    context.Blogs.Update(blog);
+    
+    await context.SaveChangesAsync();
+    
+    // WARNING: This updates ALL columns, even unchanged ones!
+    // UPDATE Blogs SET Title=@p0, Url=@p1, UpdatedAt=@p2, ... WHERE Id=@p3
+}`}
+  steps={[
+    {
+      lineNumbers: [4, 5, 6, 7, 8, 9, 10],
+      highlight: "Create from DTO",
+      explanation: "Build an entity from your DTO. The Id is crucial - it tells EF Core which row to update!"
+    },
+    {
+      lineNumbers: [13],
+      highlight: "Update()",
+      explanation: "Update() attaches the entity and marks it as Modified. All properties will be updated!"
+    },
+    {
+      lineNumbers: [17, 18],
+      highlight: "Full Update",
+      explanation: "Every column gets updated, even if the value didn't change. This can be inefficient."
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Caution:** `Update()` marks ALL properties as modified. If your DTO doesn't include all properties, you might overwrite data with nulls or defaults!
+</InfoBox>
+
+### Smarter: Load Then Update
+
+A safer pattern - load the existing entity first:
+
+<DotnetCodePreview
+  title="Load-Then-Update Pattern"
+  code={`public async Task UpdateBlog(BlogUpdateDto dto)
+{
+    // Load the existing entity
+    var blog = await context.Blogs.FindAsync(dto.Id);
+    
+    if (blog == null)
+    {
+        throw new NotFoundException($"Blog {dto.Id} not found");
+    }
+    
+    // Update only the properties from the DTO
+    blog.Title = dto.Title;
+    blog.Url = dto.Url;
+    blog.UpdatedAt = DateTime.UtcNow;
+    
+    // EF Core only updates what actually changed!
+    await context.SaveChangesAsync();
+}`}
+  steps={[
+    {
+      lineNumbers: [4],
+      highlight: "Load First",
+      explanation: "Load the existing entity. Now EF Core has the original values for comparison."
+    },
+    {
+      lineNumbers: [6, 7, 8, 9],
+      highlight: "Handle Not Found",
+      explanation: "Always check if the entity exists! Good API design returns proper errors."
+    },
+    {
+      lineNumbers: [12, 13, 14],
+      highlight: "Selective Update",
+      explanation: "Only update the properties you want. Other properties remain unchanged."
+    },
+    {
+      lineNumbers: [17],
+      highlight: "Efficient SQL",
+      explanation: "Only truly modified columns appear in the UPDATE statement."
+    }
+  ]}
+/>
+
+<Comparison
+  title="Update() vs Load-Then-Update"
+  items={[
+    {
+      label: "context.Update(entity)",
+      description: "One database call, but updates ALL columns. Risk of overwriting data if DTO is incomplete.",
+      isCorrect: false
+    },
+    {
+      label: "Load → Modify → Save",
+      description: "Two database calls (SELECT + UPDATE), but only updates changed columns. Safer and more efficient for partial updates.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="disconnected-updates" xpReward={20} />
+
+---
+
+## Section 4: Partial Updates
+
+### Updating Specific Properties Only
+
+Sometimes you want to update just one or two properties without loading the entire entity:
+
+<DotnetCodePreview
+  title="Targeted Property Update"
+  code={`public async Task UpdateBlogTitle(int blogId, string newTitle)
+{
+    // Create a "stub" entity with just the key
+    var blog = new Blog { Id = blogId };
+    
+    // Attach it (state: Unchanged)
+    context.Blogs.Attach(blog);
+    
+    // Modify the property (state: Modified, but only for Title)
+    blog.Title = newTitle;
+    
+    // Or explicitly mark just one property as modified:
+    // context.Entry(blog).Property(b => b.Title).IsModified = true;
+    
+    await context.SaveChangesAsync();
+    
+    // SQL: UPDATE Blogs SET Title = @p0 WHERE Id = @p1
+    // Only one column updated! 🎯
+}`}
+  steps={[
+    {
+      lineNumbers: [4],
+      highlight: "Stub Entity",
+      explanation: "Create an entity with just the primary key. No database query needed!"
+    },
+    {
+      lineNumbers: [7],
+      highlight: "Attach",
+      explanation: "Attach() starts tracking the entity as 'Unchanged'. EF Core thinks it matches the database."
+    },
+    {
+      lineNumbers: [10],
+      highlight: "Modify Property",
+      explanation: "Changing a property marks just that property as modified."
+    },
+    {
+      lineNumbers: [17, 18],
+      highlight: "Minimal SQL",
+      explanation: "Only the Title column is updated. Super efficient!"
+    }
+  ]}
+/>
+
+### ExecuteUpdate (EF Core 7+)
+
+For bulk updates without loading entities:
+
+<DotnetCodePreview
+  title="Bulk Update with ExecuteUpdate"
+  code={`// Update all inactive blogs to archived status
+var updatedCount = await context.Blogs
+    .Where(b => !b.IsActive && b.CreatedAt < DateTime.UtcNow.AddYears(-1))
+    .ExecuteUpdateAsync(setters => setters
+        .SetProperty(b => b.Status, "Archived")
+        .SetProperty(b => b.ArchivedAt, DateTime.UtcNow));
+
+Console.WriteLine($"Archived {updatedCount} old blogs");
+
+// Single SQL statement, no entities loaded!
+// UPDATE Blogs SET Status = 'Archived', ArchivedAt = @p0
+// WHERE IsActive = 0 AND CreatedAt < @p1`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Filter",
+      explanation: "Use Where() to target specific rows. This becomes the WHERE clause."
+    },
+    {
+      lineNumbers: [4, 5, 6],
+      highlight: "ExecuteUpdateAsync",
+      explanation: "SetProperty defines what to update. Multiple properties can be set at once!"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "Returns Count",
+      explanation: "Returns the number of affected rows. No entities are loaded into memory!"
+    }
+  ]}
+/>
+
+<KeyConcept title="When to Use ExecuteUpdate">
+Use `ExecuteUpdate` when:
+- Updating many rows at once
+- You don't need the updated entities
+- Performance is critical
+
+It bypasses change tracking entirely - one SQL statement, no entity loading!
+</KeyConcept>
+
+<ProgressCheckpoint section="partial-updates" xpReward={20} />
+
+---
+
+## Section 5: Best Practices
+
+### Concurrency Handling
+
+What if two users update the same entity simultaneously?
+
+<DotnetCodePreview
+  title="Optimistic Concurrency"
+  code={`public class Blog
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    
+    [Timestamp]  // Or use Fluent API: .IsRowVersion()
+    public byte[] RowVersion { get; set; }
+}
+
+// When updating...
+try
+{
+    blog.Title = "New Title";
+    await context.SaveChangesAsync();
+}
+catch (DbUpdateConcurrencyException)
+{
+    // Someone else modified this row!
+    // Handle: reload, merge, or notify user
+}`}
+  steps={[
+    {
+      lineNumbers: [6, 7],
+      highlight: "Row Version",
+      explanation: "A timestamp/rowversion column that changes on every update. EF Core checks this!"
+    },
+    {
+      lineNumbers: [16, 17, 18, 19],
+      highlight: "Concurrency Exception",
+      explanation: "If the row version doesn't match, someone else changed the data. Handle gracefully!"
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="change-tracking-quiz">
+  <Question>What happens when you modify a property on a tracked entity?</Question>
+  <Answer>The database is updated immediately</Answer>
+  <Answer correct>EF Core marks the entity as Modified and waits for SaveChanges</Answer>
+  <Answer>Nothing - you must call Update() first</Answer>
+  <Answer>An exception is thrown</Answer>
+</Quiz>
+
+<Quiz id="update-method-quiz">
+  <Question>What does context.Update(entity) do?</Question>
+  <Answer>Updates only changed properties</Answer>
+  <Answer correct>Attaches the entity and marks ALL properties as modified</Answer>
+  <Answer>Immediately executes an UPDATE statement</Answer>
+  <Answer>Loads the entity from the database</Answer>
+</Quiz>
+
+<Quiz id="executeupdate-quiz">
+  <Question>When should you use ExecuteUpdateAsync?</Question>
+  <Answer>For single entity updates</Answer>
+  <Answer>When you need the updated entity back</Answer>
+  <Answer correct>For bulk updates without loading entities</Answer>
+  <Answer>Always - it's faster than SaveChanges</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Tracked Updates** | Just modify properties, EF Core detects changes |
+| **Update()** | Marks ALL properties as modified (use carefully!) |
+| **Load-Then-Update** | Safer pattern for partial updates |
+| **Attach + Modify** | Update specific properties without loading |
+| **ExecuteUpdate** | Bulk updates without entity loading (EF Core 7+) |
+| **Concurrency** | Use RowVersion to detect conflicts |
+
+<KeyConcept title="What's Next?">
+You've mastered Create, Read, and Update! The final piece: **Delete** - learn how to remove entities and understand cascade delete behavior.
+</KeyConcept>
+
+<ProgressCheckpoint section="best-practices" xpReward={15} />

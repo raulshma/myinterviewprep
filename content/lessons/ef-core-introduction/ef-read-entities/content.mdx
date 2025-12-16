@@ -1,0 +1,472 @@
+# Reading and Querying Entities
+
+The "R" in CRUD stands for **Read** - and it's probably what you'll do most often! In this lesson, you'll master the art of retrieving data from your database using EF Core's powerful LINQ integration.
+
+---
+
+## Section 1: Introduction to Querying
+
+### The Library Analogy 📚
+
+Think of your database as a massive library. You don't want to carry every book home just to find one recipe. Instead, you:
+
+1. **Ask the librarian** (write a LINQ query)
+2. **Describe what you want** (add filters, sorting)
+3. **Get exactly what you need** (execute the query)
+
+<InfoBox type="info">
+**LINQ (Language Integrated Query)** lets you write database queries using familiar C# syntax. EF Core translates your LINQ into optimized SQL automatically!
+</InfoBox>
+
+### Query Execution: Deferred vs Immediate
+
+One of the most important concepts in EF Core querying:
+
+| Type | When It Runs | Methods |
+|:-----|:-------------|:--------|
+| **Deferred** | When you iterate or call a terminal method | `Where()`, `OrderBy()`, `Select()` |
+| **Immediate** | Right away | `ToList()`, `First()`, `Count()`, `Any()` |
+
+<DotnetCodePreview
+  title="Deferred vs Immediate Execution"
+  code={`// This does NOT hit the database yet!
+var query = context.Blogs
+    .Where(b => b.IsActive)
+    .OrderBy(b => b.Title);
+// query is just an IQueryable - a "recipe" for a query
+
+// NOW it hits the database (ToListAsync is a terminal method)
+var blogs = await query.ToListAsync();
+
+// You can also chain and execute in one statement
+var activeBlogs = await context.Blogs
+    .Where(b => b.IsActive)
+    .OrderBy(b => b.Title)
+    .ToListAsync();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Building the Query",
+      explanation: "These methods build up an expression tree. No SQL is generated or executed yet!"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "Executing the Query",
+      explanation: "ToListAsync() is a 'terminal' method that triggers execution. NOW the SQL runs!"
+    },
+    {
+      lineNumbers: [11, 12, 13, 14],
+      highlight: "Fluent Chaining",
+      explanation: "You can chain everything together. The query only executes at the end with ToListAsync()."
+    }
+  ]}
+/>
+
+<KeyConcept title="Why Deferred Execution Matters">
+Deferred execution lets you build queries dynamically! You can add conditions based on user input, then execute once with all filters applied.
+</KeyConcept>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+---
+
+## Section 2: Basic Queries
+
+### Retrieving All Entities
+
+The simplest query - get everything:
+
+<DotnetCodePreview
+  title="Get All Entities"
+  code={`// Get all blogs from the database
+var allBlogs = await context.Blogs.ToListAsync();
+
+// Iterate through results
+foreach (var blog in allBlogs)
+{
+    Console.WriteLine($"{blog.Title} - {blog.Url}");
+}
+
+// Generated SQL:
+// SELECT [b].[Id], [b].[Title], [b].[Url], [b].[CreatedAt]
+// FROM [Blogs] AS [b]`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "ToListAsync()",
+      explanation: "Retrieves ALL rows from the Blogs table. Use with caution on large tables!"
+    },
+    {
+      lineNumbers: [11, 12],
+      highlight: "Generated SQL",
+      explanation: "EF Core generates a simple SELECT statement. All columns are retrieved by default."
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Performance Warning:** Avoid `ToList()` on large tables without filters! Always consider pagination or filtering for production code.
+</InfoBox>
+
+### Using AsNoTracking for Read-Only Queries
+
+When you're just displaying data and won't modify it, use `AsNoTracking()` for better performance:
+
+<DotnetCodePreview
+  title="Read-Only Queries"
+  code={`// For display-only scenarios, skip change tracking
+var blogs = await context.Blogs
+    .AsNoTracking()
+    .ToListAsync();
+
+// 30-50% faster for read-only operations!
+// But you CANNOT modify these entities and save changes`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "AsNoTracking()",
+      explanation: "Tells EF Core not to track these entities. Faster queries, lower memory usage!"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="basic-queries" xpReward={15} />
+
+---
+
+## Section 3: Filtering and Sorting
+
+### Filtering with Where()
+
+The `Where()` method is your primary filtering tool:
+
+<DotnetCodePreview
+  title="Filtering Data"
+  code={`// Single condition
+var activeBlogs = await context.Blogs
+    .Where(b => b.IsActive)
+    .ToListAsync();
+
+// Multiple conditions (AND)
+var recentActiveBlogs = await context.Blogs
+    .Where(b => b.IsActive && b.CreatedAt > DateTime.UtcNow.AddDays(-30))
+    .ToListAsync();
+
+// Chained Where (also AND)
+var filteredBlogs = await context.Blogs
+    .Where(b => b.IsActive)
+    .Where(b => b.Title.Contains("Tech"))
+    .ToListAsync();
+
+// String operations
+var searchResults = await context.Blogs
+    .Where(b => b.Title.ToLower().Contains("dotnet"))
+    .ToListAsync();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Simple Filter",
+      explanation: "Filter by a single boolean property. Translates to WHERE IsActive = 1"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "Multiple Conditions",
+      explanation: "Use && for AND, || for OR. All conditions go in one WHERE clause."
+    },
+    {
+      lineNumbers: [12, 13, 14, 15],
+      highlight: "Chained Where",
+      explanation: "Multiple Where() calls are combined with AND. Same result as using &&"
+    },
+    {
+      lineNumbers: [18, 19, 20],
+      highlight: "String Operations",
+      explanation: "Contains, StartsWith, EndsWith all translate to SQL LIKE patterns!"
+    }
+  ]}
+/>
+
+### Sorting with OrderBy
+
+<DotnetCodePreview
+  title="Sorting Results"
+  code={`// Ascending order (A-Z, oldest first)
+var blogsByTitle = await context.Blogs
+    .OrderBy(b => b.Title)
+    .ToListAsync();
+
+// Descending order (Z-A, newest first)
+var newestFirst = await context.Blogs
+    .OrderByDescending(b => b.CreatedAt)
+    .ToListAsync();
+
+// Multiple sort columns
+var sorted = await context.Blogs
+    .OrderBy(b => b.Category)
+    .ThenByDescending(b => b.CreatedAt)
+    .ToListAsync();
+// SQL: ORDER BY Category ASC, CreatedAt DESC`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "OrderBy",
+      explanation: "Sorts ascending by default. Great for alphabetical lists!"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "OrderByDescending",
+      explanation: "Sorts descending. Perfect for 'newest first' scenarios."
+    },
+    {
+      lineNumbers: [12, 13, 14, 15],
+      highlight: "ThenBy",
+      explanation: "Add secondary sort columns. Use ThenBy after OrderBy, not another OrderBy!"
+    }
+  ]}
+/>
+
+### Pagination with Skip and Take
+
+<DotnetCodePreview
+  title="Pagination"
+  code={`int pageNumber = 2;
+int pageSize = 10;
+
+var pagedBlogs = await context.Blogs
+    .OrderBy(b => b.Title)  // Always order before paging!
+    .Skip((pageNumber - 1) * pageSize)
+    .Take(pageSize)
+    .ToListAsync();
+
+// Page 2 with 10 items = Skip 10, Take 10
+// SQL: ORDER BY Title OFFSET 10 ROWS FETCH NEXT 10 ROWS ONLY`}
+  steps={[
+    {
+      lineNumbers: [5],
+      highlight: "Order First",
+      explanation: "Always sort before pagination! Without ordering, results are unpredictable."
+    },
+    {
+      lineNumbers: [6],
+      highlight: "Skip",
+      explanation: "Skip the first N records. For page 2, skip (2-1) * 10 = 10 records."
+    },
+    {
+      lineNumbers: [7],
+      highlight: "Take",
+      explanation: "Take only N records. This is your page size."
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="filtering-sorting" xpReward={20} />
+
+---
+
+## Section 4: Single Entity Queries
+
+### Finding by Primary Key
+
+The fastest way to get a single entity by its ID:
+
+<DotnetCodePreview
+  title="Find by ID"
+  code={`// FindAsync - optimized for primary key lookups
+var blog = await context.Blogs.FindAsync(42);
+
+// Returns null if not found
+if (blog == null)
+{
+    Console.WriteLine("Blog not found!");
+}
+
+// FindAsync checks the change tracker first!
+// If the entity is already loaded, no database query needed`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "FindAsync",
+      explanation: "Optimized for primary key lookups. Checks local cache before hitting the database!"
+    },
+    {
+      lineNumbers: [5, 6, 7],
+      highlight: "Null Check",
+      explanation: "Always check for null - the entity might not exist."
+    }
+  ]}
+/>
+
+### First, Single, and Their Variants
+
+<DotnetCodePreview
+  title="Single Entity Methods"
+  code={`// First - returns first match, throws if none
+var firstBlog = await context.Blogs
+    .Where(b => b.IsActive)
+    .FirstAsync();
+
+// FirstOrDefault - returns null if none (safer!)
+var maybeBlog = await context.Blogs
+    .Where(b => b.Title == "Rare Title")
+    .FirstOrDefaultAsync();
+
+// Single - expects EXACTLY one match, throws otherwise
+var uniqueBlog = await context.Blogs
+    .Where(b => b.Slug == "unique-slug")
+    .SingleAsync();
+
+// SingleOrDefault - null if none, throws if multiple
+var maybeUnique = await context.Blogs
+    .SingleOrDefaultAsync(b => b.Slug == "unique-slug");`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "FirstAsync",
+      explanation: "Gets the first match. Throws InvalidOperationException if no results!"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "FirstOrDefaultAsync",
+      explanation: "Safer - returns null instead of throwing. Use this most of the time!"
+    },
+    {
+      lineNumbers: [12, 13, 14],
+      highlight: "SingleAsync",
+      explanation: "Use when you expect EXACTLY one result. Throws if 0 or 2+ matches!"
+    },
+    {
+      lineNumbers: [17, 18],
+      highlight: "Inline Predicate",
+      explanation: "You can pass the filter directly to these methods - no need for Where()!"
+    }
+  ]}
+/>
+
+<Comparison
+  title="When to Use Which?"
+  items={[
+    {
+      label: "FirstOrDefaultAsync",
+      description: "Most common choice. Safe, returns null if not found. Use when you want 'any matching record'.",
+      isCorrect: true
+    },
+    {
+      label: "SingleOrDefaultAsync",
+      description: "Use when the result MUST be unique (like looking up by unique slug). Validates your data integrity!",
+      isCorrect: true
+    },
+    {
+      label: "FindAsync",
+      description: "Best for primary key lookups. Checks local cache first, most efficient for ID-based queries.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="single-entity-queries" xpReward={20} />
+
+---
+
+## Section 5: Projections
+
+### Selecting Specific Columns
+
+Don't fetch entire entities when you only need a few fields:
+
+<DotnetCodePreview
+  title="Projections with Select"
+  code={`// Anonymous type projection
+var blogTitles = await context.Blogs
+    .Select(b => new { b.Id, b.Title })
+    .ToListAsync();
+
+// DTO projection (recommended for APIs)
+var blogDtos = await context.Blogs
+    .Select(b => new BlogDto
+    {
+        Id = b.Id,
+        Title = b.Title,
+        PostCount = b.Posts.Count  // Computed in SQL!
+    })
+    .ToListAsync();
+
+// SQL only selects the columns you need:
+// SELECT Id, Title, (SELECT COUNT(*) FROM Posts WHERE BlogId = b.Id)
+// Much more efficient than SELECT *`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Anonymous Type",
+      explanation: "Quick and easy for simple projections. Great for internal use."
+    },
+    {
+      lineNumbers: [7, 8, 9, 10, 11, 12, 13, 14],
+      highlight: "DTO Projection",
+      explanation: "Project to a defined class. Better for APIs and when you need type safety."
+    },
+    {
+      lineNumbers: [12],
+      highlight: "Computed Properties",
+      explanation: "EF Core translates navigation property operations to SQL subqueries. Super efficient!"
+    }
+  ]}
+/>
+
+<KeyConcept title="Why Projections Matter">
+Projections reduce:
+- **Network traffic** - fewer bytes transferred
+- **Memory usage** - smaller objects
+- **Query time** - database does less work
+
+Always project when you don't need the full entity!
+</KeyConcept>
+
+<ProgressCheckpoint section="projections" xpReward={15} />
+
+---
+
+## Section 6: Best Practices
+
+### Quick Knowledge Check
+
+<Quiz id="deferred-execution-quiz">
+  <Question>When does a LINQ query actually execute against the database?</Question>
+  <Answer>When you call Where()</Answer>
+  <Answer>When you call OrderBy()</Answer>
+  <Answer correct>When you call a terminal method like ToListAsync()</Answer>
+  <Answer>Immediately when you write the query</Answer>
+</Quiz>
+
+<Quiz id="find-vs-first-quiz">
+  <Question>What's special about FindAsync() compared to FirstOrDefaultAsync()?</Question>
+  <Answer>FindAsync is slower but more accurate</Answer>
+  <Answer correct>FindAsync checks the local cache before querying the database</Answer>
+  <Answer>FindAsync can filter by any property</Answer>
+  <Answer>There's no difference</Answer>
+</Quiz>
+
+<Quiz id="asnotracking-quiz">
+  <Question>When should you use AsNoTracking()?</Question>
+  <Answer>Always, for better performance</Answer>
+  <Answer>When inserting new entities</Answer>
+  <Answer correct>For read-only queries where you won't modify the data</Answer>
+  <Answer>When using FindAsync()</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Deferred Execution** | Queries don't run until you call a terminal method |
+| **Where()** | Filter data with lambda expressions |
+| **OrderBy/ThenBy** | Sort results, always before pagination |
+| **FindAsync()** | Best for primary key lookups (checks cache) |
+| **FirstOrDefaultAsync()** | Safe single-entity retrieval |
+| **Select()** | Project to reduce data transfer |
+| **AsNoTracking()** | Faster read-only queries |
+
+<KeyConcept title="What's Next?">
+You can now create and read entities! Next up: **Updating** - learn how to modify existing data and understand how EF Core's change tracking makes it seamless.
+</KeyConcept>
+
+<ProgressCheckpoint section="best-practices" xpReward={10} />

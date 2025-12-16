@@ -1,0 +1,418 @@
+# Many-to-Many Relationships - Connecting Both Sides
+
+When both sides can have multiple related entities, you need a **many-to-many relationship**. Think students and courses: students enroll in many courses, courses have many students!
+
+---
+
+## Section 1: Understanding Many-to-Many
+
+### The Social Network Analogy 🌐
+
+Think of a social media platform:
+- **Users** can follow **many other users**
+- **Users** can be followed by **many users**
+- Or consider: **Tags** and **Posts** - posts have multiple tags, tags apply to multiple posts
+
+This bidirectional "many" relationship requires special handling!
+
+| One-to-Many | Many-to-Many |
+|:------------|:-------------|
+| One parent, many children | Many on both sides |
+| FK on child entity | Join table in the middle |
+| Blog → Posts | Students ↔ Courses |
+
+<InfoBox type="info">
+**Join Table**: Many-to-many relationships need a "bridge" table to connect both sides. In database terms, this is called a **junction table** or **associative table**.
+</InfoBox>
+
+<RelationshipDiagram
+  type="many-to-many"
+  entities={{
+    principal: {
+      name: "Student",
+      properties: ["Name: string", "Email: string"]
+    },
+    dependent: {
+      name: "Course",
+      properties: ["Title: string", "Credits: int"]
+    }
+  }}
+  showNavigation={true}
+  showForeignKey={false}
+/>
+
+### Real-World Examples
+
+- 🎓 **Students ↔ Courses** (enrollment)
+- 🏷️ **Posts ↔ Tags** (tagging system)
+- 📚 **Books ↔ Authors** (co-authored books)
+- 🎬 **Movies ↔ Actors** (cast lists)
+- 🛍️ **Products ↔ Categories** (e-commerce)
+
+<ProgressCheckpoint section="many-to-many-concept" xpReward={20} />
+
+---
+
+## Section 2: Skip Navigations (EF Core 5+)
+
+### The Simple Approach
+
+EF Core 5+ introduced **skip navigations** - you can define many-to-many without explicitly creating a join entity. EF Core handles it for you!
+
+<DotnetCodePreview
+  title="Simple Many-to-Many"
+  code={`public class Student
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Email { get; set; } = "";
+    
+    // Skip navigation - directly to courses
+    public ICollection<Course> Courses { get; set; } = new List<Course>();
+}
+
+public class Course
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public int Credits { get; set; }
+    
+    // Skip navigation - directly to students
+    public ICollection<Student> Students { get; set; } = new List<Student>();
+}`}
+  steps={[
+    {
+      lineNumbers: [1, 2, 3, 4, 5],
+      highlight: "Student Entity",
+      explanation: "Regular entity - no foreign key needed for many-to-many"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "Courses Collection",
+      explanation: "Navigate directly to courses - EF Core creates the join table automatically"
+    },
+    {
+      lineNumbers: [11, 12, 13, 14, 15],
+      highlight: "Course Entity",
+      explanation: "Same pattern on the other side - collections on both entities"
+    },
+    {
+      lineNumbers: [18],
+      highlight: "Students Collection",
+      explanation: "Both sides have collections pointing to each other"
+    }
+  ]}
+/>
+
+### Working with Skip Navigations
+
+<DotnetCodePreview
+  title="Using Many-to-Many"
+  code={`// Create entities and link them
+var student = new Student { Name = "Alice", Email = "alice@example.com" };
+var mathCourse = new Course { Title = "Mathematics", Credits = 3 };
+var physicsCourse = new Course { Title = "Physics", Credits = 4 };
+
+// Enroll student in courses
+student.Courses.Add(mathCourse);
+student.Courses.Add(physicsCourse);
+
+context.Students.Add(student);
+await context.SaveChangesAsync();
+// EF Core creates StudentCourse join table entries automatically!
+
+// Query: Get student with all courses
+var studentWithCourses = await context.Students
+    .Include(s => s.Courses)
+    .FirstOrDefaultAsync(s => s.Name == "Alice");
+
+// Query: Get course with all students
+var courseWithStudents = await context.Courses
+    .Include(c => c.Students)
+    .FirstOrDefaultAsync(c => c.Title == "Mathematics");
+
+// Unenroll student
+student.Courses.Remove(mathCourse);
+await context.SaveChangesAsync();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5],
+      highlight: "Create Entities",
+      explanation: "Create the student and courses as normal"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "Add Relationships",
+      explanation: "Just add to the collection - both sides work!"
+    },
+    {
+      lineNumbers: [11, 12],
+      highlight: "Save Creates Join Rows",
+      explanation: "EF Core inserts into Student, Course, AND the hidden StudentCourse table"
+    },
+    {
+      lineNumbers: [15, 16, 17],
+      highlight: "Include Still Works",
+      explanation: "Load related entities with Include() just like one-to-many"
+    },
+    {
+      lineNumbers: [25, 26],
+      highlight: "Remove Relationship",
+      explanation: "Remove from collection - EF Core deletes from join table"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Behind the Scenes**: EF Core creates a shadow join table called `CourseStudent` (alphabetical order). You can customize this with Fluent API!
+</InfoBox>
+
+<ProgressCheckpoint section="skip-navigations" xpReward={25} />
+
+---
+
+## Section 3: Join Entities with Payload
+
+### When You Need More Data
+
+What if you need to store **additional information** about the relationship? For example:
+- **Enrollment date** for student-course relationship
+- **Role** for user-project relationship
+- **Quantity** for product-order relationship
+
+You need a **join entity with payload**!
+
+<DotnetCodePreview
+  title="Join Entity with Payload"
+  code={`// Explicit join entity with extra data
+public class Enrollment
+{
+    public int StudentId { get; set; }
+    public int CourseId { get; set; }
+    
+    // Payload - extra data about the relationship
+    public DateTime EnrolledDate { get; set; }
+    public string Grade { get; set; } = "";
+    public bool IsActive { get; set; } = true;
+    
+    // Navigation properties
+    public Student Student { get; set; } = null!;
+    public Course Course { get; set; } = null!;
+}
+
+public class Student
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    
+    // Navigate to join entities
+    public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+}
+
+public class Course
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    
+    // Navigate to join entities
+    public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5],
+      highlight: "Composite Key",
+      explanation: "StudentId + CourseId form a composite primary key (configure in Fluent API)"
+    },
+    {
+      lineNumbers: [8, 9, 10],
+      highlight: "Payload Properties",
+      explanation: "Extra data about THIS specific enrollment - date, grade, status"
+    },
+    {
+      lineNumbers: [13, 14],
+      highlight: "Navigation to Entities",
+      explanation: "Join entity knows about both sides of the relationship"
+    },
+    {
+      lineNumbers: [22, 23],
+      highlight: "Student → Enrollments",
+      explanation: "Navigate from Student to enrollments (includes Course info via Enrollment)"
+    },
+    {
+      lineNumbers: [31, 32],
+      highlight: "Course → Enrollments",
+      explanation: "Same pattern on Course side"
+    }
+  ]}
+/>
+
+### Configuring Join Entity
+
+<DotnetCodePreview
+  title="Fluent API for Join Entity"
+  code={`protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    // Configure composite primary key
+    modelBuilder.Entity<Enrollment>()
+        .HasKey(e => new { e.StudentId, e.CourseId });
+    
+    // Configure relationships
+    modelBuilder.Entity<Enrollment>()
+        .HasOne(e => e.Student)
+        .WithMany(s => s.Enrollments)
+        .HasForeignKey(e => e.StudentId);
+    
+    modelBuilder.Entity<Enrollment>()
+        .HasOne(e => e.Course)
+        .WithMany(c => c.Enrollments)
+        .HasForeignKey(e => e.CourseId);
+}`}
+  steps={[
+    {
+      lineNumbers: [4, 5],
+      highlight: "Composite Key",
+      explanation: "Both StudentId and CourseId together form the unique primary key"
+    },
+    {
+      lineNumbers: [8, 9, 10, 11],
+      highlight: "First Relationship",
+      explanation: "Enrollment is the 'many' side of Student → Enrollments"
+    },
+    {
+      lineNumbers: [13, 14, 15, 16],
+      highlight: "Second Relationship",
+      explanation: "Enrollment is also the 'many' side of Course → Enrollments"
+    }
+  ]}
+/>
+
+### Using Join Entities
+
+<DotnetCodePreview
+  title="Working with Join Entities"
+  code={`// Create enrollment with payload
+var enrollment = new Enrollment
+{
+    StudentId = 1,
+    CourseId = 1,
+    EnrolledDate = DateTime.Now,
+    Grade = "A",
+    IsActive = true
+};
+context.Add(enrollment);
+await context.SaveChangesAsync();
+
+// Query with payload data
+var activeEnrollments = await context.Set<Enrollment>()
+    .Include(e => e.Student)
+    .Include(e => e.Course)
+    .Where(e => e.IsActive && e.EnrolledDate.Year == 2024)
+    .ToListAsync();
+
+// Update grade
+var enrollment = await context.Set<Enrollment>()
+    .FirstOrDefaultAsync(e => e.StudentId == 1 && e.CourseId == 1);
+enrollment.Grade = "A+";
+await context.SaveChangesAsync();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7, 8, 9],
+      highlight: "Create with Payload",
+      explanation: "Set both FKs and any payload data when creating the relationship"
+    },
+    {
+      lineNumbers: [14, 15, 16, 17, 18],
+      highlight: "Query Payload",
+      explanation: "Filter and query based on the payload properties"
+    },
+    {
+      lineNumbers: [21, 22, 23, 24],
+      highlight: "Update Payload",
+      explanation: "Find the enrollment and update the grade"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="join-entities" xpReward={20} />
+
+---
+
+## Section 4: Managing Many-to-Many
+
+### Best Practices
+
+<Comparison
+  title="Many-to-Many Approaches"
+  items={[
+    {
+      label: "Skip Navigation (Simple)",
+      description: "Use when you don't need extra data. Clean and simple - EF Core handles join table.",
+      isCorrect: true
+    },
+    {
+      label: "Join Entity (With Payload)",
+      description: "Use when you need to store additional data about the relationship (dates, roles, etc.).",
+      isCorrect: true
+    },
+    {
+      label: "Two One-to-Many",
+      description: "Explicit join entity is essentially two one-to-many relationships meeting in the middle.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+### Common Operations
+
+| Operation | Skip Navigation | Join Entity |
+|:----------|:----------------|:------------|
+| Add relationship | `student.Courses.Add(course)` | `context.Add(new Enrollment { ... })` |
+| Remove relationship | `student.Courses.Remove(course)` | Find and remove Enrollment entity |
+| Query related | `Include(s => s.Courses)` | `Include(e => e.Student).Include(e => e.Course)` |
+| Check existence | `student.Courses.Any(c => c.Id == 1)` | Query Enrollment table |
+
+<InfoBox type="warning">
+**Performance Tip**: For large many-to-many relationships, avoid loading all related entities. Use `Any()`, `Count()`, or pagination instead of `ToList()`!
+</InfoBox>
+
+### Quick Knowledge Check
+
+<Quiz id="many-to-many-join-quiz">
+  <Question>Why does a many-to-many relationship need a join table?</Question>
+  <Answer>To store the entity primary keys</Answer>
+  <Answer>To improve query performance</Answer>
+  <Answer correct>To link entities from both sides since neither can hold a single FK</Answer>
+  <Answer>To enable lazy loading</Answer>
+</Quiz>
+
+<Quiz id="many-to-many-skip-quiz">
+  <Question>When should you use a join entity instead of skip navigation?</Question>
+  <Answer>Always - skip navigation is deprecated</Answer>
+  <Answer>Never - skip navigation handles everything</Answer>
+  <Answer correct>When you need to store extra data about the relationship</Answer>
+  <Answer>When using SQL Server</Answer>
+</Quiz>
+
+<Quiz id="many-to-many-ef5-quiz">
+  <Question>What EF Core version introduced skip navigations?</Question>
+  <Answer>EF Core 3.0</Answer>
+  <Answer correct>EF Core 5.0</Answer>
+  <Answer>EF Core 6.0</Answer>
+  <Answer>EF Core 7.0</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Many-to-Many** | Both sides have collections pointing to each other |
+| **Join Table** | Hidden table created by EF Core to store relationships |
+| **Skip Navigation** | Simple approach - EF Core manages join table (EF Core 5+) |
+| **Join Entity** | Explicit entity for payload (extra relationship data) |
+| **Composite Key** | Join entities use {FK1, FK2} as primary key |
+
+<KeyConcept title="What's Next?">
+Now that you understand all relationship types, let's dive deeper into **navigation properties** - the GPS system that lets you traverse between related entities!
+</KeyConcept>
+
+<ProgressCheckpoint section="managing-relationships" xpReward={20} />

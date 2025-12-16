@@ -1,0 +1,18 @@
+{
+  "id": "foreign-keys-cascading",
+  "title": "Foreign Keys and Cascading - Data Integrity",
+  "description": "Master foreign key configuration and cascade delete behaviors to ensure data integrity when deleting or modifying related entities.",
+  "milestone": "entity-relationships",
+  "order": 4,
+  "sections": [
+    "foreign-key-basics",
+    "cascade-behaviors",
+    "configuring-cascades",
+    "common-scenarios"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 18,
+  "xpReward": 80,
+  "prerequisites": ["navigation-properties"],
+  "tags": ["ef-core", "foreign-keys", "cascade-delete", "relationships", "dotnet"]
+}

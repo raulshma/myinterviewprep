@@ -1,0 +1,365 @@
+# One-to-Many Relationships - The Parent-Child Connection
+
+One-to-many is the **most common relationship** in databases. Think of it like a family tree: one parent can have many children. Let's master this essential pattern!
+
+---
+
+## Section 1: Understanding One-to-Many
+
+### The Bookshelf Analogy 📚
+
+Imagine a bookshelf in a library:
+- **One shelf** can hold **many books**
+- Each **book** belongs to **exactly one shelf**
+- If you remove a shelf, what happens to its books?
+
+This is exactly how one-to-many works in databases!
+
+| Real World | Database |
+|:-----------|:---------|
+| Shelf | Principal entity (Blog) |
+| Books on shelf | Dependent entities (Posts) |
+| Shelf label | Primary Key |
+| "Belongs to shelf" | Foreign Key |
+
+<InfoBox type="info">
+**Principal Entity**: The "parent" side that can exist independently (Blog).
+**Dependent Entity**: The "child" side that requires a parent (Post needs a BlogId).
+</InfoBox>
+
+### Why One-to-Many Matters
+
+One-to-many relationships are everywhere:
+- 📝 **Blog → Posts** (one blog has many posts)
+- 🛒 **Customer → Orders** (one customer makes many orders)
+- 📁 **Folder → Files** (one folder contains many files)
+- 👨‍👩‍👧‍👦 **Department → Employees** (one department has many employees)
+
+<RelationshipDiagram
+  type="one-to-many"
+  entities={{
+    principal: {
+      name: "Author",
+      properties: ["Name: string", "Email: string"]
+    },
+    dependent: {
+      name: "Book",
+      properties: ["Title: string", "ISBN: string"]
+    }
+  }}
+  showNavigation={true}
+  showForeignKey={true}
+/>
+
+<ProgressCheckpoint section="one-to-many-concept" xpReward={20} />
+
+---
+
+## Section 2: Defining One-to-Many Relationships
+
+### The Complete Pattern
+
+Let's build a complete one-to-many relationship step by step:
+
+<DotnetCodePreview
+  title="One-to-Many Entity Classes"
+  code={`// Principal entity (the "one" side)
+public class Author
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Email { get; set; } = "";
+    
+    // Navigation property - collection of related entities
+    public ICollection<Book> Books { get; set; } = new List<Book>();
+}
+
+// Dependent entity (the "many" side)
+public class Book
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public string ISBN { get; set; } = "";
+    public DateTime PublishedDate { get; set; }
+    
+    // Foreign key - links to the principal
+    public int AuthorId { get; set; }
+    
+    // Navigation property - reference to parent
+    public Author Author { get; set; } = null!;
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7],
+      highlight: "Principal Entity",
+      explanation: "Author is the 'one' side - it exists independently and doesn't have a foreign key"
+    },
+    {
+      lineNumbers: [9, 10],
+      highlight: "Collection Navigation",
+      explanation: "ICollection<Book> allows navigating from Author to all their Books. Use List<> or HashSet<>!"
+    },
+    {
+      lineNumbers: [13, 14, 15, 16, 17, 18, 19],
+      highlight: "Dependent Entity",
+      explanation: "Book is the 'many' side - it contains the foreign key pointing to Author"
+    },
+    {
+      lineNumbers: [21, 22],
+      highlight: "Foreign Key Property",
+      explanation: "AuthorId stores the Id of the parent Author. EF Core convention: {NavigationProperty}Id"
+    },
+    {
+      lineNumbers: [24, 25],
+      highlight: "Reference Navigation",
+      explanation: "Author property navigates from Book back to its parent. The 'null!' tells C# we'll handle nullability"
+    }
+  ]}
+/>
+
+### Convention vs Configuration
+
+EF Core uses conventions to discover relationships automatically:
+
+<Comparison
+  title="Relationship Configuration Options"
+  items={[
+    {
+      label: "Convention (Automatic)",
+      description: "EF Core detects relationships from navigation properties and FK naming patterns",
+      isCorrect: true
+    },
+    {
+      label: "Data Annotations",
+      description: "Use [ForeignKey], [InverseProperty] attributes for explicit configuration",
+      isCorrect: true
+    },
+    {
+      label: "Fluent API",
+      description: "Most powerful option - configure in OnModelCreating for complex scenarios",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Naming Convention**: If your FK property follows the pattern `{NavigationPropertyName}Id` or `{PrincipalEntityName}Id`, EF Core automatically detects it!
+</InfoBox>
+
+<ProgressCheckpoint section="defining-relationships" xpReward={20} />
+
+---
+
+## Section 3: Working with Related Data
+
+### Creating Related Entities
+
+<DotnetCodePreview
+  title="Creating Parent with Children"
+  code={`// Method 1: Create parent with children together
+var author = new Author
+{
+    Name = "Stephen King",
+    Email = "stephen@example.com",
+    Books = new List<Book>
+    {
+        new Book { Title = "The Shining", ISBN = "978-0307743657" },
+        new Book { Title = "It", ISBN = "978-1501142970" },
+        new Book { Title = "Carrie", ISBN = "978-0307743664" }
+    }
+};
+context.Authors.Add(author);
+await context.SaveChangesAsync();
+// EF Core sets AuthorId automatically for all books!
+
+// Method 2: Add children to existing parent
+var existingAuthor = await context.Authors.FindAsync(1);
+var newBook = new Book
+{
+    Title = "Pet Sematary",
+    ISBN = "978-1501156700",
+    Author = existingAuthor  // Set navigation property
+};
+context.Books.Add(newBook);
+await context.SaveChangesAsync();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      highlight: "Create Together",
+      explanation: "Create the author with all books in one object. Cleaner and more efficient!"
+    },
+    {
+      lineNumbers: [13, 14, 15],
+      highlight: "Single Save",
+      explanation: "SaveChanges inserts Author first, then Books with the correct AuthorId automatically"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21, 22, 23, 24, 25, 26],
+      highlight: "Add to Existing",
+      explanation: "Find existing author, create new book with Author navigation set, then save"
+    }
+  ]}
+/>
+
+### Loading Related Data
+
+<DotnetCodePreview
+  title="Querying One-to-Many"
+  code={`// Eager Loading - load author with all books
+var authorWithBooks = await context.Authors
+    .Include(a => a.Books)
+    .FirstOrDefaultAsync(a => a.Id == 1);
+
+foreach (var book in authorWithBooks.Books)
+{
+    Console.WriteLine($"  - {book.Title}");
+}
+
+// Filter children during include (EF Core 5+)
+var authorWithRecentBooks = await context.Authors
+    .Include(a => a.Books.Where(b => b.PublishedDate.Year >= 2020))
+    .FirstOrDefaultAsync(a => a.Id == 1);
+
+// Load children with filtering and ordering
+var prolificAuthors = await context.Authors
+    .Include(a => a.Books.OrderByDescending(b => b.PublishedDate))
+    .Where(a => a.Books.Count > 5)
+    .ToListAsync();
+
+// Count children without loading them
+var bookCounts = await context.Authors
+    .Select(a => new { a.Name, BookCount = a.Books.Count })
+    .ToListAsync();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Include()",
+      explanation: "Eagerly loads all books with the author in a single query using JOIN"
+    },
+    {
+      lineNumbers: [12, 13, 14],
+      highlight: "Filtered Include",
+      explanation: "EF Core 5+ allows filtering inside Include() - only load recent books!"
+    },
+    {
+      lineNumbers: [17, 18, 19, 20],
+      highlight: "Order and Filter",
+      explanation: "Combine Include with Where to find authors with many books, ordered by date"
+    },
+    {
+      lineNumbers: [23, 24, 25],
+      highlight: "Count without Loading",
+      explanation: "Project to anonymous type to count books without loading actual Book entities"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**N+1 Problem Alert!** Without `Include()`, accessing `author.Books` triggers a separate query. This is called the N+1 problem - avoid it by using eager loading!
+</InfoBox>
+
+<ProgressCheckpoint section="working-with-data" xpReward={20} />
+
+---
+
+## Section 4: Fluent API Configuration
+
+### Explicit Relationship Configuration
+
+Sometimes you need more control. Use Fluent API in `OnModelCreating`:
+
+<DotnetCodePreview
+  title="Fluent API Configuration"
+  code={`protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    // Basic one-to-many configuration
+    modelBuilder.Entity<Author>()
+        .HasMany(a => a.Books)
+        .WithOne(b => b.Author)
+        .HasForeignKey(b => b.AuthorId)
+        .IsRequired();
+
+    // With delete behavior
+    modelBuilder.Entity<Author>()
+        .HasMany(a => a.Books)
+        .WithOne(b => b.Author)
+        .HasForeignKey(b => b.AuthorId)
+        .OnDelete(DeleteBehavior.Cascade);
+
+    // Optional relationship (nullable FK)
+    modelBuilder.Entity<Book>()
+        .HasOne(b => b.Editor)
+        .WithMany(e => e.EditedBooks)
+        .HasForeignKey(b => b.EditorId)
+        .IsRequired(false);
+}`}
+  steps={[
+    {
+      lineNumbers: [4, 5, 6, 7, 8],
+      highlight: "Basic Configuration",
+      explanation: "HasMany → WithOne → HasForeignKey chain explicitly defines the relationship"
+    },
+    {
+      lineNumbers: [11, 12, 13, 14, 15],
+      highlight: "Delete Behavior",
+      explanation: "OnDelete(Cascade) means deleting an Author also deletes all their Books"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21, 22],
+      highlight: "Optional Relationship",
+      explanation: "IsRequired(false) makes the FK nullable - a Book can exist without an Editor"
+    }
+  ]}
+/>
+
+### Common Scenarios
+
+| Scenario | Configuration |
+|:---------|:--------------|
+| Required relationship | `.IsRequired()` or non-nullable FK |
+| Optional relationship | `.IsRequired(false)` with nullable FK (`int?`) |
+| Cascade delete | `.OnDelete(DeleteBehavior.Cascade)` |
+| Restrict delete | `.OnDelete(DeleteBehavior.Restrict)` |
+| Set null on delete | `.OnDelete(DeleteBehavior.SetNull)` |
+
+### Quick Knowledge Check
+
+<Quiz id="one-to-many-principal-quiz">
+  <Question>In a one-to-many relationship, which entity contains the foreign key?</Question>
+  <Answer>The principal (parent) entity</Answer>
+  <Answer correct>The dependent (child) entity</Answer>
+  <Answer>Both entities</Answer>
+  <Answer>Neither - it's in a join table</Answer>
+</Quiz>
+
+<Quiz id="one-to-many-navigation-quiz">
+  <Question>What type of navigation property does the "one" side have?</Question>
+  <Answer>A single reference property</Answer>
+  <Answer correct>A collection property (ICollection, List, etc.)</Answer>
+  <Answer>No navigation property needed</Answer>
+  <Answer>A nullable reference property</Answer>
+</Quiz>
+
+<Quiz id="one-to-many-include-quiz">
+  <Question>What happens if you access a navigation property without Include()?</Question>
+  <Answer>It throws an exception</Answer>
+  <Answer>It returns all data automatically</Answer>
+  <Answer correct>By default, it returns null (unless lazy loading is enabled)</Answer>
+  <Answer>It only returns the first item</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Principal** | The "one" side with collection navigation |
+| **Dependent** | The "many" side with FK and reference navigation |
+| **Foreign Key** | Links dependent to principal (e.g., `AuthorId`) |
+| **Include()** | Eager loads related entities to avoid N+1 |
+| **Fluent API** | Use `HasMany().WithOne()` for explicit config |
+
+<KeyConcept title="What's Next?">
+Now that you've mastered one-to-many, you're ready to tackle **many-to-many relationships** - where both sides can have multiple related entities!
+</KeyConcept>
+
+<ProgressCheckpoint section="fluent-api-config" xpReward={20} />

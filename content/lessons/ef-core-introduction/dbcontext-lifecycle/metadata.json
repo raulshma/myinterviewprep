@@ -1,0 +1,18 @@
+{
+  "id": "dbcontext-lifecycle",
+  "title": "DbContext Lifecycle - Managing Your Database Sessions",
+  "description": "Master the DbContext lifecycle, understand when to create and dispose contexts, and learn best practices for dependency injection.",
+  "milestone": "dbcontext-and-dbset",
+  "order": 0,
+  "sections": [
+    "what-is-dbcontext",
+    "lifecycle-patterns",
+    "dependency-injection",
+    "pooling-and-performance"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 20,
+  "xpReward": 85,
+  "prerequisites": ["ef-core-overview"],
+  "tags": ["ef-core", "dbcontext", "lifecycle", "dependency-injection", "dotnet"]
+}

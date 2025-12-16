@@ -1,0 +1,18 @@
+{
+  "id": "migration-conflicts",
+  "title": "Handling Migration Conflicts",
+  "description": "Learn how to resolve migration conflicts when working in teams and handle merge issues effectively.",
+  "milestone": "migrations",
+  "order": 3,
+  "sections": [
+    "why-conflicts-happen",
+    "detecting-conflicts",
+    "resolving-conflicts",
+    "prevention-strategies"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 80,
+  "prerequisites": ["migration-best-practices"],
+  "tags": ["ef-core", "migrations", "conflicts", "team"]
+}

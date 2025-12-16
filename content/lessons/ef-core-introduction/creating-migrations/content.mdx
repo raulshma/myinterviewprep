@@ -1,0 +1,344 @@
+# Creating and Applying Migrations
+
+Learn the complete workflow for managing database schema changes with EF Core migrations. Think of migrations as **blueprints that turn into buildings** - you design the changes first, then construct them in the database!
+
+---
+
+## Section 1: The Migration Workflow
+
+### The Blueprint Analogy 📐
+
+Imagine you're an architect expanding a building:
+
+1. **Draw the plans** (design your changes in C#)
+2. **Get them approved** (create a migration file)
+3. **Hire contractors** (run the update command)
+4. **Build it** (database schema changes)
+
+<InfoBox type="info">
+EF Core migrations follow this exact pattern: **Model → Migration → Database**. Each step is reversible, giving you complete control!
+</InfoBox>
+
+### The Three-Step Dance
+
+<MigrationFlowDiagram />
+
+| Step | Command | What Happens |
+|:-----|:--------|:-------------|
+| 1. Change Model | *Edit C# code* | Modify your entity classes |
+| 2. Add Migration | `dotnet ef migrations add` | EF Core generates migration file |
+| 3. Update Database | `dotnet ef database update` | Apply changes to database |
+
+<KeyConcept title="Important Insight">
+EF Core tracks the **current state** of your model in a snapshot file. When you add a migration, it compares your model against this snapshot to detect changes!
+</KeyConcept>
+
+<ProgressCheckpoint section="migration-workflow" xpReward={20} />
+
+---
+
+## Section 2: The Add-Migration Command
+
+### Creating Your Migration
+
+The `add` command is your first step. It analyzes your model and generates code:
+
+```bash
+dotnet ef migrations add <MigrationName>
+```
+
+<DotnetCodePreview
+  title="Example: Adding a New Property"
+  code={`// Before: Your entity
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+}
+
+// After: You add a new property
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public decimal Price { get; set; }  // ← NEW!
+}
+
+// Run: dotnet ef migrations add AddProductPrice`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6],
+      highlight: "Original Entity",
+      explanation: "Your current Product entity with Id and Name"
+    },
+    {
+      lineNumbers: [9, 10, 11, 12, 13],
+      highlight: "Updated Entity",
+      explanation: "You added a Price property - EF Core will detect this!"
+    },
+    {
+      lineNumbers: [13],
+      highlight: "The Change",
+      explanation: "This new property will become a new column in the database"
+    }
+  ]}
+/>
+
+### What Gets Generated
+
+When you run `add`, EF Core creates three files:
+
+<DotnetCodePreview
+  title="Generated Migration Files"
+  code={`Migrations/
+├── 20241216_AddProductPrice.cs         // The migration
+├── 20241216_AddProductPrice.Designer.cs // Metadata
+└── AppDbContextModelSnapshot.cs         // Updated snapshot
+
+// The main migration file contains:
+public partial class AddProductPrice : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.AddColumn<decimal>(
+            name: "Price",
+            table: "Products",
+            type: "decimal(18,2)",
+            nullable: false,
+            defaultValue: 0m);
+    }
+
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            name: "Price",
+            table: "Products");
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Migration File",
+      explanation: "Contains the Up() and Down() methods with your changes"
+    },
+    {
+      lineNumbers: [3],
+      highlight: "Designer File",
+      explanation: "Metadata about the migration - don't edit this!"
+    },
+    {
+      lineNumbers: [4],
+      highlight: "Model Snapshot",
+      explanation: "Updated automatically to reflect the new model state"
+    },
+    {
+      lineNumbers: [9, 10, 11, 12, 13, 14, 15],
+      highlight: "Up() Method",
+      explanation: "Applies the change - adds the Price column"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21],
+      highlight: "Down() Method",
+      explanation: "Reverses the change - removes the column if you rollback"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Pro Tip:** Always use descriptive migration names! `AddProductPrice` is much better than `Migration1` or `Update`. Future you will thank present you!
+</InfoBox>
+
+<ProgressCheckpoint section="add-migration-command" xpReward={25} />
+
+---
+
+## Section 3: The Update-Database Command
+
+### Applying Migrations
+
+Once you have migrations, apply them with:
+
+```bash
+dotnet ef database update
+```
+
+This command:
+1. **Checks** the `__EFMigrationsHistory` table for applied migrations
+2. **Runs** any pending migrations in chronological order
+3. **Records** each migration in the history table
+
+<DotnetCodePreview
+  title="Update Command Variations"
+  code={`# Apply ALL pending migrations
+dotnet ef database update
+
+# Apply up to a specific migration
+dotnet ef database update AddProductPrice
+
+# See what SQL would be generated (dry run)
+dotnet ef migrations script
+
+# Apply from a specific starting point
+dotnet ef migrations script InitialCreate AddProductPrice`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Apply All",
+      explanation: "Runs all pending migrations to bring database up to date"
+    },
+    {
+      lineNumbers: [5],
+      highlight: "Target Migration",
+      explanation: "Apply (or rollback) to a specific migration by name"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "Generate SQL Script",
+      explanation: "See the SQL without running it - perfect for review!"
+    },
+    {
+      lineNumbers: [11],
+      highlight: "Script Range",
+      explanation: "Generate SQL from one migration to another"
+    }
+  ]}
+/>
+
+### Tracking Applied Migrations
+
+EF Core uses a special table to track what's been applied:
+
+```sql
+-- EF Core creates this table automatically
+SELECT * FROM __EFMigrationsHistory;
+
+-- Example result:
+-- MigrationId                          | ProductVersion
+-- -------------------------------------|---------------
+-- 20241201_InitialCreate               | 8.0.0
+-- 20241210_AddProductPrice             | 8.0.0
+```
+
+<InfoBox type="warning">
+**Never delete** the `__EFMigrationsHistory` table! EF Core needs it to know which migrations have been applied. Deleting it will cause migrations to fail or re-run!
+</InfoBox>
+
+<ProgressCheckpoint section="update-database-command" xpReward={20} />
+
+---
+
+## Section 4: Migration Scripts for Production
+
+### Why Scripts Matter
+
+In development, `dotnet ef database update` is convenient. But in production, you need more control!
+
+<Comparison
+  title="Development vs Production"
+  items={[
+    {
+      label: "✅ Development: dotnet ef database update",
+      description: "Direct execution is fine - you can easily recreate the database",
+      isCorrect: true
+    },
+    {
+      label: "✅ Production: SQL Scripts",
+      description: "Generate scripts, review them, run through your deployment pipeline",
+      isCorrect: true
+    },
+    {
+      label: "❌ Production: Direct CLI",
+      description: "Never run 'dotnet ef database update' directly on production!",
+      isCorrect: false
+    }
+  ]}
+/>
+
+### Generating SQL Scripts
+
+```bash
+# Generate a complete SQL script of all migrations
+dotnet ef migrations script -o migrate.sql
+
+# Generate an idempotent script (safe to run multiple times)
+dotnet ef migrations script --idempotent -o migrate.sql
+
+# Generate from a specific point
+dotnet ef migrations script FromMigration ToMigration -o migrate.sql
+```
+
+<DotnetCodePreview
+  title="Idempotent Script Example"
+  code={`-- Generated with: dotnet ef migrations script --idempotent
+
+IF NOT EXISTS (SELECT * FROM __EFMigrationsHistory 
+               WHERE MigrationId = '20241216_AddProductPrice')
+BEGIN
+    ALTER TABLE Products ADD Price decimal(18,2) NOT NULL DEFAULT 0;
+    
+    INSERT INTO __EFMigrationsHistory (MigrationId, ProductVersion)
+    VALUES ('20241216_AddProductPrice', '8.0.0');
+END;
+
+-- This is safe to run multiple times!
+-- The IF NOT EXISTS check prevents duplicate execution.`}
+  steps={[
+    {
+      lineNumbers: [3, 4],
+      highlight: "Idempotent Check",
+      explanation: "Only runs if the migration hasn't been applied yet"
+    },
+    {
+      lineNumbers: [6],
+      highlight: "Schema Change",
+      explanation: "The actual database modification"
+    },
+    {
+      lineNumbers: [8, 9],
+      highlight: "Record History",
+      explanation: "Marks the migration as applied in the history table"
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="migration-file-purpose">
+  <Question>What files are generated when you run 'dotnet ef migrations add'?</Question>
+  <Answer>Only the migration file</Answer>
+  <Answer correct>Migration file, Designer file, and updated ModelSnapshot</Answer>
+  <Answer>SQL script file</Answer>
+  <Answer>Connection string file</Answer>
+</Quiz>
+
+<Quiz id="migrations-history-table">
+  <Question>What does the __EFMigrationsHistory table track?</Question>
+  <Answer>All database tables in your schema</Answer>
+  <Answer>Connection strings for each environment</Answer>
+  <Answer correct>Which migrations have been applied to the database</Answer>
+  <Answer>User authentication information</Answer>
+</Quiz>
+
+<Quiz id="production-migrations">
+  <Question>What's the recommended way to apply migrations in production?</Question>
+  <Answer>Run 'dotnet ef database update' directly on the server</Answer>
+  <Answer correct>Generate SQL scripts, review them, and run through your deployment pipeline</Answer>
+  <Answer>Manually recreate the database each deployment</Answer>
+  <Answer>Copy the development database to production</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Command |
+|:--------|:------------|
+| **Create Migration** | `dotnet ef migrations add <Name>` |
+| **Apply Migrations** | `dotnet ef database update` |
+| **Generate SQL Script** | `dotnet ef migrations script` |
+| **Idempotent Script** | `dotnet ef migrations script --idempotent` |
+| **Target Specific** | `dotnet ef database update <MigrationName>` |
+
+<KeyConcept title="Next Steps">
+You now know how to create and apply migrations! Next, learn **Migration Best Practices** to manage migrations like a pro in team environments.
+</KeyConcept>
+
+<ProgressCheckpoint section="migration-scripts" xpReward={15} />

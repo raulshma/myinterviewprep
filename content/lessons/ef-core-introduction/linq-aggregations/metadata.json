@@ -1,0 +1,18 @@
+{
+  "id": "linq-aggregations",
+  "title": "Aggregations in LINQ",
+  "description": "Master aggregate functions like Count(), Sum(), Average(), Min(), and Max() for data analysis in EF Core.",
+  "milestone": "querying-linq",
+  "order": 4,
+  "sections": [
+    "counting-operations",
+    "sum-average",
+    "min-max",
+    "advanced-aggregations"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 18,
+  "xpReward": 80,
+  "prerequisites": ["linq-joins-grouping"],
+  "tags": ["ef-core", "linq", "count", "sum", "average", "aggregations"]
+}

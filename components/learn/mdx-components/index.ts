@@ -20,6 +20,10 @@ import { ChangeTrackingVisualizer as ChangeTrackingVisualizerBase } from './ef-c
 import { RelationshipDiagram as RelationshipDiagramBase } from './ef-core/relationship-diagram';
 import { QueryExecutionVisualizer as QueryExecutionVisualizerBase } from './ef-core/query-execution-visualizer';
 import { MigrationFlowDiagram as MigrationFlowDiagramBase } from './ef-core/migration-flow-diagram';
+import { EntityConfigVisualizer as EntityConfigVisualizerBase } from './ef-core/entity-config-visualizer';
+import { AnnotationBuilder as AnnotationBuilderBase } from './ef-core/annotation-builder';
+import { FluentApiBuilder as FluentApiBuilderBase } from './ef-core/fluent-api-builder';
+import { KeyIndexVisualizer as KeyIndexVisualizerBase } from './ef-core/key-index-visualizer';
 
 // Wrap interactive components with error boundaries
 export const InfoBox = withErrorBoundary(InfoBoxBase, 'InfoBox');
@@ -39,6 +43,10 @@ export const ChangeTrackingVisualizer = withErrorBoundary(ChangeTrackingVisualiz
 export const RelationshipDiagram = withErrorBoundary(RelationshipDiagramBase, 'RelationshipDiagram');
 export const QueryExecutionVisualizer = withErrorBoundary(QueryExecutionVisualizerBase, 'QueryExecutionVisualizer');
 export const MigrationFlowDiagram = withErrorBoundary(MigrationFlowDiagramBase, 'MigrationFlowDiagram');
+export const EntityConfigVisualizer = withErrorBoundary(EntityConfigVisualizerBase, 'EntityConfigVisualizer');
+export const AnnotationBuilder = withErrorBoundary(AnnotationBuilderBase, 'AnnotationBuilder');
+export const FluentApiBuilder = withErrorBoundary(FluentApiBuilderBase, 'FluentApiBuilder');
+export const KeyIndexVisualizer = withErrorBoundary(KeyIndexVisualizerBase, 'KeyIndexVisualizer');
 
 // Re-export non-wrapped components
 export { Question, Answer };

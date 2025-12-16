@@ -1,0 +1,18 @@
+{
+  "id": "keys-and-indexes",
+  "title": "Primary Keys and Indexes",
+  "description": "Master primary keys, composite keys, alternate keys, and database indexes - essential concepts for data integrity and query performance.",
+  "milestone": "entity-configuration",
+  "order": 3,
+  "sections": [
+    "primary-keys",
+    "composite-keys",
+    "alternate-keys",
+    "indexes"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 20,
+  "xpReward": 85,
+  "prerequisites": ["fluent-api-basics"],
+  "tags": ["ef-core", "primary-key", "indexes", "composite-key", "performance", "dotnet"]
+}

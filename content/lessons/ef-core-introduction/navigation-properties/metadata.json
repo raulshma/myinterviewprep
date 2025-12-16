@@ -1,0 +1,18 @@
+{
+  "id": "navigation-properties",
+  "title": "Navigation Properties - Your Data's GPS",
+  "description": "Master navigation properties - the powerful feature that lets you traverse relationships between entities smoothly and intuitively.",
+  "milestone": "entity-relationships",
+  "order": 3,
+  "sections": [
+    "nav-props-concept",
+    "reference-vs-collection",
+    "loading-strategies",
+    "best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 16,
+  "xpReward": 75,
+  "prerequisites": ["many-to-many"],
+  "tags": ["ef-core", "navigation-properties", "relationships", "loading", "dotnet"]
+}

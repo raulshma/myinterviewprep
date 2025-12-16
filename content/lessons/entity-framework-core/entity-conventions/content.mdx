@@ -1,0 +1,274 @@
+# Entity Classes and Conventions
+
+EF Core is smart! It uses **conventions** - a set of rules that automatically configure your entities based on patterns in your code. This means less configuration work for you!
+
+---
+
+## Section 1: What Are Conventions?
+
+### The Magic of Convention Over Configuration
+
+Think of conventions like a smart assistant who knows your preferences. Instead of telling them every detail, they make reasonable assumptions based on patterns they recognize.
+
+<InfoBox type="info">
+**Convention over Configuration** is a design principle where the framework makes sensible default decisions, so you only need to specify unconventional aspects.
+</InfoBox>
+
+### How EF Core Reads Your Code
+
+When EF Core sees your entity classes, it automatically:
+
+1. **Discovers entities** - Classes with DbSet properties become tables
+2. **Identifies keys** - Properties named `Id` or `[ClassName]Id` become primary keys
+3. **Maps properties** - C# types map to appropriate SQL types
+4. **Detects relationships** - Navigation properties create foreign keys
+
+<EntityConfigVisualizer />
+
+<KeyConcept title="Why Conventions Matter">
+Conventions let you write clean, simple entity classes without cluttering them with configuration attributes. EF Core "just works" for most common scenarios!
+</KeyConcept>
+
+<ProgressCheckpoint section="what-are-conventions" xpReward={20} />
+
+---
+
+## Section 2: Naming Conventions
+
+### Primary Key Detection
+
+EF Core automatically identifies primary keys using these naming patterns:
+
+<DotnetCodePreview
+  title="Primary Key Conventions"
+  code={`// Pattern 1: Property named "Id"
+public class Customer
+{
+    public int Id { get; set; }  // ✅ Auto-detected as PK
+    public string Name { get; set; }
+}
+
+// Pattern 2: Property named "[ClassName]Id"
+public class Product
+{
+    public int ProductId { get; set; }  // ✅ Auto-detected as PK
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+}
+
+// Pattern 3: Both work with different types
+public class Order
+{
+    public Guid Id { get; set; }  // ✅ GUID primary key
+    public DateTime OrderDate { get; set; }
+}`}
+  steps={[
+    {
+      lineNumbers: [3, 4],
+      highlight: "Id Convention",
+      explanation: "Any property named 'Id' (case-insensitive) is automatically the primary key"
+    },
+    {
+      lineNumbers: [10, 11],
+      highlight: "ClassNameId Convention",
+      explanation: "ProductId follows the [ClassName]Id pattern - also auto-detected as PK"
+    },
+    {
+      lineNumbers: [18, 19],
+      highlight: "Type Flexibility",
+      explanation: "Works with int, long, Guid, string - EF Core handles value generation appropriately"
+    }
+  ]}
+/>
+
+### Table and Column Naming
+
+By default, EF Core uses your class and property names for database objects:
+
+| C# Name | Database Name | Convention |
+|:--------|:--------------|:-----------|
+| `Customer` class | `Customers` table | Pluralized (with DbSet) |
+| `Name` property | `Name` column | Same as property |
+| `OrderDate` property | `OrderDate` column | Same as property |
+
+<InfoBox type="tip">
+**Pro Tip:** EF Core uses the DbSet property name for the table. If you have `DbSet<Customer> Customers`, the table is "Customers". If you use `DbSet<Customer> CustomerTable`, the table becomes "CustomerTable".
+</InfoBox>
+
+<ProgressCheckpoint section="naming-conventions" xpReward={20} />
+
+---
+
+## Section 3: Type Mapping Conventions
+
+### C# to SQL Type Mapping
+
+EF Core automatically maps C# types to appropriate database types:
+
+<DotnetCodePreview
+  title="Type Mapping Conventions"
+  code={`public class Product
+{
+    public int Id { get; set; }           // → int / INTEGER
+    public string Name { get; set; }      // → nvarchar(max) / TEXT
+    public decimal Price { get; set; }    // → decimal(18,2)
+    public double Rating { get; set; }    // → float
+    public bool IsActive { get; set; }    // → bit / BOOLEAN
+    public DateTime CreatedAt { get; set; } // → datetime2
+    public Guid TrackingId { get; set; }  // → uniqueidentifier
+    public byte[] Image { get; set; }     // → varbinary(max)
+}
+
+// Nullable types
+public class Order
+{
+    public int Id { get; set; }
+    public DateTime? ShippedDate { get; set; }  // → datetime2 NULL
+    public string Notes { get; set; }           // → nvarchar(max) NULL
+}`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "Integer Types",
+      explanation: "int, long, short map to their SQL equivalents with appropriate sizes"
+    },
+    {
+      lineNumbers: [4],
+      highlight: "Strings",
+      explanation: "string maps to nvarchar(max) by default - unlimited length Unicode text"
+    },
+    {
+      lineNumbers: [5],
+      highlight: "Decimals",
+      explanation: "decimal maps to decimal(18,2) - good for money, but you may want to customize precision"
+    },
+    {
+      lineNumbers: [16, 17],
+      highlight: "Nullable Types",
+      explanation: "DateTime? and reference types (string) are nullable in the database by default"
+    }
+  ]}
+/>
+
+### Required vs Optional Properties
+
+<Comparison
+  title="Nullability Conventions"
+  items={[
+    {
+      label: "Value Types (int, bool, DateTime)",
+      description: "Required by default - cannot be NULL in database",
+      isCorrect: true
+    },
+    {
+      label: "Nullable Value Types (int?, DateTime?)",
+      description: "Optional - can be NULL in database",
+      isCorrect: true
+    },
+    {
+      label: "Reference Types (string, class)",
+      description: "Optional by default (unless using nullable reference types)",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**C# 8+ Nullable Reference Types:** If enabled, `string` is required and `string?` is optional. This aligns C# nullability with database nullability!
+</InfoBox>
+
+<ProgressCheckpoint section="type-conventions" xpReward={20} />
+
+---
+
+## Section 4: Relationship Conventions
+
+### Navigation Property Detection
+
+EF Core automatically detects relationships through navigation properties:
+
+<DotnetCodePreview
+  title="Relationship Conventions"
+  code={`// One-to-Many: Blog has many Posts
+public class Blog
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    
+    // Navigation property - collection
+    public List<Post> Posts { get; set; } = new();
+}
+
+public class Post
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    
+    // Foreign key - auto-detected by naming
+    public int BlogId { get; set; }
+    
+    // Navigation property - reference
+    public Blog Blog { get; set; }
+}
+
+// EF Core automatically creates:
+// - Foreign key: Posts.BlogId → Blogs.Id
+// - Index on BlogId for query performance`}
+  steps={[
+    {
+      lineNumbers: [7, 8],
+      highlight: "Collection Navigation",
+      explanation: "List<Post> tells EF Core: 'One Blog has many Posts'"
+    },
+    {
+      lineNumbers: [16, 17],
+      highlight: "Foreign Key Convention",
+      explanation: "BlogId follows [NavigationName]Id pattern - auto-detected as FK to Blog"
+    },
+    {
+      lineNumbers: [19, 20],
+      highlight: "Reference Navigation",
+      explanation: "Blog property creates the other side of the relationship"
+    }
+  ]}
+/>
+
+### Foreign Key Naming Patterns
+
+EF Core recognizes these foreign key patterns:
+
+| Pattern | Example | Detected As |
+|:--------|:--------|:------------|
+| `[NavigationName]Id` | `BlogId` | FK to Blog entity |
+| `[NavigationName][PK]` | `BlogBlogId` | FK to Blog entity |
+| `[TargetType]Id` | `BlogId` | FK to Blog entity |
+
+<Quiz id="convention-pk-quiz">
+  <Question>Which property name will EF Core automatically detect as a primary key?</Question>
+  <Answer>Key</Answer>
+  <Answer correct>ProductId</Answer>
+  <Answer>PrimaryKey</Answer>
+  <Answer>ProductKey</Answer>
+</Quiz>
+
+<Quiz id="convention-fk-quiz">
+  <Question>In a Post class with a Blog navigation property, which property name will be auto-detected as the foreign key?</Question>
+  <Answer>BlogKey</Answer>
+  <Answer>FK_Blog</Answer>
+  <Answer correct>BlogId</Answer>
+  <Answer>Blog_Id</Answer>
+</Quiz>
+
+<Quiz id="convention-nullable-quiz">
+  <Question>By default, which C# type creates a required (NOT NULL) database column?</Question>
+  <Answer>string</Answer>
+  <Answer>DateTime?</Answer>
+  <Answer correct>int</Answer>
+  <Answer>int?</Answer>
+</Quiz>
+
+### Summary
+
+| Convention | What EF Core Does |
+|:-----------|:------------------|
+| **Primary Key** | Detects `I

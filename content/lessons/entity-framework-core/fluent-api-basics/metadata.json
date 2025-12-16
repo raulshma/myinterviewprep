@@ -1,0 +1,18 @@
+{
+  "id": "fluent-api-basics",
+  "title": "Fluent API Basics",
+  "description": "Learn the Fluent API - EF Core's most powerful configuration method that keeps your entity classes clean while providing full control over database mapping.",
+  "milestone": "entity-configuration",
+  "order": 2,
+  "sections": [
+    "what-is-fluent-api",
+    "entity-configuration",
+    "property-configuration",
+    "best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 22,
+  "xpReward": 90,
+  "prerequisites": ["data-annotations"],
+  "tags": ["ef-core", "fluent-api", "configuration", "modelbuilder", "dotnet"]
+}

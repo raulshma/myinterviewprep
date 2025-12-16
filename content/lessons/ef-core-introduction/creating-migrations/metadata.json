@@ -1,0 +1,18 @@
+{
+  "id": "creating-migrations",
+  "title": "Creating and Applying Migrations",
+  "description": "Master the complete workflow of creating and applying EF Core migrations to evolve your database schema.",
+  "milestone": "migrations",
+  "order": 1,
+  "sections": [
+    "migration-workflow",
+    "add-migration-command",
+    "update-database-command",
+    "migration-scripts"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 18,
+  "xpReward": 80,
+  "prerequisites": ["code-first-migrations"],
+  "tags": ["ef-core", "migrations", "database", "cli"]
+}

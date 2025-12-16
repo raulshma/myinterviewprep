@@ -1,0 +1,18 @@
+{
+  "id": "linq-filtering-sorting",
+  "title": "Filtering and Sorting with LINQ",
+  "description": "Master filtering with Where(), sorting with OrderBy(), and pagination patterns in EF Core LINQ queries.",
+  "milestone": "querying-linq",
+  "order": 1,
+  "sections": [
+    "where-fundamentals",
+    "advanced-filtering",
+    "sorting-ordering",
+    "pagination-patterns"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 20,
+  "xpReward": 85,
+  "prerequisites": ["querying-with-linq"],
+  "tags": ["ef-core", "linq", "where", "orderby", "filtering", "sorting"]
+}

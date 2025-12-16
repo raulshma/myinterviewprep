@@ -1,0 +1,18 @@
+{
+  "id": "many-to-many",
+  "title": "Many-to-Many Relationships - Connecting Both Sides",
+  "description": "Learn to model complex relationships where both entities can have multiple related entities, with skip navigations and join entities.",
+  "milestone": "entity-relationships",
+  "order": 2,
+  "sections": [
+    "many-to-many-concept",
+    "skip-navigations",
+    "join-entities",
+    "managing-relationships"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 20,
+  "xpReward": 85,
+  "prerequisites": ["one-to-many"],
+  "tags": ["ef-core", "relationships", "many-to-many", "join-table", "dotnet"]
+}

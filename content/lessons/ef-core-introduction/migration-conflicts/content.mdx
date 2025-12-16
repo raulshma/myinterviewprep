@@ -1,0 +1,329 @@
+# Handling Migration Conflicts
+
+Migration conflicts are like **traffic jams at an intersection** - multiple developers trying to change the database at the same time. Let's learn how to navigate them safely!
+
+---
+
+## Section 1: Why Conflicts Happen
+
+### The Intersection Problem 🚗
+
+Imagine two developers, Alice and Bob, both adding features:
+
+<DotnetCodePreview
+  title="Conflict Scenario"
+  code={`// ALICE adds a new column:
+public class Customer
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Phone { get; set; }    // ← Alice adds this
+}
+// Creates: 20241216_100000_AddCustomerPhone
+
+// BOB adds a different column (at the same time):
+public class Customer
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public bool IsVip { get; set; }      // ← Bob adds this
+}
+// Creates: 20241216_100500_AddCustomerVipStatus
+
+// Both updated the ModelSnapshot independently!
+// When they merge, CONFLICT happens! 💥`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7],
+      highlight: "Alice's Change",
+      explanation: "Alice adds Phone column and updates the model snapshot"
+    },
+    {
+      lineNumbers: [11, 12, 13, 14, 15, 16],
+      highlight: "Bob's Change",
+      explanation: "Bob adds IsVip - but his snapshot doesn't know about Phone!"
+    },
+    {
+      lineNumbers: [19, 20],
+      highlight: "The Problem",
+      explanation: "Both snapshots have different versions of the model"
+    }
+  ]}
+/>
+
+### Understanding the Model Snapshot
+
+<InfoBox type="info">
+The **ModelSnapshot** is EF Core's record of what the database should look like. It's used to calculate what changed when you add a new migration. When two developers modify it independently, Git can't auto-merge!
+</InfoBox>
+
+| File | Purpose | Conflict Risk |
+|:-----|:--------|:-------------|
+| `Migration file` | Contains Up/Down code | Low - usually different |
+| `Designer file` | Migration metadata | Low - auto-generated |
+| `ModelSnapshot.cs` | Current model state | **HIGH - same file!** |
+
+<ProgressCheckpoint section="why-conflicts-happen" xpReward={20} />
+
+---
+
+## Section 2: Detecting Conflicts
+
+### Signs of a Migration Conflict
+
+<Comparison
+  title="Conflict Warning Signs"
+  items={[
+    {
+      label: "⚠️ Git merge conflict in ModelSnapshot.cs",
+      description: "The most common sign - Git can't auto-merge the snapshot",
+      isCorrect: false
+    },
+    {
+      label: "⚠️ 'The model has changed' error",
+      description: "EF Core detects snapshot doesn't match your model",
+      isCorrect: false
+    },
+    {
+      label: "⚠️ Duplicate migration timestamps",
+      description: "Two migrations with very close timestamps after merge",
+      isCorrect: false
+    },
+    {
+      label: "✅ All clear - no conflicts!",
+      description: "Pull worked cleanly and 'dotnet build' succeeds",
+      isCorrect: true
+    }
+  ]}
+/>
+
+### The Error Messages
+
+<DotnetCodePreview
+  title="Common Conflict Errors"
+  code={`// Error 1: Git merge conflict
+CONFLICT (content): Merge conflict in 
+  Migrations/AppDbContextModelSnapshot.cs
+Automatic merge failed; fix conflicts and then commit.
+
+// Error 2: Model out of sync
+An operation was scaffolded that may result in the loss of data.
+Please review the migration for accuracy.
+
+// Error 3: Pending model changes
+The model for context 'AppDbContext' has changed since 
+the database was created. Add a new migration using:
+dotnet ef migrations add <name>
+
+// Error 4: Multiple pending migrations
+Migrations [20241216_AddPhone, 20241216_AddVipStatus] 
+have not been applied to the database.`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Git Conflict",
+      explanation: "Git couldn't merge the ModelSnapshot file automatically"
+    },
+    {
+      lineNumbers: [7, 8],
+      highlight: "Data Loss Warning",
+      explanation: "EF Core warns you to review - a column might be dropped!"
+    },
+    {
+      lineNumbers: [11, 12, 13],
+      highlight: "Model Changed",
+      explanation: "Your code doesn't match the last migration snapshot"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Never ignore the "data loss" warning!** Always review the migration to ensure you're not accidentally dropping columns or tables that contain data.
+</InfoBox>
+
+<ProgressCheckpoint section="detecting-conflicts" xpReward={20} />
+
+---
+
+## Section 3: Resolving Conflicts
+
+### The Safe Resolution Method
+
+When conflicts occur, follow this systematic approach:
+
+<DotnetCodePreview
+  title="Conflict Resolution Steps"
+  code={`# Step 1: Abort any ongoing merge if needed
+git merge --abort
+
+# Step 2: Make sure you're on your feature branch
+git checkout my-feature
+
+# Step 3: Remove YOUR pending migration (if any)
+dotnet ef migrations remove
+
+# Step 4: Merge/Rebase from main
+git pull origin main --rebase
+
+# Step 5: Resolve any file conflicts (not snapshot)
+# Edit conflicting files, then:
+git add .
+git rebase --continue
+
+# Step 6: Recreate your migration
+dotnet ef migrations add MyFeatureChange
+
+# Step 7: Verify the migration
+dotnet ef migrations script --no-transactions
+# Review the generated SQL!`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Abort if Stuck",
+      explanation: "Start fresh if you're in a bad merge state"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "Remove Your Migration",
+      explanation: "This also reverts the snapshot to the previous state"
+    },
+    {
+      lineNumbers: [11],
+      highlight: "Get Latest Changes",
+      explanation: "Pull their migrations and snapshot updates"
+    },
+    {
+      lineNumbers: [19],
+      highlight: "Recreate Migration",
+      explanation: "Now your migration is based on the updated snapshot!"
+    }
+  ]}
+/>
+
+### The ModelSnapshot Golden Rule
+
+<KeyConcept title="Never Manually Edit the Snapshot">
+The `ModelSnapshot.cs` file is auto-generated. If you have a conflict, **don't try to manually merge it**. Remove your migration and recreate it instead!
+</KeyConcept>
+
+### Visual: Resolution Flow
+
+```
+Your Migration (outdated snapshot)
+        ↓
+    REMOVE it
+        ↓
+   Pull latest
+        ↓
+Recreate migration (fresh snapshot)
+        ↓
+    ✅ Success!
+```
+
+<ProgressCheckpoint section="resolving-conflicts" xpReward={25} />
+
+---
+
+## Section 4: Prevention Strategies
+
+### Stop Conflicts Before They Start
+
+<DotnetCodePreview
+  title="Prevention Checklist"
+  code={`// ✅ Before creating ANY migration:
+git pull origin main
+dotnet build
+
+// ✅ Use a migration workflow:
+// 1. Create migration
+// 2. Test locally
+// 3. Commit and push immediately
+// 4. Don't let migrations sit uncommitted!
+
+// ✅ Communicate with your team:
+// "Hey team, I'm about to add a migration for Orders table"
+// Slack/Teams message takes 10 seconds, saves hours of conflict!
+
+// ✅ Consider feature flags for large changes:
+// Instead of one big migration:
+// - Add nullable column (Migration 1)
+// - Deploy and migrate data
+// - Make column required (Migration 2)`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Always Pull First",
+      explanation: "Get the latest snapshot before creating migrations"
+    },
+    {
+      lineNumbers: [6, 7, 8, 9],
+      highlight: "Quick Commit Cycle",
+      explanation: "Don't let migrations sit - commit and push fast!"
+    },
+    {
+      lineNumbers: [12, 13],
+      highlight: "Team Communication",
+      explanation: "A quick message prevents painful conflicts"
+    },
+    {
+      lineNumbers: [16, 17, 18, 19],
+      highlight: "Phased Migrations",
+      explanation: "Break big changes into small, safe steps"
+    }
+  ]}
+/>
+
+### Team Practices That Work
+
+| Practice | Benefit |
+|:---------|:--------|
+| **Morning sync** | Know who's working on what |
+| **Feature branches** | Isolate migration work |
+| **Quick PRs** | Merge migrations fast |
+| **Shared dev database** | Catch issues early |
+| **CI/CD testing** | Validate migrations automatically |
+
+<InfoBox type="tip">
+**Pro Tip:** Set up a CI job that runs `dotnet ef migrations script` and fails if there are pending model changes without a migration. This catches issues before merge!
+</InfoBox>
+
+### Quick Knowledge Check
+
+<Quiz id="snapshot-conflict">
+  <Question>Why do migration conflicts usually happen in the ModelSnapshot file?</Question>
+  <Answer>The file is too large</Answer>
+  <Answer correct>Multiple developers update it independently with different model states</Answer>
+  <Answer>EF Core has a bug</Answer>
+  <Answer>Git doesn't support C# files</Answer>
+</Quiz>
+
+<Quiz id="resolve-conflict">
+  <Question>What's the safest way to resolve a ModelSnapshot conflict?</Question>
+  <Answer correct>Remove your migration, pull latest, and recreate it</Answer>
+  <Answer>Manually edit the ModelSnapshot to merge changes</Answer>
+  <Answer>Delete the ModelSnapshot file entirely</Answer>
+  <Answer>Ignore the conflict and force push</Answer>
+</Quiz>
+
+<Quiz id="prevent-conflicts">
+  <Question>What's the best practice before creating a new migration?</Question>
+  <Answer>Delete all existing migrations</Answer>
+  <Answer>Create a backup of the database</Answer>
+  <Answer correct>Pull the latest changes from the main branch</Answer>
+  <Answer>Restart Visual Studio</Answer>
+</Quiz>
+
+### Summary
+
+| Topic | Key Takeaway |
+|:------|:-------------|
+| **Why Conflicts** | Multiple devs updating ModelSnapshot independently |
+| **Detection** | Git conflicts, model changed errors |
+| **Resolution** | Remove → Pull → Recreate (never edit snapshot!) |
+| **Prevention** | Pull first, quick commits, team communication |
+
+<KeyConcept title="Conflict Champion!">
+You can now handle migration conflicts like a pro! Next, learn how to **Revert Migrations** when you need to undo changes.
+</KeyConcept>
+
+<ProgressCheckpoint section="prevention-strategies" xpReward={15} />

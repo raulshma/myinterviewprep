@@ -1,0 +1,18 @@
+{
+  "id": "query-performance-basics",
+  "title": "Query Performance Considerations",
+  "description": "Optimize your EF Core queries with AsNoTracking, projections, eager loading, and learn to avoid common performance pitfalls.",
+  "milestone": "querying-linq",
+  "order": 5,
+  "sections": [
+    "asnotracking-basics",
+    "n-plus-one-problem",
+    "projection-optimization",
+    "query-debugging"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 22,
+  "xpReward": 90,
+  "prerequisites": ["linq-aggregations"],
+  "tags": ["ef-core", "linq", "performance", "optimization", "asnotracking"]
+}

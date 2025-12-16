@@ -1,0 +1,18 @@
+{
+  "id": "linq-projections",
+  "title": "Projections and Transformations",
+  "description": "Learn to select specific columns, create DTOs, and transform data shapes with Select() and SelectMany() in EF Core.",
+  "milestone": "querying-linq",
+  "order": 2,
+  "sections": [
+    "select-basics",
+    "anonymous-types",
+    "dto-projections",
+    "selectmany-flattening"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 20,
+  "xpReward": 85,
+  "prerequisites": ["linq-filtering-sorting"],
+  "tags": ["ef-core", "linq", "select", "projections", "dto", "selectmany"]
+}

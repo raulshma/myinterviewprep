@@ -1,0 +1,18 @@
+{
+  "id": "reverting-migrations",
+  "title": "Reverting Migrations",
+  "description": "Master techniques for safely rolling back migrations and undoing database changes.",
+  "milestone": "migrations",
+  "order": 4,
+  "sections": [
+    "when-to-revert",
+    "revert-commands",
+    "up-down-methods",
+    "emergency-rollback"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 12,
+  "xpReward": 70,
+  "prerequisites": ["migration-conflicts"],
+  "tags": ["ef-core", "migrations", "rollback", "recovery"]
+}

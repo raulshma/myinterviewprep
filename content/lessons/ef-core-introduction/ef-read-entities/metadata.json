@@ -1,0 +1,20 @@
+{
+  "id": "ef-read-entities",
+  "title": "Reading and Querying Entities",
+  "description": "Master the art of retrieving data from your database using EF Core's powerful querying capabilities with LINQ.",
+  "milestone": "crud-operations",
+  "order": 1,
+  "sections": [
+    "introduction",
+    "basic-queries",
+    "filtering-sorting",
+    "single-entity-queries",
+    "projections",
+    "best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 20,
+  "xpReward": 95,
+  "prerequisites": ["ef-create-entities"],
+  "tags": ["ef-core", "crud", "read", "query", "linq", "dotnet"]
+}

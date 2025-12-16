@@ -1,0 +1,19 @@
+{
+  "id": "ef-delete-entities",
+  "title": "Deleting Entities in EF Core",
+  "description": "Learn how to remove entities from your database, understand cascade delete behavior, and implement soft delete patterns.",
+  "milestone": "crud-operations",
+  "order": 3,
+  "sections": [
+    "introduction",
+    "remove-methods",
+    "cascade-delete",
+    "soft-delete",
+    "best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 16,
+  "xpReward": 85,
+  "prerequisites": ["ef-update-entities"],
+  "tags": ["ef-core", "crud", "delete", "remove", "cascade", "dotnet"]
+}

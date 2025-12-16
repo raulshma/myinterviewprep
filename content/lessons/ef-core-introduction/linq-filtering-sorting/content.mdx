@@ -1,0 +1,441 @@
+# Filtering and Sorting with LINQ
+
+Master the art of finding exactly what you need! Learn how to filter, sort, and paginate data efficiently using EF Core LINQ.
+
+---
+
+## Section 1: Where() Fundamentals
+
+### The Librarian Analogy 📚
+
+Imagine you're a librarian with millions of books. When someone asks for "all mystery novels published after 2020," you don't bring them every book and let them search. Instead, you go straight to the right section, check the dates, and bring back exactly what they need.
+
+That's what `Where()` does in EF Core - it tells the database **exactly** what data to return, so you're not loading millions of rows into memory!
+
+<QueryExecutionVisualizer
+  title="Where() in Action"
+  steps={[
+    {
+      linq: `var activeProducts = context.Products
+    .Where(p => p.IsActive)
+    .ToList();`,
+      sql: `SELECT [p].[Id], [p].[Name], [p].[Price], [p].[IsActive]
+FROM [Products] AS [p]
+WHERE [p].[IsActive] = 1`,
+      explanation: "A simple boolean filter. EF Core translates IsActive to a WHERE clause checking for 1 (true)."
+    },
+    {
+      linq: `var expensiveItems = context.Products
+    .Where(p => p.Price > 100.00m)
+    .ToList();`,
+      sql: `SELECT [p].[Id], [p].[Name], [p].[Price], [p].[IsActive]
+FROM [Products] AS [p]
+WHERE [p].[Price] > 100.00`,
+      explanation: "Numeric comparison. The database handles the comparison directly - no data loaded until the filter is applied!"
+    }
+  ]}
+/>
+
+### Basic Comparison Operators
+
+All your familiar C# comparison operators work in LINQ:
+
+<DotnetCodePreview
+  title="Comparison Operators"
+  code={`// Equality
+var specificProduct = context.Products
+    .Where(p => p.CategoryId == 5)
+    .ToList();
+
+// Greater than / Less than
+var expensive = context.Products
+    .Where(p => p.Price > 50.00m)
+    .ToList();
+
+var cheap = context.Products
+    .Where(p => p.Price <= 20.00m)
+    .ToList();
+
+// Not equal
+var nonElectronics = context.Products
+    .Where(p => p.Category != "Electronics")
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Equality (==)",
+      explanation: "Translates to WHERE CategoryId = 5"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "Greater Than (>)",
+      explanation: "Translates to WHERE Price > 50.00"
+    },
+    {
+      lineNumbers: [11, 12, 13],
+      highlight: "Less Than or Equal (<=)",
+      explanation: "Translates to WHERE Price <= 20.00"
+    },
+    {
+      lineNumbers: [16, 17, 18],
+      highlight: "Not Equal (!=)",
+      explanation: "Translates to WHERE Category <> 'Electronics'"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Pro Tip:** The comparison happens in the database, not in your application! This means filtering 1 million rows down to 100 only transfers 100 rows over the network.
+</InfoBox>
+
+<ProgressCheckpoint section="where-fundamentals" xpReward={20} />
+
+---
+
+## Section 2: Advanced Filtering Techniques
+
+### Combining Conditions (AND/OR)
+
+Real-world filters are rarely just one condition. Let's combine them!
+
+<DotnetCodePreview
+  title="AND & OR Conditions"
+  code={`// AND - Both conditions must be true
+var premiumActiveProducts = context.Products
+    .Where(p => p.IsActive && p.Price > 100.00m)
+    .ToList();
+
+// OR - Either condition can be true
+var specialProducts = context.Products
+    .Where(p => p.IsFeatured || p.Price < 10.00m)
+    .ToList();
+
+// Complex combinations with parentheses
+var targetProducts = context.Products
+    .Where(p => p.IsActive && 
+               (p.Category == "Electronics" || p.Category == "Books"))
+    .ToList();
+
+// Chaining Where() - same as AND
+var filtered = context.Products
+    .Where(p => p.IsActive)
+    .Where(p => p.Price > 50.00m)  // Same as: IsActive && Price > 50
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "AND with &&",
+      explanation: "SQL: WHERE IsActive = 1 AND Price > 100.00"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "OR with ||",
+      explanation: "SQL: WHERE IsFeatured = 1 OR Price < 10.00"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15],
+      highlight: "Grouped Conditions",
+      explanation: "Parentheses control precedence: Active AND (Electronics OR Books)"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21],
+      highlight: "Chained Where()",
+      explanation: "Multiple Where() calls are combined with AND - useful for dynamic filters!"
+    }
+  ]}
+/>
+
+### String Operations
+
+Searching text? EF Core has you covered!
+
+<QueryExecutionVisualizer
+  title="String Filtering to SQL"
+  steps={[
+    {
+      linq: `var results = context.Customers
+    .Where(c => c.Name.Contains("Smith"))
+    .ToList();`,
+      sql: `SELECT [c].[Id], [c].[Name], [c].[Email]
+FROM [Customers] AS [c]
+WHERE [c].[Name] LIKE N'%Smith%'`,
+      explanation: "Contains() becomes LIKE with wildcards on both sides - finds 'Smith', 'Smithson', 'John Smith', etc."
+    },
+    {
+      linq: `var results = context.Customers
+    .Where(c => c.Email.StartsWith("admin"))
+    .ToList();`,
+      sql: `SELECT [c].[Id], [c].[Name], [c].[Email]
+FROM [Customers] AS [c]
+WHERE [c].[Email] LIKE N'admin%'`,
+      explanation: "StartsWith() adds wildcard only at the end - more efficient for indexed columns!"
+    },
+    {
+      linq: `var results = context.Customers
+    .Where(c => c.Email.EndsWith(".com"))
+    .ToList();`,
+      sql: `SELECT [c].[Id], [c].[Name], [c].[Email]
+FROM [Customers] AS [c]
+WHERE [c].[Email] LIKE N'%.com'`,
+      explanation: "EndsWith() adds wildcard only at the start."
+    }
+  ]}
+/>
+
+### Working with Dates and Nulls
+
+<DotnetCodePreview
+  title="Date and Null Filtering"
+  code={`// Date comparisons
+var recentOrders = context.Orders
+    .Where(o => o.OrderDate >= DateTime.Today.AddDays(-30))
+    .ToList();
+
+// Date range
+var marchOrders = context.Orders
+    .Where(o => o.OrderDate >= new DateTime(2024, 3, 1) &&
+                o.OrderDate < new DateTime(2024, 4, 1))
+    .ToList();
+
+// Null checks
+var unassignedTasks = context.Tasks
+    .Where(t => t.AssignedTo == null)
+    .ToList();
+
+// Has value (not null)
+var assignedTasks = context.Tasks
+    .Where(t => t.AssignedTo != null)
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Recent Date Filter",
+      explanation: "Last 30 days - calculated server-side for accuracy"
+    },
+    {
+      lineNumbers: [7, 8, 9, 10],
+      highlight: "Date Range",
+      explanation: "Use >= start and < next month start to include entire month"
+    },
+    {
+      lineNumbers: [13, 14, 15],
+      highlight: "Is Null",
+      explanation: "Check for null values with == null"
+    },
+    {
+      lineNumbers: [18, 19, 20],
+      highlight: "Is Not Null",
+      explanation: "Check for non-null values with != null"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Watch Out!** `DateTime.Now` is evaluated at query execution time. If you build a query and execute it later, you might get unexpected results. For consistent behavior, store the date in a variable first.
+</InfoBox>
+
+<ProgressCheckpoint section="advanced-filtering" xpReward={25} />
+
+---
+
+## Section 3: Sorting and Ordering
+
+### OrderBy and OrderByDescending
+
+Think of sorting like organizing a playlist - you might want songs alphabetically, by release date, or by popularity.
+
+<DotnetCodePreview
+  title="Sorting Basics"
+  code={`// Ascending order (A-Z, 0-9, oldest first)
+var alphabeticalProducts = context.Products
+    .OrderBy(p => p.Name)
+    .ToList();
+
+// Descending order (Z-A, 9-0, newest first)
+var newestFirst = context.Products
+    .OrderByDescending(p => p.CreatedAt)
+    .ToList();
+
+// Multiple sort columns with ThenBy
+var sortedProducts = context.Products
+    .OrderBy(p => p.Category)           // First: by category
+    .ThenByDescending(p => p.Price)     // Then: expensive first within each category
+    .ThenBy(p => p.Name)                // Finally: alphabetically
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "OrderBy (Ascending)",
+      explanation: "SQL: ORDER BY Name ASC - A comes before Z"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "OrderByDescending",
+      explanation: "SQL: ORDER BY CreatedAt DESC - newest first"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15, 16],
+      highlight: "Multi-Column Sort",
+      explanation: "First sorts by category, then price (descending), then name within same category/price"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="Sorting SQL Translation"
+  steps={[
+    {
+      linq: `var products = context.Products
+    .OrderBy(p => p.Category)
+    .ThenByDescending(p => p.Price)
+    .ToList();`,
+      sql: `SELECT [p].[Id], [p].[Name], [p].[Category], [p].[Price]
+FROM [Products] AS [p]
+ORDER BY [p].[Category], [p].[Price] DESC`,
+      explanation: "Multiple OrderBy/ThenBy calls combine into a single ORDER BY clause with multiple columns."
+    }
+  ]}
+/>
+
+<InfoBox type="info">
+**Why ThenBy?** If you call `OrderBy()` twice, the second one **replaces** the first! Use `ThenBy()` or `ThenByDescending()` for secondary sort columns.
+</InfoBox>
+
+<ProgressCheckpoint section="sorting-ordering" xpReward={20} />
+
+---
+
+## Section 4: Pagination Patterns
+
+### The Skip() and Take() Dynamic Duo
+
+Imagine a book with 1000 pages. You don't read all 1000 at once - you read one page at a time. Pagination works the same way!
+
+<DotnetCodePreview
+  title="Pagination Implementation"
+  code={`int pageSize = 10;
+int pageNumber = 3;  // We want page 3 (1-indexed for users)
+
+// Calculate how many items to skip
+int skip = (pageNumber - 1) * pageSize;  // Skip 20 items (pages 1 and 2)
+
+// Fetch page 3
+var pageOfProducts = context.Products
+    .OrderBy(p => p.Name)       // Always order before pagination!
+    .Skip(skip)                 // Skip first 20 items
+    .Take(pageSize)             // Take next 10 items
+    .ToList();
+
+// Get total count for pagination UI
+var totalProducts = await context.Products.CountAsync();
+var totalPages = (int)Math.Ceiling(totalProducts / (double)pageSize);
+
+// Check if there are more pages
+bool hasNextPage = pageNumber < totalPages;
+bool hasPreviousPage = pageNumber > 1;`}
+  steps={[
+    {
+      lineNumbers: [1, 2, 5],
+      highlight: "Calculate Skip",
+      explanation: "Page 3 with 10 items per page means skip the first 20 items"
+    },
+    {
+      lineNumbers: [8, 9],
+      highlight: "Order First!",
+      explanation: "CRITICAL: Always OrderBy before Skip/Take or results will be inconsistent!"
+    },
+    {
+      lineNumbers: [10, 11],
+      highlight: "Skip and Take",
+      explanation: "Skip moves past items, Take limits how many to return"
+    },
+    {
+      lineNumbers: [15, 16],
+      highlight: "Total Pages",
+      explanation: "Calculate total pages for your UI pagination controls"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="Pagination SQL"
+  steps={[
+    {
+      linq: `var page = context.Products
+    .OrderBy(p => p.Name)
+    .Skip(20)
+    .Take(10)
+    .ToList();`,
+      sql: `SELECT [p].[Id], [p].[Name], [p].[Price]
+FROM [Products] AS [p]
+ORDER BY [p].[Name]
+OFFSET 20 ROWS FETCH NEXT 10 ROWS ONLY`,
+      explanation: "SQL Server uses OFFSET/FETCH syntax. The database handles all the work - only 10 rows are returned!"
+    }
+  ]}
+/>
+
+### Efficient Pagination Tips
+
+<Comparison
+  title="Pagination Approaches"
+  items={[
+    {
+      label: "❌ Load All, Then Page in Memory",
+      description: "var all = context.Products.ToList(); return all.Skip(20).Take(10);",
+      isCorrect: false
+    },
+    {
+      label: "✅ Page in Database",
+      description: "return context.Products.OrderBy(p => p.Name).Skip(20).Take(10).ToList();",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Performance Tip:** For very large datasets with frequent pagination, consider **keyset pagination** (also called cursor pagination). Instead of `Skip(offset)`, filter by the last seen item: `.Where(p => p.Id > lastSeenId).Take(pageSize)`. This is much faster for large offsets!
+</InfoBox>
+
+### Quick Knowledge Check
+
+<Quiz id="where-sql-quiz">
+  <Question>What SQL does `Where(p => p.Name.Contains("phone"))` generate?</Question>
+  <Answer>WHERE Name = 'phone'</Answer>
+  <Answer correct>WHERE Name LIKE '%phone%'</Answer>
+  <Answer>WHERE Name LIKE 'phone%'</Answer>
+  <Answer>WHERE Name IN ('phone')</Answer>
+</Quiz>
+
+<Quiz id="orderby-replace-quiz">
+  <Question>What happens if you call OrderBy() twice without ThenBy()?</Question>
+  <Answer>Both orderings are applied</Answer>
+  <Answer correct>The second OrderBy() replaces the first</Answer>
+  <Answer>You get a compiler error</Answer>
+  <Answer>The query fails at runtime</Answer>
+</Quiz>
+
+<Quiz id="pagination-order-quiz">
+  <Question>Why must you always call OrderBy() before Skip() and Take()?</Question>
+  <Answer>It's a syntax requirement</Answer>
+  <Answer>It makes the query faster</Answer>
+  <Answer correct>Without ordering, the row order is undefined and results may be inconsistent</Answer>
+  <Answer>SQL doesn't support pagination without ordering</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Where()** | Filters data at the database level - always more efficient than filtering in memory |
+| **&& and \|\|** | Combine conditions with AND/OR logic |
+| **String Methods** | Contains, StartsWith, EndsWith translate to LIKE patterns |
+| **OrderBy()** | Sorts ascending; use OrderByDescending() for reverse |
+| **ThenBy()** | Secondary sort columns (don't use multiple OrderBy!) |
+| **Skip() & Take()** | Pagination - always OrderBy() first! |
+
+<KeyConcept title="What's Next?">
+Now that you can filter and sort like a pro, let's learn about **projections** - how to select only the columns you need and transform data into exactly the shape you want!
+</KeyConcept>
+
+<ProgressCheckpoint section="pagination-patterns" xpReward={20} />

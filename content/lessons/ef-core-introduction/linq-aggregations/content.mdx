@@ -1,0 +1,489 @@
+# Aggregations in LINQ
+
+Turn raw data into insights! Learn how to calculate counts, sums, averages, and more with EF Core aggregate functions.
+
+---
+
+## Section 1: Counting Operations
+
+### The Inventory Clerk Analogy 📦
+
+Imagine you're managing a huge warehouse. An investor asks: "How many products do we have?" You don't carry each product over to them - you just give them the **count**. That's exactly what aggregate functions do - they summarize data on the database server and return just the result!
+
+<QueryExecutionVisualizer
+  title="Count() in Action"
+  steps={[
+    {
+      linq: `// Count all products
+var totalProducts = context.Products.Count();`,
+      sql: `SELECT COUNT(*)
+FROM [Products] AS [p]`,
+      explanation: "The database does the counting and returns a single number!"
+    },
+    {
+      linq: `// Count with a condition
+var activeProducts = context.Products
+    .Count(p => p.IsActive);`,
+      sql: `SELECT COUNT(*)
+FROM [Products] AS [p]
+WHERE [p].[IsActive] = 1`,
+      explanation: "Count(predicate) combines counting with filtering - very efficient!"
+    },
+    {
+      linq: `// Same thing with Where
+var activeProducts = context.Products
+    .Where(p => p.IsActive)
+    .Count();`,
+      sql: `SELECT COUNT(*)
+FROM [Products] AS [p]
+WHERE [p].[IsActive] = 1`,
+      explanation: "Where().Count() produces the same SQL - use whichever is more readable!"
+    }
+  ]}
+/>
+
+### Count Variations
+
+<DotnetCodePreview
+  title="Different Counting Methods"
+  code={`// Basic count
+var total = context.Products.Count();
+
+// Count with predicate (condition)
+var activeCount = context.Products.Count(p => p.IsActive);
+
+// LongCount for huge datasets (returns long instead of int)
+var bigCount = context.LogEntries.LongCount();
+
+// Async versions
+var totalAsync = await context.Products.CountAsync();
+var activeAsync = await context.Products.CountAsync(p => p.IsActive);
+
+// Count distinct values (unique categories)
+var categoryCount = context.Products
+    .Select(p => p.CategoryId)
+    .Distinct()
+    .Count();
+
+// Count with grouping
+var productsPerCategory = context.Products
+    .GroupBy(p => p.CategoryId)
+    .Select(g => new 
+    {
+        CategoryId = g.Key,
+        ProductCount = g.Count()
+    })
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Basic Count",
+      explanation: "Returns total number of rows as int"
+    },
+    {
+      lineNumbers: [5],
+      highlight: "Conditional Count",
+      explanation: "Only counts rows matching the condition"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "LongCount",
+      explanation: "Use for tables with billions of rows - returns Int64"
+    },
+    {
+      lineNumbers: [15, 16, 17, 18],
+      highlight: "Count Distinct",
+      explanation: "Count unique values by combining Select, Distinct, and Count"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Performance Tip:** `Count()` with a predicate is slightly more efficient than `Where().Count()` because it avoids creating an intermediate query. Use whichever reads better - the difference is minimal!
+</InfoBox>
+
+<ProgressCheckpoint section="counting-operations" xpReward={20} />
+
+---
+
+## Section 2: Sum and Average
+
+### Adding It All Up
+
+<DotnetCodePreview
+  title="Sum Operations"
+  code={`// Total of a numeric column
+var totalRevenue = context.Orders.Sum(o => o.Total);
+
+// Sum with condition
+var thisMonthRevenue = context.Orders
+    .Where(o => o.OrderDate.Month == DateTime.Today.Month)
+    .Sum(o => o.Total);
+
+// Sum with calculation
+var totalValue = context.Products
+    .Sum(p => p.Price * p.StockQuantity);
+
+// Handle nullable - Sum returns 0 for empty sets
+var totalSales = context.Sales
+    .Where(s => s.CustomerId == customerId)
+    .Sum(s => s.Amount);  // Returns 0 if no matching sales
+
+// Explicit null handling with DefaultIfEmpty
+var safeTotal = context.Sales
+    .Where(s => s.CustomerId == customerId)
+    .Select(s => (decimal?)s.Amount)
+    .Sum() ?? 0m;`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Simple Sum",
+      explanation: "Adds up all Order.Total values"
+    },
+    {
+      lineNumbers: [5, 6, 7],
+      highlight: "Filtered Sum",
+      explanation: "Filter first, then sum - only counts current month's orders"
+    },
+    {
+      lineNumbers: [10, 11],
+      highlight: "Calculated Sum",
+      explanation: "Expression inside Sum - multiplied on the database!"
+    },
+    {
+      lineNumbers: [14, 15, 16],
+      highlight: "Empty Set Result",
+      explanation: "Sum() returns 0 for empty results - no null issues!"
+    }
+  ]}
+/>
+
+### Finding Averages
+
+<QueryExecutionVisualizer
+  title="Average Calculations"
+  steps={[
+    {
+      linq: `var avgPrice = context.Products.Average(p => p.Price);`,
+      sql: `SELECT AVG([p].[Price])
+FROM [Products] AS [p]`,
+      explanation: "Database calculates the average and returns a single decimal."
+    },
+    {
+      linq: `var avgOrderValue = context.Orders
+    .Where(o => o.CustomerId == 5)
+    .Average(o => o.Total);`,
+      sql: `SELECT AVG([o].[Total])
+FROM [Orders] AS [o]
+WHERE [o].[CustomerId] = 5`,
+      explanation: "Filtered average - only includes orders from customer 5."
+    }
+  ]}
+/>
+
+<DotnetCodePreview
+  title="Average Best Practices"
+  code={`// Basic average
+var avgPrice = context.Products.Average(p => p.Price);
+
+// Average with potential empty set - CRASHES!
+// var badAvg = context.Products
+//     .Where(p => p.CategoryId == 999)  // No matches
+//     .Average(p => p.Price);  // Throws InvalidOperationException!
+
+// Safe average with DefaultIfEmpty
+var safeAvg = context.Products
+    .Where(p => p.CategoryId == 999)
+    .Select(p => (decimal?)p.Price)
+    .Average() ?? 0m;
+
+// Alternative: Check count first
+var products = context.Products.Where(p => p.CategoryId == 999);
+var avg = await products.AnyAsync() 
+    ? await products.AverageAsync(p => p.Price) 
+    : 0m;`}
+  steps={[
+    {
+      lineNumbers: [5, 6, 7],
+      highlight: "⚠️ Danger Zone",
+      explanation: "Average() throws an exception on empty sets!"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13],
+      highlight: "Safe Pattern",
+      explanation: "Cast to nullable, then use null-coalescing (??) for default"
+    },
+    {
+      lineNumbers: [16, 17, 18, 19],
+      highlight: "Check First",
+      explanation: "Use Any() to check before averaging - two queries but explicit"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Watch Out!** Unlike `Sum()`, `Average()` throws an exception when the sequence is empty. Always handle this case with nullable casting or a pre-check!
+</InfoBox>
+
+<ProgressCheckpoint section="sum-average" xpReward={20} />
+
+---
+
+## Section 3: Min and Max
+
+### Finding Extremes
+
+<DotnetCodePreview
+  title="Min and Max Operations"
+  code={`// Simple min/max
+var cheapest = context.Products.Min(p => p.Price);
+var mostExpensive = context.Products.Max(p => p.Price);
+
+// Min/max dates
+var oldestOrder = context.Orders.Min(o => o.OrderDate);
+var latestOrder = context.Orders.Max(o => o.OrderDate);
+
+// Min/max with filter
+var cheapestElectronics = context.Products
+    .Where(p => p.Category == "Electronics")
+    .Min(p => p.Price);
+
+// Get the ENTITY with min/max (common pattern)
+var cheapestProduct = context.Products
+    .OrderBy(p => p.Price)
+    .FirstOrDefault();
+
+var mostExpensiveProduct = context.Products
+    .OrderByDescending(p => p.Price)
+    .FirstOrDefault();
+
+// Safe min with empty check (like Average, throws on empty!)
+var safeMin = context.Products
+    .Where(p => p.CategoryId == 999)
+    .Select(p => (decimal?)p.Price)
+    .Min() ?? 0m;`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Simple Min/Max",
+      explanation: "Returns just the value (e.g., 9.99), not the product itself"
+    },
+    {
+      lineNumbers: [6, 7],
+      highlight: "Date Min/Max",
+      explanation: "Works with any comparable type - dates, numbers, strings"
+    },
+    {
+      lineNumbers: [15, 16, 17, 19, 20, 21],
+      highlight: "Get Entity Pattern",
+      explanation: "Sort then FirstOrDefault() to get the actual entity with min/max value"
+    },
+    {
+      lineNumbers: [24, 25, 26, 27],
+      highlight: "Safe Pattern",
+      explanation: "Like Average, Min/Max throw on empty sets - use nullable trick"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="Min/Max SQL"
+  steps={[
+    {
+      linq: `var lowestPrice = context.Products
+    .Where(p => p.IsActive)
+    .Min(p => p.Price);`,
+      sql: `SELECT MIN([p].[Price])
+FROM [Products] AS [p]
+WHERE [p].[IsActive] = 1`,
+      explanation: "Simple and efficient - database returns a single value."
+    },
+    {
+      linq: `var cheapestProduct = context.Products
+    .OrderBy(p => p.Price)
+    .FirstOrDefault();`,
+      sql: `SELECT TOP(1) [p].[Id], [p].[Name], [p].[Price], [p].[Category]
+FROM [Products] AS [p]
+ORDER BY [p].[Price]`,
+      explanation: "To get the entity, not just the value, use OrderBy + FirstOrDefault."
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="min-max" xpReward={20} />
+
+---
+
+## Section 4: Advanced Aggregations
+
+### Combining Aggregates with GroupBy
+
+The real power of aggregations shines when combined with grouping!
+
+<DotnetCodePreview
+  title="Multiple Aggregates"
+  code={`// Dashboard stats in a single query
+var dashboardStats = context.Orders
+    .GroupBy(o => 1)  // Group all into one "bucket"
+    .Select(g => new 
+    {
+        TotalOrders = g.Count(),
+        TotalRevenue = g.Sum(o => o.Total),
+        AverageOrderValue = g.Average(o => o.Total),
+        LargestOrder = g.Max(o => o.Total),
+        SmallestOrder = g.Min(o => o.Total)
+    })
+    .FirstOrDefault();
+
+// Per-category analytics
+var categoryAnalytics = context.Products
+    .GroupBy(p => new { p.CategoryId, p.Category.Name })
+    .Select(g => new 
+    {
+        CategoryId = g.Key.CategoryId,
+        CategoryName = g.Key.Name,
+        ProductCount = g.Count(),
+        AveragePrice = g.Average(p => p.Price),
+        TotalStock = g.Sum(p => p.StockQuantity),
+        PriceRange = g.Max(p => p.Price) - g.Min(p => p.Price)
+    })
+    .OrderByDescending(x => x.ProductCount)
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "GroupBy(1) Trick",
+      explanation: "Group everything into one bucket to get overall stats"
+    },
+    {
+      lineNumbers: [5, 6, 7, 8, 9, 10],
+      highlight: "Multiple Aggregates",
+      explanation: "Calculate many statistics in a single database query"
+    },
+    {
+      lineNumbers: [24],
+      highlight: "Computed Aggregate",
+      explanation: "Combine aggregates with expressions like Max - Min for range"
+    }
+  ]}
+/>
+
+### Conditional Aggregates
+
+<DotnetCodePreview
+  title="Conditional Counting and Summing"
+  code={`// Count by condition within a group
+var orderStats = context.Orders
+    .GroupBy(o => o.CustomerId)
+    .Select(g => new 
+    {
+        CustomerId = g.Key,
+        TotalOrders = g.Count(),
+        CompletedOrders = g.Count(o => o.Status == "Completed"),
+        PendingOrders = g.Count(o => o.Status == "Pending"),
+        CompletedRevenue = g.Where(o => o.Status == "Completed")
+                           .Sum(o => o.Total)
+    })
+    .ToList();
+
+// Percentage calculation
+var categoryBreakdown = context.Products
+    .GroupBy(p => p.Category)
+    .Select(g => new 
+    {
+        Category = g.Key,
+        Count = g.Count(),
+        ActiveCount = g.Count(p => p.IsActive),
+        ActivePercentage = (double)g.Count(p => p.IsActive) / g.Count() * 100
+    })
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [8, 9],
+      highlight: "Count with Predicate",
+      explanation: "Count() can take a predicate to count only matching items"
+    },
+    {
+      lineNumbers: [10, 11],
+      highlight: "Conditional Sum",
+      explanation: "Filter within the group before summing"
+    },
+    {
+      lineNumbers: [22],
+      highlight: "Calculated Percentage",
+      explanation: "Divide counts and multiply by 100 for percentages"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="Complex Aggregation SQL"
+  steps={[
+    {
+      linq: `var stats = context.Orders
+    .GroupBy(o => o.CustomerId)
+    .Select(g => new 
+    {
+        CustomerId = g.Key,
+        Total = g.Count(),
+        Completed = g.Count(o => o.Status == "Done")
+    })
+    .ToList();`,
+      sql: `SELECT [o].[CustomerId], COUNT(*) AS [Total],
+       COUNT(CASE WHEN [o].[Status] = N'Done' THEN 1 END) AS [Completed]
+FROM [Orders] AS [o]
+GROUP BY [o].[CustomerId]`,
+      explanation: "Conditional counts become CASE WHEN expressions in SQL - all calculated on the server!"
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="count-vs-longcount-quiz">
+  <Question>When should you use LongCount() instead of Count()?</Question>
+  <Answer>When you want exact results</Answer>
+  <Answer correct>When the count might exceed 2.1 billion (int max)</Answer>
+  <Answer>When counting strings</Answer>
+  <Answer>LongCount is always better</Answer>
+</Quiz>
+
+<Quiz id="average-empty-quiz">
+  <Question>What happens when you call Average() on an empty sequence?</Question>
+  <Answer>Returns 0</Answer>
+  <Answer>Returns null</Answer>
+  <Answer correct>Throws InvalidOperationException</Answer>
+  <Answer>Returns NaN</Answer>
+</Quiz>
+
+<Quiz id="get-max-entity-quiz">
+  <Question>How do you get the entity with the maximum value (not just the value)?</Question>
+  <Answer>Use Max() and then Find()</Answer>
+  <Answer correct>OrderByDescending() then FirstOrDefault()</Answer>
+  <Answer>Use MaxBy() method</Answer>
+  <Answer>Max() returns the entity automatically</Answer>
+</Quiz>
+
+### Summary
+
+| Aggregate | Returns | Empty Sequence |
+|:----------|:--------|:---------------|
+| **Count()** | int | 0 |
+| **LongCount()** | long | 0 |
+| **Sum()** | Sum of values | 0 |
+| **Average()** | Average value | ⚠️ Throws exception! |
+| **Min()** | Smallest value | ⚠️ Throws exception! |
+| **Max()** | Largest value | ⚠️ Throws exception! |
+
+<KeyConcept title="Safety Pattern">
+For `Average()`, `Min()`, and `Max()` with potentially empty sequences, cast to nullable first:
+```csharp
+.Select(x => (decimal?)x.Value).Average() ?? 0m
+```
+</KeyConcept>
+
+<KeyConcept title="What's Next?">
+You can now calculate powerful insights from your data! The final lesson covers **Query Performance** - how to make all your queries run as fast as possible.
+</KeyConcept>
+
+<ProgressCheckpoint section="advanced-aggregations" xpReward={20} />

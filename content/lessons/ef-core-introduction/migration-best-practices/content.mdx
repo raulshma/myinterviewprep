@@ -1,0 +1,324 @@
+# Migration Best Practices
+
+Managing migrations in real-world projects requires discipline and strategy. Think of migrations like **Git commits** - small, focused changes that tell a clear story of how your database evolved!
+
+---
+
+## Section 1: Small, Focused Migrations
+
+### The Commit Analogy 📝
+
+Just like good Git commits, good migrations should be:
+
+| Good Migration | Bad Migration |
+|:---------------|:--------------|
+| One logical change | Multiple unrelated changes |
+| Easy to understand | Confusing and mixed |
+| Safe to rollback | Risky to undo |
+| Clear name | Vague name |
+
+<InfoBox type="info">
+**Rule of Thumb:** If you can't describe your migration in one sentence, it's probably too big!
+</InfoBox>
+
+### Examples: Good vs Bad
+
+<Comparison
+  title="Migration Scope"
+  items={[
+    {
+      label: "✅ AddCustomerEmailColumn",
+      description: "Single change: adds one column to one table",
+      isCorrect: true
+    },
+    {
+      label: "✅ CreateOrdersTable",
+      description: "Creates one table with its columns and constraints",
+      isCorrect: true
+    },
+    {
+      label: "❌ UpdateDatabaseSchema",
+      description: "Vague name, probably doing too many things",
+      isCorrect: false
+    },
+    {
+      label: "❌ FixEverything",
+      description: "Multiple unrelated changes bundled together",
+      isCorrect: false
+    }
+  ]}
+/>
+
+### Why Small Migrations Matter
+
+<DotnetCodePreview
+  title="Small Migration Benefits"
+  code={`// Scenario: Something broke after deployment!
+
+// With SMALL migrations, you can:
+dotnet ef database update AddCustomerPhone    // ← Rollback just ONE change
+// Easy to identify which change caused the issue
+
+// With LARGE migrations, you're stuck:
+dotnet ef database update BigRefactoring      // ← Rollback EVERYTHING
+// Lost all the good changes along with the bad one!`}
+  steps={[
+    {
+      lineNumbers: [4],
+      highlight: "Surgical Rollback",
+      explanation: "Small migrations let you undo specific changes"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "All-or-Nothing",
+      explanation: "Large migrations force you to lose all changes when rolling back"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="small-migrations" xpReward={20} />
+
+---
+
+## Section 2: Naming Conventions
+
+### Clear, Descriptive Names
+
+Your migration name should answer: **"What does this migration do?"**
+
+<DotnetCodePreview
+  title="Good Naming Patterns"
+  code={`// Pattern: <Action><Object><Detail>
+
+// Adding things
+AddCustomerEmailColumn
+AddOrdersTable
+AddIndexOnProductName
+
+// Removing things
+RemoveObsoletePhoneField
+DropLegacyLogTable
+
+// Modifying things
+RenameUserNameToDisplayName
+ChangeOrderTotalToDecimal
+
+// Relationship changes
+AddPostToBlogRelationship
+AddCascadeDeleteToOrders
+
+// Complex changes (still specific!)
+SplitAddressIntoComponents
+MergeFirstAndLastName`}
+  steps={[
+    {
+      lineNumbers: [3, 4, 5, 6],
+      highlight: "Add Pattern",
+      explanation: "Start with 'Add' for new columns, tables, or indexes"
+    },
+    {
+      lineNumbers: [8, 9, 10],
+      highlight: "Remove Pattern",
+      explanation: "Start with 'Remove' or 'Drop' for deletions"
+    },
+    {
+      lineNumbers: [12, 13, 14],
+      highlight: "Modify Pattern",
+      explanation: "Use 'Rename', 'Change', or 'Update' for modifications"
+    },
+    {
+      lineNumbers: [16, 17, 18],
+      highlight: "Relationship Pattern",
+      explanation: "Be specific about what relationship you're changing"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Avoid timestamps in names!** EF Core already adds timestamps to the filename. `AddEmail` becomes `20241216_AddEmail.cs` automatically.
+</InfoBox>
+
+### Names to Avoid
+
+| ❌ Bad Name | Why It's Bad | ✅ Better Name |
+|:-----------|:-------------|:--------------|
+| `Migration1` | Says nothing about the change | `InitialCreate` |
+| `Update` | Which update? What changed? | `AddCustomerEmail` |
+| `FixBug` | What bug? What's the fix? | `FixOrderTotalPrecision` |
+| `Changes` | Way too vague | `AddAuditColumns` |
+| `Final` | Hint: it's never final! | `AddPaymentIntegration` |
+
+<ProgressCheckpoint section="naming-conventions" xpReward={15} />
+
+---
+
+## Section 3: Team Workflows
+
+### The Merge Challenge
+
+When multiple developers work on migrations, conflicts happen. Here's how to handle them:
+
+<DotnetCodePreview
+  title="Team Migration Workflow"
+  code={`// Developer A and Developer B both create migrations
+
+// Developer A:
+dotnet ef migrations add AddCustomerPhone
+// Creates: 20241216_100000_AddCustomerPhone
+
+// Developer B (at the same time):
+dotnet ef migrations add AddOrderStatus
+// Creates: 20241216_100500_AddOrderStatus
+
+// When B pulls A's changes:
+// Both migrations exist, model snapshot may conflict!
+
+// Solution: Regenerate migration
+dotnet ef migrations remove          // Remove B's migration
+git pull                             // Get A's changes
+dotnet ef migrations add AddOrderStatus  // Recreate with updated snapshot`}
+  steps={[
+    {
+      lineNumbers: [4, 5],
+      highlight: "Developer A's Migration",
+      explanation: "Creates migration and updates the model snapshot"
+    },
+    {
+      lineNumbers: [8, 9],
+      highlight: "Developer B's Migration",
+      explanation: "Also updates snapshot - based on OLD model!"
+    },
+    {
+      lineNumbers: [14, 15, 16],
+      highlight: "Resolution Steps",
+      explanation: "Remove, pull, recreate ensures snapshot is in sync"
+    }
+  ]}
+/>
+
+### Team Best Practices
+
+<Comparison
+  title="Team Migration Rules"
+  items={[
+    {
+      label: "✅ Pull before creating migrations",
+      description: "Always get the latest changes before running 'migrations add'",
+      isCorrect: true
+    },
+    {
+      label: "✅ Communicate about migrations",
+      description: "Let your team know when you're adding a migration",
+      isCorrect: true
+    },
+    {
+      label: "✅ Review migrations in PRs",
+      description: "Treat migrations like code - review before merging!",
+      isCorrect: true
+    },
+    {
+      label: "❌ Edit applied migrations",
+      description: "Never modify a migration after it's been applied anywhere",
+      isCorrect: false
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Golden Rule:** Once a migration is applied to ANY environment (even a teammate's machine), treat it as **immutable**. Create a new migration for any changes!
+</InfoBox>
+
+<ProgressCheckpoint section="team-workflows" xpReward={20} />
+
+---
+
+## Section 4: Production Strategies
+
+### Deployment Options
+
+There are three main ways to apply migrations in production:
+
+<DotnetCodePreview
+  title="Production Migration Strategies"
+  code={`// Strategy 1: SQL Scripts (Recommended for most teams)
+// Generate script, review it, run it manually or via CI/CD
+dotnet ef migrations script --idempotent -o deploy.sql
+// Then: sqlcmd -i deploy.sql OR run in Azure DevOps
+
+// Strategy 2: Migration Bundles (EF Core 6+)
+// Creates a single executable that applies migrations
+dotnet ef migrations bundle --self-contained
+// Then: ./efbundle.exe --connection "Server=prod;..."
+
+// Strategy 3: Auto-Migrate on Startup
+// For simple apps - applies migrations when app starts
+using var scope = app.Services.CreateScope();
+var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+db.Database.Migrate();`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "SQL Scripts",
+      explanation: "Most control - generate, review, deploy through your pipeline"
+    },
+    {
+      lineNumbers: [6, 7, 8],
+      highlight: "Migration Bundles",
+      explanation: "Self-contained executable - great for CI/CD automation"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13],
+      highlight: "Auto-Migrate",
+      explanation: "Simplest approach - good for simple apps and microservices"
+    }
+  ]}
+/>
+
+### When to Use Each Strategy
+
+| Strategy | Best For | Risk Level |
+|:---------|:---------|:-----------|
+| **SQL Scripts** | Enterprises, audited environments | Low - human review |
+| **Bundles** | CI/CD pipelines, containers | Medium - automated |
+| **Auto-Migrate** | Simple apps, microservices | Higher - no review |
+
+### Quick Knowledge Check
+
+<Quiz id="small-migrations-why">
+  <Question>Why should migrations be small and focused?</Question>
+  <Answer>EF Core can't handle large migrations</Answer>
+  <Answer correct>They're easier to understand, review, and rollback</Answer>
+  <Answer>They run faster</Answer>
+  <Answer>Microsoft requires it</Answer>
+</Quiz>
+
+<Quiz id="team-migration-conflict">
+  <Question>What should you do when your migration conflicts with a teammate's?</Question>
+  <Answer>Edit the ModelSnapshot file directly</Answer>
+  <Answer>Delete their migration</Answer>
+  <Answer correct>Remove your migration, pull their changes, recreate yours</Answer>
+  <Answer>Ignore the conflict</Answer>
+</Quiz>
+
+<Quiz id="production-strategy">
+  <Question>What's the recommended migration strategy for enterprise production systems?</Question>
+  <Answer>Always use auto-migrate on startup</Answer>
+  <Answer correct>Generate SQL scripts for review and controlled deployment</Answer>
+  <Answer>Run 'dotnet ef database update' on the production server</Answer>
+  <Answer>Recreate the database each deployment</Answer>
+</Quiz>
+
+### Summary
+
+| Practice | Key Takeaway |
+|:---------|:-------------|
+| **Small Migrations** | One logical change per migration |
+| **Clear Names** | Describe what the migration does |
+| **Team Sync** | Pull before creating, communicate changes |
+| **Production** | Use scripts or bundles, not direct CLI |
+
+<KeyConcept title="You're Becoming a Pro!">
+You now understand how to manage migrations professionally! Next, learn how to **Handle Migration Conflicts** when things go wrong.
+</KeyConcept>
+
+<ProgressCheckpoint section="production-strategies" xpReward={20} />

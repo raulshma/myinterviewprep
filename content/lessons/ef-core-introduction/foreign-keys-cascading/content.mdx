@@ -1,0 +1,472 @@
+# Foreign Keys and Cascading - Data Integrity
+
+When you delete a parent entity, what happens to its children? Should they be deleted too, or orphaned? **Cascade behaviors** control this, and mastering them is essential for data integrity!
+
+---
+
+## Section 1: Foreign Key Fundamentals
+
+### The Chain of Custody 🔗
+
+Think of foreign keys like a chain connecting related records:
+
+- **Foreign Key (FK)**: A property that stores the ID of a related entity
+- **Primary Key (PK)**: The unique identifier of an entity
+- **FK points to PK**: Creating the relationship link
+
+| Term | Database | EF Core |
+|:-----|:---------|:--------|
+| Foreign Key | Column referencing another table | Property like `BlogId` |
+| Primary Key | Unique identifier column | `Id` property |
+| Constraint | Rule enforcing the relationship | Configured automatically |
+
+<InfoBox type="info">
+**Referential Integrity**: The database constraint that ensures an FK always points to an existing PK. If Post.BlogId = 5, there MUST be a Blog with Id = 5!
+</InfoBox>
+
+### Explicit vs Shadow Foreign Keys
+
+<DotnetCodePreview
+  title="Foreign Key Types"
+  code={`// EXPLICIT Foreign Key - you define the property
+public class Post
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    
+    // Explicit FK - you control the name and can access it
+    public int BlogId { get; set; }
+    public Blog Blog { get; set; } = null!;
+}
+
+// SHADOW Foreign Key - EF Core creates it
+public class Comment
+{
+    public int Id { get; set; }
+    public string Text { get; set; } = "";
+    
+    // No FK property defined, but navigation exists
+    public Post Post { get; set; } = null!;
+    // EF Core creates a shadow property "PostId" in the database
+}
+
+// Accessing shadow properties
+var postId = context.Entry(comment).Property<int>("PostId").CurrentValue;`}
+  steps={[
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "Explicit FK",
+      explanation: "BlogId is a real C# property you can read/set directly"
+    },
+    {
+      lineNumbers: [14, 15, 16, 17, 18, 19],
+      highlight: "Shadow FK",
+      explanation: "Only navigation property exists - EF Core creates 'PostId' as shadow property"
+    },
+    {
+      lineNumbers: [22],
+      highlight: "Access Shadow Property",
+      explanation: "You can still access shadow properties through the Entry API"
+    }
+  ]}
+/>
+
+<Comparison
+  title="Explicit vs Shadow Foreign Keys"
+  items={[
+    {
+      label: "Explicit FK (Recommended)",
+      description: "Define the FK property yourself. Clear, accessible, and easier to work with.",
+      isCorrect: true
+    },
+    {
+      label: "Shadow FK",
+      description: "EF Core creates it. Cleaner model but harder to access. Use for simple cases.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+### Required vs Optional Foreign Keys
+
+<DotnetCodePreview
+  title="Required vs Optional FK"
+  code={`public class Post
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    
+    // REQUIRED - every post MUST have a blog
+    public int BlogId { get; set; }  // Non-nullable int
+    public Blog Blog { get; set; } = null!;
+}
+
+public class Comment
+{
+    public int Id { get; set; }
+    public string Text { get; set; } = "";
+    
+    // OPTIONAL - comment might be anonymous (no author)
+    public int? UserId { get; set; }  // Nullable int
+    public User? User { get; set; }  // Nullable navigation
+}`}
+  steps={[
+    {
+      lineNumbers: [7],
+      highlight: "Non-nullable FK",
+      explanation: "int BlogId - cannot be null, so every Post must have a Blog"
+    },
+    {
+      lineNumbers: [17],
+      highlight: "Nullable FK",
+      explanation: "int? UserId - can be null, so Comment can exist without a User"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="foreign-key-basics" xpReward={20} />
+
+---
+
+## Section 2: Cascade Delete Behaviors
+
+### What Happens When Parent is Deleted?
+
+When you delete a parent entity (like a Blog), EF Core needs to know what to do with its children (Posts). This is called **cascade behavior**.
+
+<DotnetCodePreview
+  title="The Cascade Question"
+  code={`// Scenario: Delete a blog
+var blog = await context.Blogs
+    .Include(b => b.Posts)  // Blog has 10 posts
+    .FirstAsync(b => b.Id == 1);
+
+context.Blogs.Remove(blog);
+await context.SaveChangesAsync();
+
+// What happens to the 10 posts?
+// Option A: Delete them too (Cascade)
+// Option B: Set their BlogId to null (SetNull)
+// Option C: Throw an error (Restrict)
+// Option D: Do nothing, let database handle it (ClientSetNull/NoAction)`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Load Parent with Children",
+      explanation: "Blog is loaded with all its Posts attached"
+    },
+    {
+      lineNumbers: [6, 7],
+      highlight: "Delete Parent",
+      explanation: "Remove the blog - but what about the posts?"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13],
+      highlight: "Cascade Options",
+      explanation: "EF Core's delete behavior determines what happens to orphaned children"
+    }
+  ]}
+/>
+
+### The Five Delete Behaviors
+
+| Behavior | Children Tracked | Children Not Tracked | When to Use |
+|:---------|:-----------------|:---------------------|:------------|
+| **Cascade** | Deleted | DB deletes them | True parent-child (Blog→Posts) |
+| **SetNull** | FK set to null | DB sets null | Optional relationships |
+| **Restrict** | Exception thrown | Exception thrown | Prevent orphans |
+| **ClientSetNull** | FK set to null | Nothing (DB might error) | Default for optional |
+| **NoAction** | Nothing | Nothing (DB handles it) | Custom DB handling |
+
+<InfoBox type="warning">
+**Tracked vs Not Tracked**: EF Core's behavior differs if children are loaded in memory (tracked) versus only in the database. Cascade applies to both, but ClientSetNull only affects tracked entities!
+</InfoBox>
+
+<ProgressCheckpoint section="cascade-behaviors" xpReward={20} />
+
+---
+
+## Section 3: Configuring Cascade Behaviors
+
+### Fluent API Configuration
+
+<DotnetCodePreview
+  title="Configure Delete Behavior"
+  code={`protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    // CASCADE - delete children when parent is deleted
+    modelBuilder.Entity<Blog>()
+        .HasMany(b => b.Posts)
+        .WithOne(p => p.Blog)
+        .HasForeignKey(p => p.BlogId)
+        .OnDelete(DeleteBehavior.Cascade);
+    
+    // SET NULL - set FK to null (requires nullable FK!)
+    modelBuilder.Entity<Post>()
+        .HasOne(p => p.Author)
+        .WithMany(a => a.Posts)
+        .HasForeignKey(p => p.AuthorId)
+        .OnDelete(DeleteBehavior.SetNull);
+    
+    // RESTRICT - prevent deletion if children exist
+    modelBuilder.Entity<Department>()
+        .HasMany(d => d.Employees)
+        .WithOne(e => e.Department)
+        .HasForeignKey(e => e.DepartmentId)
+        .OnDelete(DeleteBehavior.Restrict);
+}`}
+  steps={[
+    {
+      lineNumbers: [4, 5, 6, 7, 8],
+      highlight: "Cascade Delete",
+      explanation: "When Blog is deleted, all its Posts are also deleted"
+    },
+    {
+      lineNumbers: [11, 12, 13, 14, 15],
+      highlight: "SetNull",
+      explanation: "When Author is deleted, Posts' AuthorId becomes null. AuthorId must be int?"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21, 22],
+      highlight: "Restrict",
+      explanation: "Cannot delete Department if it has Employees - throws exception"
+    }
+  ]}
+/>
+
+### EF Core Defaults
+
+EF Core applies default behaviors based on FK nullability:
+
+| FK Type | Default Behavior | Reason |
+|:--------|:-----------------|:-------|
+| Required (`int`) | `Cascade` | Children can't exist without parent |
+| Optional (`int?`) | `ClientSetNull` | Children can be orphaned |
+
+<DotnetCodePreview
+  title="Default Behaviors in Action"
+  code={`// Required FK (int) - Default is Cascade
+public class Post
+{
+    public int BlogId { get; set; }  // Required
+    public Blog Blog { get; set; } = null!;
+}
+// Delete Blog → Delete all Posts automatically
+
+// Optional FK (int?) - Default is ClientSetNull
+public class Comment
+{
+    public int? UserId { get; set; }  // Optional
+    public User? User { get; set; }
+}
+// Delete User → Comments.UserId becomes null (if tracked)`}
+  steps={[
+    {
+      lineNumbers: [3, 4, 5],
+      highlight: "Required FK Default",
+      explanation: "Non-nullable FK defaults to Cascade - posts die with their blog"
+    },
+    {
+      lineNumbers: [11, 12, 13],
+      highlight: "Optional FK Default",
+      explanation: "Nullable FK defaults to ClientSetNull - comments survive but lose author"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="configuring-cascades" xpReward={20} />
+
+---
+
+## Section 4: Common Scenarios and Pitfalls
+
+### Scenario 1: Soft Delete Instead of Cascade
+
+<DotnetCodePreview
+  title="Soft Delete Pattern"
+  code={`public class Post
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public bool IsDeleted { get; set; }  // Soft delete flag
+    
+    public int BlogId { get; set; }
+    public Blog Blog { get; set; } = null!;
+}
+
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    // Prevent actual deletion of posts
+    modelBuilder.Entity<Blog>()
+        .HasMany(b => b.Posts)
+        .WithOne(p => p.Blog)
+        .OnDelete(DeleteBehavior.Restrict);
+    
+    // Add global query filter to hide deleted posts
+    modelBuilder.Entity<Post>()
+        .HasQueryFilter(p => !p.IsDeleted);
+}
+
+// Custom soft delete method
+public async Task SoftDeleteBlogAsync(int blogId)
+{
+    var posts = await context.Posts.Where(p => p.BlogId == blogId).ToListAsync();
+    foreach (var post in posts)
+    {
+        post.IsDeleted = true;
+    }
+    await context.SaveChangesAsync();
+}`}
+  steps={[
+    {
+      lineNumbers: [5],
+      highlight: "Soft Delete Flag",
+      explanation: "Instead of deleting, set IsDeleted = true"
+    },
+    {
+      lineNumbers: [14, 15, 16, 17],
+      highlight: "Restrict Cascade",
+      explanation: "Prevent automatic deletion - we want to handle it ourselves"
+    },
+    {
+      lineNumbers: [20, 21],
+      highlight: "Query Filter",
+      explanation: "Automatically filter out deleted posts from all queries"
+    }
+  ]}
+/>
+
+### Scenario 2: Preventing Cascade Delete Cycles
+
+<DotnetCodePreview
+  title="Avoiding Cascade Cycles"
+  code={`// PROBLEM: Circular cascade causes issues
+public class User
+{
+    public ICollection<Blog> Blogs { get; set; } // User owns blogs
+    public ICollection<Comment> Comments { get; set; } // User writes comments
+}
+
+public class Blog
+{
+    public ICollection<Post> Posts { get; set; }
+}
+
+public class Post
+{
+    public ICollection<Comment> Comments { get; set; }
+}
+
+// SOLUTION: Break the cycle with Restrict or SetNull
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    // Keep cascade for main ownership chain
+    modelBuilder.Entity<Blog>()
+        .HasMany(b => b.Posts)
+        .WithOne().OnDelete(DeleteBehavior.Cascade);
+    
+    // Break cycle with Restrict for User → Comments
+    modelBuilder.Entity<User>()
+        .HasMany(u => u.Comments)
+        .WithOne(c => c.Author)
+        .OnDelete(DeleteBehavior.Restrict);  // Or SetNull
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6],
+      highlight: "Multiple Relationships",
+      explanation: "User has multiple cascade paths which can conflict"
+    },
+    {
+      lineNumbers: [21, 22, 23],
+      highlight: "Main Cascade Path",
+      explanation: "Keep cascade on the primary ownership chain"
+    },
+    {
+      lineNumbers: [26, 27, 28, 29],
+      highlight: "Break Cycle",
+      explanation: "Use Restrict on secondary paths to avoid cascade conflicts"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**SQL Server Limitation**: SQL Server doesn't allow multiple cascade paths to the same table. You'll get an error like "may cause cycles or multiple cascade paths." Break one path with `Restrict` or `SetNull`.
+</InfoBox>
+
+### Common Pitfalls
+
+<Comparison
+  title="Cascade Delete Pitfalls"
+  items={[
+    {
+      label: "❌ Unintended mass deletion",
+      description: "Cascade can delete more than expected if relationships are complex. Always test!",
+      isCorrect: false
+    },
+    {
+      label: "❌ Orphaned records with ClientSetNull",
+      description: "If children aren't tracked, ClientSetNull does nothing - DB might error",
+      isCorrect: false
+    },
+    {
+      label: "❌ Cascade cycles with SQL Server",
+      description: "Multiple cascade paths to same table cause errors. Break one with Restrict.",
+      isCorrect: false
+    },
+    {
+      label: "✅ Test delete behaviors",
+      description: "Write integration tests that verify children are handled correctly",
+      isCorrect: true
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="fk-cascade-default-quiz">
+  <Question>What's the default delete behavior for a required (non-nullable) foreign key?</Question>
+  <Answer>SetNull</Answer>
+  <Answer correct>Cascade</Answer>
+  <Answer>Restrict</Answer>
+  <Answer>NoAction</Answer>
+</Quiz>
+
+<Quiz id="fk-cascade-setnull-quiz">
+  <Question>When should you use SetNull delete behavior?</Question>
+  <Answer>Always - it's the safest option</Answer>
+  <Answer>When you want children deleted with parent</Answer>
+  <Answer correct>When FK is optional and children should survive parent deletion</Answer>
+  <Answer>When using SQL Server</Answer>
+</Quiz>
+
+<Quiz id="fk-cascade-restrict-quiz">
+  <Question>What happens when you try to delete a parent with Restrict behavior?</Question>
+  <Answer>Children are deleted</Answer>
+  <Answer>FK is set to null</Answer>
+  <Answer correct>An exception is thrown</Answer>
+  <Answer>Nothing happens</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Foreign Key** | Property storing ID of related entity |
+| **Required FK** | Non-nullable, defaults to Cascade |
+| **Optional FK** | Nullable (int?), defaults to ClientSetNull |
+| **Cascade** | Delete children when parent is deleted |
+| **SetNull** | Set children's FK to null (nullable FK required) |
+| **Restrict** | Prevent deletion if children exist |
+
+<KeyConcept title="Congratulations!">
+You've completed the **Entity Relationships** milestone! You now understand:
+- **One-to-Many** relationships and parent-child patterns
+- **Many-to-Many** with skip navigations and join entities
+- **Navigation properties** for traversing relationships
+- **Foreign keys** and cascade delete behaviors
+
+You're ready to tackle more advanced EF Core topics like loading strategies and performance optimization! 🎉
+</KeyConcept>
+
+<ProgressCheckpoint section="common-scenarios" xpReward={20} />

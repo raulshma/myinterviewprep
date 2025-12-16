@@ -30,14 +30,16 @@ export const efCoreRoadmap: CreateRoadmap = {
       id: 'ef-core-introduction',
       title: 'EF Core Introduction',
       description:
-        'Learn what Entity Framework Core is, how it compares to other ORMs, and set up your first EF Core project.',
+        'Learn what Entity Framework Core is, understand ORM concepts, and master the fundamentals of working with data in EF Core.',
       type: 'milestone',
       position: { x: 400, y: 0 },
       learningObjectives: [
         { title: 'What is EF Core and ORM Concepts', lessonId: 'ef-core-overview' },
-        { title: 'EF Core vs EF6 Comparison', lessonId: 'ef-core-vs-ef6' },
-        { title: 'Installation and Setup', lessonId: 'ef-core-setup' },
-        { title: 'First EF Core Application', lessonId: 'first-ef-core-app' },
+        { title: 'DbSet Fundamentals', lessonId: 'dbset-fundamentals' },
+        { title: 'Change Tracking', lessonId: 'change-tracking' },
+        { title: 'Entity Relationships', lessonId: 'ef-relationships' },
+        { title: 'Querying with LINQ', lessonId: 'querying-with-linq' },
+        { title: 'Code-First Migrations', lessonId: 'code-first-migrations' },
       ],
       resources: [
         {

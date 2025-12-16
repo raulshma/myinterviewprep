@@ -1,0 +1,18 @@
+{
+  "id": "linq-joins-grouping",
+  "title": "Joins and Grouping",
+  "description": "Master combining data from multiple tables with joins and organizing data with GroupBy() in EF Core LINQ.",
+  "milestone": "querying-linq",
+  "order": 3,
+  "sections": [
+    "navigation-vs-joins",
+    "explicit-joins",
+    "left-joins",
+    "groupby-operations"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 25,
+  "xpReward": 95,
+  "prerequisites": ["linq-projections"],
+  "tags": ["ef-core", "linq", "joins", "groupby", "inner-join", "left-join"]
+}

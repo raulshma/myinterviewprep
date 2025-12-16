@@ -1,0 +1,458 @@
+# Joins and Grouping
+
+Learn to combine data from multiple tables and organize it into meaningful groups - essential skills for real-world data queries!
+
+---
+
+## Section 1: Navigation Properties vs Explicit Joins
+
+### The EF Core Way: Navigation Properties
+
+In EF Core, you often don't need explicit joins! If you've set up your relationships correctly, navigation properties give you a cleaner syntax.
+
+<DotnetCodePreview
+  title="Navigation Properties in Action"
+  code={`// Your entities with navigation properties
+public class Order
+{
+    public int Id { get; set; }
+    public DateTime OrderDate { get; set; }
+    public int CustomerId { get; set; }
+    public Customer Customer { get; set; } = null!;  // Navigation
+    public List<OrderItem> Items { get; set; } = new();  // Collection nav
+}
+
+// Using navigation properties - clean and simple!
+var orderDetails = context.Orders
+    .Select(o => new 
+    {
+        OrderId = o.Id,
+        CustomerName = o.Customer.Name,    // Access through navigation
+        ItemCount = o.Items.Count(),       // Count related items
+        Total = o.Items.Sum(i => i.Price * i.Quantity)
+    })
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [6, 7],
+      highlight: "Navigation Properties",
+      explanation: "Customer is a reference navigation; Items is a collection navigation"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15, 16, 17, 18, 19, 20],
+      highlight: "Using Navigations",
+      explanation: "Just access properties directly - EF Core handles the JOINs!"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="Navigation Property Translation"
+  steps={[
+    {
+      linq: `var data = context.Orders
+    .Select(o => new 
+    {
+        o.Id,
+        CustomerName = o.Customer.Name,
+        ItemCount = o.Items.Count()
+    })
+    .ToList();`,
+      sql: `SELECT [o].[Id], [c].[Name] AS [CustomerName],
+       (SELECT COUNT(*) FROM [OrderItems] AS [i] 
+        WHERE [o].[Id] = [i].[OrderId]) AS [ItemCount]
+FROM [Orders] AS [o]
+INNER JOIN [Customers] AS [c] ON [o].[CustomerId] = [c].[Id]`,
+      explanation: "EF Core automatically generates INNER JOIN for reference navigations and subqueries for collection aggregates!"
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Pro Tip:** Navigation properties are the idiomatic EF Core way to access related data. Use explicit joins only when you don't have a relationship defined or need special join behavior.
+</InfoBox>
+
+<ProgressCheckpoint section="navigation-vs-joins" xpReward={20} />
+
+---
+
+## Section 2: Explicit Joins
+
+### When You Need Explicit Joins
+
+Sometimes you need to join tables that don't have navigation properties, or join on non-key columns. That's when explicit joins come in!
+
+### Inner Join with `join` Keyword
+
+<DotnetCodePreview
+  title="Explicit Inner Join"
+  code={`// LINQ Query Syntax - SQL-like
+var ordersWithCustomers = 
+    from order in context.Orders
+    join customer in context.Customers 
+        on order.CustomerId equals customer.Id
+    select new 
+    {
+        OrderId = order.Id,
+        OrderDate = order.OrderDate,
+        CustomerName = customer.Name,
+        CustomerEmail = customer.Email
+    };
+
+// Method Syntax (same result)
+var ordersWithCustomers2 = context.Orders
+    .Join(
+        context.Customers,
+        order => order.CustomerId,      // Outer key
+        customer => customer.Id,         // Inner key
+        (order, customer) => new        // Result selector
+        {
+            OrderId = order.Id,
+            OrderDate = order.OrderDate,
+            CustomerName = customer.Name
+        }
+    )
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [3, 4, 5],
+      highlight: "Query Syntax Join",
+      explanation: "Reads like SQL - join order ON customerId equals id"
+    },
+    {
+      lineNumbers: [6, 7, 8, 9, 10, 11, 12],
+      highlight: "Result Selection",
+      explanation: "Select combines data from both tables"
+    },
+    {
+      lineNumbers: [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26],
+      highlight: "Method Syntax",
+      explanation: "More verbose but sometimes more flexible for dynamic queries"
+    }
+  ]}
+/>
+
+### Multi-Key Joins
+
+<DotnetCodePreview
+  title="Joining on Multiple Columns"
+  code={`// Join on multiple columns using anonymous types
+var matches = 
+    from record1 in context.TableA
+    join record2 in context.TableB
+        on new { record1.Field1, record1.Field2 } 
+        equals new { record2.Field1, record2.Field2 }
+    select new 
+    {
+        record1.Id,
+        record1.Field1,
+        record2.ExtraData
+    };
+
+// Method syntax equivalent
+var matches2 = context.TableA
+    .Join(
+        context.TableB,
+        a => new { a.Field1, a.Field2 },
+        b => new { b.Field1, b.Field2 },
+        (a, b) => new { a.Id, a.Field1, b.ExtraData }
+    )
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [5, 6],
+      highlight: "Anonymous Type Keys",
+      explanation: "Create matching anonymous types to join on multiple columns"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="Multi-Key Join SQL"
+  steps={[
+    {
+      linq: `var data = from a in context.TableA
+    join b in context.TableB
+        on new { a.Key1, a.Key2 } equals new { b.Key1, b.Key2 }
+    select new { a.Id, b.Value };`,
+      sql: `SELECT [a].[Id], [b].[Value]
+FROM [TableA] AS [a]
+INNER JOIN [TableB] AS [b] ON [a].[Key1] = [b].[Key1] AND [a].[Key2] = [b].[Key2]`,
+      explanation: "EF Core generates a compound join condition with AND for multiple keys."
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="explicit-joins" xpReward={25} />
+
+---
+
+## Section 3: Left Joins
+
+### Including Records Without Matches
+
+An **Inner Join** only returns rows that have matches in both tables. A **Left Join** returns all rows from the left table, even if there's no match on the right (those get null values).
+
+<DotnetCodePreview
+  title="Left Join Pattern"
+  code={`// Left Join using GroupJoin + DefaultIfEmpty
+var customersWithOrders = 
+    from customer in context.Customers
+    join order in context.Orders
+        on customer.Id equals order.CustomerId into customerOrders
+    from order in customerOrders.DefaultIfEmpty()  // This makes it a LEFT JOIN
+    select new 
+    {
+        CustomerName = customer.Name,
+        OrderId = order != null ? order.Id : (int?)null,
+        OrderTotal = order != null ? order.Total : 0
+    };
+
+// Real-world example: Find customers who haven't ordered
+var customersWithoutOrders = 
+    from customer in context.Customers
+    join order in context.Orders
+        on customer.Id equals order.CustomerId into customerOrders
+    from order in customerOrders.DefaultIfEmpty()
+    where order == null  // Filter to only non-matches!
+    select new 
+    {
+        CustomerId = customer.Id,
+        CustomerName = customer.Name,
+        Email = customer.Email
+    };`}
+  steps={[
+    {
+      lineNumbers: [4, 5],
+      highlight: "GroupJoin with 'into'",
+      explanation: "The 'into' keyword creates a group of all matching orders per customer"
+    },
+    {
+      lineNumbers: [6],
+      highlight: "DefaultIfEmpty()",
+      explanation: "This is the magic! It returns null if there are no matches, making it a LEFT JOIN"
+    },
+    {
+      lineNumbers: [9, 10, 11],
+      highlight: "Handle Nulls",
+      explanation: "Always check for null when the right side might not have a match"
+    },
+    {
+      lineNumbers: [20],
+      highlight: "Find Non-Matches",
+      explanation: "Filter where order == null to find customers without any orders"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="Left Join SQL Translation"
+  steps={[
+    {
+      linq: `var data = from c in context.Customers
+    join o in context.Orders on c.Id equals o.CustomerId into orders
+    from o in orders.DefaultIfEmpty()
+    select new { c.Name, OrderId = (int?)o.Id };`,
+      sql: `SELECT [c].[Name], [o].[Id] AS [OrderId]
+FROM [Customers] AS [c]
+LEFT JOIN [Orders] AS [o] ON [c].[Id] = [o].[CustomerId]`,
+      explanation: "The GroupJoin + DefaultIfEmpty pattern translates to a SQL LEFT JOIN."
+    }
+  ]}
+/>
+
+<Comparison
+  title="Inner Join vs Left Join"
+  items={[
+    {
+      label: "Inner Join",
+      description: "Only returns rows where both tables have matching data. Customers without orders are excluded.",
+      isCorrect: false
+    },
+    {
+      label: "Left Join",
+      description: "Returns ALL customers, with null for order fields when they have no orders. Use for 'find all, even without matches' queries.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="left-joins" xpReward={25} />
+
+---
+
+## Section 4: GroupBy Operations
+
+### Organizing Data into Groups
+
+`GroupBy()` lets you organize data into buckets based on a key - perfect for reports and summaries!
+
+<DotnetCodePreview
+  title="GroupBy Fundamentals"
+  code={`// Basic GroupBy with aggregation
+var productsByCategory = context.Products
+    .GroupBy(p => p.CategoryId)
+    .Select(group => new 
+    {
+        CategoryId = group.Key,
+        ProductCount = group.Count(),
+        AveragePrice = group.Average(p => p.Price),
+        TotalValue = group.Sum(p => p.StockCount * p.Price)
+    })
+    .ToList();
+
+// GroupBy with multiple keys
+var salesByRegionAndMonth = context.Orders
+    .GroupBy(o => new 
+    { 
+        o.Region, 
+        Month = o.OrderDate.Month,
+        Year = o.OrderDate.Year 
+    })
+    .Select(g => new 
+    {
+        g.Key.Region,
+        g.Key.Month,
+        g.Key.Year,
+        TotalSales = g.Sum(o => o.Total),
+        OrderCount = g.Count()
+    })
+    .OrderBy(x => x.Year)
+    .ThenBy(x => x.Month)
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "GroupBy Key",
+      explanation: "All products with the same CategoryId go into the same group"
+    },
+    {
+      lineNumbers: [4, 5, 6, 7, 8, 9, 10],
+      highlight: "Aggregate per Group",
+      explanation: "group.Key is the CategoryId; Count(), Average(), Sum() work on each group"
+    },
+    {
+      lineNumbers: [14, 15, 16, 17, 18, 19],
+      highlight: "Multiple Keys",
+      explanation: "Group by anonymous type to create groups per unique combination"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="GroupBy SQL Translation"
+  steps={[
+    {
+      linq: `var summary = context.Orders
+    .GroupBy(o => o.CustomerId)
+    .Select(g => new 
+    {
+        CustomerId = g.Key,
+        TotalOrders = g.Count(),
+        TotalSpent = g.Sum(o => o.Total)
+    })
+    .ToList();`,
+      sql: `SELECT [o].[CustomerId], COUNT(*) AS [TotalOrders], 
+       COALESCE(SUM([o].[Total]), 0) AS [TotalSpent]
+FROM [Orders] AS [o]
+GROUP BY [o].[CustomerId]`,
+      explanation: "LINQ GroupBy becomes SQL GROUP BY. All aggregations run on the database!"
+    },
+    {
+      linq: `var topCustomers = context.Orders
+    .GroupBy(o => o.CustomerId)
+    .Where(g => g.Count() > 5)  // HAVING clause
+    .Select(g => new 
+    {
+        CustomerId = g.Key,
+        OrderCount = g.Count()
+    })
+    .ToList();`,
+      sql: `SELECT [o].[CustomerId], COUNT(*) AS [OrderCount]
+FROM [Orders] AS [o]
+GROUP BY [o].[CustomerId]
+HAVING COUNT(*) > 5`,
+      explanation: "Where() after GroupBy becomes SQL HAVING - filters on aggregate results!"
+    }
+  ]}
+/>
+
+### GroupBy with Full Data (EF Core 7+)
+
+<InfoBox type="info">
+**EF Core 7+ Feature:** In earlier versions, GroupBy could only return scalar aggregates. EF Core 7+ can also return the grouped items themselves by creating the groups in memory.
+</InfoBox>
+
+<DotnetCodePreview
+  title="GroupBy with Elements (EF Core 7+)"
+  code={`// Get groups with actual items (EF Core 7+)
+var categorizedProducts = context.Products
+    .GroupBy(p => p.Category.Name)
+    .ToList();
+
+// Each group contains:
+// - Key: the category name
+// - Elements: all products in that category
+foreach (var group in categorizedProducts)
+{
+    Console.WriteLine($"Category: {group.Key}");
+    foreach (var product in group)
+    {
+        Console.WriteLine($"  - {product.Name}: {product.Price:C}");
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Full GroupBy",
+      explanation: "Returns IGrouping with all elements - works in EF Core 7+"
+    },
+    {
+      lineNumbers: [9, 10, 11, 12, 13, 14, 15],
+      highlight: "Iterate Groups",
+      explanation: "Each group has a Key and can be iterated for its elements"
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="nav-vs-join-quiz">
+  <Question>When should you use navigation properties instead of explicit joins?</Question>
+  <Answer correct>When you have a relationship defined between entities</Answer>
+  <Answer>Only for one-to-many relationships</Answer>
+  <Answer>Never - explicit joins are always better</Answer>
+  <Answer>Only when using Include()</Answer>
+</Quiz>
+
+<Quiz id="left-join-quiz">
+  <Question>What makes a Left Join different from an Inner Join?</Question>
+  <Answer>Left Joins are faster</Answer>
+  <Answer>Left Joins work on strings only</Answer>
+  <Answer correct>Left Joins return all left-side rows, even without matches (with nulls for right side)</Answer>
+  <Answer>Left Joins require GroupBy</Answer>
+</Quiz>
+
+<Quiz id="groupby-having-quiz">
+  <Question>How do you filter grouped results in EF Core LINQ?</Question>
+  <Answer>Use Where() before GroupBy()</Answer>
+  <Answer correct>Use Where() after GroupBy() - it becomes a HAVING clause</Answer>
+  <Answer>Use a subquery</Answer>
+  <Answer>You can't filter grouped results</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Navigation Properties** | Preferred way to access related data - cleaner and automatic JOINs |
+| **Explicit Join** | Use when no navigation exists or for special join conditions |
+| **Left Join** | `GroupJoin` + `DefaultIfEmpty()` pattern - returns all left rows |
+| **GroupBy()** | Organize by key, use aggregates per group |
+| **HAVING** | `Where()` after `GroupBy()` filters on aggregate results |
+
+<KeyConcept title="What's Next?">
+You've mastered combining and organizing data! Next up: **Aggregations** - dive deeper into Count, Sum, Average, and more advanced aggregate functions.
+</KeyConcept>
+
+<ProgressCheckpoint section="groupby-operations" xpReward={25} />

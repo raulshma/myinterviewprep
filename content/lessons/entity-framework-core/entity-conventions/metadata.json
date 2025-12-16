@@ -1,0 +1,18 @@
+{
+  "id": "entity-conventions",
+  "title": "Entity Classes and Conventions",
+  "description": "Learn how EF Core uses conventions to automatically configure your entity classes, reducing the amount of explicit configuration needed.",
+  "milestone": "entity-configuration",
+  "order": 0,
+  "sections": [
+    "what-are-conventions",
+    "naming-conventions",
+    "type-conventions",
+    "relationship-conventions"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 18,
+  "xpReward": 80,
+  "prerequisites": ["dbset-fundamentals"],
+  "tags": ["ef-core", "conventions", "entity", "configuration", "dotnet"]
+}

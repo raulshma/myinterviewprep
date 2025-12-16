@@ -239,6 +239,10 @@ export async function findLessonPath(milestoneId: string, objective: LearningObj
   // Try entity-framework-core/ prefix as a fallback for EF Core lessons
   addPath(`entity-framework-core/${lessonId}`);
   addPath(`entity-framework-core/${finalSlug}`);
+  
+  // Also try ef-core-introduction/ - this is where single-level EF Core lessons are stored
+  addPath(`ef-core-introduction/${lessonId}`);
+  addPath(`ef-core-introduction/${finalSlug}`);
 
   for (const candidate of candidatePaths) {
     if (await lessonExists(candidate)) {

@@ -12,6 +12,13 @@ import {
   KeyConcept,
   Comparison,
   EnhancedCodeBlock,
+  // EF Core specific components
+  DotnetCodePreview as EfCoreDotnetCodePreview,
+  DbContextVisualizer as EfCoreDbContextVisualizer,
+  ChangeTrackingVisualizer,
+  RelationshipDiagram,
+  QueryExecutionVisualizer,
+  MigrationFlowDiagram,
 } from '@/components/learn/mdx-components';
 
 import { HttpConversation } from '@/components/learn/interactive/http/HttpConversation';
@@ -442,6 +449,16 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     PostgresqlExplorer,
     DatabaseDesignVisualizer,
     DbContextVisualizer,
+
+    // Migration Lesson Components
+    MigrationVisualizer: dynamic(() => import('@/components/learn/interactive/dotnet/MigrationVisualizer').then(mod => mod.MigrationVisualizer), { ssr: false }),
+
+    // EF Core Lesson Components (from mdx-components/ef-core)
+    // These provide enhanced visualizations for EF Core lessons
+    ChangeTrackingVisualizer,
+    RelationshipDiagram,
+    QueryExecutionVisualizer,
+    MigrationFlowDiagram,
 
     // Dapper Lesson Components
     DapperQueryVisualizer,

@@ -1,0 +1,18 @@
+{
+  "id": "data-annotations",
+  "title": "Data Annotations",
+  "description": "Master Data Annotations - attributes that let you configure entity properties directly in your C# classes for validation and database mapping.",
+  "milestone": "entity-configuration",
+  "order": 1,
+  "sections": [
+    "intro-to-annotations",
+    "validation-annotations",
+    "schema-annotations",
+    "when-to-use"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 20,
+  "xpReward": 85,
+  "prerequisites": ["entity-conventions"],
+  "tags": ["ef-core", "data-annotations", "attributes", "validation", "dotnet"]
+}

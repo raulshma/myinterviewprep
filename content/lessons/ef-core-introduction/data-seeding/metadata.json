@@ -1,0 +1,18 @@
+{
+  "id": "data-seeding",
+  "title": "Seeding Data",
+  "description": "Learn how to populate your database with initial data using EF Core's data seeding features.",
+  "milestone": "migrations",
+  "order": 5,
+  "sections": [
+    "why-seed-data",
+    "hasdata-method",
+    "custom-seeding",
+    "seeding-strategies"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 75,
+  "prerequisites": ["reverting-migrations"],
+  "tags": ["ef-core", "migrations", "seeding", "data"]
+}

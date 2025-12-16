@@ -1,0 +1,19 @@
+{
+  "id": "ef-create-entities",
+  "title": "Creating Entities in EF Core",
+  "description": "Learn how to add new entities to your database using EF Core's Add methods and understand how the change tracker handles new entities.",
+  "milestone": "crud-operations",
+  "order": 0,
+  "sections": [
+    "introduction",
+    "add-methods",
+    "adding-related-entities",
+    "batch-inserts",
+    "best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 18,
+  "xpReward": 90,
+  "prerequisites": ["dbset-fundamentals"],
+  "tags": ["ef-core", "crud", "create", "insert", "dotnet"]
+}

@@ -1,0 +1,406 @@
+# Seeding Data
+
+New database, empty tables - now what? Data seeding is like **furnishing a new house** - you move in the essential items before you start living there!
+
+---
+
+## Section 1: Why Seed Data?
+
+### The Empty House Problem 🏠
+
+When you create a database, it's completely empty. But your application often needs:
+
+| Data Type | Examples |
+|:----------|:---------|
+| **Lookup data** | Countries, currencies, status codes |
+| **Default settings** | Application configuration |
+| **Admin accounts** | Initial admin user |
+| **Demo data** | Sample products for testing |
+
+<InfoBox type="info">
+**Data seeding** populates your database with initial data as part of the migration process. It runs automatically when migrations are applied!
+</InfoBox>
+
+### When to Use Seeding
+
+<Comparison
+  title="Seeding Use Cases"
+  items={[
+    {
+      label: "✅ Lookup tables (Countries, Statuses)",
+      description: "Reference data that rarely changes and is required for the app to work",
+      isCorrect: true
+    },
+    {
+      label: "✅ Default configuration",
+      description: "Initial settings that the app needs on first run",
+      isCorrect: true
+    },
+    {
+      label: "✅ Required relationships",
+      description: "Default categories, roles, or types that other entities depend on",
+      isCorrect: true
+    },
+    {
+      label: "❌ User-generated content",
+      description: "Never seed actual user data or content that changes frequently",
+      isCorrect: false
+    }
+  ]}
+/>
+
+<KeyConcept title="Seeding Philosophy">
+Seed data that your application **needs to function**. Don't seed data that **users will create** - that's runtime data, not seed data!
+</KeyConcept>
+
+<ProgressCheckpoint section="why-seed-data" xpReward={15} />
+
+---
+
+## Section 2: The HasData() Method
+
+### Built-in Seeding with Fluent API
+
+EF Core provides `HasData()` in your model configuration to seed data:
+
+<DotnetCodePreview
+  title="Basic HasData() Example"
+  code={`public class AppDbContext : DbContext
+{
+    public DbSet<Country> Countries { get; set; }
+    public DbSet<OrderStatus> OrderStatuses { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Seed countries
+        modelBuilder.Entity<Country>().HasData(
+            new Country { Id = 1, Code = "US", Name = "United States" },
+            new Country { Id = 2, Code = "CA", Name = "Canada" },
+            new Country { Id = 3, Code = "UK", Name = "United Kingdom" }
+        );
+
+        // Seed order statuses
+        modelBuilder.Entity<OrderStatus>().HasData(
+            new OrderStatus { Id = 1, Name = "Pending", Color = "#FFA500" },
+            new OrderStatus { Id = 2, Name = "Processing", Color = "#0000FF" },
+            new OrderStatus { Id = 3, Name = "Shipped", Color = "#008000" },
+            new OrderStatus { Id = 4, Name = "Delivered", Color = "#00FF00" }
+        );
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [9, 10, 11, 12, 13],
+      highlight: "Seed Countries",
+      explanation: "Each entity needs an explicit Id since it's not generated"
+    },
+    {
+      lineNumbers: [16, 17, 18, 19, 20, 21],
+      highlight: "Seed Statuses",
+      explanation: "Multiple entities seeded with all required properties"
+    }
+  ]}
+/>
+
+### Important Rules for HasData()
+
+<InfoBox type="warning">
+**HasData() has strict rules:**
+1. You MUST provide explicit primary key values
+2. You MUST provide all required (non-nullable) properties
+3. Navigation properties are NOT supported - use foreign keys
+</InfoBox>
+
+<DotnetCodePreview
+  title="Seeding with Relationships"
+  code={`// ❌ WRONG - Can't use navigation properties
+modelBuilder.Entity<Post>().HasData(
+    new Post 
+    { 
+        Id = 1, 
+        Title = "First Post",
+        Blog = new Blog { Id = 1, Name = "My Blog" }  // ❌ Not allowed!
+    }
+);
+
+// ✅ CORRECT - Use foreign key values
+modelBuilder.Entity<Blog>().HasData(
+    new Blog { Id = 1, Name = "My Blog" }
+);
+
+modelBuilder.Entity<Post>().HasData(
+    new Post 
+    { 
+        Id = 1, 
+        Title = "First Post",
+        BlogId = 1  // ✅ Reference by FK!
+    }
+);`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7, 8],
+      highlight: "Wrong Approach",
+      explanation: "Navigation properties don't work in HasData()"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15, 16, 17, 18, 19, 20],
+      highlight: "Correct Approach",
+      explanation: "Seed parent first, then reference with foreign key"
+    }
+  ]}
+/>
+
+### Generated Migration
+
+When you add a migration, EF Core generates InsertData calls:
+
+```csharp
+// Auto-generated in migration file
+migrationBuilder.InsertData(
+    table: "Countries",
+    columns: new[] { "Id", "Code", "Name" },
+    values: new object[,]
+    {
+        { 1, "US", "United States" },
+        { 2, "CA", "Canada" },
+        { 3, "UK", "United Kingdom" }
+    });
+```
+
+<ProgressCheckpoint section="hasdata-method" xpReward={25} />
+
+---
+
+## Section 3: Custom Seeding (EF Core 8+)
+
+### UseSeeding and UseAsyncSeeding
+
+For more complex seeding logic, EF Core 8 introduced new methods:
+
+<DotnetCodePreview
+  title="Custom Seeding with UseSeeding"
+  code={`// In your DbContext configuration
+protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+{
+    optionsBuilder
+        .UseSqlServer(connectionString)
+        .UseSeeding((context, _) =>
+        {
+            var db = (AppDbContext)context;
+            
+            // Check if data exists before seeding
+            if (!db.Countries.Any())
+            {
+                db.Countries.AddRange(
+                    new Country { Code = "US", Name = "United States" },
+                    new Country { Code = "CA", Name = "Canada" }
+                );
+                db.SaveChanges();
+            }
+        })
+        .UseAsyncSeeding(async (context, _, ct) =>
+        {
+            var db = (AppDbContext)context;
+            
+            // Async version for more complex operations
+            if (!await db.AdminUsers.AnyAsync(ct))
+            {
+                var hashedPassword = await HashPasswordAsync("admin123");
+                db.AdminUsers.Add(new AdminUser 
+                { 
+                    Email = "admin@example.com",
+                    PasswordHash = hashedPassword 
+                });
+                await db.SaveChangesAsync(ct);
+            }
+        });
+}`}
+  steps={[
+    {
+      lineNumbers: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+      highlight: "UseSeeding",
+      explanation: "Synchronous seeding with full DbContext access"
+    },
+    {
+      lineNumbers: [10, 11],
+      highlight: "Conditional Check",
+      explanation: "Check if data exists to prevent duplicate seeding"
+    },
+    {
+      lineNumbers: [20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33],
+      highlight: "UseAsyncSeeding",
+      explanation: "Async version for complex operations like password hashing"
+    }
+  ]}
+/>
+
+### HasData vs UseSeeding
+
+| Feature | HasData() | UseSeeding() |
+|:--------|:----------|:-------------|
+| **Introduced** | EF Core 2.1 | EF Core 8.0 |
+| **When it runs** | During migrations | EnsureCreated/Migrate |
+| **Explicit IDs** | Required | Optional |
+| **Navigation props** | Not supported | Fully supported |
+| **Complex logic** | Not supported | Fully supported |
+| **Async operations** | Not supported | Supported |
+
+<InfoBox type="tip">
+**When to use which:**
+- **HasData()** for simple, static lookup data that doesn't change
+- **UseSeeding()** for complex initialization, conditional logic, or when you need full DbContext access
+</InfoBox>
+
+<ProgressCheckpoint section="custom-seeding" xpReward={20} />
+
+---
+
+## Section 4: Seeding Strategies
+
+### Different Data for Different Environments
+
+<DotnetCodePreview
+  title="Environment-Specific Seeding"
+  code={`// Strategy: Use configuration to control seeding
+
+public class SeedingService
+{
+    private readonly AppDbContext _db;
+    private readonly IWebHostEnvironment _env;
+    
+    public async Task SeedAsync()
+    {
+        // Always seed essential lookup data
+        await SeedLookupsAsync();
+        
+        // Only seed demo data in development
+        if (_env.IsDevelopment())
+        {
+            await SeedDemoDataAsync();
+        }
+        
+        // Only seed test users in non-production
+        if (!_env.IsProduction())
+        {
+            await SeedTestUsersAsync();
+        }
+    }
+    
+    private async Task SeedLookupsAsync()
+    {
+        if (!await _db.Countries.AnyAsync())
+        {
+            _db.Countries.AddRange(GetCountries());
+            await _db.SaveChangesAsync();
+        }
+    }
+    
+    private async Task SeedDemoDataAsync()
+    {
+        // Sample products, customers, orders for testing
+        if (!await _db.Products.AnyAsync())
+        {
+            _db.Products.AddRange(GenerateSampleProducts(100));
+            await _db.SaveChangesAsync();
+        }
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [11],
+      highlight: "Essential Data",
+      explanation: "Lookup data seeds in all environments"
+    },
+    {
+      lineNumbers: [14, 15, 16],
+      highlight: "Development Only",
+      explanation: "Demo data helps with local testing"
+    },
+    {
+      lineNumbers: [19, 20, 21, 22],
+      highlight: "Non-Production Only",
+      explanation: "Test users for staging/dev, never production!"
+    }
+  ]}
+/>
+
+### Seeding Best Practices
+
+<Comparison
+  title="Seeding Do's and Don'ts"
+  items={[
+    {
+      label: "✅ Make seeding idempotent",
+      description: "Check if data exists before adding - prevent duplicates!",
+      isCorrect: true
+    },
+    {
+      label: "✅ Use consistent IDs",
+      description: "Hardcode IDs for lookup data so they're predictable",
+      isCorrect: true
+    },
+    {
+      label: "✅ Separate by purpose",
+      description: "Lookups, demo data, and test data should be separate",
+      isCorrect: true
+    },
+    {
+      label: "❌ Seed sensitive data",
+      description: "Never hardcode real passwords or API keys in seed data",
+      isCorrect: false
+    },
+    {
+      label: "❌ Seed large datasets",
+      description: "Don't seed thousands of rows - that's not what seeding is for",
+      isCorrect: false
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="hasdata-rule">
+  <Question>What MUST you provide when using HasData() to seed entities?</Question>
+  <Answer>Only the primary key</Answer>
+  <Answer>Navigation properties</Answer>
+  <Answer correct>Explicit primary key values AND all required properties</Answer>
+  <Answer>Connection string</Answer>
+</Quiz>
+
+<Quiz id="hasdata-vs-useseeding">
+  <Question>When should you use UseSeeding() instead of HasData()?</Question>
+  <Answer>When you want simpler code</Answer>
+  <Answer correct>When you need complex logic, async operations, or navigation properties</Answer>
+  <Answer>HasData() is always better</Answer>
+  <Answer>Only in production environments</Answer>
+</Quiz>
+
+<Quiz id="seeding-idempotent">
+  <Question>Why should seeding be idempotent (check if data exists first)?</Question>
+  <Answer correct>To prevent duplicate data when migrations run multiple times</Answer>
+  <Answer>It makes the app faster</Answer>
+  <Answer>EF Core requires it</Answer>
+  <Answer>It reduces database size</Answer>
+</Quiz>
+
+### Summary
+
+| Method | Best For |
+|:-------|:---------|
+| **HasData()** | Simple lookup data with fixed IDs |
+| **UseSeeding()** | Complex logic, async operations |
+| **Custom Service** | Environment-specific seeding |
+| **Always check first** | Prevent duplicate data |
+
+<KeyConcept title="Migrations Master! 🎉">
+Congratulations! You've completed the EF Core Migrations milestone! You now know how to:
+- ✅ Create and apply migrations
+- ✅ Follow best practices
+- ✅ Handle conflicts
+- ✅ Revert when needed
+- ✅ Seed initial data
+
+You're ready to manage database evolution like a pro!
+</KeyConcept>
+
+<ProgressCheckpoint section="seeding-strategies" xpReward={15} />

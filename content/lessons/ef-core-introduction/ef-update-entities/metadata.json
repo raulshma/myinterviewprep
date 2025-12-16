@@ -1,0 +1,19 @@
+{
+  "id": "ef-update-entities",
+  "title": "Updating Entities in EF Core",
+  "description": "Learn how to modify existing entities and understand how EF Core's change tracking detects and persists your changes.",
+  "milestone": "crud-operations",
+  "order": 2,
+  "sections": [
+    "introduction",
+    "tracked-updates",
+    "disconnected-updates",
+    "partial-updates",
+    "best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 18,
+  "xpReward": 90,
+  "prerequisites": ["ef-read-entities"],
+  "tags": ["ef-core", "crud", "update", "modify", "dotnet"]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "database-providers-overview",
+  "title": "Database Providers Overview",
+  "description": "Explore the different database providers available for EF Core, understand their strengths, and learn how to choose the right one for your project.",
+  "milestone": "dbcontext-and-dbset",
+  "order": 3,
+  "sections": [
+    "what-are-providers",
+    "popular-providers",
+    "choosing-provider",
+    "switching-providers"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 16,
+  "xpReward": 75,
+  "prerequisites": ["ef-connection-config"],
+  "tags": ["ef-core", "database-providers", "sql-server", "postgresql", "sqlite", "dotnet"]
+}

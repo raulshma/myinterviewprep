@@ -1,0 +1,384 @@
+# Creating Entities in EF Core
+
+Welcome to the first step of CRUD operations! The "C" stands for **Create**, and in this lesson, you'll learn how to add new data to your database using Entity Framework Core.
+
+---
+
+## Section 1: Introduction to Creating Entities
+
+### The Restaurant Kitchen Analogy 🍳
+
+Remember our restaurant analogy? When you want to add a new dish to the menu, you don't just teleport it into existence. You:
+
+1. **Prepare the ingredients** (create your entity object)
+2. **Tell the chef** (add it to the DbSet)
+3. **Ring the bell** (call SaveChanges)
+4. **Dish is served** (entity is in the database!)
+
+<InfoBox type="info">
+**Creating entities** in EF Core is a two-step process: first you tell EF Core about your new entity, then you persist it to the database with `SaveChanges()`.
+</InfoBox>
+
+### The Entity Lifecycle
+
+When you create a new entity, it goes through these states:
+
+| Step | Entity State | What's Happening |
+|:-----|:-------------|:-----------------|
+| 1. Create object | **Detached** | Just a C# object, EF Core doesn't know about it |
+| 2. Add to context | **Added** | EF Core is tracking it, ready to insert |
+| 3. SaveChanges | **Unchanged** | Now in database, EF Core keeps watching |
+
+<KeyConcept title="Key Insight">
+EF Core doesn't touch the database until you call `SaveChanges()` or `SaveChangesAsync()`. This lets you batch multiple operations into a single database transaction!
+</KeyConcept>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+---
+
+## Section 2: The Add Methods
+
+### Using DbSet.Add()
+
+The most common way to create entities is using the `Add()` method on your DbSet:
+
+<DotnetCodePreview
+  title="Adding a Single Entity"
+  code={`// Create a new blog entity
+var newBlog = new Blog
+{
+    Title = "My Tech Journey",
+    Url = "https://mytechjourney.dev",
+    CreatedAt = DateTime.UtcNow
+};
+
+// Tell EF Core about it (state becomes "Added")
+context.Blogs.Add(newBlog);
+
+// Persist to database (INSERT statement runs here!)
+await context.SaveChangesAsync();
+
+// After save, newBlog.Id is populated with the generated key!
+Console.WriteLine($"Created blog with ID: {newBlog.Id}");`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7],
+      highlight: "Create the Object",
+      explanation: "Create a regular C# object. At this point, it's just in memory - EF Core doesn't know about it yet."
+    },
+    {
+      lineNumbers: [10],
+      highlight: "Add to DbSet",
+      explanation: "Add() tells EF Core to start tracking this entity. Its state becomes 'Added', meaning it will be inserted on save."
+    },
+    {
+      lineNumbers: [13],
+      highlight: "Save to Database",
+      explanation: "SaveChangesAsync() generates and executes the INSERT SQL. This is when the database is actually modified!"
+    },
+    {
+      lineNumbers: [16],
+      highlight: "Auto-Generated Key",
+      explanation: "After saving, EF Core automatically populates the Id property with the database-generated value. Magic! ✨"
+    }
+  ]}
+/>
+
+### Alternative: Using context.Add()
+
+You can also add entities directly through the context:
+
+<DotnetCodePreview
+  title="Adding via Context"
+  code={`// These two approaches are equivalent:
+
+// Option 1: Through DbSet
+context.Blogs.Add(newBlog);
+
+// Option 2: Through Context (EF Core figures out the DbSet)
+context.Add(newBlog);
+
+// Both result in the same INSERT statement
+await context.SaveChangesAsync();`}
+  steps={[
+    {
+      lineNumbers: [4],
+      highlight: "DbSet.Add()",
+      explanation: "Explicitly specifies which DbSet to add to. Clear and explicit."
+    },
+    {
+      lineNumbers: [7],
+      highlight: "Context.Add()",
+      explanation: "EF Core automatically determines the correct DbSet based on the entity type. Convenient for generic code!"
+    }
+  ]}
+/>
+
+### Async vs Sync Methods
+
+<Comparison
+  title="Add vs AddAsync"
+  items={[
+    {
+      label: "Add() - Synchronous",
+      description: "Use for most scenarios. Adding to the change tracker is an in-memory operation and doesn't need async.",
+      isCorrect: true
+    },
+    {
+      label: "AddAsync() - Asynchronous",
+      description: "Only needed when using value generators that need async database access (rare). Most of the time, Add() is fine!",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Pro Tip:** `Add()` is synchronous because it only modifies the in-memory change tracker. The actual database work happens in `SaveChangesAsync()`, which should always be async!
+</InfoBox>
+
+<ProgressCheckpoint section="add-methods" xpReward={20} />
+
+---
+
+## Section 3: Adding Related Entities
+
+### The Power of Navigation Properties
+
+One of EF Core's superpowers is automatically handling related entities. When you add an entity with navigation properties, EF Core figures out the relationships!
+
+<DotnetCodePreview
+  title="Adding Entity with Related Data"
+  code={`// Create a blog with posts in one go!
+var blog = new Blog
+{
+    Title = "EF Core Mastery",
+    Url = "https://efcore.mastery.dev",
+    Posts = new List<Post>
+    {
+        new Post 
+        { 
+            Title = "Getting Started", 
+            Content = "Welcome to EF Core..." 
+        },
+        new Post 
+        { 
+            Title = "CRUD Operations", 
+            Content = "Let's learn CRUD..." 
+        }
+    }
+};
+
+// Add just the blog - EF Core handles the posts automatically!
+context.Blogs.Add(blog);
+await context.SaveChangesAsync();
+
+// All three entities are now in the database!
+// blog.Id, blog.Posts[0].Id, blog.Posts[1].Id are all populated`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5],
+      highlight: "Parent Entity",
+      explanation: "Create the parent Blog entity with its properties."
+    },
+    {
+      lineNumbers: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18],
+      highlight: "Child Entities",
+      explanation: "Add Post entities directly to the navigation property. No need to set BlogId - EF Core handles it!"
+    },
+    {
+      lineNumbers: [21],
+      highlight: "Single Add",
+      explanation: "Just add the parent. EF Core automatically detects and tracks all related entities in the graph!"
+    },
+    {
+      lineNumbers: [22],
+      highlight: "One SaveChanges",
+      explanation: "All INSERTs happen in a single transaction. If anything fails, everything rolls back."
+    }
+  ]}
+/>
+
+### Adding to Existing Entities
+
+You can also add related entities to entities that are already tracked:
+
+<DotnetCodePreview
+  title="Adding to Tracked Entity"
+  code={`// Load an existing blog
+var blog = await context.Blogs.FindAsync(1);
+
+// Add a new post to it
+blog.Posts.Add(new Post
+{
+    Title = "New Post!",
+    Content = "This post was added to an existing blog."
+});
+
+// EF Core knows to INSERT the post with BlogId = 1
+await context.SaveChangesAsync();`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Load Existing",
+      explanation: "FindAsync loads the blog and starts tracking it (state: Unchanged)."
+    },
+    {
+      lineNumbers: [5, 6, 7, 8, 9],
+      highlight: "Add Related",
+      explanation: "Adding to the navigation property automatically sets the foreign key and marks the new post as Added."
+    },
+    {
+      lineNumbers: [12],
+      highlight: "Save",
+      explanation: "Only the new post is inserted. The blog itself isn't modified."
+    }
+  ]}
+/>
+
+<KeyConcept title="Relationship Magic">
+EF Core automatically:
+- Sets foreign key values based on navigation properties
+- Tracks all entities in an object graph
+- Inserts entities in the correct order (parents before children)
+</KeyConcept>
+
+<ProgressCheckpoint section="adding-related-entities" xpReward={20} />
+
+---
+
+## Section 4: Batch Inserts
+
+### Adding Multiple Entities
+
+When you need to insert many entities, use `AddRange()` for cleaner code:
+
+<DotnetCodePreview
+  title="Batch Insert with AddRange"
+  code={`// Create multiple blogs
+var blogs = new List<Blog>
+{
+    new Blog { Title = "Tech Blog", Url = "https://tech.blog" },
+    new Blog { Title = "Dev Blog", Url = "https://dev.blog" },
+    new Blog { Title = "Code Blog", Url = "https://code.blog" }
+};
+
+// Add all at once
+context.Blogs.AddRange(blogs);
+
+// Single SaveChanges for all inserts
+await context.SaveChangesAsync();
+
+// All blogs now have their IDs populated!
+foreach (var blog in blogs)
+{
+    Console.WriteLine($"Created: {blog.Title} (ID: {blog.Id})");
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7],
+      highlight: "Create Collection",
+      explanation: "Prepare all your entities in a list or array."
+    },
+    {
+      lineNumbers: [10],
+      highlight: "AddRange",
+      explanation: "AddRange is more efficient than calling Add() in a loop - it's optimized for bulk operations."
+    },
+    {
+      lineNumbers: [13],
+      highlight: "Single Transaction",
+      explanation: "All inserts happen in one database round-trip. Much faster than individual saves!"
+    }
+  ]}
+/>
+
+### Performance Tip: Batching
+
+<InfoBox type="warning">
+**Performance Warning:** For very large inserts (thousands of records), consider using specialized bulk insert libraries like `EFCore.BulkExtensions`. Standard EF Core generates individual INSERT statements, which can be slow for massive datasets.
+</InfoBox>
+
+<DotnetCodePreview
+  title="Efficient Batch Pattern"
+  code={`// For large datasets, batch your saves
+var allProducts = GetThousandsOfProducts();
+var batchSize = 100;
+
+for (int i = 0; i < allProducts.Count; i += batchSize)
+{
+    var batch = allProducts.Skip(i).Take(batchSize);
+    context.Products.AddRange(batch);
+    await context.SaveChangesAsync();
+    
+    // Clear the tracker to free memory
+    context.ChangeTracker.Clear();
+}
+
+Console.WriteLine($"Inserted {allProducts.Count} products!");`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Setup Batching",
+      explanation: "Define your batch size based on your needs. 100-1000 is usually a good range."
+    },
+    {
+      lineNumbers: [5, 6, 7, 8, 9],
+      highlight: "Process in Batches",
+      explanation: "Add and save in chunks to avoid memory issues and long-running transactions."
+    },
+    {
+      lineNumbers: [12],
+      highlight: "Clear Tracker",
+      explanation: "Important! Clear the change tracker between batches to prevent memory buildup."
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="batch-inserts" xpReward={20} />
+
+---
+
+## Section 5: Best Practices
+
+### Quick Knowledge Check
+
+<Quiz id="add-method-quiz">
+  <Question>What state is an entity in immediately after calling Add()?</Question>
+  <Answer>Unchanged</Answer>
+  <Answer correct>Added</Answer>
+  <Answer>Modified</Answer>
+  <Answer>Detached</Answer>
+</Quiz>
+
+<Quiz id="savechanges-quiz">
+  <Question>When does the actual INSERT statement run?</Question>
+  <Answer>When you call Add()</Answer>
+  <Answer>When you create the entity object</Answer>
+  <Answer correct>When you call SaveChanges() or SaveChangesAsync()</Answer>
+  <Answer>Immediately when the entity is created</Answer>
+</Quiz>
+
+<Quiz id="related-entities-quiz">
+  <Question>When adding a Blog with Posts in its navigation property, how many Add() calls do you need?</Question>
+  <Answer correct>Just one - Add the Blog and EF Core handles the Posts</Answer>
+  <Answer>One for the Blog, one for each Post</Answer>
+  <Answer>You must add Posts first, then the Blog</Answer>
+  <Answer>You need to manually set all foreign keys</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Takeaway |
+|:--------|:-------------|
+| **Add()** | Marks entity as "Added" in change tracker |
+| **SaveChanges()** | Executes INSERT and populates generated keys |
+| **Navigation Properties** | Related entities are automatically tracked |
+| **AddRange()** | Efficient for adding multiple entities |
+| **Batching** | Use for large datasets to manage memory |
+
+<KeyConcept title="What's Next?">
+Now that you can create entities, it's time to learn how to **read them back**! In the next lesson, you'll master querying with LINQ to retrieve exactly the data you need.
+</KeyConcept>
+
+<ProgressCheckpoint section="best-practices" xpReward={15} />

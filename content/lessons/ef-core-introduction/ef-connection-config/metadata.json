@@ -1,0 +1,18 @@
+{
+  "id": "ef-connection-config",
+  "title": "Connection Strings and Configuration",
+  "description": "Learn how to configure EF Core connection strings securely, use different configuration sources, and handle environment-specific settings.",
+  "milestone": "dbcontext-and-dbset",
+  "order": 2,
+  "sections": [
+    "connection-string-basics",
+    "configuration-sources",
+    "secure-configuration",
+    "advanced-options"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 18,
+  "xpReward": 80,
+  "prerequisites": ["dbcontext-lifecycle"],
+  "tags": ["ef-core", "connection-strings", "configuration", "security", "dotnet"]
+}

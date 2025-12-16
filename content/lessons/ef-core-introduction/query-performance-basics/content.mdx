@@ -1,0 +1,537 @@
+# Query Performance Considerations
+
+Write queries that don't just work - make them fly! Learn essential performance patterns to avoid slow EF Core queries.
+
+---
+
+## Section 1: AsNoTracking for Read-Only Queries
+
+### The Surveillance Camera Analogy 📹
+
+Imagine every entity you load from the database is being watched by a surveillance camera. EF Core is constantly monitoring it for changes so it can sync them back to the database. This watching takes memory and CPU time!
+
+If you're just **displaying** data (not editing it), why have cameras rolling? That's what `AsNoTracking()` does - it tells EF Core "I'm just looking, don't bother watching."
+
+<QueryExecutionVisualizer
+  title="Tracking vs No Tracking"
+  steps={[
+    {
+      linq: `// WITH tracking (default)
+var products = context.Products
+    .Where(p => p.IsActive)
+    .ToList();
+// EF Core creates snapshots and monitors each entity`,
+      sql: `SELECT [p].[Id], [p].[Name], [p].[Price], [p].[IsActive]
+FROM [Products] AS [p]
+WHERE [p].[IsActive] = 1
+
+-- Same SQL, but different memory behavior!`,
+      explanation: "With tracking: EF stores a copy of each entity's original values and monitors for changes."
+    },
+    {
+      linq: `// WITHOUT tracking
+var products = context.Products
+    .AsNoTracking()
+    .Where(p => p.IsActive)
+    .ToList();
+// Just read the data - no monitoring overhead`,
+      sql: `SELECT [p].[Id], [p].[Name], [p].[Price], [p].[IsActive]
+FROM [Products] AS [p]
+WHERE [p].[IsActive] = 1
+
+-- Same SQL, but faster and less memory!`,
+      explanation: "With AsNoTracking: Load the data and that's it. No snapshots, no change detection, no overhead!"
+    }
+  ]}
+/>
+
+<DotnetCodePreview
+  title="When to Use AsNoTracking"
+  code={`// ✅ Perfect for: Display pages, reports, APIs returning data
+var productList = await context.Products
+    .AsNoTracking()
+    .Where(p => p.CategoryId == categoryId)
+    .OrderBy(p => p.Name)
+    .ToListAsync();
+
+// ✅ Great for: Dashboard statistics
+var stats = await context.Orders
+    .AsNoTracking()
+    .GroupBy(o => o.Status)
+    .Select(g => new { Status = g.Key, Count = g.Count() })
+    .ToListAsync();
+
+// ✅ Export/download operations
+var exportData = await context.Customers
+    .AsNoTracking()
+    .Select(c => new { c.Name, c.Email, c.CreatedAt })
+    .ToListAsync();
+
+// ❌ DON'T use when you need to update
+var customer = await context.Customers.FindAsync(id);
+customer.LastLogin = DateTime.UtcNow;
+await context.SaveChangesAsync();  // Works because it's tracked!
+
+// ❌ This WON'T save changes!
+var customer = await context.Customers
+    .AsNoTracking()
+    .FirstOrDefaultAsync(c => c.Id == id);
+customer.LastLogin = DateTime.UtcNow;
+await context.SaveChangesAsync();  // Nothing saved - not tracked!`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6],
+      highlight: "Display Lists",
+      explanation: "Lists that users view but don't edit - perfect for AsNoTracking"
+    },
+    {
+      lineNumbers: [9, 10, 11, 12, 13],
+      highlight: "Reports & Dashboards",
+      explanation: "Aggregated data is never edited - always use AsNoTracking"
+    },
+    {
+      lineNumbers: [22, 23, 24],
+      highlight: "✅ Tracked Updates",
+      explanation: "Without AsNoTracking, SaveChanges detects and saves changes"
+    },
+    {
+      lineNumbers: [27, 28, 29, 30, 31],
+      highlight: "❌ Lost Changes",
+      explanation: "With AsNoTracking, EF doesn't know the entity changed!"
+    }
+  ]}
+/>
+
+<Comparison
+  title="Tracking Behavior"
+  items={[
+    {
+      label: "Without AsNoTracking",
+      description: "Creates snapshots, monitors changes, supports SaveChanges(). ~20-30% slower for read-only operations.",
+      isCorrect: false
+    },
+    {
+      label: "With AsNoTracking",
+      description: "No snapshots, no monitoring, fastest possible reads. Use for all display/export/report scenarios.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<InfoBox type="tip">
+**Pro Tip:** If most of your queries are read-only, set it as the default for your DbContext:
+```csharp
+services.AddDbContext<AppDbContext>(options =>
+    options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
+```
+Then explicitly use `.AsTracking()` when you need to update entities.
+</InfoBox>
+
+<ProgressCheckpoint section="asnotracking-basics" xpReward={25} />
+
+---
+
+## Section 2: The N+1 Problem
+
+### The Most Common Performance Killer
+
+The **N+1 problem** is when loading N main entities results in N additional database queries to load related data. It's sneaky because the code looks fine!
+
+<DotnetCodePreview
+  title="N+1 Problem Explained"
+  code={`// ❌ THE N+1 PROBLEM - Looks innocent, performs terribly
+var blogs = context.Blogs.ToList();  // Query 1: Load all blogs
+
+foreach (var blog in blogs)
+{
+    // Each access to Posts triggers a NEW query!
+    Console.WriteLine($"{blog.Title}: {blog.Posts.Count} posts");
+    // Query 2, 3, 4, ... N+1 for each blog!
+}
+
+// Result with 100 blogs: 101 database queries! 😱
+
+// ✅ THE FIX - Include() for eager loading
+var blogsWithPosts = context.Blogs
+    .Include(b => b.Posts)  // Load posts WITH blogs
+    .ToList();  // Just 1 query!
+
+foreach (var blog in blogsWithPosts)
+{
+    // Posts already loaded - no extra queries
+    Console.WriteLine($"{blog.Title}: {blog.Posts.Count} posts");
+}`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Initial Query",
+      explanation: "Loads all blogs - just 1 query so far"
+    },
+    {
+      lineNumbers: [6, 7],
+      highlight: "Lazy Load Trap",
+      explanation: "EACH access to Posts triggers a database query!"
+    },
+    {
+      lineNumbers: [13, 14, 15],
+      highlight: "Eager Loading Fix",
+      explanation: "Include() loads Posts in the same query as Blogs"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="N+1 vs Include()"
+  steps={[
+    {
+      linq: `// N+1 Problem: 1 + N queries
+var blogs = context.Blogs.ToList();
+// Then for EACH blog access:
+var posts = blog.Posts.ToList();`,
+      sql: `-- Query 1
+SELECT * FROM Blogs
+
+-- Query 2 (for blog 1)
+SELECT * FROM Posts WHERE BlogId = 1
+
+-- Query 3 (for blog 2)
+SELECT * FROM Posts WHERE BlogId = 2
+
+-- ... continues for every blog!`,
+      explanation: "100 blogs = 101 queries! Database connection overhead multiplied by 100."
+    },
+    {
+      linq: `// Include: Just 1 query
+var blogs = context.Blogs
+    .Include(b => b.Posts)
+    .ToList();`,
+      sql: `SELECT [b].[Id], [b].[Title], [p].[Id], [p].[Title], [p].[BlogId]
+FROM [Blogs] AS [b]
+LEFT JOIN [Posts] AS [p] ON [b].[Id] = [p].[BlogId]
+ORDER BY [b].[Id]`,
+      explanation: "ONE query with a JOIN. 100 blogs with 1000 posts? Still just 1 query!"
+    }
+  ]}
+/>
+
+### Include Patterns
+
+<DotnetCodePreview
+  title="Eager Loading Patterns"
+  code={`// Single navigation
+var ordersWithCustomer = context.Orders
+    .Include(o => o.Customer)
+    .ToList();
+
+// Multiple navigations
+var orders = context.Orders
+    .Include(o => o.Customer)
+    .Include(o => o.ShippingAddress)
+    .Include(o => o.Items)
+    .ToList();
+
+// Nested navigation (ThenInclude)
+var blogs = context.Blogs
+    .Include(b => b.Posts)
+        .ThenInclude(p => p.Comments)
+            .ThenInclude(c => c.Author)
+    .ToList();
+
+// Filtered Include (EF Core 5+)
+var blogsWithRecentPosts = context.Blogs
+    .Include(b => b.Posts.Where(p => p.PublishedDate > lastMonth))
+    .ToList();
+
+// Include with projection - NOT NEEDED!
+var data = context.Blogs
+    .Select(b => new 
+    {
+        b.Title,
+        PostCount = b.Posts.Count()  // No Include needed with projections!
+    })
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [7, 8, 9, 10, 11],
+      highlight: "Multiple Includes",
+      explanation: "Each Include adds another JOIN or subquery"
+    },
+    {
+      lineNumbers: [14, 15, 16, 17, 18],
+      highlight: "ThenInclude Chain",
+      explanation: "Navigate deeply: Blogs → Posts → Comments → Author"
+    },
+    {
+      lineNumbers: [21, 22, 23],
+      highlight: "Filtered Include",
+      explanation: "Only load posts matching a condition - great for performance!"
+    },
+    {
+      lineNumbers: [26, 27, 28, 29, 30, 31, 32],
+      highlight: "Projections Auto-Join",
+      explanation: "With Select(), EF builds the optimal query automatically!"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Over-Including:** Don't Include everything! Each Include adds more data to transfer. Only Include what you actually need for the current operation.
+</InfoBox>
+
+<ProgressCheckpoint section="n-plus-one-problem" xpReward={25} />
+
+---
+
+## Section 3: Projection Optimization
+
+### Load Only What You Need
+
+The most impactful optimization? **Don't load what you don't need!**
+
+<DotnetCodePreview
+  title="Projection Performance"
+  code={`// ❌ Bad: Loading entire entities for a simple list
+var products = context.Products
+    .Where(p => p.IsActive)
+    .ToList();  // Loads ALL 20+ columns!
+
+// Then in view:
+// foreach(var p in products) 
+//     <li>@p.Name - @p.Price</li>
+
+// ✅ Good: Project to exactly what you need
+var productList = context.Products
+    .Where(p => p.IsActive)
+    .Select(p => new { p.Id, p.Name, p.Price })
+    .ToList();  // Only 3 columns transferred!
+
+// ✅ Better: Project to a strongly-typed DTO
+public record ProductListItem(int Id, string Name, decimal Price);
+
+var productList = context.Products
+    .Where(p => p.IsActive)
+    .Select(p => new ProductListItem(p.Id, p.Name, p.Price))
+    .ToList();
+
+// ✅ Best: Projections eliminate N+1 automatically!
+var blogSummaries = context.Blogs
+    .Select(b => new 
+    {
+        b.Id,
+        b.Title,
+        PostCount = b.Posts.Count(),
+        LatestPost = b.Posts
+            .OrderByDescending(p => p.Date)
+            .Select(p => p.Title)
+            .FirstOrDefault()
+    })
+    .ToList();  // Optimal query generated automatically!`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Full Entity Load",
+      explanation: "Loads everything: IDs, descriptions, images, metadata, etc."
+    },
+    {
+      lineNumbers: [11, 12, 13, 14],
+      highlight: "Minimal Projection",
+      explanation: "Database only selects 3 columns - smaller result set"
+    },
+    {
+      lineNumbers: [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
+      highlight: "Complex Projection",
+      explanation: "Subqueries for aggregates and nested data - all in one query!"
+    }
+  ]}
+/>
+
+<QueryExecutionVisualizer
+  title="Projection SQL Comparison"
+  steps={[
+    {
+      linq: `// Full entity
+var products = context.Products.ToList();`,
+      sql: `SELECT [p].[Id], [p].[Name], [p].[Description], [p].[Price], 
+       [p].[ImageUrl], [p].[CategoryId], [p].[CreatedAt], 
+       [p].[UpdatedAt], [p].[StockCount], [p].[IsActive], 
+       [p].[Metadata], [p].[SKU], [p].[Weight], [p].[Dimensions]
+FROM [Products] AS [p]`,
+      explanation: "ALL columns returned - imagine if Description is 10KB of HTML per product!"
+    },
+    {
+      linq: `// Projected
+var products = context.Products
+    .Select(p => new { p.Name, p.Price })
+    .ToList();`,
+      sql: `SELECT [p].[Name], [p].[Price]
+FROM [Products] AS [p]`,
+      explanation: "Just 2 columns - potentially 100x less data transferred!"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="projection-optimization" xpReward={20} />
+
+---
+
+## Section 4: Query Debugging
+
+### See What SQL EF Core Generates
+
+Understanding what SQL EF Core produces is crucial for optimization!
+
+<DotnetCodePreview
+  title="Debugging Techniques"
+  code={`// Method 1: Enable Logging in DbContext
+protected override void OnConfiguring(DbContextOptionsBuilder options)
+{
+    options.UseSqlServer(connectionString)
+           .LogTo(Console.WriteLine, LogLevel.Information)
+           .EnableSensitiveDataLogging(); // Shows parameter values
+}
+
+// Method 2: Query Tags (EF Core 2.2+)
+var orders = context.Orders
+    .TagWith("Loading orders for dashboard")
+    .Where(o => o.Status == "Pending")
+    .ToList();
+// SQL will include: -- Loading orders for dashboard
+
+// Method 3: ToQueryString() (EF Core 5+)
+var query = context.Products
+    .Where(p => p.Price > 100)
+    .OrderBy(p => p.Name);
+    
+Console.WriteLine(query.ToQueryString());
+// Prints the exact SQL that will be executed
+
+// Method 4: Check for client-side evaluation warnings
+// In logs, look for:
+// "The LINQ expression ... could not be translated" 
+// This means it runs in memory - potentially slow!`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7],
+      highlight: "Console Logging",
+      explanation: "See every SQL query in your console output"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13],
+      highlight: "Query Tags",
+      explanation: "Add identifying comments to SQL for debugging in profilers"
+    },
+    {
+      lineNumbers: [17, 18, 19, 20, 21],
+      highlight: "ToQueryString()",
+      explanation: "Get the SQL without executing the query - great for debugging!"
+    }
+  ]}
+/>
+
+### Client vs Server Evaluation
+
+<DotnetCodePreview
+  title="Client-Side Evaluation Traps"
+  code={`// ❌ Custom method - EF can't translate to SQL
+public static bool IsPopular(Product p) => p.Rating > 4.5;
+
+var popular = context.Products
+    .Where(p => IsPopular(p))  // Loads ALL products, filters in memory!
+    .ToList();
+
+// ✅ Inline the expression
+var popular = context.Products
+    .Where(p => p.Rating > 4.5)  // Translated to SQL WHERE clause
+    .ToList();
+
+// ⚠️ Some methods cause client evaluation
+var weirdFilter = context.Products
+    .Where(p => p.Name.ToUpper() == GetSearchTerm())  // What can't be translated?
+    .ToList();
+
+// If GetSearchTerm() isn't a constant, EF might:
+// 1. Call GetSearchTerm() before the query (best case)
+// 2. Evaluate it per-row in memory (worst case - loads everything!)
+
+// ✅ Safe pattern: Capture variables first
+var searchTerm = GetSearchTerm();
+var results = context.Products
+    .Where(p => p.Name.ToUpper() == searchTerm)  // Now it's a parameter!
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [2, 4, 5, 6],
+      highlight: "Custom Method Trap",
+      explanation: "EF can't translate your custom C# method to SQL!"
+    },
+    {
+      lineNumbers: [9, 10, 11],
+      highlight: "Inline Solution",
+      explanation: "Use the expression directly - EF can translate standard operators"
+    },
+    {
+      lineNumbers: [22, 23, 24, 25],
+      highlight: "Variable Capture",
+      explanation: "Capture method results in variables before the query"
+    }
+  ]}
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="asnotracking-when-quiz">
+  <Question>When should you use AsNoTracking()?</Question>
+  <Answer>Only for small datasets</Answer>
+  <Answer correct>For read-only operations like displaying data or reports</Answer>
+  <Answer>Always - it's always faster</Answer>
+  <Answer>Only with SQL Server</Answer>
+</Quiz>
+
+<Quiz id="n-plus-one-fix-quiz">
+  <Question>How do you fix the N+1 problem?</Question>
+  <Answer>Use AsNoTracking()</Answer>
+  <Answer>Add more indexes</Answer>
+  <Answer correct>Use Include() to eager load related data</Answer>
+  <Answer>Use async queries</Answer>
+</Quiz>
+
+<Quiz id="projection-benefit-quiz">
+  <Question>What's the main benefit of using Select() projections?</Question>
+  <Answer>Queries run faster on any database</Answer>
+  <Answer correct>Only needed columns are transferred, reducing data and memory</Answer>
+  <Answer>It enables AsNoTracking</Answer>
+  <Answer>It bypasses change tracking errors</Answer>
+</Quiz>
+
+### Summary
+
+| Technique | When to Use | Benefit |
+|:----------|:------------|:--------|
+| **AsNoTracking()** | Read-only operations | ~20-30% faster, less memory |
+| **Include()** | Need related data | Prevents N+1 queries |
+| **Select() projections** | Display/export | Minimal data transfer |
+| **Query Tags** | Production debugging | Identify queries in logs |
+| **ToQueryString()** | Development | See generated SQL |
+| **Capture variables** | Dynamic filters | Avoids client evaluation |
+
+<KeyConcept title="Performance Checklist">
+Before shipping, ask yourself:
+1. ✅ Using AsNoTracking() for read-only queries?
+2. ✅ Using Include() for navigation properties I access?
+3. ✅ Projecting only needed columns with Select()?
+4. ✅ No custom methods in Where() clauses?
+5. ✅ Checked logs for "could not be translated" warnings?
+</KeyConcept>
+
+<KeyConcept title="Congratulations!">
+You've completed the **Querying with LINQ** milestone! You now know how to:
+- Filter and sort data efficiently
+- Project data into custom shapes
+- Join and group data from multiple tables
+- Calculate aggregates
+- Optimize query performance
+
+You're ready to tackle more advanced EF Core topics like relationships, migrations, and advanced patterns!
+</KeyConcept>
+
+<ProgressCheckpoint section="query-debugging" xpReward={20} />

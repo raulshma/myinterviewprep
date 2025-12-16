@@ -1,0 +1,18 @@
+{
+  "id": "one-to-many",
+  "title": "One-to-Many Relationships - The Parent-Child Connection",
+  "description": "Master the most common relationship pattern in databases. Learn to model parent-child relationships with foreign keys and navigation properties.",
+  "milestone": "entity-relationships",
+  "order": 1,
+  "sections": [
+    "one-to-many-concept",
+    "defining-relationships",
+    "working-with-data",
+    "fluent-api-config"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 18,
+  "xpReward": 80,
+  "prerequisites": ["ef-relationships"],
+  "tags": ["ef-core", "relationships", "one-to-many", "foreign-keys", "dotnet"]
+}

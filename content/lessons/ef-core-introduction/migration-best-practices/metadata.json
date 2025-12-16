@@ -1,0 +1,18 @@
+{
+  "id": "migration-best-practices",
+  "title": "Migration Best Practices",
+  "description": "Learn professional techniques for managing migrations in team environments and production systems.",
+  "milestone": "migrations",
+  "order": 2,
+  "sections": [
+    "small-migrations",
+    "naming-conventions",
+    "team-workflows",
+    "production-strategies"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 75,
+  "prerequisites": ["creating-migrations"],
+  "tags": ["ef-core", "migrations", "best-practices", "production"]
+}
