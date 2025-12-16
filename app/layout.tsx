@@ -9,6 +9,7 @@ import "./globals.css";
 import { Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { PWAProvider } from "@/components/pwa-provider";
 
 // Initialize fonts
 const _geistMono = Geist_Mono({
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
   description:
     "Ace your next technical interview with personalized, AI-driven preparation tailored to your specific role and company.",
   generator: "Next.js",
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -71,7 +72,7 @@ export default function RootLayout({
             themes={["light", "dark", "dark-dim", "cyberpunk", "system"]}
             disableTransitionOnChange
           >
-            {children}
+            <PWAProvider>{children}</PWAProvider>
             <Toaster />
           </ThemeProvider>
           <Analytics />

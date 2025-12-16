@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, BookOpen, Loader2, CheckCircle2, RefreshCw } from 'lucide-react';
@@ -609,35 +609,61 @@ function LessonContentWithZen(props: LessonContentInternalProps) {
   );
 }
 
+// Helper to get persisted level from localStorage (returns null on server)
+function getPersistedLevelSnapshot(roadmapSlug: string, initialLevel: ExperienceLevel): ExperienceLevel {
+  if (typeof window === 'undefined') return initialLevel;
+  
+  // First check localStorage for persisted level
+  const persistedLevel = getRoadmapSkillLevel(roadmapSlug);
+  if (persistedLevel) return persistedLevel;
+  
+  // Fall back to URL param if present, otherwise initial level
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlLevel = urlParams.get('level') as ExperienceLevel | null;
+  if (urlLevel && ['beginner', 'intermediate', 'advanced'].includes(urlLevel)) {
+    return urlLevel;
+  }
+  
+  return initialLevel;
+}
+
 // Wrapper component that provides the progress context
 export function LessonPageClient(props: LessonPageClientProps) {
-  // Check for persisted skill level for this roadmap (client-side only)
-  const [currentLevel, setCurrentLevel] = useState<ExperienceLevel>(() => {
-    // On initial render, check if there's a persisted level for this roadmap
-    // If URL has explicit level param, use that; otherwise check localStorage
-    if (typeof window !== 'undefined') {
-      const persistedLevel = getRoadmapSkillLevel(props.roadmapSlug);
-      // Only use persisted level if URL doesn't have explicit level param
-      const urlParams = new URLSearchParams(window.location.search);
-      if (!urlParams.has('level') && persistedLevel) {
-        return persistedLevel;
-      }
-    }
-    return props.initialLevel;
-  });
+  // Use useSyncExternalStore to safely read from localStorage without cascading renders
+  const persistedLevel = useSyncExternalStore(
+    // Subscribe to storage changes
+    (callback) => {
+      window.addEventListener('storage', callback);
+      window.addEventListener('roadmap-skill-level-changed', callback);
+      return () => {
+        window.removeEventListener('storage', callback);
+        window.removeEventListener('roadmap-skill-level-changed', callback);
+      };
+    },
+    // Client snapshot
+    () => getPersistedLevelSnapshot(props.roadmapSlug, props.initialLevel),
+    // Server snapshot (always use initial level)
+    () => props.initialLevel
+  );
+  
+  // Track user-selected level override (null means use persistedLevel)
+  const [levelOverride, setLevelOverride] = useState<ExperienceLevel | null>(null);
+  
+  // Current level is either user override or persisted level
+  const currentLevel = levelOverride ?? persistedLevel;
+  
+  // Wrapper to set level and clear override tracking
+  const setCurrentLevel = useCallback((level: ExperienceLevel) => {
+    setLevelOverride(level);
+  }, []);
 
   // Lift MDX state up so it survives ProgressProvider remounts on level changes.
   const [mdxSource, setMdxSource] = useState<MDXRemoteSerializeResult>(props.initialMdxSource);
   const [mdxKey, setMdxKey] = useState(0);
   
   // Track if we need to load different content due to persisted level mismatch
-  const [needsContentLoad, setNeedsContentLoad] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    const persistedLevel = getRoadmapSkillLevel(props.roadmapSlug);
-    const urlParams = new URLSearchParams(window.location.search);
-    // If there's a persisted level, no explicit URL param, and it differs from initial
-    return !!(persistedLevel && !urlParams.has('level') && persistedLevel !== props.initialLevel);
-  });
+  const needsContentLoad = persistedLevel !== props.initialLevel && mdxSource === props.initialMdxSource;
+  const [contentLoaded, setContentLoaded] = useState(false);
 
   const bumpMdxKey = useCallback(() => {
     setMdxKey(prev => prev + 1);
@@ -668,7 +694,7 @@ export function LessonPageClient(props: LessonPageClientProps) {
     ?? [];
 
   const handleContentLoaded = useCallback(() => {
-    setNeedsContentLoad(false);
+    setContentLoaded(true);
   }, []);
 
   return (
@@ -695,7 +721,7 @@ export function LessonPageClient(props: LessonPageClientProps) {
           onMdxSourceChange={setMdxSource}
           mdxKey={mdxKey}
           bumpMdxKey={bumpMdxKey}
-          needsContentLoad={needsContentLoad}
+          needsContentLoad={needsContentLoad && !contentLoaded}
           onContentLoaded={handleContentLoaded}
         />
       </ProgressProvider>

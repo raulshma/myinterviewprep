@@ -47,14 +47,12 @@ export async function GET(request: NextRequest) {
     const source = await fs.readFile(mdxPath, 'utf-8');
     console.log('[API] Loaded content, first 100 chars:', source.substring(0, 100));
     
-    // Return with no-cache headers to ensure fresh content
+    // Allow caching - lesson MDX content is static
     return NextResponse.json(
       { source, level },
       {
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
-          'Pragma': 'no-cache',
-          'Expires': '0',
+          'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
         },
       }
     );
@@ -67,6 +65,5 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Disable Next.js caching for this route
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Allow caching - lesson content is static MDX
+export const revalidate = 3600; // Revalidate every hour
