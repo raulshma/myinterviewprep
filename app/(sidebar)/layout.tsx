@@ -1,25 +1,19 @@
-import { Sidebar, getSidebarData } from '@/components/dashboard/sidebar';
 import { SharedHeaderProvider } from '@/components/dashboard/shared-header-context';
 import { SidebarPageWrapper } from '@/components/dashboard/sidebar-page-wrapper';
-import { ResponsiveSidebarLayout } from '@/components/dashboard/responsive-sidebar-layout';
+import { StreamingSidebarLayout } from '@/components/dashboard/streaming-sidebar-layout';
 
-export const dynamic = 'force-dynamic';
+// Removed 'force-dynamic' to enable streaming and static shell generation
 
-export default async function SidebarLayout({
+export default function SidebarLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const sidebarData = await getSidebarData();
-
   return (
     <SharedHeaderProvider>
-      <ResponsiveSidebarLayout
-        sidebarData={sidebarData}
-        desktopSidebar={<Sidebar />}
-      >
+      <StreamingSidebarLayout>
         <SidebarPageWrapper>{children}</SidebarPageWrapper>
-      </ResponsiveSidebarLayout>
+      </StreamingSidebarLayout>
     </SharedHeaderProvider>
   );
 }

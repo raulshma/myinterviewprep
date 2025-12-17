@@ -6,10 +6,12 @@ const nextConfig = {
   },
   images: {
     // unoptimized: true, // Optimizing images now
+    minimumCacheTTL: 31536000, // 1 year cache for optimized images
   },
   experimental: {
     viewTransition: true,
     useLightningcss: true,
+    inlineCss: true, // Inline CSS in <style> tags - reduces render-blocking
   },
   async headers() {
     return [
