@@ -305,37 +305,51 @@ async function filterJourneyForPublic(
       objectiveSettingByIndex.set(index, setting);
     }
 
-    const publicObjectives: PublicLearningObjective[] = [];
+    // Collect public objectives metadata first
+    const objectivesMetadata: Array<{
+      index: number;
+      title: string;
+      lessonId: string;
+      contentPublic: boolean;
+    }> = [];
+
     for (let index = 0; index < node.learningObjectives.length; index++) {
       const setting = objectiveSettingByIndex.get(index);
       if (!setting?.isPublic) continue;
 
       const objective = node.learningObjectives[index];
-      const title = getObjectiveTitle(objective);
-      const lessonId = getObjectiveLessonId(objective);
-      const contentPublic = setting.contentPublic ?? false;
-
-      let contentMdx: PublicLearningObjective['contentMdx'] | undefined;
-
-      // Only load MDX when explicitly allowed (to keep public explore fast)
-      if (contentPublic) {
-        const lessonPath = await resolveLessonPath(node.id, lessonId, journey.slug);
-        if (lessonPath) {
-          // For multi-level lessons, default to beginner for public preview.
-          const mdx = await getLessonContent(lessonPath, 'beginner');
-          if (mdx) {
-            contentMdx = mdx;
-          }
-        }
-      }
-
-      publicObjectives.push({
-        title,
-        lessonId,
-        contentPublic,
-        ...(contentMdx ? { contentMdx } : {}),
+      objectivesMetadata.push({
+        index,
+        title: getObjectiveTitle(objective),
+        lessonId: getObjectiveLessonId(objective),
+        contentPublic: setting.contentPublic ?? false,
       });
     }
+
+    // Load MDX content in parallel for all objectives that need it
+    const mdxResults = await Promise.all(
+      objectivesMetadata.map(async (meta) => {
+        if (!meta.contentPublic) {
+          return undefined;
+        }
+        const lessonPath = await resolveLessonPath(node.id, meta.lessonId, journey.slug);
+        if (!lessonPath) {
+          return undefined;
+        }
+        // For multi-level lessons, default to beginner for public preview.
+        return getLessonContent(lessonPath, 'beginner');
+      })
+    );
+
+    // Assemble public objectives with their MDX content
+    const publicObjectives: PublicLearningObjective[] = objectivesMetadata.map(
+      (meta, i) => ({
+        title: meta.title,
+        lessonId: meta.lessonId,
+        contentPublic: meta.contentPublic,
+        ...(mdxResults[i] ? { contentMdx: mdxResults[i] } : {}),
+      })
+    );
 
     publicNodes.push({
       id: node.id,

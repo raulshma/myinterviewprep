@@ -430,6 +430,9 @@ function MilestonesList({ milestones, journeySlug, journeyIsPublic, onUpdate }: 
     const nodeIds = Array.from(selectedMilestones);
     if (nodeIds.length === 0) return;
 
+    // Capture original state before optimistic update for reliable revert
+    const originalMilestones = milestones.map(m => ({ ...m }));
+
     // Optimistic update
     onUpdate(
       milestones.map(m => {
@@ -455,24 +458,8 @@ function MilestonesList({ milestones, journeySlug, journeyIsPublic, onUpdate }: 
     );
 
     if ('success' in result && !result.success) {
-      // revert
-      onUpdate(
-        milestones.map(m => {
-          if (!selectedMilestones.has(m.nodeId)) return m;
-          const nextIsPublic = !isPublic;
-          const nextEffectivelyPublic = journeyIsPublic && nextIsPublic;
-          return {
-            ...m,
-            isPublic: nextIsPublic,
-            effectivelyPublic: nextEffectivelyPublic,
-            objectives: m.objectives.map(o => ({
-              ...o,
-              effectivelyPublic: journeyIsPublic && nextIsPublic && o.isPublic,
-              effectivelyContentPublic: journeyIsPublic && nextIsPublic && o.isPublic && o.contentPublic,
-            })),
-          };
-        })
-      );
+      // Revert to captured original state
+      onUpdate(originalMilestones);
     } else {
       setSelectedMilestones(new Set());
     }
