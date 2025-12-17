@@ -62,4 +62,20 @@ export async function ensureIndexes(): Promise<void> {
     // Compound index for finding active path by user
     learningPaths.createIndex({ userId: 1, isActive: 1 }),
   ]);
+
+  // Visibility settings collection indexes
+  const visibilitySettings = db.collection(COLLECTIONS.VISIBILITY_SETTINGS);
+  await Promise.all([
+    // Unique index for entity lookup
+    visibilitySettings.createIndex(
+      { entityType: 1, entityId: 1 },
+      { unique: true }
+    ),
+    // Index for public entity queries
+    visibilitySettings.createIndex({ entityType: 1, isPublic: 1 }),
+    // Index for parent-based queries (milestones by roadmap)
+    visibilitySettings.createIndex({ parentRoadmapSlug: 1 }),
+    // Index for parent-based queries (objectives by milestone)
+    visibilitySettings.createIndex({ parentMilestoneId: 1 }),
+  ]);
 }

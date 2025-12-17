@@ -72,14 +72,14 @@ export function Hero() {
               <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </Link>
-          <Link href="#how-it-works">
+          <Link href="/journeys">
             <Button
-              variant="ghost"
+              variant="outline"
               size="lg"
               className="rounded-full px-8 h-14 text-lg font-medium hover:bg-secondary/50 transition-all"
             >
-              <PlayCircle className="w-5 h-5 mr-2" />
-              Watch Demo
+              Explore Journeys
+              <ArrowRight className="w-5 h-5 ml-2" />
             </Button>
           </Link>
         </motion.div>

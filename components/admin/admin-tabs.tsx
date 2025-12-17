@@ -31,6 +31,7 @@ import {
   BarChart3,
   Layers,
   Settings,
+  Globe,
 } from "lucide-react";
 import { AIMonitoringDashboard } from "@/components/admin/ai-monitoring-dashboard";
 import { TieredModelConfig } from "@/components/admin/tiered-model-config";
@@ -38,6 +39,8 @@ import { ConcurrencyConfig } from "@/components/admin/concurrency-config";
 import { AIToolsConfig } from "@/components/admin/ai-tools-config";
 import { UserActions } from "@/components/admin/user-management";
 import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard";
+import { VisibilityManagement } from "@/components/admin/visibility-management";
+import { VisibilityStats } from "@/components/admin/visibility-stats";
 import type {
   AdminStats,
   AdminUser,
@@ -52,6 +55,7 @@ import type {
   PopularRoadmapData,
   AIToolConfig,
 } from "@/lib/actions/admin";
+import type { VisibilityOverview } from "@/lib/db/schemas/visibility";
 
 interface AdminTabsProps {
   stats: AdminStats;
@@ -72,6 +76,7 @@ interface AdminTabsProps {
   concurrencyLimit: number;
   tieredModelConfig: FullTieredModelConfig;
   aiToolsConfig: AIToolConfig[];
+  visibilityOverview: VisibilityOverview;
 }
 
 export function AdminTabs({
@@ -93,6 +98,7 @@ export function AdminTabs({
   concurrencyLimit,
   tieredModelConfig,
   aiToolsConfig,
+  visibilityOverview,
 }: AdminTabsProps) {
   return (
     <motion.div
@@ -151,6 +157,15 @@ export function AdminTabs({
                 </div>
               </TabsTrigger>
               <TabsTrigger
+                value="visibility"
+                className="rounded-full px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all duration-300"
+              >
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4" />
+                  <span>Visibility</span>
+                </div>
+              </TabsTrigger>
+              <TabsTrigger
                 value="configuration"
                 className="rounded-full px-6 py-2.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm transition-all duration-300"
               >
@@ -205,6 +220,14 @@ export function AdminTabs({
             roadmapTrends={roadmapTrends}
             popularRoadmaps={popularRoadmaps}
           />
+        </TabsContent>
+
+        {/* Visibility Tab */}
+        <TabsContent value="visibility" className="mt-0 focus-visible:outline-none">
+          <div className="space-y-8">
+            <VisibilityStats stats={visibilityOverview.stats} />
+            <VisibilityManagement initialData={visibilityOverview} />
+          </div>
         </TabsContent>
 
         {/* Configuration Tab */}

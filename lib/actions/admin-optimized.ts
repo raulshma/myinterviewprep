@@ -8,6 +8,7 @@ import {
   getRoadmapsCollection,
   getUserRoadmapProgressCollection,
 } from "@/lib/db/collections";
+import { getVisibilityOverview } from "@/lib/services/visibility-service";
 import { isSearchEnabled } from "@/lib/services/search-service";
 import { SETTINGS_KEYS, DEFAULT_AI_TOOLS, type AIToolConfig, type AIToolId } from "@/lib/db/schemas/settings";
 import { parseTierConfig } from "@/lib/db/tier-config";
@@ -26,6 +27,7 @@ import type {
   RoadmapTrendData,
   PopularRoadmapData,
 } from "./admin";
+import type { VisibilityOverview } from "@/lib/db/schemas/visibility";
 
 // Cache for expensive computations (in-memory, resets on server restart)
 const cache = new Map<string, { data: unknown; expiry: number }>();
@@ -68,6 +70,7 @@ export async function getAdminDashboardData(): Promise<
       concurrencyLimit: number;
       tieredModelConfig: FullTieredModelConfig;
       aiToolsConfig: AIToolConfig[];
+      visibilityOverview: VisibilityOverview;
     }
   | UnauthorizedResponse
 > {
@@ -632,6 +635,9 @@ async function fetchAllAdminData() {
     enabled: savedToolsConfig?.[tool.id] ?? tool.enabled,
   }));
 
+  // Fetch visibility overview
+  const visibilityOverview = await getVisibilityOverview();
+
   return {
     stats: {
       totalUsers,
@@ -667,6 +673,7 @@ async function fetchAllAdminData() {
     concurrencyLimit: (concurrencyDoc?.value as number) ?? 3,
     tieredModelConfig,
     aiToolsConfig,
+    visibilityOverview,
   };
 }
 

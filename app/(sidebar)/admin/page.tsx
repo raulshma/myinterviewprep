@@ -33,6 +33,10 @@ const defaultData = {
     low: { provider: 'openrouter' as AIProviderType, primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096, fallbackMaxTokens: 4096, toolsEnabled: true },
   },
   aiToolsConfig: [],
+  visibilityOverview: {
+    roadmaps: [],
+    stats: { totalRoadmaps: 0, publicRoadmaps: 0, totalMilestones: 0, publicMilestones: 0, totalObjectives: 0, publicObjectives: 0 },
+  },
 };
 
 export default async function AdminPage() {
@@ -68,6 +72,7 @@ export default async function AdminPage() {
           concurrencyLimit={data.concurrencyLimit}
           tieredModelConfig={data.tieredModelConfig}
           aiToolsConfig={data.aiToolsConfig}
+          visibilityOverview={data.visibilityOverview}
         />
       </div>
     </AdminPageContent>

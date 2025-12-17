@@ -17,6 +17,7 @@ export const COLLECTIONS = {
   PROGRESS_HISTORY: 'progress_history',
   ROADMAPS: 'roadmaps',
   USER_ROADMAP_PROGRESS: 'user_roadmap_progress',
+  VISIBILITY_SETTINGS: 'visibility_settings',
 } as const;
 
 // Type definitions for documents (will be replaced with Zod inferred types later)
@@ -518,3 +519,21 @@ export async function getUserRoadmapProgressCollection(): Promise<Collection<Use
 }
 
 
+
+// Visibility settings document for public visibility control
+export interface VisibilitySettingDocument extends Document {
+  _id: string;
+  entityType: 'roadmap' | 'milestone' | 'objective';
+  entityId: string;
+  parentRoadmapSlug?: string;
+  parentMilestoneId?: string;
+  isPublic: boolean;
+  updatedBy: string; // Admin clerk ID
+  updatedAt: Date;
+  createdAt: Date;
+}
+
+export async function getVisibilitySettingsCollection(): Promise<Collection<VisibilitySettingDocument>> {
+  const db = await getDb();
+  return db.collection<VisibilitySettingDocument>(COLLECTIONS.VISIBILITY_SETTINGS);
+}

@@ -110,6 +110,7 @@ export function Header() {
     { href: "#how-it-works", label: "How it Works" },
     { href: "#features", label: "Features" },
     { href: "#community", label: "Community" },
+    { href: "/journeys", label: "Explore Journeys", isRoute: true },
   ];
 
   return (
@@ -133,14 +134,24 @@ export function Header() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-10">
           {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              onClick={(e) => handleNavClick(e, link.href)}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              {link.label}
-            </a>
+            link.isRoute ? (
+              <ViewTransitionLink
+                key={link.href}
+                href={link.href}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {link.label}
+              </ViewTransitionLink>
+            ) : (
+              <a
+                key={link.href}
+                href={link.href}
+                onClick={(e) => handleNavClick(e, link.href)}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                {link.label}
+              </a>
+            )
           ))}
           <ViewTransitionLink
             href="/pricing"
@@ -355,16 +366,26 @@ export function Header() {
       {/* Mobile Navigation */}
       {mobileMenuOpen && (
         <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl">
-          <nav className="flex flex-col p-6 gap-4">
+          <nav className="flex flex-col p-6 gap-4" onClick={() => setMobileMenuOpen(false)}>
             {navLinks.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                onClick={(e) => handleNavClick(e, link.href)}
-                className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-2 cursor-pointer"
-              >
-                {link.label}
-              </a>
+              link.isRoute ? (
+                <ViewTransitionLink
+                  key={link.href}
+                  href={link.href}
+                  className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-2"
+                >
+                  {link.label}
+                </ViewTransitionLink>
+              ) : (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  onClick={(e) => handleNavClick(e, link.href)}
+                  className="text-lg font-medium text-muted-foreground hover:text-foreground transition-colors py-2 cursor-pointer"
+                >
+                  {link.label}
+                </a>
+              )
             ))}
             <ViewTransitionLink
               href="/pricing"
